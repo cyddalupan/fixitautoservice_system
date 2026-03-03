@@ -877,7 +877,19 @@ function addDemoFinding() {
     const category = document.getElementById('category') ? document.getElementById('category').value : 'Uncategorized';
     const notes = document.getElementById('notes') ? document.getElementById('notes').value : '';
     
+    // Debug logging
+    console.log('addDemoFinding called');
+    console.log('item_name element:', document.getElementById('item_name'));
+    console.log('item_name_empty element:', document.getElementById('item_name_empty'));
+    console.log('itemName value:', itemName);
+    console.log('status element:', document.getElementById('status'));
+    console.log('status_empty element:', document.getElementById('status_empty'));
+    console.log('status value:', status);
+    console.log('category value:', category);
+    console.log('notes value:', notes);
+    
     if (!itemName || !status) {
+        console.log('Validation failed: itemName:', itemName, 'status:', status);
         alert('Please fill in Item Name and Status');
         return;
     }
