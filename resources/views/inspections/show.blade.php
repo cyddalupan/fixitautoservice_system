@@ -784,6 +784,42 @@
 
 @push('scripts')
 <script>
+// Cache Busting: Force fresh page load if page is cached
+(function() {
+    // Check if this is a cached page by looking for a timestamp
+    if (!sessionStorage.getItem('pageLoaded_' + window.location.pathname)) {
+        // First load of this page in this session
+        sessionStorage.setItem('pageLoaded_' + window.location.pathname, Date.now());
+    } else {
+        // Page might be cached, force a hard refresh
+        const lastLoad = parseInt(sessionStorage.getItem('pageLoaded_' + window.location.pathname));
+        const currentTime = Date.now();
+        const timeDiff = currentTime - lastLoad;
+        
+        // If page was loaded more than 5 minutes ago, it might be stale
+        if (timeDiff > 5 * 60 * 1000) {
+            console.log('Page might be stale, forcing hard refresh...');
+            sessionStorage.setItem('pageLoaded_' + window.location.pathname, currentTime);
+            window.location.reload(true); // Force hard refresh
+        }
+    }
+    
+    // Add timestamp to all form submissions to prevent caching
+    document.addEventListener('DOMContentLoaded', function() {
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            // Check if form already has cache busting field
+            if (!form.querySelector('input[name="_cache_bust"]')) {
+                const cacheBustField = document.createElement('input');
+                cacheBustField.type = 'hidden';
+                cacheBustField.name = '_cache_bust';
+                cacheBustField.value = Date.now();
+                form.appendChild(cacheBustField);
+            }
+        });
+    });
+})();
+
 function showAddFindingForm() {
     // Check if there are existing items
     const hasItems = {{ $itemsByCategory && count($itemsByCategory) > 0 ? 'true' : 'false' }};

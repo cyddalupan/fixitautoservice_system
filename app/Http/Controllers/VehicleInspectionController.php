@@ -410,7 +410,9 @@ class VehicleInspectionController extends Controller
 
         if ($inspection->completeInspection()) {
             \Log::info('Successfully completed inspection ID: ' . $inspection->id . '. New status: ' . $inspection->inspection_status);
-            return redirect()->back()
+            // Add timestamp to URL to bust cache
+            $timestamp = time();
+            return redirect()->route('inspections.show', ['inspection' => $inspection->id, '_' => $timestamp])
                 ->with('success', 'Inspection completed.')
                 ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
                 ->header('Pragma', 'no-cache')
@@ -435,7 +437,9 @@ class VehicleInspectionController extends Controller
 
         if ($inspection->undoCompleteInspection()) {
             \Log::info('Successfully undone completion for inspection ID: ' . $inspection->id . '. New status: ' . $inspection->inspection_status);
-            return redirect()->back()
+            // Add timestamp to URL to bust cache
+            $timestamp = time();
+            return redirect()->route('inspections.show', ['inspection' => $inspection->id, '_' => $timestamp])
                 ->with('success', 'Inspection marked as incomplete. The technician has been notified.')
                 ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
                 ->header('Pragma', 'no-cache')
