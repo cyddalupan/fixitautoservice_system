@@ -398,10 +398,15 @@ class VehicleInspectionController extends Controller
      */
     public function completeInspection(VehicleInspection $inspection)
     {
+        // Log the attempt
+        \Log::info('Complete inspection attempt for inspection ID: ' . $inspection->id . ' by user ID: ' . auth()->id());
+
         if ($inspection->completeInspection()) {
+            \Log::info('Successfully completed inspection ID: ' . $inspection->id . '. New status: ' . $inspection->inspection_status);
             return redirect()->back()->with('success', 'Inspection completed.');
         }
         
+        \Log::error('Failed to complete inspection ID: ' . $inspection->id);
         return redirect()->back()->with('error', 'Unable to complete inspection.');
     }
     
@@ -410,10 +415,15 @@ class VehicleInspectionController extends Controller
      */
     public function undoCompleteInspection(VehicleInspection $inspection)
     {
+        // Log the attempt
+        \Log::info('Undo completion attempt for inspection ID: ' . $inspection->id . ' by user ID: ' . auth()->id());
+
         if ($inspection->undoCompleteInspection()) {
+            \Log::info('Successfully undone completion for inspection ID: ' . $inspection->id . '. New status: ' . $inspection->inspection_status);
             return redirect()->back()->with('success', 'Inspection marked as incomplete. The technician has been notified.');
         }
         
+        \Log::error('Failed to undo completion for inspection ID: ' . $inspection->id);
         return redirect()->back()->with('error', 'Unable to undo inspection completion.');
     }
     
