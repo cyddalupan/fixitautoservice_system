@@ -37,7 +37,7 @@
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 @if(in_array($key, ['daily_revenue', 'total_spent']))
-                                    ${{ number_format($metric['value'], 2) }}
+                                    ₱{{ number_format($metric['value'], 2) }}
                                 @elseif(in_array($key, ['customer_satisfaction', 'technician_productivity', 'retention_rate']))
                                     {{ number_format($metric['value'], 2) }}@if($key == 'customer_satisfaction')/5 @else% @endif
                                 @else
@@ -304,7 +304,7 @@
                     intersect: false,
                     callbacks: {
                         label: function(context) {
-                            return '$' + context.parsed.y.toFixed(2);
+                            return '₱' + context.parsed.y.toFixed(2);
                         }
                     }
                 }
@@ -319,7 +319,7 @@
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            return '$' + value;
+                            return '₱' + value;
                         }
                     }
                 }

@@ -489,7 +489,7 @@
                     alert('Payment amount cannot exceed balance due.');
                 } else if (currentAmount < 0.01) {
                     this.value = '0.01';
-                    alert('Payment amount must be at least $0.01.');
+                    alert('Payment amount must be at least ₱0.01.');
                 }
             });
         }
@@ -503,7 +503,7 @@
                 
                 if (amount < 0.01) {
                     e.preventDefault();
-                    alert('Payment amount must be at least $0.01.');
+                    alert('Payment amount must be at least ₱0.01.');
                     return false;
                 }
                 

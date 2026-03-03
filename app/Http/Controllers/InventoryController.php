@@ -278,35 +278,54 @@ class InventoryController extends Controller
     public function statistics()
     {
         // Overall statistics
+        $totalSales = Inventory::sum('total_sales') ?? 0;
+        $totalCost = Inventory::sum('total_cost') ?? 0;
+        $totalProfit = $totalSales - $totalCost;
+        $averageProfitMargin = Inventory::avg('profit_margin') ?? 0;
+        
         $stats = [
             'total_items' => Inventory::count(),
-            'total_value' => Inventory::sum(DB::raw('quantity * cost_price')),
-            'total_sales_value' => Inventory::sum('total_sales'),
-            'total_cost_value' => Inventory::sum('total_cost'),
-            'total_profit' => DB::raw('SUM(total_sales) - SUM(total_cost)'),
-            'average_profit_margin' => Inventory::avg('profit_margin'),
+            'total_value' => Inventory::sum(DB::raw('quantity * cost_price')) ?? 0,
+            'total_sales_value' => $totalSales,
+            'total_cost_value' => $totalCost,
+            'total_profit' => $totalProfit,
+            'average_profit_margin' => $averageProfitMargin,
             'low_stock_count' => Inventory::lowStock()->count(),
             'out_of_stock_count' => Inventory::outOfStock()->count(),
             'active_items' => Inventory::active()->count(),
         ];
         
-        // Category statistics
+        // Category statistics - using a simpler approach
         $categoryStats = InventoryCategory::withCount(['inventoryItems as item_count'])
-                                         ->withSum(['inventoryItems as total_value' => function($query) {
-                                             $query->select(DB::raw('SUM(quantity * cost_price)'));
-                                         }])
-                                         ->having('item_count', '>', 0)
-                                         ->orderByDesc('total_value')
-                                         ->get();
+                                         ->get()
+                                         ->map(function($category) {
+                                             $totalValue = $category->inventoryItems->sum(function($item) {
+                                                 return $item->quantity * $item->cost_price;
+                                             });
+                                             $category->total_value = $totalValue;
+                                             return $category;
+                                         })
+                                         ->filter(function($category) {
+                                             return $category->item_count > 0;
+                                         })
+                                         ->sortByDesc('total_value')
+                                         ->values();
         
-        // Supplier statistics
+        // Supplier statistics - using a simpler approach
         $supplierStats = InventorySupplier::withCount(['inventoryItems as item_count'])
-                                         ->withSum(['inventoryItems as total_value' => function($query) {
-                                             $query->select(DB::raw('SUM(quantity * cost_price)'));
-                                         }])
-                                         ->having('item_count', '>', 0)
-                                         ->orderByDesc('total_value')
-                                         ->get();
+                                         ->get()
+                                         ->map(function($supplier) {
+                                             $totalValue = $supplier->inventoryItems->sum(function($item) {
+                                                 return $item->quantity * $item->cost_price;
+                                             });
+                                             $supplier->total_value = $totalValue;
+                                             return $supplier;
+                                         })
+                                         ->filter(function($supplier) {
+                                             return $supplier->item_count > 0;
+                                         })
+                                         ->sortByDesc('total_value')
+                                         ->values();
         
         // Top selling items
         $topSelling = Inventory::orderByDesc('total_sold')

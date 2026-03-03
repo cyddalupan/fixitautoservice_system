@@ -568,7 +568,7 @@
                                 <tfoot>
                                     <tr>
                                         <td colspan="3" class="text-end fw-bold">Total:</td>
-                                        <td class="text-end fw-bold" id="totalPaymentAmount">$0.00</td>
+                                        <td class="text-end fw-bold" id="totalPaymentAmount">₱0.00</td>
                                         <td></td>
                                     </tr>
                                 </tfoot>
@@ -593,7 +593,7 @@
                                     <input type="number" class="form-control" id="payment_amount" name="amount" 
                                            min="0.01" step="0.01" required>
                                 </div>
-                                <div class="form-text">Minimum payment: $1.00</div>
+                                <div class="form-text">Minimum payment: ₱1.00</div>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="payment_type" class="form-label">Payment Type</label>
@@ -954,7 +954,7 @@
             if (checkbox.checked && !checkbox.disabled) {
                 const invoiceNumber = row.cells[1].querySelector('a').textContent.trim();
                 const dueDate = row.cells[3].textContent.trim();
-                const balance = parseFloat(row.cells[7].textContent.replace('$', '').replace(',', ''));
+                const balance = parseFloat(row.cells[7].textContent.replace('₱', '').replace(',', ''));
                 
                 selectedInvoices[invoiceId] = {
                     invoiceNumber,
@@ -1150,7 +1150,7 @@
                             const row = checkbox.closest('tr');
                             const invoiceNumber = row.cells[1].querySelector('a').textContent.trim();
                             const dueDate = row.cells[3].textContent.trim();
-                            const balance = parseFloat(row.cells[7].textContent.replace('$', '').replace(',', ''));
+                            const balance = parseFloat(row.cells[7].textContent.replace('₱', '').replace(',', ''));
                             
                             selectedInvoices[id] = {
                                 invoiceNumber,
@@ -1198,14 +1198,14 @@
         const paymentTypeSelect = document.getElementById('payment_type');
         if (paymentTypeSelect && paymentAmountInput) {
             paymentTypeSelect.addEventListener('change', function() {
-                const total = parseFloat(totalPaymentAmount.textContent.replace('$', '')) || 0;
+                const total = parseFloat(totalPaymentAmount.textContent.replace('₱', '')) || 0;
                 
                 switch (this.value) {
                     case 'full':
                         paymentAmountInput.value = total.toFixed(2);
                         break;
                     case 'minimum':
-                        const minimum = Math.max(1.00, total * 0.1); // 10% or $1 minimum
+                        const minimum = Math.max(1.00, total * 0.1); // 10% or ₱1 minimum
                         paymentAmountInput.value = minimum.toFixed(2);
                         break;
                     case 'partial':
@@ -1220,11 +1220,11 @@
         if (paymentForm) {
             paymentForm.addEventListener('submit', function(e) {
                 const amount = parseFloat(paymentAmountInput.value) || 0;
-                const total = parseFloat(totalPaymentAmount.textContent.replace('$', '')) || 0;
+                const total = parseFloat(totalPaymentAmount.textContent.replace('₱', '')) || 0;
                 
                 if (amount < 0.01) {
                     e.preventDefault();
-                    alert('Payment amount must be at least $0.01.');
+                    alert('Payment amount must be at least ₱0.01.');
                     return false;
                 }
                 

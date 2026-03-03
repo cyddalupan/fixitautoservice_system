@@ -2,103 +2,42 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use App\Models\Invoice;
 use App\Models\Customer;
-use App\Models\Vehicle;
 use App\Models\WorkOrder;
-use App\Models\TaxRate;
-use App\Models\Discount;
-use App\Models\PaymentMethod;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use App\Models\Estimate;
 
 class InvoiceController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index(Request $request)
+    public function index()
     {
-        $query = Invoice::with(['customer', 'vehicle'])
-            ->latest();
-
-        // Apply filters
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('payment_status')) {
-            $query->where('payment_status', $request->payment_status);
-        }
-
-        if ($request->filled('customer_id')) {
-            $query->where('customer_id', $request->customer_id);
-        }
-
-        if ($request->filled('start_date')) {
-            $query->where('invoice_date', '>=', $request->start_date);
-        }
-
-        if ($request->filled('end_date')) {
-            $query->where('invoice_date', '<=', $request->end_date);
-        }
-
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('invoice_number', 'LIKE', "%{$search}%")
-                  ->orWhereHas('customer', function($q) use ($search) {
-                      $q->where('first_name', 'LIKE', "%{$search}%")
-                        ->orWhere('last_name', 'LIKE', "%{$search}%")
-                        ->orWhere('email', 'LIKE', "%{$search}%")
-                        ->orWhere('phone', 'LIKE', "%{$search}%");
-                  });
-            });
-        }
-
-        $invoices = $query->paginate(20);
-
+        $invoices = Invoice::with(['customer', 'workOrder'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
+        
         return view('invoices.index', compact('invoices'));
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create(Request $request)
+    public function create()
     {
-        $customers = Customer::orderBy('last_name')->get();
-        $vehicles = Vehicle::orderBy('make')->get();
-        $workOrders = WorkOrder::where('status', 'completed')->orderBy('created_at', 'desc')->get();
-        $taxRates = TaxRate::active()->get();
-        $discounts = Discount::active()->get();
-        $paymentMethods = PaymentMethod::active()->get();
-
-        // Pre-select customer if provided
-        $selectedCustomer = $request->filled('customer_id') 
-            ? Customer::find($request->customer_id)
-            : null;
-
-        // Pre-select vehicle if provided
-        $selectedVehicle = $request->filled('vehicle_id')
-            ? Vehicle::find($request->vehicle_id)
-            : null;
-
-        // Pre-select work order if provided
-        $selectedWorkOrder = $request->filled('work_order_id')
-            ? WorkOrder::with(['vehicle', 'customer'])->find($request->work_order_id)
-            : null;
-
-        return view('invoices.create', compact(
-            'customers',
-            'vehicles',
-            'workOrders',
-            'taxRates',
-            'discounts',
-            'paymentMethods',
-            'selectedCustomer',
-            'selectedVehicle',
-            'selectedWorkOrder'
-        ));
+        $customers = Customer::where('status', 'active')->orderBy('name')->get();
+        $workOrders = WorkOrder::where('status', 'completed')
+            ->whereDoesntHave('invoice')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        $estimates = Estimate::where('status', 'approved')
+            ->whereDoesntHave('workOrder.invoice')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        return view('invoices.create', compact('customers', 'workOrders', 'estimates'));
     }
 
     /**
@@ -108,92 +47,48 @@ class InvoiceController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
-            'vehicle_id' => 'nullable|exists:vehicles,id',
             'work_order_id' => 'nullable|exists:work_orders,id',
-            'invoice_date' => 'required|date',
-            'due_date' => 'nullable|date|after_or_equal:invoice_date',
-            'notes' => 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.item_type' => 'required|in:service,parts,labor,fee',
-            'items.*.item_name' => 'required|string|max:255',
-            'items.*.description' => 'nullable|string',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit_price' => 'required|numeric|min:0',
-            'tax_rate_id' => 'nullable|exists:tax_rates,id',
-            'discount_id' => 'nullable|exists:discounts,id',
+            'estimate_id' => 'nullable|exists:estimates,id',
+            'invoice_number' => 'required|unique:invoices,invoice_number',
+            'issue_date' => 'required|date',
+            'due_date' => 'required|date|after:issue_date',
+            'subtotal' => 'required|numeric|min:0',
+            'tax_rate' => 'nullable|numeric|min:0|max:100',
+            'tax_amount' => 'nullable|numeric|min:0',
             'discount_amount' => 'nullable|numeric|min:0',
+            'shipping_amount' => 'nullable|numeric|min:0',
+            'total_amount' => 'required|numeric|min:0',
+            'amount_paid' => 'nullable|numeric|min:0',
+            'balance_due' => 'required|numeric|min:0',
+            'notes' => 'nullable|string',
+            'terms' => 'nullable|string',
+            'status' => 'required|in:draft,sent,partial,paid,overdue,cancelled',
         ]);
 
-        DB::beginTransaction();
-
-        try {
-            // Generate invoice number
-            $lastInvoice = Invoice::orderBy('id', 'desc')->first();
-            $invoiceNumber = 'INV-' . str_pad(($lastInvoice->id ?? 0) + 1, 6, '0', STR_PAD_LEFT);
-
-            // Calculate subtotal from items
-            $subtotal = 0;
-            foreach ($validated['items'] as $item) {
-                $subtotal += $item['quantity'] * $item['unit_price'];
+        $invoice = Invoice::create($validated);
+        
+        // Add items if provided
+        if ($request->has('items')) {
+            foreach ($request->items as $item) {
+                if (!empty($item['description']) && !empty($item['quantity'])) {
+                    $invoice->items()->create([
+                        'description' => $item['description'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['unit_price'],
+                        'total_price' => $item['quantity'] * $item['unit_price'],
+                        'taxable' => $item['taxable'] ?? false,
+                    ]);
+                }
             }
-
-            // Calculate tax
-            $taxAmount = 0;
-            if ($request->filled('tax_rate_id')) {
-                $taxRate = TaxRate::find($request->tax_rate_id);
-                $taxAmount = ($subtotal * $taxRate->rate) / 100;
-            }
-
-            // Calculate discount
-            $discountAmount = $request->discount_amount ?? 0;
-            if ($request->filled('discount_id')) {
-                $discount = Discount::find($request->discount_id);
-                $discountAmount = $discount->calculateDiscount($subtotal);
-            }
-
-            // Calculate total
-            $totalAmount = $subtotal + $taxAmount - $discountAmount;
-
-            // Create invoice
-            $invoice = Invoice::create([
-                'invoice_number' => $invoiceNumber,
-                'customer_id' => $validated['customer_id'],
-                'vehicle_id' => $validated['vehicle_id'],
-                'work_order_id' => $validated['work_order_id'],
-                'invoice_date' => $validated['invoice_date'],
-                'due_date' => $validated['due_date'],
-                'subtotal' => $subtotal,
-                'tax_amount' => $taxAmount,
-                'discount_amount' => $discountAmount,
-                'total_amount' => $totalAmount,
-                'balance_due' => $totalAmount,
-                'notes' => $validated['notes'],
-                'created_by' => auth()->id(),
-                'status' => 'draft',
-                'payment_status' => 'pending',
-            ]);
-
-            // Create invoice items
-            foreach ($validated['items'] as $itemData) {
-                $invoice->items()->create([
-                    'item_type' => $itemData['item_type'],
-                    'item_name' => $itemData['item_name'],
-                    'description' => $itemData['description'],
-                    'quantity' => $itemData['quantity'],
-                    'unit_price' => $itemData['unit_price'],
-                    'total_amount' => $itemData['quantity'] * $itemData['unit_price'],
-                ]);
-            }
-
-            DB::commit();
-
-            return redirect()->route('invoices.show', $invoice)
-                ->with('success', 'Invoice created successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Failed to create invoice: ' . $e->getMessage())
-                ->withInput();
         }
+        
+        // Update work order status if linked
+        if ($invoice->workOrder) {
+            $invoice->workOrder->update(['invoice_status' => 'invoiced']);
+        }
+        
+        return redirect()->route('invoices.show', $invoice->id)
+            ->with('success', 'Invoice created successfully!');
     }
 
     /**
@@ -201,11 +96,8 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
-        $invoice->load(['customer', 'vehicle', 'workOrder', 'items', 'payments.paymentMethod', 'creator']);
-        
-        $paymentMethods = PaymentMethod::active()->get();
-        
-        return view('invoices.show', compact('invoice', 'paymentMethods'));
+        $invoice->load(['customer', 'workOrder', 'items', 'payments']);
+        return view('invoices.show', compact('invoice'));
     }
 
     /**
@@ -213,26 +105,14 @@ class InvoiceController extends Controller
      */
     public function edit(Invoice $invoice)
     {
-        if ($invoice->status !== 'draft') {
-            return redirect()->route('invoices.show', $invoice)
-                ->with('error', 'Only draft invoices can be edited.');
-        }
-
-        $invoice->load(['items']);
-        $customers = Customer::orderBy('last_name')->get();
-        $vehicles = Vehicle::orderBy('make')->get();
-        $workOrders = WorkOrder::where('status', 'completed')->orderBy('created_at', 'desc')->get();
-        $taxRates = TaxRate::active()->get();
-        $discounts = Discount::active()->get();
-
-        return view('invoices.edit', compact(
-            'invoice',
-            'customers',
-            'vehicles',
-            'workOrders',
-            'taxRates',
-            'discounts'
-        ));
+        $customers = Customer::where('status', 'active')->orderBy('name')->get();
+        $workOrders = WorkOrder::where('status', 'completed')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        $invoice->load(['items', 'payments']);
+        
+        return view('invoices.edit', compact('invoice', 'customers', 'workOrders'));
     }
 
     /**
@@ -240,95 +120,45 @@ class InvoiceController extends Controller
      */
     public function update(Request $request, Invoice $invoice)
     {
-        if ($invoice->status !== 'draft') {
-            return redirect()->route('invoices.show', $invoice)
-                ->with('error', 'Only draft invoices can be edited.');
-        }
-
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
-            'vehicle_id' => 'nullable|exists:vehicles,id',
             'work_order_id' => 'nullable|exists:work_orders,id',
-            'invoice_date' => 'required|date',
-            'due_date' => 'nullable|date|after_or_equal:invoice_date',
-            'notes' => 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.item_type' => 'required|in:service,parts,labor,fee',
-            'items.*.item_name' => 'required|string|max:255',
-            'items.*.description' => 'nullable|string',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit_price' => 'required|numeric|min:0',
-            'tax_rate_id' => 'nullable|exists:tax_rates,id',
-            'discount_id' => 'nullable|exists:discounts,id',
+            'invoice_number' => 'required|unique:invoices,invoice_number,' . $invoice->id,
+            'issue_date' => 'required|date',
+            'due_date' => 'required|date|after:issue_date',
+            'subtotal' => 'required|numeric|min:0',
+            'tax_rate' => 'nullable|numeric|min:0|max:100',
+            'tax_amount' => 'nullable|numeric|min:0',
             'discount_amount' => 'nullable|numeric|min:0',
+            'shipping_amount' => 'nullable|numeric|min:0',
+            'total_amount' => 'required|numeric|min:0',
+            'amount_paid' => 'nullable|numeric|min:0',
+            'balance_due' => 'required|numeric|min:0',
+            'notes' => 'nullable|string',
+            'terms' => 'nullable|string',
+            'status' => 'required|in:draft,sent,partial,paid,overdue,cancelled',
         ]);
 
-        DB::beginTransaction();
-
-        try {
-            // Delete existing items
+        $invoice->update($validated);
+        
+        // Update items
+        if ($request->has('items')) {
             $invoice->items()->delete();
-
-            // Calculate subtotal from items
-            $subtotal = 0;
-            foreach ($validated['items'] as $item) {
-                $subtotal += $item['quantity'] * $item['unit_price'];
+            foreach ($request->items as $item) {
+                if (!empty($item['description']) && !empty($item['quantity'])) {
+                    $invoice->items()->create([
+                        'description' => $item['description'],
+                        'quantity' => $item['quantity'],
+                        'unit_price' => $item['unit_price'],
+                        'total_price' => $item['quantity'] * $item['unit_price'],
+                        'taxable' => $item['taxable'] ?? false,
+                    ]);
+                }
             }
-
-            // Calculate tax
-            $taxAmount = 0;
-            if ($request->filled('tax_rate_id')) {
-                $taxRate = TaxRate::find($request->tax_rate_id);
-                $taxAmount = ($subtotal * $taxRate->rate) / 100;
-            }
-
-            // Calculate discount
-            $discountAmount = $request->discount_amount ?? 0;
-            if ($request->filled('discount_id')) {
-                $discount = Discount::find($request->discount_id);
-                $discountAmount = $discount->calculateDiscount($subtotal);
-            }
-
-            // Calculate total
-            $totalAmount = $subtotal + $taxAmount - $discountAmount;
-
-            // Update invoice
-            $invoice->update([
-                'customer_id' => $validated['customer_id'],
-                'vehicle_id' => $validated['vehicle_id'],
-                'work_order_id' => $validated['work_order_id'],
-                'invoice_date' => $validated['invoice_date'],
-                'due_date' => $validated['due_date'],
-                'subtotal' => $subtotal,
-                'tax_amount' => $taxAmount,
-                'discount_amount' => $discountAmount,
-                'total_amount' => $totalAmount,
-                'balance_due' => $totalAmount - $invoice->amount_paid,
-                'notes' => $validated['notes'],
-                'updated_by' => auth()->id(),
-            ]);
-
-            // Create new invoice items
-            foreach ($validated['items'] as $itemData) {
-                $invoice->items()->create([
-                    'item_type' => $itemData['item_type'],
-                    'item_name' => $itemData['item_name'],
-                    'description' => $itemData['description'],
-                    'quantity' => $itemData['quantity'],
-                    'unit_price' => $itemData['unit_price'],
-                    'total_amount' => $itemData['quantity'] * $itemData['unit_price'],
-                ]);
-            }
-
-            DB::commit();
-
-            return redirect()->route('invoices.show', $invoice)
-                ->with('success', 'Invoice updated successfully.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->with('error', 'Failed to update invoice: ' . $e->getMessage())
-                ->withInput();
         }
+        
+        return redirect()->route('invoices.show', $invoice->id)
+            ->with('success', 'Invoice updated successfully!');
     }
 
     /**
@@ -336,130 +166,132 @@ class InvoiceController extends Controller
      */
     public function destroy(Invoice $invoice)
     {
-        if ($invoice->status !== 'draft') {
-            return redirect()->route('invoices.show', $invoice)
-                ->with('error', 'Only draft invoices can be deleted.');
+        // Update work order status if linked
+        if ($invoice->workOrder) {
+            $invoice->workOrder->update(['invoice_status' => null]);
         }
-
+        
         $invoice->delete();
-
+        
         return redirect()->route('invoices.index')
-            ->with('success', 'Invoice deleted successfully.');
+            ->with('success', 'Invoice deleted successfully!');
     }
 
     /**
-     * Send invoice to customer.
+     * Send invoice to customer
      */
-    public function send(Invoice $invoice, Request $request)
+    public function send(Invoice $invoice)
     {
-        $validated = $request->validate([
-            'delivery_method' => 'required|in:email,sms,print,portal',
-        ]);
-
-        // Update invoice status
-        $invoice->update([
-            'status' => 'sent',
-            'delivery_method' => $validated['delivery_method'],
-            'sent_at' => now(),
-        ]);
-
-        // TODO: Implement actual delivery logic
-        // - Email: Send invoice PDF via email
-        // - SMS: Send payment link via SMS
-        // - Print: Mark as ready for printing
-        // - Portal: Make available in customer portal
-
-        return back()->with('success', 'Invoice sent successfully.');
+        $invoice->update(['status' => 'sent']);
+        
+        // Here you would typically send an email to the customer
+        // For now, we'll just update the status
+        
+        return redirect()->route('invoices.show', $invoice->id)
+            ->with('success', 'Invoice sent to customer!');
     }
 
     /**
-     * Mark invoice as paid.
+     * Mark invoice as paid
      */
     public function markAsPaid(Invoice $invoice)
     {
         $invoice->update([
             'status' => 'paid',
-            'payment_status' => 'paid',
             'amount_paid' => $invoice->total_amount,
             'balance_due' => 0,
-            'paid_date' => now(),
         ]);
-
-        return back()->with('success', 'Invoice marked as paid.');
+        
+        return redirect()->route('invoices.show', $invoice->id)
+            ->with('success', 'Invoice marked as paid!');
     }
 
     /**
-     * Cancel invoice.
-     */
-    public function cancel(Invoice $invoice, Request $request)
-    {
-        $validated = $request->validate([
-            'reason' => 'nullable|string|max:500',
-        ]);
-
-        $invoice->update([
-            'status' => 'cancelled',
-            'notes' => ($invoice->notes ? $invoice->notes . "\n" : '') . 
-                      "Cancelled: " . ($validated['reason'] ?? 'No reason provided'),
-        ]);
-
-        return back()->with('success', 'Invoice cancelled successfully.');
-    }
-
-    /**
-     * Print invoice.
+     * Print invoice
      */
     public function print(Invoice $invoice)
     {
-        $invoice->load(['customer', 'vehicle', 'workOrder', 'items', 'creator']);
-        
-        // TODO: Generate PDF for printing
+        $invoice->load(['customer', 'workOrder', 'items']);
         return view('invoices.print', compact('invoice'));
     }
 
     /**
-     * Download invoice PDF.
+     * Generate PDF invoice
      */
-    public function download(Invoice $invoice)
+    public function pdf(Invoice $invoice)
     {
-        $invoice->load(['customer', 'vehicle', 'workOrder', 'items', 'creator']);
+        $invoice->load(['customer', 'workOrder', 'items']);
         
-        // TODO: Generate and return PDF file
-        // $pdf = PDF::loadView('invoices.pdf', compact('invoice'));
-        // return $pdf->download("invoice-{$invoice->invoice_number}.pdf");
-        
-        return back()->with('info', 'PDF download feature coming soon.');
+        // In a real application, you would generate a PDF here
+        // For now, we'll redirect to the print view
+        return redirect()->route('invoices.print', $invoice->id);
     }
 
     /**
-     * Get invoice statistics.
+     * Record payment for invoice
+     */
+    public function recordPayment(Request $request, Invoice $invoice)
+    {
+        $validated = $request->validate([
+            'payment_date' => 'required|date',
+            'payment_method' => 'required|in:cash,check,credit_card,bank_transfer,gcash,paymaya',
+            'amount' => 'required|numeric|min:0.01|max:' . $invoice->balance_due,
+            'reference_number' => 'nullable|string',
+            'notes' => 'nullable|string',
+        ]);
+
+        // Create payment
+        $payment = $invoice->payments()->create($validated);
+        
+        // Update invoice amounts
+        $newAmountPaid = $invoice->amount_paid + $validated['amount'];
+        $newBalanceDue = max(0, $invoice->total_amount - $newAmountPaid);
+        
+        $status = 'partial';
+        if ($newBalanceDue <= 0) {
+            $status = 'paid';
+        } elseif ($invoice->due_date < now()) {
+            $status = 'overdue';
+        }
+        
+        $invoice->update([
+            'amount_paid' => $newAmountPaid,
+            'balance_due' => $newBalanceDue,
+            'status' => $status,
+        ]);
+        
+        return redirect()->route('invoices.show', $invoice->id)
+            ->with('success', 'Payment recorded successfully!');
+    }
+
+    /**
+     * Get invoice statistics
      */
     public function statistics()
     {
         $totalInvoices = Invoice::count();
-        $totalRevenue = Invoice::sum('total_amount');
-        $totalPaid = Invoice::where('payment_status', 'paid')->sum('total_amount');
-        $totalPending = Invoice::where('payment_status', 'pending')->sum('balance_due');
-        $totalOverdue = Invoice::overdue()->sum('balance_due');
+        $totalAmount = Invoice::sum('total_amount');
+        $totalPaid = Invoice::sum('amount_paid');
+        $totalDue = Invoice::sum('balance_due');
         
-        $recentInvoices = Invoice::with('customer')
-            ->latest()
-            ->take(10)
-            ->get();
+        $statusCounts = Invoice::selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status');
         
-        $topCustomers = Customer::withSum('invoices', 'total_amount')
-            ->orderBy('invoices_sum_total_amount', 'desc')
-            ->take(5)
-            ->get();
-
+        $overdueInvoices = Invoice::where('status', 'overdue')
+            ->orWhere(function($query) {
+                $query->where('status', 'sent')
+                    ->where('due_date', '<', now());
+            })
+            ->count();
+        
         return view('invoices.statistics', compact(
             'totalInvoices',
-            'totalRevenue',
+            'totalAmount',
             'totalPaid',
-            'totalPending',
-            'totalOverdue',
-            'recentInvoices',
-            'topCustomers'
+            'totalDue',
+            'statusCounts',
+            'overdueInvoices'
         ));
     }
 }

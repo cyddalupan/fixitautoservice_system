@@ -86,6 +86,16 @@ class User extends Authenticatable
         return $this->hasMany(CustomerNote::class);
     }
 
+    public function employeeHrDetails()
+    {
+        return $this->hasOne(EmployeeHrDetail::class, 'user_id');
+    }
+
+    public function getHrDetailAttribute()
+    {
+        return $this->employeeHrDetails;
+    }
+
     public function isAdmin()
     {
         return $this->role === 'admin';

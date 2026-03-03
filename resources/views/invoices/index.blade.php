@@ -1,341 +1,306 @@
 @extends('layouts.app')
 
-@section('title', 'Invoices - Point of Sale')
+@section('title', 'Invoices')
 
 @section('content')
-<div class="page-header">
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <h1 class="h3 mb-0">
-                <i class="fas fa-file-invoice-dollar me-2"></i>Invoices
-            </h1>
-            <p class="text-muted mb-0">Manage customer invoices and billing</p>
-        </div>
-        <div>
+<div class="container-fluid">
+    <!-- Page Heading -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-file-invoice text-primary"></i> Invoices
+        </h1>
+        <div class="btn-group">
             <a href="{{ route('invoices.create') }}" class="btn btn-primary">
-                <i class="fas fa-plus me-1"></i> Create Invoice
+                <i class="fas fa-plus"></i> New Invoice
             </a>
-            <a href="{{ route('invoices.statistics') }}" class="btn btn-outline-info">
-                <i class="fas fa-chart-bar me-1"></i> Statistics
+            <a href="{{ route('invoices.statistics') }}" class="btn btn-info">
+                <i class="fas fa-chart-bar"></i> Statistics
             </a>
+            <button type="button" class="btn btn-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="visually-hidden">Toggle Dropdown</span>
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#"><i class="fas fa-print"></i> Print List</a></li>
+                <li><a class="dropdown-item" href="#"><i class="fas fa-download"></i> Export</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="{{ route('payments.by-date-range') }}"><i class="fas fa-calendar-alt"></i> Date Range Report</a></li>
+            </ul>
         </div>
     </div>
-</div>
 
-@if(session('success'))
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
-        {{ session('success') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-@endif
-
-@if(session('error'))
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        {{ session('error') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-@endif
-
-<!-- Quick Stats -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card bg-primary text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="text-white-50 mb-0">Total Invoices</h6>
-                        <h3 class="mb-0">{{ $invoices->total() }}</h3>
-                    </div>
-                    <i class="fas fa-file-invoice fa-2x opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3">
-        <div class="card bg-success text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="text-white-50 mb-0">Paid</h6>
-                        <h3 class="mb-0">{{ $invoices->where('payment_status', 'paid')->count() }}</h3>
-                    </div>
-                    <i class="fas fa-check-circle fa-2x opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3">
-        <div class="card bg-warning text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="text-white-50 mb-0">Pending</h6>
-                        <h3 class="mb-0">{{ $invoices->where('payment_status', 'pending')->count() }}</h3>
-                    </div>
-                    <i class="fas fa-clock fa-2x opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-md-3">
-        <div class="card bg-danger text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="text-white-50 mb-0">Overdue</h6>
-                        <h3 class="mb-0">{{ $invoices->where('status', 'overdue')->count() }}</h3>
-                    </div>
-                    <i class="fas fa-exclamation-triangle fa-2x opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Filters -->
-<div class="card mb-4">
-    <div class="card-body">
-        <form method="GET" action="{{ route('invoices.index') }}">
-            <div class="row">
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">Status</label>
-                    <select class="form-select" name="status">
-                        <option value="">All Statuses</option>
-                        <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
-                        <option value="sent" {{ request('status') == 'sent' ? 'selected' : '' }}>Sent</option>
-                        <option value="paid" {{ request('status') == 'paid' ? 'selected' : '' }}>Paid</option>
-                        <option value="overdue" {{ request('status') == 'overdue' ? 'selected' : '' }}>Overdue</option>
-                        <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+    <!-- Filters -->
+    <div class="card shadow mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ route('invoices.index') }}" class="row g-3">
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Status</label>
+                    <select class="form-select" id="status" name="status">
+                        <option value="">All Status</option>
+                        <option value="draft">Draft</option>
+                        <option value="sent">Sent</option>
+                        <option value="partial">Partial</option>
+                        <option value="paid">Paid</option>
+                        <option value="overdue">Overdue</option>
+                        <option value="cancelled">Cancelled</option>
                     </select>
                 </div>
-                
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">Payment Status</label>
-                    <select class="form-select" name="payment_status">
-                        <option value="">All Payment Statuses</option>
-                        <option value="pending" {{ request('payment_status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="partial" {{ request('payment_status') == 'partial' ? 'selected' : '' }}>Partial</option>
-                        <option value="paid" {{ request('payment_status') == 'paid' ? 'selected' : '' }}>Paid</option>
-                    </select>
+                <div class="col-md-3">
+                    <label for="customer" class="form-label">Customer</label>
+                    <input type="text" class="form-control" id="customer" name="customer" placeholder="Search customer...">
                 </div>
-                
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">Start Date</label>
-                    <input type="date" class="form-control" name="start_date" value="{{ request('start_date') }}">
+                <div class="col-md-3">
+                    <label for="date_from" class="form-label">From Date</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from">
                 </div>
-                
-                <div class="col-md-3 mb-3">
-                    <label class="form-label">End Date</label>
-                    <input type="date" class="form-control" name="end_date" value="{{ request('end_date') }}">
+                <div class="col-md-3">
+                    <label for="date_to" class="form-label">To Date</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to">
                 </div>
-                
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Search</label>
-                    <input type="text" class="form-control" name="search" value="{{ request('search') }}" 
-                           placeholder="Invoice number, customer name, email, phone...">
-                </div>
-                
-                <div class="col-md-3 mb-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-filter me-1"></i> Apply Filters
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter"></i> Filter
                     </button>
-                </div>
-                
-                <div class="col-md-3 mb-3 d-flex align-items-end">
-                    <a href="{{ route('invoices.index') }}" class="btn btn-outline-secondary w-100">
-                        <i class="fas fa-times me-1"></i> Clear Filters
+                    <a href="{{ route('invoices.index') }}" class="btn btn-secondary">
+                        <i class="fas fa-redo"></i> Reset
                     </a>
                 </div>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Invoices Table -->
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="m-0 font-weight-bold text-primary">
-            <i class="fas fa-list me-2"></i>Invoices ({{ $invoices->total() }})
-        </h6>
-        <div class="btn-group">
-            <button class="btn btn-sm btn-outline-secondary" onclick="window.print()">
-                <i class="fas fa-print me-1"></i> Print
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="exportToExcel()">
-                <i class="fas fa-file-excel me-1"></i> Export
-            </button>
+            </form>
         </div>
     </div>
-    
-    <div class="card-body">
-        @if($invoices->count() > 0)
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Invoice #</th>
-                            <th>Customer</th>
-                            <th>Vehicle</th>
-                            <th>Date</th>
-                            <th>Due Date</th>
-                            <th>Total</th>
-                            <th>Status</th>
-                            <th>Payment</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($invoices as $invoice)
+
+    <!-- Invoices Table -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-list"></i> Invoices List
+                <span class="badge bg-secondary ms-2">{{ $invoices->total() }} total</span>
+            </h6>
+        </div>
+        <div class="card-body">
+            @if($invoices->isEmpty())
+                <div class="text-center py-5">
+                    <i class="fas fa-file-invoice fa-3x text-gray-300 mb-3"></i>
+                    <h5 class="text-gray-600">No invoices found</h5>
+                    <p class="text-gray-500">Create your first invoice to get started</p>
+                    <a href="{{ route('invoices.create') }}" class="btn btn-primary mt-3">
+                        <i class="fas fa-plus"></i> Create Invoice
+                    </a>
+                </div>
+            @else
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover">
+                        <thead>
+                            <tr>
+                                <th>Invoice #</th>
+                                <th>Customer</th>
+                                <th>Work Order</th>
+                                <th>Issue Date</th>
+                                <th>Due Date</th>
+                                <th>Total Amount</th>
+                                <th>Balance Due</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($invoices as $invoice)
                             <tr>
                                 <td>
                                     <strong>{{ $invoice->invoice_number }}</strong>
-                                    @if($invoice->is_overdue)
-                                        <span class="badge bg-danger ms-1">Overdue</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar-circle-sm me-2">
-                                            <i class="fas fa-user"></i>
-                                        </div>
-                                        <div>
-                                            <strong>{{ $invoice->customer->first_name }} {{ $invoice->customer->last_name }}</strong>
-                                            <br>
-                                            <small class="text-muted">{{ $invoice->customer->email }}</small>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td>
-                                    @if($invoice->vehicle)
-                                        {{ $invoice->vehicle->year }} {{ $invoice->vehicle->make }} {{ $invoice->vehicle->model }}
-                                        <br>
-                                        <small class="text-muted">{{ $invoice->vehicle->license_plate ?? 'No Plate' }}</small>
-                                    @else
-                                        <span class="text-muted">No Vehicle</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    {{ $invoice->invoice_date->format('M d, Y') }}
                                     <br>
-                                    <small class="text-muted">{{ $invoice->invoice_date->format('g:i A') }}</small>
+                                    <small class="text-gray-600">Created: {{ $invoice->created_at->format('M d, Y') }}</small>
                                 </td>
                                 <td>
-                                    @if($invoice->due_date)
-                                        {{ $invoice->due_date->format('M d, Y') }}
-                                        @if($invoice->is_overdue)
-                                            <br>
-                                            <small class="text-danger">
-                                                {{ $invoice->due_date->diffForHumans() }}
-                                            </small>
-                                        @endif
+                                    {{ $invoice->customer->name ?? 'N/A' }}
+                                    <br>
+                                    <small class="text-gray-600">{{ $invoice->customer->phone ?? '' }}</small>
+                                </td>
+                                <td>
+                                    @if($invoice->workOrder)
+                                        <a href="{{ route('work-orders.show', $invoice->workOrder->id) }}">
+                                            {{ $invoice->workOrder->work_order_number }}
+                                        </a>
                                     @else
-                                        <span class="text-muted">No due date</span>
+                                        <span class="text-gray-600">N/A</span>
+                                    @endif
+                                </td>
+                                <td>{{ $invoice->issue_date->format('M d, Y') }}</td>
+                                <td>
+                                    {{ $invoice->due_date->format('M d, Y') }}
+                                    @if($invoice->due_date < now() && $invoice->status !== 'paid')
+                                        <br><span class="badge bg-danger">Overdue</span>
+                                    @endif
+                                </td>
+                                <td class="text-end">
+                                    <strong>₱{{ number_format($invoice->total_amount, 2) }}</strong>
+                                </td>
+                                <td class="text-end">
+                                    @if($invoice->balance_due > 0)
+                                        <strong class="text-danger">₱{{ number_format($invoice->balance_due, 2) }}</strong>
+                                    @else
+                                        <span class="text-success">₱0.00</span>
                                     @endif
                                 </td>
                                 <td>
-                                    <strong>{{ $invoice->formatted_total }}</strong>
-                                    <br>
-                                    <small class="text-muted">
-                                        Balance: {{ $invoice->formatted_balance_due }}
-                                    </small>
-                                </td>
-                                <td>
-                                    <span class="badge bg-{{ $invoice->status === 'paid' ? 'success' : 
-                                                              ($invoice->status === 'sent' ? 'info' : 
-                                                              ($invoice->status === 'overdue' ? 'danger' : 
-                                                              ($invoice->status === 'draft' ? 'secondary' : 'warning'))) }}">
+                                    @php
+                                        $statusColors = [
+                                            'draft' => 'secondary',
+                                            'sent' => 'info',
+                                            'partial' => 'warning',
+                                            'paid' => 'success',
+                                            'overdue' => 'danger',
+                                            'cancelled' => 'dark',
+                                        ];
+                                    @endphp
+                                    <span class="badge bg-{{ $statusColors[$invoice->status] ?? 'secondary' }}">
                                         {{ ucfirst($invoice->status) }}
                                     </span>
                                 </td>
                                 <td>
-                                    <span class="badge bg-{{ $invoice->payment_status === 'paid' ? 'success' : 
-                                                              ($invoice->payment_status === 'partial' ? 'warning' : 'secondary') }}">
-                                        {{ ucfirst($invoice->payment_status) }}
-                                    </span>
-                                    @if($invoice->payment_status === 'partial')
-                                        <br>
-                                        <small class="text-muted">
-                                            Paid: ₱{{ number_format($invoice->amount_paid, 2) }}
-                                        </small>
-                                    @endif
-                                </td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <a href="{{ route('invoices.show', $invoice) }}" 
-                                           class="btn btn-outline-primary" title="View">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <a href="{{ route('invoices.show', $invoice->id) }}" class="btn btn-info" title="View">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        
+                                        <a href="{{ route('invoices.edit', $invoice->id) }}" class="btn btn-warning" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
                                         @if($invoice->status === 'draft')
-                                            <a href="{{ route('invoices.edit', $invoice)" 
-                                               class="btn btn-outline-warning" title="Edit">
-                                                <i class="fas fa-edit"></i>
+                                            <a href="{{ route('invoices.send', $invoice->id) }}" class="btn btn-primary" title="Send to Customer">
+                                                <i class="fas fa-paper-plane"></i>
                                             </a>
                                         @endif
-                                        
-                                        @if($invoice->status === 'sent' && $invoice->payment_status !== 'paid')
-                                            <a href="{{ route('payments.create', ['invoice_id' => $invoice->id]) }}" 
-                                               class="btn btn-outline-success" title="Receive Payment">
-                                                <i class="fas fa-money-bill-wave"></i>
+                                        @if($invoice->balance_due > 0)
+                                            <a href="{{ route('invoices.record-payment', $invoice->id) }}" class="btn btn-success" title="Record Payment">
+                                                <i class="fas fa-credit-card"></i>
                                             </a>
                                         @endif
-                                        
-                                        <a href="{{ route('invoices.print', $invoice)" 
-                                           class="btn btn-outline-info" title="Print">
+                                        <a href="{{ route('invoices.print', $invoice->id) }}" class="btn btn-secondary" title="Print" target="_blank">
                                             <i class="fas fa-print"></i>
                                         </a>
                                     </div>
                                 </td>
                             </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div class="text-gray-600">
+                        Showing {{ $invoices->firstItem() }} to {{ $invoices->lastItem() }} of {{ $invoices->total() }} entries
+                    </div>
+                    <div>
+                        {{ $invoices->links() }}
+                    </div>
+                </div>
+            @endif
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Invoices
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ $invoices->total() }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-file-invoice fa-2x text-gray-500"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
-            
-            <!-- Pagination -->
-            <div class="mt-4">
-                {{ $invoices->links() }}
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Total Amount
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ₱0.00
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-money-bill-wave fa-2x text-gray-500"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
-        @else
-            <div class="text-center py-5">
-                <i class="fas fa-file-invoice fa-4x text-muted mb-4"></i>
-                <h4 class="text-muted mb-3">No Invoices Found</h4>
-                <p class="text-muted mb-4">
-                    @if(request()->hasAny(['status', 'payment_status', 'search', 'start_date', 'end_date']))
-                        Try adjusting your filters
-                    @else
-                        Get started by creating your first invoice
-                    @endif
-                </p>
-                <a href="{{ route('invoices.create') }}" class="btn btn-primary">
-                    <i class="fas fa-plus me-1"></i> Create First Invoice
-                </a>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Total Due
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ₱0.00
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-500"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
-        @endif
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Overdue Invoices
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                0
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-500"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+@endsection
 
-<style>
-    .avatar-circle-sm {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 14px;
-    }
-</style>
-
+@section('scripts')
 <script>
-    function exportToExcel() {
-        // TODO: Implement Excel export
-        alert('Excel export feature coming soon!');
-    }
+    $(document).ready(function() {
+        // Initialize DataTables
+        if ($.fn.DataTable) {
+            $('table').DataTable({
+                pageLength: 10,
+                responsive: true,
+                order: [[0, 'desc']]
+            });
+        }
+
+        // Status filter
+        const urlParams = new URLSearchParams(window.location.search);
+        const status = urlParams.get('status');
+        if (status) {
+            $('#status').val(status);
+        }
+    });
 </script>
 @endsection

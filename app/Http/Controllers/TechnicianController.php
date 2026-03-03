@@ -263,4 +263,181 @@ class TechnicianController extends Controller
             'partsRequestDistribution' => $partsRequestDistribution,
         ]);
     }
+
+    /**
+     * Display a listing of technicians (for admin management).
+     */
+    public function index()
+    {
+        // Only admin can access technician management
+        if (!auth()->user()->isAdmin()) {
+            abort(403);
+        }
+
+        $technicians = User::technicians()->paginate(10);
+        
+        return view('technicians.index', compact('technicians'));
+    }
+
+    /**
+     * Show the form for creating a new technician.
+     */
+    public function create()
+    {
+        // Only admin can create technicians
+        if (!auth()->user()->isAdmin()) {
+            abort(403);
+        }
+
+        return view('technicians.create');
+    }
+
+    /**
+     * Store a newly created technician in storage.
+     */
+    public function store(Request $request)
+    {
+        // Only admin can create technicians
+        if (!auth()->user()->isAdmin()) {
+            abort(403);
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users',
+            'phone' => 'nullable|string|max:20',
+            'specialization' => 'nullable|string|max:255',
+            'years_experience' => 'nullable|integer|min:0|max:50',
+            'shift_schedule' => 'nullable|string|max:255',
+            'emergency_contact_name' => 'nullable|string|max:255',
+            'emergency_contact_phone' => 'nullable|string|max:20',
+            'skills' => 'nullable|array',
+            'skills.*' => 'string|max:100',
+            'certifications' => 'nullable|array',
+            'certifications.*' => 'string|max:100',
+        ]);
+
+        // Create technician user with default password
+        $technician = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'role' => 'technician',
+            'password' => bcrypt('technician123'), // Default password, should be changed on first login
+            'specialization' => $request->specialization,
+            'years_experience' => $request->years_experience,
+            'shift_schedule' => $request->shift_schedule,
+            'emergency_contact_name' => $request->emergency_contact_name,
+            'emergency_contact_phone' => $request->emergency_contact_phone,
+            'skills' => $request->skills ?? [],
+            'certifications' => $request->certifications ?? [],
+        ]);
+
+        return redirect()->route('technicians.index')
+            ->with('success', 'Technician created successfully. Default password: technician123');
+    }
+
+    /**
+     * Display the specified technician.
+     */
+    public function show(User $user)
+    {
+        // Only admin can view technician details
+        if (!auth()->user()->isAdmin()) {
+            abort(403);
+        }
+
+        // Ensure the user is a technician
+        if (!$user->isTechnician()) {
+            abort(404);
+        }
+
+        return view('technicians.show', compact('user'));
+    }
+
+    /**
+     * Show the form for editing the specified technician.
+     */
+    public function edit(User $user)
+    {
+        // Only admin can edit technicians
+        if (!auth()->user()->isAdmin()) {
+            abort(403);
+        }
+
+        // Ensure the user is a technician
+        if (!$user->isTechnician()) {
+            abort(404);
+        }
+
+        return view('technicians.edit', compact('user'));
+    }
+
+    /**
+     * Update the specified technician in storage.
+     */
+    public function update(Request $request, User $user)
+    {
+        // Only admin can update technicians
+        if (!auth()->user()->isAdmin()) {
+            abort(403);
+        }
+
+        // Ensure the user is a technician
+        if (!$user->isTechnician()) {
+            abort(404);
+        }
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'phone' => 'nullable|string|max:20',
+            'specialization' => 'nullable|string|max:255',
+            'years_experience' => 'nullable|integer|min:0|max:50',
+            'shift_schedule' => 'nullable|string|max:255',
+            'emergency_contact_name' => 'nullable|string|max:255',
+            'emergency_contact_phone' => 'nullable|string|max:20',
+            'skills' => 'nullable|array',
+            'skills.*' => 'string|max:100',
+            'certifications' => 'nullable|array',
+            'certifications.*' => 'string|max:100',
+        ]);
+
+        $user->update([
+            'name' => $request->name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'specialization' => $request->specialization,
+            'years_experience' => $request->years_experience,
+            'shift_schedule' => $request->shift_schedule,
+            'emergency_contact_name' => $request->emergency_contact_name,
+            'emergency_contact_phone' => $request->emergency_contact_phone,
+            'skills' => $request->skills ?? [],
+            'certifications' => $request->certifications ?? [],
+        ]);
+
+        return redirect()->route('technicians.index')
+            ->with('success', 'Technician updated successfully.');
+    }
+
+    /**
+     * Remove the specified technician from storage.
+     */
+    public function destroy(User $user)
+    {
+        // Only admin can delete technicians
+        if (!auth()->user()->isAdmin()) {
+            abort(403);
+        }
+
+        // Ensure the user is a technician
+        if (!$user->isTechnician()) {
+            abort(404);
+        }
+
+        $user->delete();
+
+        return redirect()->route('technicians.index')
+            ->with('success', 'Technician deleted successfully.');
+    }
 }

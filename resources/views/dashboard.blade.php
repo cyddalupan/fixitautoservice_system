@@ -35,7 +35,7 @@
                 <div class="d-flex justify-content-between">
                     <div>
                         <h6 class="text-uppercase mb-0">Revenue This Month</h6>
-                        <h2 class="mb-0">${{ number_format($stats['revenue_this_month'], 2) }}</h2>
+                        <h2 class="mb-0">₱{{ number_format($stats['revenue_this_month'], 2) }}</h2>
                         <small class="opacity-75">+18% from last month</small>
                     </div>
                     <div class="card-icon">
@@ -140,7 +140,7 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <strong>${{ number_format($service->final_amount, 2) }}</strong>
+                                    <strong>₱{{ number_format($service->final_amount, 2) }}</strong>
                                     <br>
                                     <small class="text-muted">
                                         @if($service->customer_rating)
@@ -282,12 +282,12 @@
                                     </div>
                                 </td>
                                 <td>{{ $customer->service_records_count ?? 0 }}</td>
-                                <td>${{ number_format($customer->service_records_sum_final_amount ?? 0, 2) }}</td>
+                                <td>₱{{ number_format($customer->service_records_sum_final_amount ?? 0, 2) }}</td>
                                 <td>
                                     @if($customer->service_records_count > 0)
-                                        ${{ number_format(($customer->service_records_sum_final_amount ?? 0) / $customer->service_records_count, 2) }}
+                                        ₱{{ number_format(($customer->service_records_sum_final_amount ?? 0) / $customer->service_records_count, 2) }}
                                     @else
-                                        $0.00
+                                        ₱0.00
                                     @endif
                                 </td>
                                 <td>
@@ -340,7 +340,7 @@
                     beginAtZero: true,
                     ticks: {
                         callback: function(value) {
-                            return '$' + value.toLocaleString();
+                            return '₱' + value.toLocaleString();
                         }
                     }
                 }

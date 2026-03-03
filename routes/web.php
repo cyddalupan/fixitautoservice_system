@@ -4,6 +4,9 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\WorkOrderController;
+use App\Http\Controllers\EstimateController;
+use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\VehicleInspectionController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ReportsController;
@@ -66,25 +69,80 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::post('/work-orders/{work_order}/add-payment', [WorkOrderController::class, 'addPayment'])->name('work-orders.add-payment');
     Route::get('/work-orders/{work_order}/print', [WorkOrderController::class, 'print'])->name('work-orders.print');
 
+    // Estimate Routes
+    Route::get('/estimates/statistics', [EstimateController::class, 'statistics'])->name('estimates.statistics');
+    Route::resource('estimates', EstimateController::class);
+    Route::post('/estimates/{estimate}/approve', [EstimateController::class, 'approve'])->name('estimates.approve');
+    Route::post('/estimates/{estimate}/reject', [EstimateController::class, 'reject'])->name('estimates.reject');
+    Route::patch('/estimates/{estimate}/update-status', [EstimateController::class, 'updateStatus'])->name('estimates.update-status');
+    Route::post('/estimates/{estimate}/convert-to-work-order', [EstimateController::class, 'convertToWorkOrder'])->name('estimates.convert-to-work-order');
+    Route::post('/estimates/{estimate}/send', [EstimateController::class, 'send'])->name('estimates.send');
+    Route::get('/estimates/{estimate}/print', [EstimateController::class, 'print'])->name('estimates.print');
+
+    // Invoice Routes
+    Route::resource('invoices', InvoiceController::class);
+    Route::post('/invoices/{invoice}/send', [InvoiceController::class, 'send'])->name('invoices.send');
+    Route::post('/invoices/{invoice}/mark-as-paid', [InvoiceController::class, 'markAsPaid'])->name('invoices.mark-as-paid');
+    Route::post('/invoices/{invoice}/record-payment', [InvoiceController::class, 'recordPayment'])->name('invoices.record-payment');
+    Route::get('/invoices/{invoice}/print', [InvoiceController::class, 'print'])->name('invoices.print');
+    Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
+    Route::get('/invoices/statistics', [InvoiceController::class, 'statistics'])->name('invoices.statistics');
+
+    // Payment Routes
+    Route::resource('payments', PaymentController::class);
+    Route::post('/payments/{payment}/mark-as-completed', [PaymentController::class, 'markAsCompleted'])->name('payments.mark-as-completed');
+    Route::post('/payments/{payment}/mark-as-failed', [PaymentController::class, 'markAsFailed'])->name('payments.mark-as-failed');
+    Route::post('/payments/{payment}/refund', [PaymentController::class, 'refund'])->name('payments.refund');
+    Route::get('/payments/{payment}/print', [PaymentController::class, 'print'])->name('payments.print');
+    Route::get('/payments/statistics', [PaymentController::class, 'statistics'])->name('payments.statistics');
+    Route::get('/payments/by-date-range', [PaymentController::class, 'byDateRange'])->name('payments.by-date-range');
+
     // Vehicle Inspection Routes
     Route::resource('inspections', VehicleInspectionController::class);
     Route::get('/inspections/statistics', [VehicleInspectionController::class, 'statistics'])->name('inspections.statistics');
     Route::post('/inspections/{inspection}/start', [VehicleInspectionController::class, 'startInspection'])->name('inspections.start');
     Route::post('/inspections/{inspection}/complete', [VehicleInspectionController::class, 'completeInspection'])->name('inspections.complete');
+    Route::post('/inspections/{inspection}/undo-complete', [VehicleInspectionController::class, 'undoCompleteInspection'])->name('inspections.undo-complete');
     Route::post('/inspections/{inspection}/approve', [VehicleInspectionController::class, 'approveInspection'])->name('inspections.approve');
     Route::post('/inspections/{inspection}/request-customer-approval', [VehicleInspectionController::class, 'requestCustomerApproval'])->name('inspections.request-customer-approval');
     Route::post('/inspections/{inspection}/approve-by-customer', [VehicleInspectionController::class, 'approveByCustomer'])->name('inspections.approve-by-customer');
     Route::get('/inspections/{inspection}/report', [VehicleInspectionController::class, 'generateReport'])->name('inspections.report');
     Route::get('/inspections/{inspection}/manage-items', [VehicleInspectionController::class, 'manageItems'])->name('inspections.manage-items');
     Route::post('/inspections/{inspection}/items/{item}/update', [VehicleInspectionController::class, 'updateItem'])->name('inspections.update-item');
+    Route::post('/inspections/{inspection}/upload-photo', [VehicleInspectionController::class, 'uploadPhoto'])->name('inspections.upload-photo');
 
     // Inventory Routes
-    Route::resource('inventory', InventoryController::class);
     Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock'])->name('inventory.low-stock');
     Route::get('/inventory/statistics', [InventoryController::class, 'statistics'])->name('inventory.statistics');
+    Route::get('/inventory/export', [InventoryController::class, 'export'])->name('inventory.export');
+    Route::resource('inventory', InventoryController::class);
     Route::post('/inventory/{inventory}/adjust-quantity', [InventoryController::class, 'adjustQuantity'])->name('inventory.adjust-quantity');
     Route::get('/inventory/{inventory}/generate-barcode', [InventoryController::class, 'generateBarcode'])->name('inventory.generate-barcode');
-    Route::get('/inventory/export', [InventoryController::class, 'export'])->name('inventory.export');
+    
+    // Categories Management Routes (WORKAROUND for Apache /inventory/ issue)
+    Route::resource('categories-management', \App\Http\Controllers\InventoryCategoryController::class)->names([
+        'index' => 'inventory.categories.index',
+        'create' => 'inventory.categories.create',
+        'store' => 'inventory.categories.store',
+        'show' => 'inventory.categories.show',
+        'edit' => 'inventory.categories.edit',
+        'update' => 'inventory.categories.update',
+        'destroy' => 'inventory.categories.destroy',
+    ]);
+    Route::get('/categories-management/api/list', [\App\Http\Controllers\InventoryCategoryController::class, 'getCategories'])->name('inventory.categories.api.list');
+    
+    // Suppliers Management Routes (WORKAROUND for Apache /inventory/ issue)
+    Route::resource('suppliers-management', \App\Http\Controllers\InventorySupplierController::class)->names([
+        'index' => 'inventory.suppliers.index',
+        'create' => 'inventory.suppliers.create',
+        'store' => 'inventory.suppliers.store',
+        'show' => 'inventory.suppliers.show',
+        'edit' => 'inventory.suppliers.edit',
+        'update' => 'inventory.suppliers.update',
+        'destroy' => 'inventory.suppliers.destroy',
+    ]);
+    Route::post('/suppliers-management/{supplier}/update-balance', [\App\Http\Controllers\InventorySupplierController::class, 'updateBalance'])->name('inventory.suppliers.update-balance');
+    Route::get('/suppliers-management/api/list', [\App\Http\Controllers\InventorySupplierController::class, 'getSuppliers'])->name('inventory.suppliers.api.list');
 
     // Parts Procurement Routes
     Route::resource('parts-procurement', \App\Http\Controllers\PartsProcurementController::class);
@@ -254,8 +312,22 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
         Route::get('/statistics', [\App\Http\Controllers\TechnicianController::class, 'statistics'])->name('statistics');
     });
 
+    // Technician Management Routes (for admin to manage technician database)
+    Route::prefix('technicians')->name('technicians.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\TechnicianController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\TechnicianController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\TechnicianController::class, 'store'])->name('store');
+        Route::get('/{user}', [\App\Http\Controllers\TechnicianController::class, 'show'])->name('show');
+        Route::get('/{user}/edit', [\App\Http\Controllers\TechnicianController::class, 'edit'])->name('edit');
+        Route::put('/{user}', [\App\Http\Controllers\TechnicianController::class, 'update'])->name('update');
+        Route::delete('/{user}', [\App\Http\Controllers\TechnicianController::class, 'destroy'])->name('destroy');
+    });
+
     // Quality Control Routes
     Route::prefix('quality-control')->name('quality-control.')->group(function () {
+        // Dashboard
+        Route::get('/dashboard', [\App\Http\Controllers\QualityControlController::class, 'dashboard'])->name('dashboard');
+        
         // Quality Check Templates
         Route::resource('quality-checks', \App\Http\Controllers\QualityCheckController::class);
         Route::get('/quality-checks/{id}/duplicate', [\App\Http\Controllers\QualityCheckController::class, 'duplicate'])->name('quality-checks.duplicate');
@@ -310,6 +382,40 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
         Route::get('/api/settings/{key}', [\App\Http\Controllers\QualityControlSettingsController::class, 'getSetting'])->name('settings.api.get');
         Route::post('/api/settings/{key}', [\App\Http\Controllers\QualityControlSettingsController::class, 'setSetting'])->name('settings.api.set');
         Route::get('/api/settings', [\App\Http\Controllers\QualityControlSettingsController::class, 'getAllSettings'])->name('settings.api.all');
+        
+        // Checklists Management
+        Route::resource('checklists', \App\Http\Controllers\QualityControlController::class);
+        Route::post('/checklists/{checklist}/clone', [\App\Http\Controllers\QualityControlController::class, 'cloneChecklist'])->name('checklists.clone');
+        Route::post('/checklists/{checklist}/activate', [\App\Http\Controllers\QualityControlController::class, 'activateChecklist'])->name('checklists.activate');
+        Route::post('/checklists/{checklist}/archive', [\App\Http\Controllers\QualityControlController::class, 'archiveChecklist'])->name('checklists.archive');
+        Route::get('/checklists/{checklist}/export/{format?}', [\App\Http\Controllers\QualityControlController::class, 'exportChecklist'])->name('checklists.export');
+        
+        // Quality Audits
+        Route::get('/audits', [\App\Http\Controllers\QualityControlController::class, 'audits'])->name('audits.index');
+        Route::get('/audits/create', [\App\Http\Controllers\QualityControlController::class, 'createAudit'])->name('audits.create');
+        Route::post('/audits', [\App\Http\Controllers\QualityControlController::class, 'storeAudit'])->name('audits.store');
+        Route::get('/audits/{audit}', [\App\Http\Controllers\QualityControlController::class, 'showAudit'])->name('audits.show');
+        Route::get('/audits/{audit}/edit', [\App\Http\Controllers\QualityControlController::class, 'editAudit'])->name('audits.edit');
+        Route::put('/audits/{audit}', [\App\Http\Controllers\QualityControlController::class, 'updateAudit'])->name('audits.update');
+        Route::delete('/audits/{audit}', [\App\Http\Controllers\QualityControlController::class, 'destroyAudit'])->name('audits.destroy');
+        
+        // NCRs (Non-Conformance Reports)
+        Route::get('/ncrs', [\App\Http\Controllers\QualityControlController::class, 'ncrs'])->name('ncrs.index');
+        Route::get('/ncrs/create', [\App\Http\Controllers\QualityControlController::class, 'createNcr'])->name('ncrs.create');
+        Route::post('/ncrs', [\App\Http\Controllers\QualityControlController::class, 'storeNcr'])->name('ncrs.store');
+        Route::get('/ncrs/{ncr}', [\App\Http\Controllers\QualityControlController::class, 'showNcr'])->name('ncrs.show');
+        Route::get('/ncrs/{ncr}/edit', [\App\Http\Controllers\QualityControlController::class, 'editNcr'])->name('ncrs.edit');
+        Route::put('/ncrs/{ncr}', [\App\Http\Controllers\QualityControlController::class, 'updateNcr'])->name('ncrs.update');
+        Route::delete('/ncrs/{ncr}', [\App\Http\Controllers\QualityControlController::class, 'destroyNcr'])->name('ncrs.destroy');
+        
+        // Corrective Actions
+        Route::get('/corrective-actions', [\App\Http\Controllers\QualityControlController::class, 'correctiveActions'])->name('corrective-actions.index');
+        Route::get('/corrective-actions/create', [\App\Http\Controllers\QualityControlController::class, 'createCorrectiveAction'])->name('corrective-actions.create');
+        Route::post('/corrective-actions', [\App\Http\Controllers\QualityControlController::class, 'storeCorrectiveAction'])->name('corrective-actions.store');
+        Route::get('/corrective-actions/{action}', [\App\Http\Controllers\QualityControlController::class, 'showCorrectiveAction'])->name('corrective-actions.show');
+        Route::get('/corrective-actions/{action}/edit', [\App\Http\Controllers\QualityControlController::class, 'editCorrectiveAction'])->name('corrective-actions.edit');
+        Route::put('/corrective-actions/{action}', [\App\Http\Controllers\QualityControlController::class, 'updateCorrectiveAction'])->name('corrective-actions.update');
+        Route::delete('/corrective-actions/{action}', [\App\Http\Controllers\QualityControlController::class, 'destroyCorrectiveAction'])->name('corrective-actions.destroy');
     });
 
     // Test Routes
@@ -408,87 +514,88 @@ Route::prefix('profit-analysis')->name('profit-analysis.')->middleware(['auth'])
 
 
 // Quality Control & Compliance Routes
-Route::prefix('quality-control')->name('quality-control.')->middleware(['auth'])->group(function () {
-    // Quality Control Dashboard
-    Route::get('/', [\App\Http\Controllers\QualityControlController::class, 'dashboard'])->name('dashboard');
-    Route::get('/dashboard', [\App\Http\Controllers\QualityControlController::class, 'dashboard'])->name('dashboard');
-    Route::get('/metrics', [\App\Http\Controllers\QualityControlController::class, 'metrics'])->name('metrics');
-    Route::get('/reports', [\App\Http\Controllers\QualityControlController::class, 'reports'])->name('reports');
-    Route::post('/reports/generate', [\App\Http\Controllers\QualityControlController::class, 'generateReport'])->name('reports.generate');
-    
-    // Checklists Management
-    Route::resource('checklists', \App\Http\Controllers\QualityControlController::class, [
-        'names' => [
-            'index' => 'checklists.index',
-            'create' => 'checklists.create',
-            'store' => 'checklists.store',
-            'show' => 'checklists.show',
-            'edit' => 'checklists.edit',
-            'update' => 'checklists.update',
-            'destroy' => 'checklists.destroy'
-        ]
-    ]);
-    Route::post('/checklists/{checklist}/clone', [\App\Http\Controllers\QualityControlController::class, 'clone'])->name('checklists.clone');
-    Route::post('/checklists/{checklist}/activate', [\App\Http\Controllers\QualityControlController::class, 'activate'])->name('checklists.activate');
-    Route::post('/checklists/{checklist}/archive', [\App\Http\Controllers\QualityControlController::class, 'archive'])->name('checklists.archive');
-    Route::get('/checklists/{checklist}/export/{format?}', [\App\Http\Controllers\QualityControlController::class, 'exportChecklist'])->name('checklists.export');
-    
-    // Quality Audits
-    Route::get('/audits', [\App\Http\Controllers\QualityControlController::class, 'audits'])->name('audits.index');
-    Route::get('/audits/create', [\App\Http\Controllers\QualityControlController::class, 'createAudit'])->name('audits.create');
-    Route::post('/audits', [\App\Http\Controllers\QualityControlController::class, 'storeAudit'])->name('audits.store');
-    Route::get('/audits/{audit}', [\App\Http\Controllers\QualityControlController::class, 'showAudit'])->name('audits.show');
-    Route::get('/audits/{audit}/edit', [\App\Http\Controllers\QualityControlController::class, 'editAudit'])->name('audits.edit');
-    Route::put('/audits/{audit}', [\App\Http\Controllers\QualityControlController::class, 'updateAudit'])->name('audits.update');
-    Route::delete('/audits/{audit}', [\App\Http\Controllers\QualityControlController::class, 'destroyAudit'])->name('audits.destroy');
-    Route::post('/audits/{audit}/complete', [\App\Http\Controllers\QualityControlController::class, 'completeAudit'])->name('audits.complete');
-    Route::post('/audits/{audit}/cancel', [\App\Http\Controllers\QualityControlController::class, 'cancelAudit'])->name('audits.cancel');
-    Route::get('/audits/{audit}/export/{format?}', [\App\Http\Controllers\QualityControlController::class, 'exportAudit'])->name('audits.export');
-    
-    // Non-Conformance Reports (NCRs)
-    Route::get('/ncrs', [\App\Http\Controllers\QualityControlController::class, 'ncrs'])->name('ncrs.index');
-    Route::get('/ncrs/create', [\App\Http\Controllers\QualityControlController::class, 'createNcr'])->name('ncrs.create');
-    Route::post('/ncrs', [\App\Http\Controllers\QualityControlController::class, 'storeNcr'])->name('ncrs.store');
-    Route::get('/ncrs/{ncr}', [\App\Http\Controllers\QualityControlController::class, 'showNcr'])->name('ncrs.show');
-    Route::get('/ncrs/{ncr}/edit', [\App\Http\Controllers\QualityControlController::class, 'editNcr'])->name('ncrs.edit');
-    Route::put('/ncrs/{ncr}', [\App\Http\Controllers\QualityControlController::class, 'updateNcr'])->name('ncrs.update');
-    Route::delete('/ncrs/{ncr}', [\App\Http\Controllers\QualityControlController::class, 'destroyNcr'])->name('ncrs.destroy');
-    Route::post('/ncrs/{ncr}/close', [\App\Http\Controllers\QualityControlController::class, 'closeNcr'])->name('ncrs.close');
-    Route::post('/ncrs/{ncr}/escalate', [\App\Http\Controllers\QualityControlController::class, 'escalateNcr'])->name('ncrs.escalate');
-    
-    // Corrective Actions
-    Route::get('/corrective-actions', [\App\Http\Controllers\QualityControlController::class, 'correctiveActions'])->name('corrective-actions.index');
-    Route::get('/corrective-actions/create', [\App\Http\Controllers\QualityControlController::class, 'createCorrectiveAction'])->name('corrective-actions.create');
-    Route::post('/corrective-actions', [\App\Http\Controllers\QualityControlController::class, 'storeCorrectiveAction'])->name('corrective-actions.store');
-    Route::get('/corrective-actions/{action}', [\App\Http\Controllers\QualityControlController::class, 'showCorrectiveAction'])->name('corrective-actions.show');
-    Route::get('/corrective-actions/{action}/edit', [\App\Http\Controllers\QualityControlController::class, 'editCorrectiveAction'])->name('corrective-actions.edit');
-    Route::put('/corrective-actions/{action}', [\App\Http\Controllers\QualityControlController::class, 'updateCorrectiveAction'])->name('corrective-actions.update');
-    Route::delete('/corrective-actions/{action}', [\App\Http\Controllers\QualityControlController::class, 'destroyCorrectiveAction'])->name('corrective-actions.destroy');
-    Route::post('/corrective-actions/{action}/complete', [\App\Http\Controllers\QualityControlController::class, 'completeCorrectiveAction'])->name('corrective-actions.complete');
-    Route::post('/corrective-actions/{action}/verify', [\App\Http\Controllers\QualityControlController::class, 'verifyCorrectiveAction'])->name('corrective-actions.verify');
-    
-    // Work Order Quality
-    Route::get('/work-order-quality', [\App\Http\Controllers\QualityControlController::class, 'workOrderQuality'])->name('work-order-quality.index');
-    Route::get('/work-order-quality/create', [\App\Http\Controllers\QualityControlController::class, 'createWorkOrderQuality'])->name('work-order-quality.create');
-    Route::post('/work-order-quality', [\App\Http\Controllers\QualityControlController::class, 'storeWorkOrderQuality'])->name('work-order-quality.store');
-    Route::get('/work-order-quality/{quality}', [\App\Http\Controllers\QualityControlController::class, 'showWorkOrderQuality'])->name('work-order-quality.show');
-    
-    // Export APIs
-    Route::prefix('export')->name('export.')->group(function () {
-        Route::get('/summary/{format?}', [\App\Http\Controllers\QualityControlController::class, 'exportSummary'])->name('summary');
-        Route::get('/audits/{format?}', [\App\Http\Controllers\QualityControlController::class, 'exportAudits'])->name('audits');
-        Route::get('/ncrs/{format?}', [\App\Http\Controllers\QualityControlController::class, 'exportNcrs'])->name('ncrs');
-        Route::get('/corrective-actions/{format?}', [\App\Http\Controllers\QualityControlController::class, 'exportCorrectiveActions'])->name('corrective-actions');
-    });
-    
-    // Analytics APIs
-    Route::prefix('api')->name('api.')->group(function () {
-        Route::get('/metrics', [\App\Http\Controllers\QualityControlController::class, 'apiMetrics'])->name('metrics');
-        Route::get('/trends', [\App\Http\Controllers\QualityControlController::class, 'apiTrends'])->name('trends');
-        Route::get('/performance', [\App\Http\Controllers\QualityControlController::class, 'apiPerformance'])->name('performance');
-        Route::get('/compliance', [\App\Http\Controllers\QualityControlController::class, 'apiCompliance'])->name('compliance');
-    });
-});
+// This duplicate quality-control route block should be removed
+// Route::prefix('quality-control')->name('quality-control.')->middleware(['auth'])->group(function () {
+//     // Quality Control Dashboard
+//     Route::get('/', [\App\Http\Controllers\QualityControlController::class, 'dashboard'])->name('dashboard');
+//     Route::get('/dashboard', [\App\Http\Controllers\QualityControlController::class, 'dashboard'])->name('dashboard');
+//     Route::get('/metrics', [\App\Http\Controllers\QualityControlController::class, 'metrics'])->name('metrics');
+//     Route::get('/reports', [\App\Http\Controllers\QualityControlController::class, 'reports'])->name('reports');
+//     Route::post('/reports/generate', [\App\Http\Controllers\QualityControlController::class, 'generateReport'])->name('reports.generate');
+//     
+//     // Checklists Management
+//     Route::resource('checklists', \App\Http\Controllers\QualityControlController::class, [
+//         'names' => [
+//             'index' => 'checklists.index',
+//             'create' => 'checklists.create',
+//             'store' => 'checklists.store',
+//             'show' => 'checklists.show',
+//             'edit' => 'checklists.edit',
+//             'update' => 'checklists.update',
+//             'destroy' => 'checklists.destroy'
+//         ]
+//     ]);
+//     Route::post('/checklists/{checklist}/clone', [\App\Http\Controllers\QualityControlController::class, 'clone'])->name('checklists.clone');
+//     Route::post('/checklists/{checklist}/activate', [\App\Http\Controllers\QualityControlController::class, 'activate'])->name('checklists.activate');
+//     Route::post('/checklists/{checklist}/archive', [\App\Http\Controllers\QualityControlController::class, 'archive'])->name('checklists.archive');
+//     Route::get('/checklists/{checklist}/export/{format?}', [\App\Http\Controllers\QualityControlController::class, 'exportChecklist'])->name('checklists.export');
+//     
+//     // Quality Audits
+//     Route::get('/audits', [\App\Http\Controllers\QualityControlController::class, 'audits'])->name('audits.index');
+//     Route::get('/audits/create', [\App\Http\Controllers\QualityControlController::class, 'createAudit'])->name('audits.create');
+//     Route::post('/audits', [\App\Http\Controllers\QualityControlController::class, 'storeAudit'])->name('audits.store');
+//     Route::get('/audits/{audit}', [\App\Http\Controllers\QualityControlController::class, 'showAudit'])->name('audits.show');
+//     Route::get('/audits/{audit}/edit', [\App\Http\Controllers\QualityControlController::class, 'editAudit'])->name('audits.edit');
+//     Route::put('/audits/{audit}', [\App\Http\Controllers\QualityControlController::class, 'updateAudit'])->name('audits.update');
+//     Route::delete('/audits/{audit}', [\App\Http\Controllers\QualityControlController::class, 'destroyAudit'])->name('audits.destroy');
+//     Route::post('/audits/{audit}/complete', [\App\Http\Controllers\QualityControlController::class, 'completeAudit'])->name('audits.complete');
+//     Route::post('/audits/{audit}/cancel', [\App\Http\Controllers\QualityControlController::class, 'cancelAudit'])->name('audits.cancel');
+//     Route::get('/audits/{audit}/export/{format?}', [\App\Http\Controllers\QualityControlController::class, 'exportAudit'])->name('audits.export');
+//     
+//     // Non-Conformance Reports (NCRs)
+//     Route::get('/ncrs', [\App\Http\Controllers\QualityControlController::class, 'ncrs'])->name('ncrs.index');
+//     Route::get('/ncrs/create', [\App\Http\Controllers\QualityControlController::class, 'createNcr'])->name('ncrs.create');
+//     Route::post('/ncrs', [\App\Http\Controllers\QualityControlController::class, 'storeNcr'])->name('ncrs.store');
+//     Route::get('/ncrs/{ncr}', [\App\Http\Controllers\QualityControlController::class, 'showNcr'])->name('ncrs.show');
+//     Route::get('/ncrs/{ncr}/edit', [\App\Http\Controllers\QualityControlController::class, 'editNcr'])->name('ncrs.edit');
+//     Route::put('/ncrs/{ncr}', [\App\Http\Controllers\QualityControlController::class, 'updateNcr'])->name('ncrs.update');
+//     Route::delete('/ncrs/{ncr}', [\App\Http\Controllers\QualityControlController::class, 'destroyNcr'])->name('ncrs.destroy');
+//     Route::post('/ncrs/{ncr}/close', [\App\Http\Controllers\QualityControlController::class, 'closeNcr'])->name('ncrs.close');
+//     Route::post('/ncrs/{ncr}/escalate', [\App\Http\Controllers\QualityControlController::class, 'escalateNcr'])->name('ncrs.escalate');
+//     
+//     // Corrective Actions
+//     Route::get('/corrective-actions', [\App\Http\Controllers\QualityControlController::class, 'correctiveActions'])->name('corrective-actions.index');
+//     Route::get('/corrective-actions/create', [\App\Http\Controllers\QualityControlController::class, 'createCorrectiveAction'])->name('corrective-actions.create');
+//     Route::post('/corrective-actions', [\App\Http\Controllers\QualityControlController::class, 'storeCorrectiveAction'])->name('corrective-actions.store');
+//     Route::get('/corrective-actions/{action}', [\App\Http\Controllers\QualityControlController::class, 'showCorrectiveAction'])->name('corrective-actions.show');
+//     Route::get('/corrective-actions/{action}/edit', [\App\Http\Controllers\QualityControlController::class, 'editCorrectiveAction'])->name('corrective-actions.edit');
+//     Route::put('/corrective-actions/{action}', [\App\Http\Controllers\QualityControlController::class, 'updateCorrectiveAction'])->name('corrective-actions.update');
+//     Route::delete('/corrective-actions/{action}', [\App\Http\Controllers\QualityControlController::class, 'destroyCorrectiveAction'])->name('corrective-actions.destroy');
+//     Route::post('/corrective-actions/{action}/complete', [\App\Http\Controllers\QualityControlController::class, 'completeCorrectiveAction'])->name('corrective-actions.complete');
+//     Route::post('/corrective-actions/{action}/verify', [\App\Http\Controllers\QualityControlController::class, 'verifyCorrectiveAction'])->name('corrective-actions.verify');
+//     
+//     // Work Order Quality
+//     Route::get('/work-order-quality', [\App\Http\Controllers\QualityControlController::class, 'workOrderQuality'])->name('work-order-quality.index');
+//     Route::get('/work-order-quality/create', [\App\Http\Controllers\QualityControlController::class, 'createWorkOrderQuality'])->name('work-order-quality.create');
+//     Route::post('/work-order-quality', [\App\Http\Controllers\QualityControlController::class, 'storeWorkOrderQuality'])->name('work-order-quality.store');
+//     Route::get('/work-order-quality/{quality}', [\App\Http\Controllers\QualityControlController::class, 'showWorkOrderQuality'])->name('work-order-quality.show');
+//     
+//     // Export APIs
+//     Route::prefix('export')->name('export.')->group(function () {
+//         Route::get('/summary/{format?}', [\App\Http\Controllers\QualityControlController::class, 'exportSummary'])->name('summary');
+//         Route::get('/audits/{format?}', [\App\Http\Controllers\QualityControlController::class, 'exportAudits'])->name('audits');
+//         Route::get('/ncrs/{format?}', [\App\Http\Controllers\QualityControlController::class, 'exportNcrs'])->name('ncrs');
+//         Route::get('/corrective-actions/{format?}', [\App\Http\Controllers\QualityControlController::class, 'exportCorrectiveActions'])->name('corrective-actions');
+//     });
+//     
+//     // Analytics APIs
+//     Route::prefix('api')->name('api.')->group(function () {
+//         Route::get('/metrics', [\App\Http\Controllers\QualityControlController::class, 'apiMetrics'])->name('metrics');
+//         Route::get('/trends', [\App\Http\Controllers\QualityControlController::class, 'apiTrends'])->name('trends');
+//         Route::get('/performance', [\App\Http\Controllers\QualityControlController::class, 'apiPerformance'])->name('performance');
+//         Route::get('/compliance', [\App\Http\Controllers\QualityControlController::class, 'apiCompliance'])->name('compliance');
+//     });
+// });
 
 // Compliance Routes
 Route::prefix('compliance')->name('compliance.')->middleware(['auth'])->group(function () {
@@ -596,15 +703,16 @@ Route::prefix('audit')->name('audit.')->middleware(['auth'])->group(function () 
 });
 
 // Quality Control & Compliance Routes
-Route::prefix('quality-control')->name('quality-control.')->middleware(['auth'])->group(function () {
-    Route::get('/', [\App\Http\Controllers\QualityControlController::class, 'dashboard'])->name('dashboard');
-    Route::get('/dashboard', [\App\Http\Controllers\QualityControlController::class, 'dashboard'])->name('dashboard');
-    Route::get('/metrics', [\App\Http\Controllers\QualityControlController::class, 'metrics'])->name('metrics');
-    Route::get('/reports', [\App\Http\Controllers\QualityControlController::class, 'reports'])->name('reports');
-    
-    // Checklists
-    Route::resource('checklists', \App\Http\Controllers\QualityControlController::class);
-    Route::post('/checklists/{checklist}/clone', [\App\Http\Controllers\QualityControlController::class, 'clone'])->name('checklists.clone');
+// This duplicate quality-control route block should be removed
+// Route::prefix('quality-control')->name('quality-control.')->middleware(['auth'])->group(function () {
+//     Route::get('/', [\App\Http\Controllers\QualityControlController::class, 'dashboard'])->name('dashboard');
+//     Route::get('/dashboard', [\App\Http\Controllers\QualityControlController::class, 'dashboard'])->name('dashboard');
+//     Route::get('/metrics', [\App\Http\Controllers\QualityControlController::class, 'metrics'])->name('metrics');
+//     Route::get('/reports', [\App\Http\Controllers\QualityControlController::class, 'reports'])->name('reports');
+//     
+//     // Checklists
+//     Route::resource('checklists', \App\Http\Controllers\QualityControlController::class);
+//     Route::post('/checklists/{checklist}/clone', [\App\Http\Controllers\QualityControlController::class, 'clone'])->name('checklists.clone');
     
     // Audits
     Route::get('/audits', [\App\Http\Controllers\QualityControlController::class, 'audits'])->name('audits.index');
@@ -626,7 +734,6 @@ Route::prefix('quality-control')->name('quality-control.')->middleware(['auth'])
     Route::get('/corrective-actions/create', [\App\Http\Controllers\QualityControlController::class, 'createCorrectiveAction'])->name('corrective-actions.create');
     Route::post('/corrective-actions', [\App\Http\Controllers\QualityControlController::class, 'storeCorrectiveAction'])->name('corrective-actions.store');
     Route::get('/corrective-actions/{action}', [\App\Http\Controllers\QualityControlController::class, 'showCorrectiveAction'])->name('corrective-actions.show');
-});
 
 // Compliance Routes
 Route::prefix('compliance')->name('compliance.')->middleware(['auth'])->group(function () {
@@ -683,4 +790,126 @@ Route::prefix('reports')->name('reports.')->middleware(['auth'])->group(function
     // API endpoints for preview and data
     Route::get('/types', [ReportsController::class, 'getReportTypes'])->name('types');
     Route::post('/preview', [ReportsController::class, 'preview'])->name('preview');
+});
+
+// HR Payroll Routes
+Route::prefix('hr-payroll')->name('hr-payroll.')->middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->group(function () {
+    // Dashboard
+    Route::get('/', [\App\Http\Controllers\HrPayrollController::class, 'dashboard'])->name('dashboard');
+    Route::get('/dashboard', [\App\Http\Controllers\HrPayrollController::class, 'dashboard'])->name('dashboard');
+    
+    // Employee Management
+    Route::get('/employees', [\App\Http\Controllers\HrPayrollController::class, 'employees'])->name('employees');
+    Route::get('/employees/create', [\App\Http\Controllers\HrPayrollController::class, 'createEmployee'])->name('employees.create');
+    Route::post('/employees', [\App\Http\Controllers\HrPayrollController::class, 'storeEmployee'])->name('employees.store');
+    Route::get('/employees/{id}', [\App\Http\Controllers\HrPayrollController::class, 'showEmployee'])->name('employees.show');
+    Route::get('/employees/{id}/edit', [\App\Http\Controllers\HrPayrollController::class, 'editEmployee'])->name('employees.edit');
+    Route::put('/employees/{id}', [\App\Http\Controllers\HrPayrollController::class, 'updateEmployee'])->name('employees.update');
+    Route::delete('/employees/{id}', [\App\Http\Controllers\HrPayrollController::class, 'destroyEmployee'])->name('employees.destroy');
+    
+    // Payroll Management
+    Route::get('/payroll/periods', [\App\Http\Controllers\HrPayrollController::class, 'payrollPeriods'])->name('payroll.periods');
+    Route::get('/payroll/periods/create', [\App\Http\Controllers\HrPayrollController::class, 'createPayrollPeriod'])->name('payroll.periods.create');
+    Route::post('/payroll/periods', [\App\Http\Controllers\HrPayrollController::class, 'storePayrollPeriod'])->name('payroll.periods.store');
+    Route::get('/payroll/periods/{id}', [\App\Http\Controllers\HrPayrollController::class, 'showPayrollPeriod'])->name('payroll.periods.show');
+    Route::get('/payroll/periods/{id}/edit', [\App\Http\Controllers\HrPayrollController::class, 'editPayrollPeriod'])->name('payroll.periods.edit');
+    Route::put('/payroll/periods/{id}', [\App\Http\Controllers\HrPayrollController::class, 'updatePayrollPeriod'])->name('payroll.periods.update');
+    Route::delete('/payroll/periods/{id}', [\App\Http\Controllers\HrPayrollController::class, 'destroyPayrollPeriod'])->name('payroll.periods.destroy');
+    Route::post('/payroll/periods/{id}/process', [\App\Http\Controllers\HrPayrollController::class, 'processPayroll'])->name('payroll.periods.process');
+    Route::get('/payroll/process', [\App\Http\Controllers\HrPayrollController::class, 'processPayrollPage'])->name('payroll.process');
+    
+    // Time & Attendance
+    Route::get('/time-attendance', [\App\Http\Controllers\HrPayrollController::class, 'timeAttendance'])->name('time-attendance');
+    Route::post('/time-attendance', [\App\Http\Controllers\HrPayrollController::class, 'storeTimeAttendance'])->name('time-attendance.store');
+    Route::get('/time-attendance/export', [\App\Http\Controllers\HrPayrollController::class, 'exportTimeAttendance'])->name('time-attendance.export');
+    
+    // Leave Management
+    Route::get('/leave', [\App\Http\Controllers\HrPayrollController::class, 'leaveManagement'])->name('leave');
+    Route::get('/leave/balances', [\App\Http\Controllers\HrPayrollController::class, 'leaveBalances'])->name('leave.balances');
+    Route::post('/leave/{id}/update', [\App\Http\Controllers\HrPayrollController::class, 'updateLeaveRequest'])->name('leave.update');
+    
+    // Reports
+    Route::get('/reports', [\App\Http\Controllers\HrPayrollController::class, 'reports'])->name('reports');
+    Route::get('/reports/payroll', [\App\Http\Controllers\HrPayrollController::class, 'generatePayrollReport'])->name('reports.payroll');
+    
+    // Employee Self-Service Portal
+    Route::prefix('portal')->name('portal.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\HrPayrollController::class, 'employeePortal'])->name('dashboard');
+        Route::get('/dashboard', [\App\Http\Controllers\HrPayrollController::class, 'employeePortal'])->name('dashboard');
+        Route::get('/payslips', [\App\Http\Controllers\HrPayrollController::class, 'employeePayslips'])->name('payslips');
+        Route::get('/leave-requests', [\App\Http\Controllers\HrPayrollController::class, 'employeeLeaveRequests'])->name('leave-requests');
+        Route::post('/leave-requests', [\App\Http\Controllers\HrPayrollController::class, 'submitLeaveRequest'])->name('leave-requests.submit');
+        Route::post('/clock-in-out', [\App\Http\Controllers\HrPayrollController::class, 'clockInOut'])->name('clock-in-out');
+        Route::get('/time-attendance', [\App\Http\Controllers\HrPayrollController::class, 'employeeTimeAttendance'])->name('time-attendance');
+    });
+    
+    // Test route (can be removed after verification)
+    Route::get('/test-installation', function () {
+        return view('hr-payroll.test');
+    })->name('test-installation');
+});
+
+// Public HR Payroll test route (no authentication required)
+Route::get('/hr-payroll-public-test', function () {
+    return view('hr-payroll.public-test');
+})->name('hr-payroll.public-test');
+
+// HR Payroll system health check (no authentication)
+Route::get('/hr-payroll-health-check', function () {
+    try {
+        // Test database connection and models
+        $employeeCount = \App\Models\User::where('role', 'employee')->count();
+        $payrollPeriods = \App\Models\PayrollPeriod::count();
+        $timeAttendance = \App\Models\TimeAttendance::count();
+        $leaveRequests = \App\Models\LeaveRequest::count();
+        
+        return response()->json([
+            'status' => 'healthy',
+            'timestamp' => now(),
+            'database' => [
+                'employees' => $employeeCount,
+                'payroll_periods' => $payrollPeriods,
+                'time_attendance_records' => $timeAttendance,
+                'leave_requests' => $leaveRequests,
+            ],
+            'models' => [
+                'User' => class_exists(\App\Models\User::class),
+                'EmployeeHrDetail' => class_exists(\App\Models\EmployeeHrDetail::class),
+                'PayrollPeriod' => class_exists(\App\Models\PayrollPeriod::class),
+                'PayrollRecord' => class_exists(\App\Models\PayrollRecord::class),
+                'TimeAttendance' => class_exists(\App\Models\TimeAttendance::class),
+                'LeaveRequest' => class_exists(\App\Models\LeaveRequest::class),
+                'LeaveBalance' => class_exists(\App\Models\LeaveBalance::class),
+                'TaxSetting' => class_exists(\App\Models\TaxSetting::class),
+                'DeductionSetting' => class_exists(\App\Models\DeductionSetting::class),
+                'EmployeeDeduction' => class_exists(\App\Models\EmployeeDeduction::class),
+            ],
+            'message' => 'HR Payroll System is working correctly'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'timestamp' => now(),
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
+
+// Service Workflow Routes
+Route::prefix('services')->name('services.')->middleware(['auth'])->group(function () {
+    Route::get('/', [\App\Http\Controllers\ServiceController::class, 'index'])->name('index');
+    Route::get('/{serviceId}', [\App\Http\Controllers\ServiceController::class, 'show'])->name('show');
+    Route::get('/{serviceId}/timeline', [\App\Http\Controllers\ServiceController::class, 'timeline'])->name('timeline');
+    Route::get('/{serviceId}/details', [\App\Http\Controllers\ServiceController::class, 'getServiceDetails'])->name('details');
+    Route::get('/statistics', [\App\Http\Controllers\ServiceController::class, 'statistics'])->name('statistics');
+    Route::post('/create-workflow', [\App\Http\Controllers\ServiceController::class, 'createWorkflow'])->name('create-workflow');
+    Route::post('/{serviceId}/advance-stage', [\App\Http\Controllers\ServiceController::class, 'advanceStage'])->name('advance-stage');
+});
+
+// Appointment AJAX Routes
+Route::prefix('appointments')->name('appointments.')->middleware(['auth'])->group(function () {
+    Route::post('/{id}/ajax-check-in', [\App\Http\Controllers\AppointmentController::class, 'ajaxCheckIn'])->name('ajax-check-in');
+    Route::post('/{id}/ajax-cancel', [\App\Http\Controllers\AppointmentController::class, 'ajaxCancel'])->name('ajax-cancel');
+    Route::post('/{id}/ajax-mark-no-show', [\App\Http\Controllers\AppointmentController::class, 'ajaxMarkNoShow'])->name('ajax-mark-no-show');
 });

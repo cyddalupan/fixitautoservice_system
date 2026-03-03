@@ -78,9 +78,14 @@ class CustomerController extends Controller
             'zip_code' => 'nullable|string|max:10',
             'customer_type' => 'required|in:individual,commercial,fleet',
             'company_name' => 'required_if:customer_type,commercial,fleet',
+            'tax_id' => 'nullable|string|max:50',
             'credit_limit' => 'nullable|numeric|min:0',
+            'balance' => 'nullable|numeric',
             'payment_terms' => 'required|in:net_15,net_30,net_60,cod',
             'preferred_contact' => 'required|in:email,phone,sms',
+            'notes' => 'nullable|string',
+            'segment' => 'nullable|string|max:50',
+            'loyalty_points' => 'nullable|integer|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -102,11 +107,14 @@ class CustomerController extends Controller
             'company_name' => $request->company_name,
             'tax_id' => $request->tax_id,
             'credit_limit' => $request->credit_limit ?? 0,
+            'balance' => $request->balance ?? 0,
             'payment_terms' => $request->payment_terms,
             'customer_since' => now(),
             'preferred_contact' => $request->preferred_contact,
             'notes' => $request->notes,
             'segment' => $request->segment,
+            'loyalty_points' => $request->loyalty_points ?? 0,
+            'is_active' => true,
         ]);
 
         return redirect()->route('customers.show', $customer)
@@ -168,9 +176,15 @@ class CustomerController extends Controller
             'zip_code' => 'nullable|string|max:10',
             'customer_type' => 'required|in:individual,commercial,fleet',
             'company_name' => 'required_if:customer_type,commercial,fleet',
+            'tax_id' => 'nullable|string|max:50',
             'credit_limit' => 'nullable|numeric|min:0',
+            'balance' => 'nullable|numeric',
             'payment_terms' => 'required|in:net_15,net_30,net_60,cod',
             'preferred_contact' => 'required|in:email,phone,sms',
+            'notes' => 'nullable|string',
+            'segment' => 'nullable|string|max:50',
+            'loyalty_points' => 'nullable|integer|min:0',
+            'is_active' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {

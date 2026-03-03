@@ -497,4 +497,65 @@ class QualityControlController extends Controller
             $query->overdue();
         }
         
-        $
+        $correctiveActions = $query->latest()->paginate(20);
+        $employees = User::whereIn('role', ['technician', 'admin'])->get();
+        $actionTypes = CorrectiveAction::distinct('action_type')->pluck('action_type');
+
+        return view('quality-control.corrective-actions.index', compact('correctiveActions', 'employees', 'actionTypes'));
+    }
+
+    /**
+     * Show the form for creating a new corrective action.
+     */
+    public function createCorrectiveAction()
+    {
+        $employees = User::whereIn('role', ['technician', 'admin'])->get();
+        $nonConformanceReports = NonConformanceReport::all();
+        $standards = ComplianceStandard::all();
+
+        return view('quality-control.corrective-actions.create', compact('employees', 'nonConformanceReports', 'standards'));
+    }
+
+    /**
+     * Store a newly created corrective action in storage.
+     */
+    public function storeCorrectiveAction(Request $request)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'action_type' => 'required|in:immediate,preventive,corrective',
+            'assigned_to' => 'required|exists:users,id',
+            'due_date' => 'required|date',
+            'priority' => 'required|in:low,medium,high,critical',
+            'non_conformance_report_id' => 'nullable|exists:non_conformance_reports,id',
+            'standard_id' => 'nullable|exists:compliance_standards,id',
+        ]);
+
+        CorrectiveAction::create([
+            'title' => $request->title,
+            'description' => $request->description,
+            'action_type' => $request->action_type,
+            'assigned_to' => $request->assigned_to,
+            'assigned_by' => auth()->id(),
+            'due_date' => $request->due_date,
+            'priority' => $request->priority,
+            'status' => 'pending',
+            'non_conformance_report_id' => $request->non_conformance_report_id,
+            'standard_id' => $request->standard_id,
+        ]);
+
+        return redirect()->route('quality-control.corrective-actions.index')
+            ->with('success', 'Corrective action created successfully.');
+    }
+
+    /**
+     * Display the specified corrective action.
+     */
+    public function showCorrectiveAction($id)
+    {
+        $correctiveAction = CorrectiveAction::with(['assignee', 'assigner', 'nonConformanceReport', 'standard'])->findOrFail($id);
+
+        return view('quality-control.corrective-actions.show', compact('correctiveAction'));
+    }
+}

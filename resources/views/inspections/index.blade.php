@@ -124,9 +124,16 @@
                             </td>
                             <td>{{ $inspection->created_at->format('M d, Y') }}</td>
                             <td>
-                                <a href="{{ route('inspections.show', $inspection) }}" class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-eye"></i> View
-                                </a>
+                                <div class="btn-group" role="group">
+                                    <a href="{{ route('inspections.show', $inspection) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View
+                                    </a>
+                                    @if($inspection->inspection_status == 'completed')
+                                        <a href="{{ route('estimates.create', ['appointment_id' => $inspection->appointment_id ?? null, 'inspection_id' => $inspection->id]) }}" class="btn btn-sm btn-success">
+                                            <i class="fas fa-file-invoice-dollar"></i> Create Estimate
+                                        </a>
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                         @endforeach

@@ -38,7 +38,7 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ number_format($stats['total_items']) }}</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                            <i class="fas fa-boxes fa-2x text-gray-500"></i>
                         </div>
                     </div>
                 </div>
@@ -52,10 +52,10 @@
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Total Value</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ number_format($stats['total_value'], 2) }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">₱{{ number_format($stats['total_value'], 2) }}</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                            <i class="fas fa-dollar-sign fa-2x text-gray-500"></i>
                         </div>
                     </div>
                 </div>
@@ -72,7 +72,7 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ number_format($stats['low_stock']) }}</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                            <i class="fas fa-exclamation-triangle fa-2x text-gray-500"></i>
                         </div>
                     </div>
                 </div>
@@ -89,7 +89,7 @@
                             <div class="h5 mb-0 font-weight-bold text-gray-800">{{ number_format($stats['out_of_stock']) }}</div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-times-circle fa-2x text-gray-300"></i>
+                            <i class="fas fa-times-circle fa-2x text-gray-500"></i>
                         </div>
                     </div>
                 </div>
@@ -114,7 +114,7 @@
                     </div>
                     <div class="col-md-2">
                         <div class="form-group">
-                            <label for="category_id">Category</label>
+                            <label for="category_id">Category *</label>
                             <select class="form-control" id="category_id" name="category_id">
                                 <option value="">All Categories</option>
                                 @foreach($categories as $category)
@@ -127,7 +127,7 @@
                     </div>
                     <div class="col-md-2">
                         <div class="form-group">
-                            <label for="supplier_id">Supplier</label>
+                            <label for="supplier_id">Supplier *</label>
                             <select class="form-control" id="supplier_id" name="supplier_id">
                                 <option value="">All Suppliers</option>
                                 @foreach($suppliers as $supplier)
@@ -169,6 +169,67 @@
                     </div>
                 </div>
             </form>
+            
+            <!-- Quick Filter Links -->
+            <div class="row mt-3">
+                <div class="col-12">
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="font-weight-bold mr-2">Quick Filters:</span>
+                        
+                        <!-- View All Categories -->
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" 
+                                    id="categoryQuickFilter" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fas fa-tags"></i> View All Category
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="categoryQuickFilter">
+                                <a class="dropdown-item" href="{{ route('inventory.index') }}">All Categories</a>
+                                <div class="dropdown-divider"></div>
+                                @foreach($categories as $category)
+                                    <a class="dropdown-item" href="{{ route('inventory.index', ['category_id' => $category->id]) }}">
+                                        <span class="badge mr-2" style="background-color: {{ $category->color ?? '#6c757d' }}; color: white;">&nbsp;&nbsp;</span>
+                                        {{ $category->name }}
+                                    </a>
+                                @endforeach
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="{{ route('inventory.categories.index') }}">
+                                    <i class="fas fa-cog mr-2"></i> Manage Categories
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <!-- View All Suppliers -->
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" 
+                                    id="supplierQuickFilter" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                <i class="fas fa-truck"></i> View All Supplier
+                            </button>
+                            <div class="dropdown-menu" aria-labelledby="supplierQuickFilter">
+                                <a class="dropdown-item" href="{{ route('inventory.index') }}">All Suppliers</a>
+                                <div class="dropdown-divider"></div>
+                                @foreach($suppliers as $supplier)
+                                    <a class="dropdown-item" href="{{ route('inventory.index', ['supplier_id' => $supplier->id]) }}">
+                                        <i class="fas fa-building mr-2"></i>
+                                        {{ $supplier->name }}
+                                    </a>
+                                @endforeach
+                                <div class="dropdown-divider"></div>
+                                <a class="dropdown-item" href="{{ route('inventory.suppliers.index') }}">
+                                    <i class="fas fa-cog mr-2"></i> Manage Suppliers
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <!-- Direct Links to Management Pages -->
+                        <a href="{{ route('inventory.categories.index') }}" class="btn btn-sm btn-info">
+                            <i class="fas fa-tags"></i> Categories Page
+                        </a>
+                        <a href="{{ route('inventory.suppliers.index') }}" class="btn btn-sm btn-info">
+                            <i class="fas fa-truck"></i> Suppliers Page
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -194,8 +255,26 @@
                                     </a>
                                 </th>
                                 <th>Name</th>
-                                <th>Category</th>
-                                <th>Supplier</th>
+                                <th>
+                                    <a href="{{ route('inventory.index', array_merge(request()->all(), ['sort' => 'category_id', 'direction' => request('direction') == 'asc' ? 'desc' : 'asc'])) }}">
+                                        Category *
+                                        @if(request('sort') == 'category_id')
+                                            <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }}"></i>
+                                        @else
+                                            <i class="fas fa-sort"></i>
+                                        @endif
+                                    </a>
+                                </th>
+                                <th>
+                                    <a href="{{ route('inventory.index', array_merge(request()->all(), ['sort' => 'supplier_id', 'direction' => request('direction') == 'asc' ? 'desc' : 'asc'])) }}">
+                                        Supplier *
+                                        @if(request('sort') == 'supplier_id')
+                                            <i class="fas fa-sort-{{ request('direction') == 'asc' ? 'up' : 'down' }}"></i>
+                                        @else
+                                            <i class="fas fa-sort"></i>
+                                        @endif
+                                    </a>
+                                </th>
                                 <th>
                                     <a href="{{ route('inventory.index', array_merge(request()->all(), ['sort' => 'quantity', 'direction' => request('direction') == 'asc' ? 'desc' : 'asc'])) }}">
                                         Quantity
@@ -218,7 +297,7 @@
                                     <td>
                                         <strong>{{ $item->part_number }}</strong>
                                         @if($item->oem_number)
-                                            <br><small class="text-muted">OEM: {{ $item->oem_number }}</small>
+                                            <br><small class="text-gray-600">OEM: {{ $item->oem_number }}</small>
                                         @endif
                                     </td>
                                     <td>{{ $item->name }}</td>
@@ -245,10 +324,10 @@
                                                 <span class="badge badge-success">In Stock</span>
                                             @endif
                                         </div>
-                                        <small class="text-muted">Min: {{ $item->minimum_stock }}, Reorder: {{ $item->reorder_point }}</small>
+                                        <small class="text-gray-600">Min: {{ $item->minimum_stock }}, Reorder: {{ $item->reorder_point }}</small>
                                     </td>
-                                    <td>${{ number_format($item->cost_price, 2) }}</td>
-                                    <td>${{ number_format($item->retail_price, 2) }}</td>
+                                    <td>₱{{ number_format($item->cost_price, 2) }}</td>
+                                    <td>₱{{ number_format($item->retail_price, 2) }}</td>
                                     <td>
                                         @php
                                             $statusColors = [

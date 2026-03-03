@@ -324,7 +324,7 @@
                         label: function(context) {
                             let value = context.parsed.y;
                             @if($category == 'revenue')
-                                return '$' + value.toFixed(2);
+                                return '₱' + value.toFixed(2);
                             @else
                                 return value.toFixed(2);
                             @endif
@@ -343,7 +343,7 @@
                     ticks: {
                         callback: function(value) {
                             @if($category == 'revenue')
-                                return '$' + value;
+                                return '₱' + value;
                             @else
                                 return value;
                             @endif
@@ -462,7 +462,7 @@
                                 <tr>
                                     <th>Value:</th>
                                     <td class="font-weight-bold">
-                                        ${data.metric.category === 'revenue' ? '$' + parseFloat(data.metric.metric_value).toFixed(2) : data.metric.metric_value}
+                                        ${data.metric.category === 'revenue' ? '₱' + parseFloat(data.metric.metric_value).toFixed(2) : data.metric.metric_value}
                                     </td>
                                 </tr>
                                 <tr>

@@ -501,7 +501,7 @@
                         beginAtZero: true,
                         ticks: {
                             callback: function(value) {
-                                return '$' + value;
+                                return '₱' + value;
                             }
                         }
                     }

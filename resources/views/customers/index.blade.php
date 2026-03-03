@@ -138,7 +138,7 @@
                                 </div>
                             </td>
                             <td>
-                                <strong>${{ number_format($customer->total_spent, 2) }}</strong>
+                                <strong>₱{{ number_format($customer->total_spent, 2) }}</strong>
                                 <br>
                                 <small class="text-muted">{{ $customer->total_services }} services</small>
                             </td>

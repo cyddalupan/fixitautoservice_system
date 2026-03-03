@@ -137,7 +137,7 @@
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
                                 Avg. Lifetime Value
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ number_format($summary['avg_lifetime_value'], 2) }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">₱{{ number_format($summary['avg_lifetime_value'], 2) }}</div>
                             <div class="mt-2">
                                 <span class="text-{{ $summary['lifetime_value_trend'] >= 0 ? 'success' : 'danger' }}">
                                     <i class="fas fa-arrow-{{ $summary['lifetime_value_trend'] >= 0 ? 'up' : 'down' }}"></i>
@@ -271,7 +271,7 @@
                                             <span class="font-weight-bold">{{ number_format($segment['avg_score'], 1) }}</span>
                                         </div>
                                     </td>
-                                    <td class="font-weight-bold">${{ number_format($segment['avg_lifetime_value'], 2) }}</td>
+                                    <td class="font-weight-bold">₱{{ number_format($segment['avg_lifetime_value'], 2) }}</td>
                                     <td>
                                         <span class="badge badge-{{ $segment['risk_color'] }}">
                                             {{ ucfirst($segment['churn_risk']) }}
@@ -344,7 +344,7 @@
                                         </div>
                                     </td>
                                     <td>{{ $customer['last_visit'] }}</td>
-                                    <td class="font-weight-bold">${{ number_format($customer['total_spent'], 2) }}</td>
+                                    <td class="font-weight-bold">₱{{ number_format($customer['total_spent'], 2) }}</td>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="progress flex-grow-1 mr-2" style="height: 20px;">
@@ -623,7 +623,7 @@
                                 </tr>
                                 <tr>
                                     <th>Total Spent:</th>
-                                    <td class="font-weight-bold">$${data.customer.total_spent.toFixed(2)}</td>
+                                    <td class="font-weight-bold">₱${data.customer.total_spent.toFixed(2)}</td>
                                 </tr>
                                 <tr>
                                     <th>Last Visit:</th>
@@ -652,7 +652,7 @@
                                                 <td>${service.date}</td>
                                                 <td>${service.service}</td>
                                                 <td>${service.vehicle}</td>
-                                                <td>$${service.amount.toFixed(2)}</td>
+                                                <td>₱${service.amount.toFixed(2)}</td>
                                                 <td>${service.rating ? service.rating + '/5' : 'N/A'}</td>
                                             </tr>
                                         `).join('')}

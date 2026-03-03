@@ -175,7 +175,7 @@
                                            id="minimum_stock" name="minimum_stock" value="{{ old('minimum_stock', 5) }}" min="0" required>
                                     @error('minimum_stock')
                                         <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror>
+                                    @enderror
                                     <small class="form-text text-muted">Alert when stock reaches this level</small>
                                 </div>
                                 
@@ -198,7 +198,7 @@
                                     <label for="cost_price">Cost Price *</label>
                                     <div class="input-group">
                                         <div class="input-group-prepend">
-                                            <span class="input-group-text">$</span>
+                                            <span class="input-group-text">₱</span>
                                         </div>
                                         <input type="number" step="0.01" class="form-control @error('cost_price') is-invalid @enderror" 
                                                id="cost_price" name="cost_price" value="{{ old('cost_price', 0) }}" min="0" required>
@@ -212,7 +212,7 @@
                                     <label for="retail_price">Retail Price *</label>
                                     <div class="input-group">
                                         <div class="input-group-prepend">
-                                            <span class="input-group-text">$</span>
+                                            <span class="input-group-text">₱</span>
                                         </div>
                                         <input type="number" step="0.01" class="form-control @error('retail_price') is-invalid @enderror" 
                                                id="retail_price" name="retail_price" value="{{ old('retail_price', 0) }}" min="0" required>
@@ -226,7 +226,7 @@
                                     <label for="wholesale_price">Wholesale Price</label>
                                     <div class="input-group">
                                         <div class="input-group-prepend">
-                                            <span class="input-group-text">$</span>
+                                            <span class="input-group-text">₱</span>
                                         </div>
                                         <input type="number" step="0.01" class="form-control @error('wholesale_price') is-invalid @enderror" 
                                                id="wholesale_price" name="wholesale_price" value="{{ old('wholesale_price') }}" min="0">
@@ -240,7 +240,7 @@
                                     <label for="core_price">Core Price</label>
                                     <div class="input-group">
                                         <div class="input-group-prepend">
-                                            <span class="input-group-text">$</span>
+                                            <span class="input-group-text">₱</span>
                                         </div>
                                         <input type="number" step="0.01" class="form-control @error('core_price') is-invalid @enderror" 
                                                id="core_price" name="core_price" value="{{ old('core_price') }}" min="0">
@@ -290,7 +290,7 @@
                                            id="image_url" name="image_url" value="{{ old('image_url') }}">
                                     @error('image_url')
                                         <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror>
+                                    @enderror
                                 </div>
                                 
                                 <div class="form-group">

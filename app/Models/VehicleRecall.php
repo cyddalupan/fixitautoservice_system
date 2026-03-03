@@ -169,7 +169,7 @@ class VehicleRecall extends Model
             return 'N/A';
         }
 
-        return '$' . number_format($this->estimated_cost, 2);
+        return '₱' . number_format($this->estimated_cost, 2);
     }
 
     /**
@@ -181,6 +181,6 @@ class VehicleRecall extends Model
             return 'N/A';
         }
 
-        return '$' . number_format($this->actual_cost, 2);
+        return '₱' . number_format($this->actual_cost, 2);
     }
 }

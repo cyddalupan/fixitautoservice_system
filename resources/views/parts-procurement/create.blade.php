@@ -245,21 +245,21 @@
                                     <div class="row">
                                         <div class="col-md-6">
                                             <div class="mb-2">
-                                                <strong>Subtotal:</strong> <span id="subtotal">$0.00</span>
+                                                <strong>Subtotal:</strong> <span id="subtotal">₱0.00</span>
                                             </div>
                                             <div class="mb-2">
-                                                <strong>Core Charge:</strong> <span id="coreCharge">$0.00</span>
+                                                <strong>Core Charge:</strong> <span id="coreCharge">₱0.00</span>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
                                             <div class="mb-2">
-                                                <strong>Shipping:</strong> <span id="shipping">$0.00</span>
+                                                <strong>Shipping:</strong> <span id="shipping">₱0.00</span>
                                             </div>
                                             <div class="mb-2">
-                                                <strong>Tax:</strong> <span id="tax">$0.00</span>
+                                                <strong>Tax:</strong> <span id="tax">₱0.00</span>
                                             </div>
                                             <div class="mb-2">
-                                                <strong>Total:</strong> <span id="total" class="h5">$0.00</span>
+                                                <strong>Total:</strong> <span id="total" class="h5">₱0.00</span>
                                             </div>
                                         </div>
                                     </div>
@@ -422,11 +422,11 @@
             const shipping = 0;
             const tax = subtotal * 0.08; // 8% tax
             
-            $('#subtotal').text('$' + subtotal.toFixed(2));
-            $('#coreCharge').text('$' + coreCharge.toFixed(2));
-            $('#shipping').text('$' + shipping.toFixed(2));
-            $('#tax').text('$' + tax.toFixed(2));
-            $('#total').text('$' + (subtotal + shipping + tax).toFixed(2));
+            $('#subtotal').text('₱' + subtotal.toFixed(2));
+            $('#coreCharge').text('₱' + coreCharge.toFixed(2));
+            $('#shipping').text('₱' + shipping.toFixed(2));
+            $('#tax').text('₱' + tax.toFixed(2));
+            $('#total').text('₱' + (subtotal + shipping + tax).toFixed(2));
         }
         
         // Recalculate totals when any input changes

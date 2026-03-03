@@ -286,7 +286,7 @@
                                     <i class="bi bi-car-front-fill text-primary fs-3"></i>
                                 </div>
                                 <h6 class="mb-1">Regular Service</h6>
-                                <p class="text-muted small mb-0">10 points per $100 spent</p>
+                                <p class="text-muted small mb-0">10 points per ₱100 spent</p>
                             </div>
                         </div>
                         <div class="col-md-3 mb-3">
@@ -338,7 +338,7 @@
                         <ul class="list-unstyled">
                             <li class="mb-2">
                                 <i class="bi bi-check-circle text-success me-2"></i>
-                                <strong>Service Points:</strong> 10 points per $100 spent
+                                <strong>Service Points:</strong> 10 points per ₱100 spent
                             </li>
                             <li class="mb-2">
                                 <i class="bi bi-check-circle text-success me-2"></i>

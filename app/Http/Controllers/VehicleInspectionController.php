@@ -299,8 +299,28 @@ class VehicleInspectionController extends Controller
      */
     public function update(Request $request, VehicleInspection $inspection)
     {
+        // For AJAX requests (partial updates), use simpler validation
+        if ($request->ajax() || $request->wantsJson()) {
+            $validated = $request->validate([
+                'technician_notes' => 'nullable|string|max:2000',
+                'customer_concerns' => 'nullable|string|max:2000',
+                'vehicle_mileage' => 'nullable|integer|min:0',
+                'inspection_type' => 'nullable|in:pre_purchase,routine_maintenance,safety,comprehensive,diagnostic,emissions,custom',
+            ]);
+            
+            // Update only the provided fields
+            $inspection->update($validated);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Inspection updated successfully.',
+                'data' => $validated
+            ]);
+        }
+        
+        // Full form submission (non-AJAX)
         $validated = $request->validate([
-            'inspection_type' => 'required|in:pre_service,post_service,safety,comprehensive,custom',
+            'inspection_type' => 'required|in:pre_purchase,routine_maintenance,safety,comprehensive,diagnostic,emissions,custom',
             'inspection_status' => 'required|in:draft,in_progress,completed,approved,rejected,cancelled',
             'inspection_name' => 'required|string|max:255',
             'inspection_notes' => 'nullable|string|max:2000',
@@ -318,6 +338,7 @@ class VehicleInspectionController extends Controller
             'upsell_notes' => 'nullable|string|max:2000',
             'estimated_upsell_value' => 'nullable|numeric|min:0',
             'actual_upsell_value' => 'nullable|numeric|min:0',
+            'vehicle_mileage' => 'nullable|integer|min:0',
         ]);
         
         // Update status timestamps
@@ -382,6 +403,18 @@ class VehicleInspectionController extends Controller
         }
         
         return redirect()->back()->with('error', 'Unable to complete inspection.');
+    }
+    
+    /**
+     * Undo completion of inspection.
+     */
+    public function undoCompleteInspection(VehicleInspection $inspection)
+    {
+        if ($inspection->undoCompleteInspection()) {
+            return redirect()->back()->with('success', 'Inspection marked as incomplete. The technician has been notified.');
+        }
+        
+        return redirect()->back()->with('error', 'Unable to undo inspection completion.');
     }
     
     /**
@@ -608,5 +641,40 @@ class VehicleInspectionController extends Controller
         $inspection->updateItemCounts();
         
         return redirect()->back()->with('success', 'Inspection item updated.');
+    }
+    
+    /**
+     * Upload photo for inspection.
+     */
+    public function uploadPhoto(Request $request, VehicleInspection $inspection)
+    {
+        $request->validate([
+            'photo' => 'required|image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB max
+            'description' => 'nullable|string|max:255',
+        ]);
+        
+        try {
+            // Store the photo
+            $path = $request->file('photo')->store('inspections/photos', 'public');
+            
+            // Add photo to inspection
+            $inspection->addPhoto($path, $request->description);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Photo uploaded successfully',
+                'photo' => [
+                    'path' => $path,
+                    'path_url' => asset('storage/' . $path),
+                    'description' => $request->description,
+                    'uploaded_at' => now()->toISOString(),
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to upload photo: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

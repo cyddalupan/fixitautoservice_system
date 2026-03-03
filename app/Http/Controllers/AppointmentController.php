@@ -17,81 +17,48 @@ class AppointmentController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Appointment::with(['customer', 'vehicle', 'technician', 'advisor'])
-            ->latest();
+        // Get appointments by status for tabs
+        $scheduledAppointments = Appointment::with(['customer', 'vehicle', 'technician'])
+            ->whereIn('appointment_status', ['scheduled', 'confirmed'])
+            ->whereDate('appointment_date', '>=', Carbon::today())
+            ->orderBy('appointment_date')
+            ->orderBy('appointment_time')
+            ->get();
         
-        // Search filter
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('appointment_number', 'like', "%{$search}%")
-                  ->orWhereHas('customer', function($q) use ($search) {
-                      $q->where('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('phone', 'like', "%{$search}%");
-                  })
-                  ->orWhereHas('vehicle', function($q) use ($search) {
-                      $q->where('license_plate', 'like', "%{$search}%")
-                        ->orWhere('make', 'like', "%{$search}%")
-                        ->orWhere('model', 'like', "%{$search}%");
-                  });
-            });
-        }
+        $arrivedAppointments = Appointment::with(['customer', 'vehicle', 'technician'])
+            ->where('appointment_status', 'checked_in')
+            ->whereDate('appointment_date', '>=', Carbon::today()->subDays(7))
+            ->orderBy('checked_in_at', 'desc')
+            ->get();
         
-        // Status filter
-        if ($request->filled('status')) {
-            $query->where('appointment_status', $request->status);
-        }
+        $cancelledAppointments = Appointment::with(['customer', 'vehicle'])
+            ->where('appointment_status', 'cancelled')
+            ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30))
+            ->orderBy('cancelled_at', 'desc')
+            ->get();
         
-        // Date filter
-        if ($request->filled('date')) {
-            $query->whereDate('appointment_date', $request->date);
-        } elseif ($request->filled('date_range')) {
-            $dates = explode(' to ', $request->date_range);
-            if (count($dates) == 2) {
-                $query->whereBetween('appointment_date', [$dates[0], $dates[1]]);
-            }
-        } else {
-            // Default: show today and upcoming appointments
-            $query->whereDate('appointment_date', '>=', Carbon::today());
-        }
+        $convertedAppointments = Appointment::with(['customer', 'vehicle', 'estimate', 'workOrder'])
+            ->whereHas('estimate')
+            ->orWhereHas('workOrder')
+            ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30))
+            ->orderBy('appointment_date', 'desc')
+            ->get();
         
-        // Technician filter
-        if ($request->filled('technician_id')) {
-            $query->where('assigned_technician_id', $request->technician_id);
-        }
-        
-        // Type filter
-        if ($request->filled('type')) {
-            $query->where('appointment_type', $request->type);
-        }
-        
-        // Priority filter
-        if ($request->filled('priority')) {
-            $query->where('priority', $request->priority);
-        }
-        
-        // Waitlist filter
-        if ($request->filled('waitlist')) {
-            $query->where('is_waitlist', $request->waitlist == 'yes');
-        }
-        
-        $appointments = $query->paginate(20);
-        
-        // Get technicians for filter dropdown
-        $technicians = User::where('role', 'technician')->where('is_active', true)->get();
-        
-        // Get statistics
+        // Get statistics for tabs
         $stats = [
-            'total' => Appointment::count(),
-            'today' => Appointment::today()->count(),
-            'upcoming' => Appointment::upcoming(7)->count(),
-            'waitlist' => Appointment::waitlist()->count(),
-            'no_show' => Appointment::where('appointment_status', 'no_show')->count(),
+            'scheduled' => $scheduledAppointments->count(),
+            'arrived' => $arrivedAppointments->count(),
+            'cancelled' => $cancelledAppointments->count(),
+            'converted' => $convertedAppointments->count(),
         ];
         
-        return view('appointments.index', compact('appointments', 'technicians', 'stats'));
+        return view('appointments.index', compact(
+            'scheduledAppointments',
+            'arrivedAppointments',
+            'cancelledAppointments',
+            'convertedAppointments',
+            'stats'
+        ));
     }
 
     /**
@@ -309,7 +276,7 @@ class AppointmentController extends Controller
     }
     
     /**
-     * Check-in an appointment.
+     * Check-in an appointment and create vehicle inspection.
      */
     public function checkIn(Appointment $appointment)
     {
@@ -317,12 +284,45 @@ class AppointmentController extends Controller
             return redirect()->back()->with('error', 'Only confirmed appointments can be checked in.');
         }
         
+        // Update appointment status
         $appointment->update([
             'appointment_status' => 'checked_in',
             'checked_in_at' => now(),
         ]);
         
-        return redirect()->back()->with('success', 'Appointment checked in successfully.');
+        // Get customer name safely
+        $customerName = 'Customer';
+        if ($appointment->customer) {
+            $customerName = $appointment->customer->full_name;
+        } elseif ($appointment->customer_id) {
+            $customer = \App\Models\Customer::find($appointment->customer_id);
+            if ($customer) {
+                $customerName = $customer->full_name;
+            }
+        }
+        
+        // Create vehicle inspection for the appointment
+        $inspection = \App\Models\VehicleInspection::create([
+            'appointment_id' => $appointment->id,
+            'customer_id' => $appointment->customer_id,
+            'vehicle_id' => $appointment->vehicle_id,
+            'service_advisor_id' => $appointment->service_advisor_id,
+            'inspection_type' => 'pre_service',
+            'inspection_status' => 'draft',
+            'inspection_name' => 'Pre-Service Inspection for ' . $customerName,
+            'customer_concerns' => $appointment->service_request,
+            'inspection_started_at' => now(),
+            'created_by' => auth()->id(),
+        ]);
+        
+        // If appointment has a service_id, link it to the inspection
+        if ($appointment->service_id) {
+            $inspection->update(['service_id' => $appointment->service_id]);
+        }
+        
+        // Redirect to the newly created vehicle inspection
+        return redirect()->route('inspections.show', $inspection->id)
+            ->with('success', 'Appointment checked in successfully. Vehicle inspection created.');
     }
     
     /**
@@ -577,6 +577,154 @@ class AppointmentController extends Controller
                     'bay_conflict' => $appointment->bay_number == $conflict->bay_number,
                 ]);
             }
+        }
+    }
+    
+    /**
+     * AJAX: Check in appointment and create vehicle inspection.
+     */
+    public function ajaxCheckIn(Request $request, $id)
+    {
+        try {
+            $appointment = Appointment::findOrFail($id);
+            
+            if (!in_array($appointment->appointment_status, ['scheduled', 'confirmed'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only scheduled or confirmed appointments can be checked in.'
+                ], 400);
+            }
+            
+            // Update appointment status
+            $appointment->update([
+                'appointment_status' => 'checked_in',
+                'checked_in_at' => now(),
+            ]);
+            
+            // Get customer name safely
+            $customerName = 'Customer';
+            if ($appointment->customer) {
+                $customerName = $appointment->customer->full_name;
+            } elseif ($appointment->customer_id) {
+                $customer = \App\Models\Customer::find($appointment->customer_id);
+                if ($customer) {
+                    $customerName = $customer->full_name;
+                }
+            }
+            
+            // Create vehicle inspection for the appointment
+            $inspection = \App\Models\VehicleInspection::create([
+                'appointment_id' => $appointment->id,
+                'customer_id' => $appointment->customer_id,
+                'vehicle_id' => $appointment->vehicle_id,
+                'service_advisor_id' => $appointment->service_advisor_id,
+                'inspection_type' => 'pre_service',
+                'inspection_status' => 'draft',
+                'inspection_name' => 'Pre-Service Inspection for ' . $customerName,
+                'customer_concerns' => $appointment->service_request,
+                'inspection_started_at' => now(),
+                'created_by' => auth()->id(),
+            ]);
+            
+            // If appointment has a service_id, link it to the inspection
+            if ($appointment->service_id) {
+                $inspection->update(['service_id' => $appointment->service_id]);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Appointment checked in successfully. Vehicle inspection created.',
+                'appointment_id' => $appointment->id,
+                'appointment_number' => $appointment->appointment_number,
+                'new_status' => 'checked_in',
+                'new_status_label' => 'Arrived',
+                'new_status_color' => 'warning',
+                'checked_in_at' => $appointment->checked_in_at->format('M d, Y g:i A'),
+                'inspection_id' => $inspection->id,
+                'inspection_created' => true,
+                'inspection_url' => route('inspections.show', $inspection->id),
+                'inspection_edit_url' => route('inspections.edit', $inspection->id),
+                'redirect_message' => 'Redirecting to vehicle inspection...',
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to check in appointment: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * AJAX: Cancel appointment.
+     */
+    public function ajaxCancel(Request $request, $id)
+    {
+        try {
+            $appointment = Appointment::findOrFail($id);
+            
+            $validated = $request->validate([
+                'cancellation_reason' => 'required|string|max:500',
+            ]);
+            
+            $appointment->update([
+                'appointment_status' => 'cancelled',
+                'cancelled_at' => now(),
+                'cancellation_reason' => $validated['cancellation_reason'],
+                'customer_notes' => $appointment->customer_notes . "\n\nCancellation Reason: " . $validated['cancellation_reason'],
+                'bay_status' => 'available',
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Appointment cancelled successfully.',
+                'appointment_id' => $appointment->id,
+                'appointment_number' => $appointment->appointment_number,
+                'new_status' => 'cancelled',
+                'new_status_label' => 'Cancelled',
+                'new_status_color' => 'danger',
+                'cancelled_at' => $appointment->cancelled_at->format('M d, Y g:i A'),
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel appointment: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * AJAX: Mark as no show.
+     */
+    public function ajaxMarkNoShow(Request $request, $id)
+    {
+        try {
+            $appointment = Appointment::findOrFail($id);
+            
+            $appointment->update([
+                'appointment_status' => 'no_show',
+                'last_no_show_at' => now(),
+                'no_show_count' => $appointment->no_show_count + 1,
+                'bay_status' => 'available',
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Appointment marked as no-show.',
+                'appointment_id' => $appointment->id,
+                'appointment_number' => $appointment->appointment_number,
+                'new_status' => 'no_show',
+                'new_status_label' => 'No Show',
+                'new_status_color' => 'dark',
+                'no_show_count' => $appointment->no_show_count,
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to mark as no-show: ' . $e->getMessage()
+            ], 500);
         }
     }
     

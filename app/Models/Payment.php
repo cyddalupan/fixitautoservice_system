@@ -2,14 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     /**
      * The attributes that are mass assignable.
@@ -17,17 +16,14 @@ class Payment extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'payment_number',
         'invoice_id',
         'customer_id',
-        'work_order_id',
         'payment_date',
+        'payment_method',
         'amount',
-        'payment_method_id',
-        'payment_method_name',
-        'status',
+        'reference_number',
         'notes',
-        'received_by',
+        'status',
     ];
 
     /**
@@ -38,6 +34,8 @@ class Payment extends Model
     protected $casts = [
         'payment_date' => 'date',
         'amount' => 'decimal:2',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /**
@@ -57,67 +55,51 @@ class Payment extends Model
     }
 
     /**
-     * Get the work order associated with the payment.
+     * Get the appointment through the invoice.
+     */
+    public function appointment(): BelongsTo
+    {
+        return $this->belongsTo(Appointment::class, 'service_id', 'service_id');
+    }
+
+    /**
+     * Get the estimate through the invoice.
+     */
+    public function estimate(): BelongsTo
+    {
+        return $this->belongsTo(Estimate::class, 'service_id', 'service_id');
+    }
+
+    /**
+     * Get the work order through the invoice.
      */
     public function workOrder(): BelongsTo
     {
-        return $this->belongsTo(WorkOrder::class);
-    }
-
-    /**
-     * Get the payment method associated with the payment.
-     */
-    public function paymentMethod(): BelongsTo
-    {
-        return $this->belongsTo(PaymentMethod::class);
-    }
-
-    /**
-     * Get the user who received the payment.
-     */
-    public function receiver(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'received_by');
+        return $this->belongsTo(WorkOrder::class, 'service_id', 'service_id');
     }
 
     /**
      * Scope a query to only include payments with a specific status.
      */
-    public function scopeByStatus($query, string $status)
+    public function scopeStatus($query, $status)
     {
         return $query->where('status', $status);
     }
 
     /**
-     * Scope a query to only include payments for a specific customer.
+     * Scope a query to only include payments with a specific method.
      */
-    public function scopeByCustomer($query, int $customerId)
+    public function scopePaymentMethod($query, $method)
     {
-        return $query->where('customer_id', $customerId);
-    }
-
-    /**
-     * Scope a query to only include payments for a specific invoice.
-     */
-    public function scopeByInvoice($query, int $invoiceId)
-    {
-        return $query->where('invoice_id', $invoiceId);
+        return $query->where('payment_method', $method);
     }
 
     /**
      * Scope a query to only include payments within a date range.
      */
-    public function scopeBetweenDates($query, string $startDate, string $endDate)
+    public function scopeDateRange($query, $startDate, $endDate)
     {
         return $query->whereBetween('payment_date', [$startDate, $endDate]);
-    }
-
-    /**
-     * Get the formatted payment number.
-     */
-    public function getFormattedPaymentNumberAttribute(): string
-    {
-        return 'PAY-' . str_pad($this->id, 6, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -129,87 +111,51 @@ class Payment extends Model
     }
 
     /**
-     * Get the formatted payment date.
+     * Get the payment method badge class.
      */
-    public function getFormattedPaymentDateAttribute(): string
+    public function getPaymentMethodBadgeClassAttribute(): string
     {
-        return $this->payment_date->format('M d, Y');
+        $classes = [
+            'cash' => 'bg-success',
+            'check' => 'bg-info',
+            'credit_card' => 'bg-primary',
+            'bank_transfer' => 'bg-warning',
+            'gcash' => 'bg-success',
+            'paymaya' => 'bg-primary',
+        ];
+
+        return $classes[$this->payment_method] ?? 'bg-secondary';
     }
 
     /**
-     * Get the icon class for the payment status.
-     */
-    public function getStatusIconClassAttribute(): string
-    {
-        return match($this->status) {
-            'completed' => 'fas fa-check-circle text-success',
-            'pending' => 'fas fa-clock text-warning',
-            'failed' => 'fas fa-times-circle text-danger',
-            'refunded' => 'fas fa-undo text-info',
-            default => 'fas fa-question-circle text-secondary',
-        };
-    }
-
-    /**
-     * Get the badge class for the payment status.
+     * Get the status badge class.
      */
     public function getStatusBadgeClassAttribute(): string
     {
-        return match($this->status) {
-            'completed' => 'badge bg-success',
-            'pending' => 'badge bg-warning',
-            'failed' => 'badge bg-danger',
-            'refunded' => 'badge bg-info',
-            default => 'badge bg-secondary',
-        };
+        $classes = [
+            'pending' => 'bg-warning',
+            'completed' => 'bg-success',
+            'failed' => 'bg-danger',
+            'refunded' => 'bg-info',
+        ];
+
+        return $classes[$this->status] ?? 'bg-secondary';
     }
 
     /**
-     * Check if the payment is completed.
+     * Get the payment method display name.
      */
-    public function getIsCompletedAttribute(): bool
+    public function getPaymentMethodDisplayAttribute(): string
     {
-        return $this->status === 'completed';
-    }
+        $methods = [
+            'cash' => 'Cash',
+            'check' => 'Check',
+            'credit_card' => 'Credit Card',
+            'bank_transfer' => 'Bank Transfer',
+            'gcash' => 'GCash',
+            'paymaya' => 'PayMaya',
+        ];
 
-    /**
-     * Check if the payment is pending.
-     */
-    public function getIsPendingAttribute(): bool
-    {
-        return $this->status === 'pending';
-    }
-
-    /**
-     * Mark the payment as completed.
-     */
-    public function markAsCompleted(): void
-    {
-        $this->status = 'completed';
-        $this->save();
-    }
-
-    /**
-     * Mark the payment as failed.
-     */
-    public function markAsFailed(string $reason = null): void
-    {
-        $this->status = 'failed';
-        if ($reason) {
-            $this->notes = ($this->notes ? $this->notes . "\n" : '') . "Failed: " . $reason;
-        }
-        $this->save();
-    }
-
-    /**
-     * Refund the payment.
-     */
-    public function refund(string $reason = null): void
-    {
-        $this->status = 'refunded';
-        if ($reason) {
-            $this->notes = ($this->notes ? $this->notes . "\n" : '') . "Refunded: " . $reason;
-        }
-        $this->save();
+        return $methods[$this->payment_method] ?? $this->payment_method;
     }
 }

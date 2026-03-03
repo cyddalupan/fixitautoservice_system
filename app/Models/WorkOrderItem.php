@@ -84,17 +84,17 @@ class WorkOrderItem extends Model
 
     public function getFormattedUnitCostAttribute(): string
     {
-        return '$' . number_format($this->unit_cost, 2);
+        return '₱' . number_format($this->unit_cost, 2);
     }
 
     public function getFormattedTotalCostAttribute(): string
     {
-        return '$' . number_format($this->total_cost, 2);
+        return '₱' . number_format($this->total_cost, 2);
     }
 
     public function getFormattedFinalAmountAttribute(): string
     {
-        return '$' . number_format($this->final_amount, 2);
+        return '₱' . number_format($this->final_amount, 2);
     }
 
     /**

@@ -2,15 +2,15 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Invoice extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     /**
      * The attributes that are mass assignable.
@@ -18,23 +18,23 @@ class Invoice extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'invoice_number',
-        'invoice_type',
         'customer_id',
-        'vehicle_id',
         'work_order_id',
-        'invoice_date',
+        'estimate_id',
+        'invoice_number',
+        'issue_date',
         'due_date',
         'subtotal',
+        'tax_rate',
         'tax_amount',
         'discount_amount',
+        'shipping_amount',
         'total_amount',
         'amount_paid',
         'balance_due',
-        'status',
-        'payment_status',
         'notes',
-        'created_by',
+        'terms',
+        'status',
     ];
 
     /**
@@ -43,14 +43,18 @@ class Invoice extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'invoice_date' => 'date',
+        'issue_date' => 'date',
         'due_date' => 'date',
         'subtotal' => 'decimal:2',
+        'tax_rate' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'discount_amount' => 'decimal:2',
+        'shipping_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'amount_paid' => 'decimal:2',
         'balance_due' => 'decimal:2',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /**
@@ -62,15 +66,7 @@ class Invoice extends Model
     }
 
     /**
-     * Get the vehicle associated with the invoice.
-     */
-    public function vehicle(): BelongsTo
-    {
-        return $this->belongsTo(Vehicle::class);
-    }
-
-    /**
-     * Get the work order associated with the invoice.
+     * Get the work order that owns the invoice.
      */
     public function workOrder(): BelongsTo
     {
@@ -78,15 +74,23 @@ class Invoice extends Model
     }
 
     /**
-     * Get the user who created the invoice.
+     * Get the estimate that owns the invoice.
      */
-    public function creator(): BelongsTo
+    public function estimate(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return $this->belongsTo(Estimate::class);
     }
 
     /**
-     * Get the invoice items for the invoice.
+     * Get the appointment that owns the invoice.
+     */
+    public function appointment(): BelongsTo
+    {
+        return $this->belongsTo(Appointment::class);
+    }
+
+    /**
+     * Get the items for the invoice.
      */
     public function items(): HasMany
     {
@@ -104,62 +108,45 @@ class Invoice extends Model
     /**
      * Scope a query to only include invoices with a specific status.
      */
-    public function scopeByStatus($query, string $status)
+    public function scopeStatus($query, $status)
     {
         return $query->where('status', $status);
     }
 
     /**
-     * Scope a query to only include invoices with a specific payment status.
-     */
-    public function scopeByPaymentStatus($query, string $paymentStatus)
-    {
-        return $query->where('payment_status', $paymentStatus);
-    }
-
-    /**
-     * Scope a query to only include invoices for a specific customer.
-     */
-    public function scopeByCustomer($query, int $customerId)
-    {
-        return $query->where('customer_id', $customerId);
-    }
-
-    /**
-     * Scope a query to only include overdue invoices.
+     * Scope a query to only include invoices that are overdue.
      */
     public function scopeOverdue($query)
     {
         return $query->where('due_date', '<', now())
-            ->where('payment_status', '!=', 'paid')
-            ->where('status', '!=', 'cancelled');
+            ->where('balance_due', '>', 0)
+            ->where('status', '!=', 'paid');
+    }
+
+    /**
+     * Scope a query to only include invoices that are due soon.
+     */
+    public function scopeDueSoon($query, $days = 7)
+    {
+        return $query->whereBetween('due_date', [now(), now()->addDays($days)])
+            ->where('balance_due', '>', 0)
+            ->where('status', '!=', 'paid');
     }
 
     /**
      * Check if the invoice is overdue.
      */
-    public function getIsOverdueAttribute(): bool
+    public function isOverdue(): bool
     {
-        return $this->due_date && 
-               $this->due_date->isPast() && 
-               $this->payment_status !== 'paid' && 
-               $this->status !== 'cancelled';
+        return $this->due_date < now() && $this->balance_due > 0 && $this->status !== 'paid';
     }
 
     /**
      * Check if the invoice is fully paid.
      */
-    public function getIsFullyPaidAttribute(): bool
+    public function isPaid(): bool
     {
-        return $this->payment_status === 'paid' || $this->balance_due <= 0;
-    }
-
-    /**
-     * Get the formatted invoice number.
-     */
-    public function getFormattedInvoiceNumberAttribute(): string
-    {
-        return 'INV-' . str_pad($this->id, 6, '0', STR_PAD_LEFT);
+        return $this->status === 'paid' || $this->balance_due <= 0;
     }
 
     /**
@@ -179,65 +166,47 @@ class Invoice extends Model
     }
 
     /**
-     * Add a payment to the invoice.
+     * Get the formatted amount paid.
      */
-    public function addPayment(float $amount, int $paymentMethodId, string $notes = null): Payment
+    public function getFormattedAmountPaidAttribute(): string
     {
-        $payment = new Payment([
-            'payment_number' => 'PAY-' . str_pad(Payment::count() + 1, 6, '0', STR_PAD_LEFT),
-            'customer_id' => $this->customer_id,
-            'payment_date' => now(),
-            'amount' => $amount,
-            'payment_method_id' => $paymentMethodId,
-            'payment_method_name' => PaymentMethod::find($paymentMethodId)->name,
-            'status' => 'completed',
-            'notes' => $notes,
-            'received_by' => auth()->id(),
-        ]);
+        return '₱' . number_format($this->amount_paid, 2);
+    }
 
-        $this->payments()->save($payment);
-        
-        // Update invoice payment status
-        $this->amount_paid += $amount;
-        $this->balance_due = max(0, $this->total_amount - $this->amount_paid);
-        
-        if ($this->balance_due <= 0) {
-            $this->payment_status = 'paid';
-            $this->status = 'paid';
-        } elseif ($this->amount_paid > 0) {
-            $this->payment_status = 'partial';
+    /**
+     * Get the days until due.
+     */
+    public function getDaysUntilDueAttribute(): int
+    {
+        return now()->diffInDays($this->due_date, false);
+    }
+
+    /**
+     * Get the status badge class.
+     */
+    public function getStatusBadgeClassAttribute(): string
+    {
+        $classes = [
+            'draft' => 'bg-secondary',
+            'sent' => 'bg-info',
+            'partial' => 'bg-warning',
+            'paid' => 'bg-success',
+            'overdue' => 'bg-danger',
+            'cancelled' => 'bg-dark',
+        ];
+
+        return $classes[$this->status] ?? 'bg-secondary';
+    }
+
+    /**
+     * Get the payment percentage.
+     */
+    public function getPaymentPercentageAttribute(): float
+    {
+        if ($this->total_amount <= 0) {
+            return 0;
         }
-        
-        $this->save();
 
-        return $payment;
-    }
-
-    /**
-     * Add an item to the invoice.
-     */
-    public function addItem(array $itemData): InvoiceItem
-    {
-        $item = new InvoiceItem($itemData);
-        $this->items()->save($item);
-        
-        // Recalculate invoice totals
-        $this->recalculateTotals();
-        
-        return $item;
-    }
-
-    /**
-     * Recalculate invoice totals based on items.
-     */
-    public function recalculateTotals(): void
-    {
-        $subtotal = $this->items->sum('total_amount');
-        
-        $this->subtotal = $subtotal;
-        $this->total_amount = $subtotal + $this->tax_amount - $this->discount_amount;
-        $this->balance_due = max(0, $this->total_amount - $this->amount_paid);
-        
-        $this->save();
+        return ($this->amount_paid / $this->total_amount) * 100;
     }
 }

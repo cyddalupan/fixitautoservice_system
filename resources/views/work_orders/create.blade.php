@@ -162,7 +162,7 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group mb-3">
-                                <label for="labor_rate" class="form-label">Labor Rate ($/hour)</label>
+                                <label for="labor_rate" class="form-label">Labor Rate (₱/hour)</label>
                                 <input type="number" step="0.01" class="form-control @error('labor_rate') is-invalid @enderror" 
                                        id="labor_rate" name="labor_rate" value="{{ old('labor_rate', 85.00) }}" min="0">
                                 @error('labor_rate')
@@ -175,7 +175,7 @@
                             <div class="form-group mb-3">
                                 <label for="estimated_total" class="form-label">Estimated Total</label>
                                 <div class="input-group">
-                                    <span class="input-group-text">$</span>
+                                    <span class="input-group-text">₱</span>
                                     <input type="number" step="0.01" class="form-control @error('estimated_total') is-invalid @enderror" 
                                            id="estimated_total" name="estimated_total" value="{{ old('estimated_total') }}" min="0" readonly>
                                     @error('estimated_total')

@@ -12,6 +12,7 @@ class VehicleInspection extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'service_id',
         'work_order_id',
         'appointment_id',
         'customer_id',
@@ -84,6 +85,11 @@ class VehicleInspection extends Model
     /**
      * Relationships
      */
+    public function service()
+    {
+        return $this->belongsTo(Service::class, 'service_id', 'service_id');
+    }
+
     public function workOrder()
     {
         return $this->belongsTo(WorkOrder::class);
@@ -319,6 +325,18 @@ class VehicleInspection extends Model
             $this->update([
                 'inspection_status' => 'completed',
                 'inspection_completed_at' => now(),
+            ]);
+            return true;
+        }
+        return false;
+    }
+
+    public function undoCompleteInspection(): bool
+    {
+        if ($this->inspection_status === 'completed') {
+            $this->update([
+                'inspection_status' => 'in_progress',
+                'inspection_completed_at' => null,
             ]);
             return true;
         }

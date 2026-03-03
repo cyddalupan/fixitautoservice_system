@@ -189,6 +189,16 @@ class WorkOrder extends Model
         return $this->belongsTo(Appointment::class);
     }
 
+    public function estimate()
+    {
+        return $this->belongsTo(Estimate::class);
+    }
+
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
     public function customer()
     {
         return $this->belongsTo(Customer::class);
@@ -341,22 +351,22 @@ class WorkOrder extends Model
 
     public function getFormattedEstimatedTotalAttribute(): string
     {
-        return '$' . number_format($this->estimated_total, 2);
+        return '₱' . number_format($this->estimated_total, 2);
     }
 
     public function getFormattedFinalAmountAttribute(): string
     {
-        return '$' . number_format($this->final_amount, 2);
+        return '₱' . number_format($this->final_amount, 2);
     }
 
     public function getFormattedBalanceDueAttribute(): string
     {
-        return '$' . number_format($this->balance_due, 2);
+        return '₱' . number_format($this->balance_due, 2);
     }
 
     public function getFormattedAmountPaidAttribute(): string
     {
-        return '$' . number_format($this->amount_paid, 2);
+        return '₱' . number_format($this->amount_paid, 2);
     }
 
     public function getIsOverdueAttribute(): bool

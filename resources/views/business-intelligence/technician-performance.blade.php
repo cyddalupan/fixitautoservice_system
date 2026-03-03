@@ -161,7 +161,7 @@
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 Revenue Generated
                             </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">${{ number_format($summary['total_revenue'], 2) }}</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">₱{{ number_format($summary['total_revenue'], 2) }}</div>
                             <div class="mt-2">
                                 <span class="text-{{ $summary['revenue_trend'] >= 0 ? 'success' : 'danger' }}">
                                     <i class="fas fa-arrow-{{ $summary['revenue_trend'] >= 0 ? 'up' : 'down' }}"></i>
@@ -306,7 +306,7 @@
                                             <span class="text-muted">No ratings</span>
                                         @endif
                                     </td>
-                                    <td class="font-weight-bold">${{ number_format($tech['revenue'], 2) }}</td>
+                                    <td class="font-weight-bold">₱{{ number_format($tech['revenue'], 2) }}</td>
                                     <td>
                                         <span class="badge badge-{{ $tech['efficiency'] >= 2 ? 'success' : ($tech['efficiency'] >= 1 ? 'warning' : 'danger') }}">
                                             {{ $tech['efficiency'] >= 2 ? 'High' : ($tech['efficiency'] >= 1 ? 'Medium' : 'Low') }}
@@ -332,7 +332,7 @@
                                     <th>{{ number_format(array_sum(array_column($technicians, 'total_hours')), 1) }}</th>
                                     <th>{{ number_format($summary['avg_efficiency'], 2) }}</th>
                                     <th>{{ number_format($summary['avg_rating'], 1) }}/5</th>
-                                    <th>${{ number_format(array_sum(array_column($technicians, 'revenue')), 2) }}</th>
+                                    <th>₱{{ number_format(array_sum(array_column($technicians, 'revenue')), 2) }}</th>
                                     <th colspan="2"></th>
                                 </tr>
                             </tfoot>

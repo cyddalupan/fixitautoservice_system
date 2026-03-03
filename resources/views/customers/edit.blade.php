@@ -224,6 +224,74 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror>
                             </div>
+                            
+                            <h5 class="mb-3 border-bottom pb-2 mt-4">Financial Information</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="credit_limit" class="form-label">Credit Limit (₱)</label>
+                                        <input type="number" class="form-control @error('credit_limit') is-invalid @enderror" 
+                                               id="credit_limit" name="credit_limit" value="{{ old('credit_limit', $customer->credit_limit) }}" min="0" step="0.01">
+                                        @error('credit_limit')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror>
+                                        <small class="form-text text-muted">Maximum credit allowed</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group mb-3">
+                                        <label for="balance" class="form-label">Current Balance (₱)</label>
+                                        <input type="number" class="form-control @error('balance') is-invalid @enderror" 
+                                               id="balance" name="balance" value="{{ old('balance', $customer->balance) }}" step="0.01">
+                                        @error('balance')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror>
+                                        <small class="form-text text-muted">Current account balance</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="payment_terms" class="form-label">Payment Terms *</label>
+                                <select class="form-select @error('payment_terms') is-invalid @enderror" 
+                                        id="payment_terms" name="payment_terms" required>
+                                    <option value="">Select Terms</option>
+                                    <option value="net_15" {{ old('payment_terms', $customer->payment_terms) == 'net_15' ? 'selected' : '' }}>Net 15</option>
+                                    <option value="net_30" {{ old('payment_terms', $customer->payment_terms) == 'net_30' ? 'selected' : '' }}>Net 30</option>
+                                    <option value="net_60" {{ old('payment_terms', $customer->payment_terms) == 'net_60' ? 'selected' : '' }}>Net 60</option>
+                                    <option value="cod" {{ old('payment_terms', $customer->payment_terms) == 'cod' ? 'selected' : '' }}>Cash on Delivery</option>
+                                </select>
+                                @error('payment_terms')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="preferred_contact" class="form-label">Preferred Contact Method *</label>
+                                <select class="form-select @error('preferred_contact') is-invalid @enderror" 
+                                        id="preferred_contact" name="preferred_contact" required>
+                                    <option value="">Select Method</option>
+                                    <option value="email" {{ old('preferred_contact', $customer->preferred_contact) == 'email' ? 'selected' : '' }}>Email</option>
+                                    <option value="phone" {{ old('preferred_contact', $customer->preferred_contact) == 'phone' ? 'selected' : '' }}>Phone</option>
+                                    <option value="sms" {{ old('preferred_contact', $customer->preferred_contact) == 'sms' ? 'selected' : '' }}>SMS</option>
+                                </select>
+                                @error('preferred_contact')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="is_active" class="form-label">Account Status</label>
+                                <select class="form-select @error('is_active') is-invalid @enderror" 
+                                        id="is_active" name="is_active">
+                                    <option value="1" {{ old('is_active', $customer->is_active) == 1 ? 'selected' : '' }}>Active</option>
+                                    <option value="0" {{ old('is_active', $customer->is_active) == 0 ? 'selected' : '' }}>Inactive</option>
+                                </select>
+                                @error('is_active')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror>
+                            </div>
                         </div>
                         
                         <div class="col-md-6">

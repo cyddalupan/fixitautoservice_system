@@ -569,7 +569,7 @@
                             <input type="number" class="form-control" id="verification_amount_1" name="amount_1" 
                                    step="0.01" min="0.01" max="1.00" placeholder="0.01" required>
                         </div>
-                        <div class="form-text">Enter the first small deposit amount (less than $1.00)</div>
+                        <div class="form-text">Enter the first small deposit amount (less than ₱1.00)</div>
                     </div>
                     
                     <div class="mb-3">
@@ -579,7 +579,7 @@
                             <input type="number" class="form-control" id="verification_amount_2" name="amount_2" 
                                    step="0.01" min="0.01" max="1.00" placeholder="0.01" required>
                         </div>
-                        <div class="form-text">Enter the second small deposit amount (less than $1.00)</div>
+                        <div class="form-text">Enter the second small deposit amount (less than ₱1.00)</div>
                     </div>
                     
                     <div class="alert alert-info">

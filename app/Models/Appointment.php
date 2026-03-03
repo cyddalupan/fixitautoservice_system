@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Carbon\Carbon;
 
 class Appointment extends Model
@@ -130,7 +131,7 @@ class Appointment extends Model
      */
     public function workOrder(): HasOne
     {
-        return $this->hasOne(ServiceRecord::class, 'appointment_id');
+        return $this->hasOne(WorkOrder::class, 'appointment_id');
     }
 
     /**
@@ -290,5 +291,37 @@ class Appointment extends Model
         }
         
         return $prefix . $date . $nextNumber;
+    }
+
+    /**
+     * Get the vehicle inspection for the appointment.
+     */
+    public function vehicleInspection(): HasOne
+    {
+        return $this->hasOne(VehicleInspection::class, 'appointment_id');
+    }
+
+    /**
+     * Get the estimate for the appointment.
+     */
+    public function estimate(): HasOne
+    {
+        return $this->hasOne(Estimate::class, 'appointment_id');
+    }
+
+    /**
+     * Get the invoice for the appointment.
+     */
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class, 'appointment_id');
+    }
+
+    /**
+     * Get all payments for the appointment through the invoice.
+     */
+    public function payments(): HasManyThrough
+    {
+        return $this->hasManyThrough(Payment::class, Invoice::class, 'appointment_id', 'invoice_id');
     }
 }
