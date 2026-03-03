@@ -273,10 +273,10 @@
                     <div class="col-md-3">
                         @if($inspection->inspection_status !== 'completed')
                             <!-- Light Red Button for NOT completed -->
-                            <form action="{{ route('inspections.complete', $inspection) }}" method="POST" class="w-100" autocomplete="off" onsubmit="try { return confirm('Mark this inspection as completed?'); } catch(e) { console.error('Confirm error:', e); return true; }">
+                            <form action="{{ route('inspections.complete', $inspection) }}" method="POST" class="w-100" autocomplete="off" id="complete-form-{{ $inspection->id }}">
                                 @csrf
                                 <input type="hidden" name="_cache_bust" value="{{ time() }}">
-                                <button type="submit" class="btn btn-danger btn-light w-100" style="background-color: #ffcccc; border-color: #ff9999; color: #cc0000;">
+                                <button type="button" class="btn btn-danger btn-light w-100" style="background-color: #ffcccc; border-color: #ff9999; color: #cc0000;" onclick="confirmCompleteInspection({{ $inspection->id }})">
                                     <div class="d-flex align-items-center justify-content-center">
                                         <span class="fs-5 me-2">⭕</span>
                                         <div class="text-start">
@@ -288,10 +288,10 @@
                             </form>
                         @else
                             <!-- Green Button for completed - Now clickable to undo -->
-                            <form action="{{ route('inspections.undo-complete', $inspection) }}" method="POST" class="w-100" autocomplete="off" onsubmit="try { return confirm('Are you sure you want to mark this inspection as incomplete?\\n\\nThis will notify the technician that their inspection has been undone.'); } catch(e) { console.error('Confirm error:', e); return true; }">
+                            <form action="{{ route('inspections.undo-complete', $inspection) }}" method="POST" class="w-100" autocomplete="off" id="undo-complete-form-{{ $inspection->id }}">
                                 @csrf
                                 <input type="hidden" name="_cache_bust" value="{{ time() }}">
-                                <button type="submit" class="btn btn-success w-100" style="background-color: #ccffcc; border-color: #99cc99; color: #006600;">
+                                <button type="button" class="btn btn-success w-100" style="background-color: #ccffcc; border-color: #99cc99; color: #006600;" onclick="confirmUndoCompleteInspection({{ $inspection->id }})">
                                     <div class="d-flex align-items-center justify-content-center">
                                         <span class="fs-5 me-2">✅</span>
                                         <div class="text-start">
@@ -1281,6 +1281,76 @@ function addPhotoToGallery(photoData) {
             </div>
         `;
     }
+}
+
+// SweetAlert2 Confirmation for Completing Inspection
+function confirmCompleteInspection(inspectionId) {
+    console.log('confirmCompleteInspection called for inspection:', inspectionId);
+    console.log('SweetAlert2 available:', typeof Swal !== 'undefined');
+    
+    // Check if SweetAlert2 is available
+    if (typeof Swal === 'undefined') {
+        console.log('Using native confirm fallback');
+        // Fallback to native confirm
+        if (confirm('Mark this inspection as completed?')) {
+            console.log('Native confirm accepted, submitting form');
+            document.getElementById('complete-form-' + inspectionId).submit();
+        } else {
+            console.log('Native confirm cancelled');
+        }
+        return;
+    }
+    
+    Swal.fire({
+        title: 'Mark as Complete?',
+        text: 'Are you sure you want to mark this inspection as completed?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, mark as complete!',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Submit the form
+            document.getElementById('complete-form-' + inspectionId).submit();
+        }
+    });
+}
+
+// SweetAlert2 Confirmation for Undoing Completion
+function confirmUndoCompleteInspection(inspectionId) {
+    console.log('confirmUndoCompleteInspection called for inspection:', inspectionId);
+    console.log('SweetAlert2 available:', typeof Swal !== 'undefined');
+    
+    // Check if SweetAlert2 is available
+    if (typeof Swal === 'undefined') {
+        console.log('Using native confirm fallback');
+        // Fallback to native confirm
+        if (confirm('Are you sure you want to mark this inspection as incomplete?\n\nThis will notify the technician that their inspection has been undone.')) {
+            console.log('Native confirm accepted, submitting form');
+            document.getElementById('undo-complete-form-' + inspectionId).submit();
+        } else {
+            console.log('Native confirm cancelled');
+        }
+        return;
+    }
+    
+    Swal.fire({
+        title: 'Undo Completion?',
+        html: 'Are you sure you want to mark this inspection as incomplete?<br><br><small>This will notify the technician that their inspection has been undone.</small>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Yes, undo completion!',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Submit the form
+            document.getElementById('undo-complete-form-' + inspectionId).submit();
+        }
+    });
 }
 </script>
 @endpush
