@@ -256,13 +256,20 @@ class VehicleInspectionController extends Controller
             ->limit(5)
             ->get();
         
-        return view('inspections.show', compact(
+        $response = response()->view('inspections.show', compact(
             'inspection', 
             'itemsByCategory', 
             'itemStats',
             'technicians',
             'vehicleInspections'
         ));
+        
+        // Add headers to prevent caching
+        $response->headers->set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        $response->headers->set('Pragma', 'no-cache');
+        $response->headers->set('Expires', '0');
+        
+        return $response;
     }
 
     /**
@@ -403,11 +410,19 @@ class VehicleInspectionController extends Controller
 
         if ($inspection->completeInspection()) {
             \Log::info('Successfully completed inspection ID: ' . $inspection->id . '. New status: ' . $inspection->inspection_status);
-            return redirect()->back()->with('success', 'Inspection completed.');
+            return redirect()->back()
+                ->with('success', 'Inspection completed.')
+                ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                ->header('Pragma', 'no-cache')
+                ->header('Expires', '0');
         }
         
         \Log::error('Failed to complete inspection ID: ' . $inspection->id);
-        return redirect()->back()->with('error', 'Unable to complete inspection.');
+        return redirect()->back()
+            ->with('error', 'Unable to complete inspection.')
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
     
     /**
@@ -420,11 +435,19 @@ class VehicleInspectionController extends Controller
 
         if ($inspection->undoCompleteInspection()) {
             \Log::info('Successfully undone completion for inspection ID: ' . $inspection->id . '. New status: ' . $inspection->inspection_status);
-            return redirect()->back()->with('success', 'Inspection marked as incomplete. The technician has been notified.');
+            return redirect()->back()
+                ->with('success', 'Inspection marked as incomplete. The technician has been notified.')
+                ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+                ->header('Pragma', 'no-cache')
+                ->header('Expires', '0');
         }
         
         \Log::error('Failed to undo completion for inspection ID: ' . $inspection->id);
-        return redirect()->back()->with('error', 'Unable to undo inspection completion.');
+        return redirect()->back()
+            ->with('error', 'Unable to undo inspection completion.')
+            ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
     
     /**
