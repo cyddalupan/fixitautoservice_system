@@ -882,22 +882,115 @@ function addDemoFinding() {
         return;
     }
     
-    // Create a demo finding (client-side only)
-    alert('Demo: Finding "' + itemName + '" added with status: ' + status + '\n\nIn a real implementation, this would save to the database.\n\nItem: ' + itemName + '\nStatus: ' + status + '\nCategory: ' + category + '\nNotes: ' + notes);
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     
-    // Hide the form
-    document.getElementById('addFindingForm').style.display = 'none';
-    if (document.getElementById('addFindingFormEmpty')) {
-        document.getElementById('addFindingFormEmpty').style.display = 'none';
-    }
+    // Show loading indicator
+    Swal.fire({
+        title: 'Adding Finding...',
+        text: 'Please wait while we save the inspection finding',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
     
-    // Clear form fields
-    if (document.getElementById('item_name')) document.getElementById('item_name').value = '';
-    if (document.getElementById('item_name_empty')) document.getElementById('item_name_empty').value = '';
-    if (document.getElementById('status')) document.getElementById('status').value = '';
-    if (document.getElementById('status_empty')) document.getElementById('status_empty').value = '';
-    if (document.getElementById('category')) document.getElementById('category').value = '';
-    if (document.getElementById('notes')) document.getElementById('notes').value = '';
+    // Create FormData
+    const formData = new FormData();
+    formData.append('_token', csrfToken);
+    formData.append('_method', 'POST');
+    formData.append('item_name', itemName);
+    formData.append('item_status', status);
+    formData.append('category', category);
+    formData.append('technician_notes', notes);
+    formData.append('item_type', 'check');
+    formData.append('requires_attention', status === 'attention_needed' ? '1' : '0');
+    
+    // Get inspection ID from URL
+    const inspectionId = window.location.pathname.split('/').pop();
+    
+    // Send AJAX request to add finding
+    fetch(`/inspections/${inspectionId}/items`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: formData
+    })
+    .then(response => {
+        console.log('Add finding response status:', response.status);
+        return response.text().then(text => {
+            console.log('Add finding response text:', text);
+            try {
+                const data = JSON.parse(text);
+                return { status: response.status, data: data, text: text };
+            } catch (e) {
+                console.log('Response is not JSON:', text);
+                return { status: response.status, data: { message: text }, text: text };
+            }
+        });
+    })
+    .then(result => {
+        console.log('Add finding result:', result);
+        
+        if (result.status === 200 || result.status === 201) {
+            // Success
+            Swal.fire({
+                title: 'Success!',
+                text: 'Inspection finding added successfully.',
+                icon: 'success',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                // Hide the form
+                document.getElementById('addFindingForm').style.display = 'none';
+                if (document.getElementById('addFindingFormEmpty')) {
+                    document.getElementById('addFindingFormEmpty').style.display = 'none';
+                }
+                
+                // Clear form fields
+                if (document.getElementById('item_name')) document.getElementById('item_name').value = '';
+                if (document.getElementById('item_name_empty')) document.getElementById('item_name_empty').value = '';
+                if (document.getElementById('status')) document.getElementById('status').value = '';
+                if (document.getElementById('status_empty')) document.getElementById('status_empty').value = '';
+                if (document.getElementById('category')) document.getElementById('category').value = '';
+                if (document.getElementById('notes')) document.getElementById('notes').value = '';
+                
+                // Reload the page to show the new finding
+                window.location.reload();
+            });
+        } else {
+            // Error
+            console.error('Error details:', result);
+            let errorMessage = 'Failed to add inspection finding.';
+            
+            if (result.data && result.data.message) {
+                errorMessage = result.data.message;
+            } else if (result.text && result.text.includes('CSRF')) {
+                errorMessage = 'CSRF token mismatch. Please refresh the page and try again.';
+            } else if (result.data && result.data.errors) {
+                // Show validation errors
+                const errors = Object.values(result.data.errors).flat();
+                errorMessage = errors.join('\n');
+            }
+            
+            Swal.fire({
+                title: 'Error',
+                text: errorMessage,
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Add finding request error:', error);
+        Swal.fire({
+            title: 'Error',
+            text: 'Network error. Please try again.',
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+    });
 }
 
 function addFindingInput() {

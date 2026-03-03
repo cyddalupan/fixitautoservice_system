@@ -108,6 +108,7 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::post('/inspections/{inspection}/approve-by-customer', [VehicleInspectionController::class, 'approveByCustomer'])->name('inspections.approve-by-customer');
     Route::get('/inspections/{inspection}/report', [VehicleInspectionController::class, 'generateReport'])->name('inspections.report');
     Route::get('/inspections/{inspection}/manage-items', [VehicleInspectionController::class, 'manageItems'])->name('inspections.manage-items');
+    Route::post('/inspections/{inspection}/items', [VehicleInspectionController::class, 'storeItem'])->name('inspections.store-item');
     Route::post('/inspections/{inspection}/items/{item}/update', [VehicleInspectionController::class, 'updateItem'])->name('inspections.update-item');
     Route::post('/inspections/{inspection}/upload-photo', [VehicleInspectionController::class, 'uploadPhoto'])->name('inspections.upload-photo');
 

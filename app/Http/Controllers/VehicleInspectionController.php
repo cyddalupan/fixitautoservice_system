@@ -696,6 +696,59 @@ class VehicleInspectionController extends Controller
     }
     
     /**
+     * Store a new inspection item.
+     */
+    public function storeItem(Request $request, VehicleInspection $inspection)
+    {
+        // Validate the request
+        $validated = $request->validate([
+            'item_name' => 'required|string|max:255',
+            'item_status' => 'required|in:pending,passed,failed,attention_needed,not_applicable',
+            'category' => 'nullable|string|max:255',
+            'technician_notes' => 'nullable|string|max:1000',
+            'item_type' => 'nullable|string|in:check,measurement,test,visual',
+            'requires_attention' => 'nullable|boolean',
+        ]);
+        
+        // Create the inspection item
+        $item = new InspectionItem([
+            'inspection_id' => $inspection->id,
+            'item_name' => $validated['item_name'],
+            'item_status' => $validated['item_status'],
+            'technician_notes' => $validated['technician_notes'] ?? null,
+            'item_type' => $validated['item_type'] ?? 'check',
+            'requires_attention' => $validated['requires_attention'] ?? ($validated['item_status'] === 'attention_needed'),
+        ]);
+        
+        // Handle category if provided
+        if (!empty($validated['category']) && $validated['category'] !== 'Uncategorized') {
+            // Find or create category
+            $category = InspectionCategory::firstOrCreate(
+                ['name' => $validated['category']],
+                ['is_active' => true]
+            );
+            $item->category_id = $category->id;
+        }
+        
+        // Save the item
+        $item->save();
+        
+        // Update inspection counts
+        $inspection->updateItemCounts();
+        
+        // Return JSON response for AJAX requests
+        if ($request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Inspection item added successfully.',
+                'item' => $item
+            ]);
+        }
+        
+        return redirect()->back()->with('success', 'Inspection item added successfully.');
+    }
+    
+    /**
      * Update inspection item.
      */
     public function updateItem(Request $request, VehicleInspection $inspection, InspectionItem $item)
