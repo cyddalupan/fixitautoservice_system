@@ -806,8 +806,18 @@
     
     // Add timestamp to all form submissions to prevent caching
     document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM loaded, checking forms...');
         const forms = document.querySelectorAll('form');
-        forms.forEach(form => {
+        console.log('Total forms on page:', forms.length);
+        
+        forms.forEach((form, index) => {
+            console.log(`Form ${index + 1}:`, {
+                id: form.id,
+                action: form.action,
+                method: form.method,
+                className: form.className
+            });
+            
             // Check if form already has cache busting field
             if (!form.querySelector('input[name="_cache_bust"]')) {
                 const cacheBustField = document.createElement('input');
@@ -831,6 +841,14 @@
                 console.log('Submit button clicked:', e.target);
             }
         });
+        
+        // Check for complete form specifically
+        const inspectionId = {{ $inspection->id }};
+        const completeForm = document.getElementById('complete-form-' + inspectionId);
+        console.log('Complete form by ID:', completeForm ? 'Found' : 'NOT FOUND');
+        
+        const completeFormByAction = document.querySelector('form[action*="/complete"]');
+        console.log('Complete form by action:', completeFormByAction ? 'Found' : 'NOT FOUND');
     });
 })();
 
@@ -1294,7 +1312,20 @@ function confirmCompleteInspection(inspectionId) {
         // Fallback to native confirm
         if (confirm('Mark this inspection as completed?')) {
             console.log('Native confirm accepted, submitting form');
-            document.getElementById('complete-form-' + inspectionId).submit();
+            // Try multiple ways to find the form
+            const formById = document.getElementById('complete-form-' + inspectionId);
+            if (formById) {
+                formById.submit();
+            } else {
+                // Fallback: find form by action attribute
+                const formByAction = document.querySelector(`form[action*="/inspections/${inspectionId}/complete"]`);
+                if (formByAction) {
+                    formByAction.submit();
+                } else {
+                    console.error('Could not find complete form for inspection:', inspectionId);
+                    alert('Error: Could not find form. Please refresh the page and try again.');
+                }
+            }
         } else {
             console.log('Native confirm cancelled');
         }
@@ -1313,7 +1344,23 @@ function confirmCompleteInspection(inspectionId) {
     }).then((result) => {
         if (result.isConfirmed) {
             // Submit the form
-            document.getElementById('complete-form-' + inspectionId).submit();
+            const formById = document.getElementById('complete-form-' + inspectionId);
+            if (formById) {
+                formById.submit();
+            } else {
+                // Fallback: find form by action attribute
+                const formByAction = document.querySelector(`form[action*="/inspections/${inspectionId}/complete"]`);
+                if (formByAction) {
+                    formByAction.submit();
+                } else {
+                    console.error('Could not find complete form for inspection:', inspectionId);
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Could not find form. Please refresh the page and try again.',
+                        icon: 'error'
+                    });
+                }
+            }
         }
     });
 }
@@ -1329,7 +1376,20 @@ function confirmUndoCompleteInspection(inspectionId) {
         // Fallback to native confirm
         if (confirm('Are you sure you want to mark this inspection as incomplete?\n\nThis will notify the technician that their inspection has been undone.')) {
             console.log('Native confirm accepted, submitting form');
-            document.getElementById('undo-complete-form-' + inspectionId).submit();
+            // Try multiple ways to find the form
+            const formById = document.getElementById('undo-complete-form-' + inspectionId);
+            if (formById) {
+                formById.submit();
+            } else {
+                // Fallback: find form by action attribute
+                const formByAction = document.querySelector(`form[action*="/inspections/${inspectionId}/undo-complete"]`);
+                if (formByAction) {
+                    formByAction.submit();
+                } else {
+                    console.error('Could not find undo-complete form for inspection:', inspectionId);
+                    alert('Error: Could not find form. Please refresh the page and try again.');
+                }
+            }
         } else {
             console.log('Native confirm cancelled');
         }
@@ -1348,7 +1408,23 @@ function confirmUndoCompleteInspection(inspectionId) {
     }).then((result) => {
         if (result.isConfirmed) {
             // Submit the form
-            document.getElementById('undo-complete-form-' + inspectionId).submit();
+            const formById = document.getElementById('undo-complete-form-' + inspectionId);
+            if (formById) {
+                formById.submit();
+            } else {
+                // Fallback: find form by action attribute
+                const formByAction = document.querySelector(`form[action*="/inspections/${inspectionId}/undo-complete"]`);
+                if (formByAction) {
+                    formByAction.submit();
+                } else {
+                    console.error('Could not find undo-complete form for inspection:', inspectionId);
+                    Swal.fire({
+                        title: 'Error',
+                        text: 'Could not find form. Please refresh the page and try again.',
+                        icon: 'error'
+                    });
+                }
+            }
         }
     });
 }
