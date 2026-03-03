@@ -410,6 +410,17 @@ class VehicleInspectionController extends Controller
 
         if ($inspection->completeInspection()) {
             \Log::info('Successfully completed inspection ID: ' . $inspection->id . '. New status: ' . $inspection->inspection_status);
+            
+            // Check if it's an AJAX request
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Inspection completed.',
+                    'status' => $inspection->inspection_status,
+                    'redirect' => route('inspections.show', ['inspection' => $inspection->id, '_' => time()])
+                ]);
+            }
+            
             // Add timestamp to URL to bust cache
             $timestamp = time();
             return redirect()->route('inspections.show', ['inspection' => $inspection->id, '_' => $timestamp])
@@ -420,6 +431,16 @@ class VehicleInspectionController extends Controller
         }
         
         \Log::error('Failed to complete inspection ID: ' . $inspection->id);
+        
+        // Check if it's an AJAX request
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to complete inspection.',
+                'status' => $inspection->inspection_status
+            ], 400);
+        }
+        
         return redirect()->back()
             ->with('error', 'Unable to complete inspection.')
             ->header('Cache-Control', 'no-cache, no-store, must-revalidate')
@@ -437,6 +458,17 @@ class VehicleInspectionController extends Controller
 
         if ($inspection->undoCompleteInspection()) {
             \Log::info('Successfully undone completion for inspection ID: ' . $inspection->id . '. New status: ' . $inspection->inspection_status);
+            
+            // Check if it's an AJAX request
+            if (request()->ajax() || request()->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Inspection marked as incomplete. The technician has been notified.',
+                    'status' => $inspection->inspection_status,
+                    'redirect' => route('inspections.show', ['inspection' => $inspection->id, '_' => time()])
+                ]);
+            }
+            
             // Add timestamp to URL to bust cache
             $timestamp = time();
             return redirect()->route('inspections.show', ['inspection' => $inspection->id, '_' => $timestamp])
@@ -447,6 +479,16 @@ class VehicleInspectionController extends Controller
         }
         
         \Log::error('Failed to undo completion for inspection ID: ' . $inspection->id);
+        
+        // Check if it's an AJAX request
+        if (request()->ajax() || request()->wantsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to undo inspection completion.',
+                'status' => $inspection->inspection_status
+            ], 400);
+        }
+        
         return redirect()->back()
             ->with('error', 'Unable to undo inspection completion.')
             ->header('Cache-Control', 'no-cache, no-store, must-revalidate')

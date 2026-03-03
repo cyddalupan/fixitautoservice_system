@@ -273,10 +273,8 @@
                     <div class="col-md-3">
                         @if($inspection->inspection_status !== 'completed')
                             <!-- Light Red Button for NOT completed -->
-                            <form action="{{ route('inspections.complete', $inspection) }}" method="POST" class="w-100" autocomplete="off" id="complete-form-{{ $inspection->id }}">
-                                @csrf
-                                <input type="hidden" name="_cache_bust" value="{{ time() }}">
-                                <button type="button" class="btn btn-danger btn-light w-100" style="background-color: #ffcccc; border-color: #ff9999; color: #cc0000;" onclick="confirmCompleteInspection({{ $inspection->id }})">
+                            <div class="w-100">
+                                <button type="button" class="btn btn-danger btn-light w-100" style="background-color: #ffcccc; border-color: #ff9999; color: #cc0000;" onclick="markInspectionAsComplete({{ $inspection->id }})">
                                     <div class="d-flex align-items-center justify-content-center">
                                         <span class="fs-5 me-2">⭕</span>
                                         <div class="text-start">
@@ -285,13 +283,11 @@
                                         </div>
                                     </div>
                                 </button>
-                            </form>
+                            </div>
                         @else
                             <!-- Green Button for completed - Now clickable to undo -->
-                            <form action="{{ route('inspections.undo-complete', $inspection) }}" method="POST" class="w-100" autocomplete="off" id="undo-complete-form-{{ $inspection->id }}">
-                                @csrf
-                                <input type="hidden" name="_cache_bust" value="{{ time() }}">
-                                <button type="button" class="btn btn-success w-100" style="background-color: #ccffcc; border-color: #99cc99; color: #006600;" onclick="confirmUndoCompleteInspection({{ $inspection->id }})">
+                            <div class="w-100">
+                                <button type="button" class="btn btn-success w-100" style="background-color: #ccffcc; border-color: #99cc99; color: #006600;" onclick="undoCompleteInspection({{ $inspection->id }})">
                                     <div class="d-flex align-items-center justify-content-center">
                                         <span class="fs-5 me-2">✅</span>
                                         <div class="text-start">
@@ -300,7 +296,7 @@
                                         </div>
                                     </div>
                                 </button>
-                            </form>
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -1301,33 +1297,15 @@ function addPhotoToGallery(photoData) {
     }
 }
 
-// SweetAlert2 Confirmation for Completing Inspection
-function confirmCompleteInspection(inspectionId) {
-    console.log('confirmCompleteInspection called for inspection:', inspectionId);
-    console.log('SweetAlert2 available:', typeof Swal !== 'undefined');
+// AJAX function to mark inspection as complete
+function markInspectionAsComplete(inspectionId) {
+    console.log('markInspectionAsComplete called for inspection:', inspectionId);
     
     // Check if SweetAlert2 is available
     if (typeof Swal === 'undefined') {
-        console.log('Using native confirm fallback');
         // Fallback to native confirm
         if (confirm('Mark this inspection as completed?')) {
-            console.log('Native confirm accepted, submitting form');
-            // Try multiple ways to find the form
-            const formById = document.getElementById('complete-form-' + inspectionId);
-            if (formById) {
-                formById.submit();
-            } else {
-                // Fallback: find form by action attribute
-                const formByAction = document.querySelector(`form[action*="/inspections/${inspectionId}/complete"]`);
-                if (formByAction) {
-                    formByAction.submit();
-                } else {
-                    console.error('Could not find complete form for inspection:', inspectionId);
-                    alert('Error: Could not find form. Please refresh the page and try again.');
-                }
-            }
-        } else {
-            console.log('Native confirm cancelled');
+            submitCompleteRequest(inspectionId);
         }
         return;
     }
@@ -1343,55 +1321,20 @@ function confirmCompleteInspection(inspectionId) {
         cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
-            // Submit the form
-            const formById = document.getElementById('complete-form-' + inspectionId);
-            if (formById) {
-                formById.submit();
-            } else {
-                // Fallback: find form by action attribute
-                const formByAction = document.querySelector(`form[action*="/inspections/${inspectionId}/complete"]`);
-                if (formByAction) {
-                    formByAction.submit();
-                } else {
-                    console.error('Could not find complete form for inspection:', inspectionId);
-                    Swal.fire({
-                        title: 'Error',
-                        text: 'Could not find form. Please refresh the page and try again.',
-                        icon: 'error'
-                    });
-                }
-            }
+            submitCompleteRequest(inspectionId);
         }
     });
 }
 
-// SweetAlert2 Confirmation for Undoing Completion
-function confirmUndoCompleteInspection(inspectionId) {
-    console.log('confirmUndoCompleteInspection called for inspection:', inspectionId);
-    console.log('SweetAlert2 available:', typeof Swal !== 'undefined');
+// AJAX function to undo completion
+function undoCompleteInspection(inspectionId) {
+    console.log('undoCompleteInspection called for inspection:', inspectionId);
     
     // Check if SweetAlert2 is available
     if (typeof Swal === 'undefined') {
-        console.log('Using native confirm fallback');
         // Fallback to native confirm
         if (confirm('Are you sure you want to mark this inspection as incomplete?\n\nThis will notify the technician that their inspection has been undone.')) {
-            console.log('Native confirm accepted, submitting form');
-            // Try multiple ways to find the form
-            const formById = document.getElementById('undo-complete-form-' + inspectionId);
-            if (formById) {
-                formById.submit();
-            } else {
-                // Fallback: find form by action attribute
-                const formByAction = document.querySelector(`form[action*="/inspections/${inspectionId}/undo-complete"]`);
-                if (formByAction) {
-                    formByAction.submit();
-                } else {
-                    console.error('Could not find undo-complete form for inspection:', inspectionId);
-                    alert('Error: Could not find form. Please refresh the page and try again.');
-                }
-            }
-        } else {
-            console.log('Native confirm cancelled');
+            submitUndoCompleteRequest(inspectionId);
         }
         return;
     }
@@ -1407,25 +1350,154 @@ function confirmUndoCompleteInspection(inspectionId) {
         cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
-            // Submit the form
-            const formById = document.getElementById('undo-complete-form-' + inspectionId);
-            if (formById) {
-                formById.submit();
-            } else {
-                // Fallback: find form by action attribute
-                const formByAction = document.querySelector(`form[action*="/inspections/${inspectionId}/undo-complete"]`);
-                if (formByAction) {
-                    formByAction.submit();
-                } else {
-                    console.error('Could not find undo-complete form for inspection:', inspectionId);
-                    Swal.fire({
-                        title: 'Error',
-                        text: 'Could not find form. Please refresh the page and try again.',
-                        icon: 'error'
-                    });
-                }
-            }
+            submitUndoCompleteRequest(inspectionId);
         }
+    });
+}
+
+// Submit complete request via AJAX
+function submitCompleteRequest(inspectionId) {
+    console.log('Submitting complete request for inspection:', inspectionId);
+    
+    // Show loading indicator
+    Swal.fire({
+        title: 'Processing...',
+        text: 'Marking inspection as complete',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    // Create CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    
+    // Send AJAX request
+    fetch(`/inspections/${inspectionId}/complete`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            _token: csrfToken,
+            _cache_bust: Date.now()
+        })
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json().then(data => {
+            return { status: response.status, data: data };
+        }).catch(() => {
+            return { status: response.status, data: {} };
+        });
+    })
+    .then(result => {
+        console.log('Complete request result:', result);
+        
+        if (result.status === 200 || result.status === 302) {
+            // Success - reload the page
+            Swal.fire({
+                title: 'Success!',
+                text: 'Inspection marked as completed.',
+                icon: 'success',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                // Reload the page to show updated button
+                window.location.reload();
+            });
+        } else {
+            // Error
+            Swal.fire({
+                title: 'Error',
+                text: result.data.message || 'Failed to mark inspection as complete.',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Complete request error:', error);
+        Swal.fire({
+            title: 'Error',
+            text: 'Network error. Please try again.',
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
+    });
+}
+
+// Submit undo-complete request via AJAX
+function submitUndoCompleteRequest(inspectionId) {
+    console.log('Submitting undo-complete request for inspection:', inspectionId);
+    
+    // Show loading indicator
+    Swal.fire({
+        title: 'Processing...',
+        text: 'Undoing inspection completion',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    // Create CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    
+    // Send AJAX request
+    fetch(`/inspections/${inspectionId}/undo-complete`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({
+            _token: csrfToken,
+            _cache_bust: Date.now()
+        })
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json().then(data => {
+            return { status: response.status, data: data };
+        }).catch(() => {
+            return { status: response.status, data: {} };
+        });
+    })
+    .then(result => {
+        console.log('Undo-complete request result:', result);
+        
+        if (result.status === 200 || result.status === 302) {
+            // Success - reload the page
+            Swal.fire({
+                title: 'Success!',
+                text: 'Inspection completion undone.',
+                icon: 'success',
+                confirmButtonText: 'OK'
+            }).then(() => {
+                // Reload the page to show updated button
+                window.location.reload();
+            });
+        } else {
+            // Error
+            Swal.fire({
+                title: 'Error',
+                text: result.data.message || 'Failed to undo inspection completion.',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Undo-complete request error:', error);
+        Swal.fire({
+            title: 'Error',
+            text: 'Network error. Please try again.',
+            icon: 'error',
+            confirmButtonText: 'OK'
+        });
     });
 }
 </script>
