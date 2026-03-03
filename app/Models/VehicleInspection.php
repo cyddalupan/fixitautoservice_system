@@ -445,9 +445,9 @@ class VehicleInspection extends Model
         ]);
         
         // Update safety/urgent flags
-        $hasSafety = $items->where('is_safety_issue', true)->exists();
-        $hasUrgent = $items->where('is_urgent_issue', true)->exists();
-        $hasCritical = $items->where('is_critical_issue', true)->exists();
+        $hasSafety = $items->where('is_safety_issue', true)->isNotEmpty();
+        $hasUrgent = $items->where('is_urgent_issue', true)->isNotEmpty();
+        $hasCritical = $items->where('is_critical_issue', true)->isNotEmpty();
         
         $this->update([
             'has_safety_concerns' => $hasSafety,
