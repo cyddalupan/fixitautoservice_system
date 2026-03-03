@@ -871,19 +871,43 @@ function showAddFindingForm() {
 
 // Function to add finding directly (creates input row in table)
 function addDemoFinding() {
-    // Get values from form
-    const itemName = document.getElementById('item_name') ? document.getElementById('item_name').value : document.getElementById('item_name_empty').value;
-    const status = document.getElementById('status') ? document.getElementById('status').value : document.getElementById('status_empty').value;
-    const category = document.getElementById('category') ? document.getElementById('category').value : 'Uncategorized';
-    const notes = document.getElementById('notes') ? document.getElementById('notes').value : '';
-    
-    // Debug logging
+    // Debug: Check which form is visible
     console.log('addDemoFinding called');
-    console.log('item_name element:', document.getElementById('item_name'));
-    console.log('item_name_empty element:', document.getElementById('item_name_empty'));
+    
+    // Check which form is visible (empty state or regular form)
+    const emptyFormVisible = document.getElementById('addFindingFormEmpty') && 
+                            document.getElementById('addFindingFormEmpty').style.display !== 'none';
+    const regularFormVisible = document.getElementById('addFindingForm') && 
+                               document.getElementById('addFindingForm').style.display !== 'none';
+    
+    console.log('emptyFormVisible:', emptyFormVisible);
+    console.log('regularFormVisible:', regularFormVisible);
+    
+    // Get values from the VISIBLE form
+    let itemName, status, category, notes;
+    
+    if (emptyFormVisible) {
+        // Use empty state form values
+        itemName = document.getElementById('item_name_empty') ? document.getElementById('item_name_empty').value : '';
+        status = document.getElementById('status_empty') ? document.getElementById('status_empty').value : '';
+        category = 'Uncategorized'; // Empty form doesn't have category field
+        notes = ''; // Empty form doesn't have notes field
+        console.log('Using EMPTY form values');
+    } else if (regularFormVisible) {
+        // Use regular form values
+        itemName = document.getElementById('item_name') ? document.getElementById('item_name').value : '';
+        status = document.getElementById('status') ? document.getElementById('status').value : '';
+        category = document.getElementById('category') ? document.getElementById('category').value : 'Uncategorized';
+        notes = document.getElementById('notes') ? document.getElementById('notes').value : '';
+        console.log('Using REGULAR form values');
+    } else {
+        // No form is visible, show error
+        console.log('ERROR: No form is visible!');
+        alert('Please open the add finding form first.');
+        return;
+    }
+    
     console.log('itemName value:', itemName);
-    console.log('status element:', document.getElementById('status'));
-    console.log('status_empty element:', document.getElementById('status_empty'));
     console.log('status value:', status);
     console.log('category value:', category);
     console.log('notes value:', notes);
