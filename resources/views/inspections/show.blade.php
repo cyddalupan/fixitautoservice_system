@@ -273,8 +273,9 @@
                     <div class="col-md-3">
                         @if($inspection->inspection_status !== 'completed')
                             <!-- Light Red Button for NOT completed -->
-                            <form action="{{ route('inspections.complete', $inspection) }}" method="POST" class="w-100">
+                            <form action="{{ route('inspections.complete', $inspection) }}" method="POST" class="w-100" autocomplete="off">
                                 @csrf
+                                <input type="hidden" name="_cache_bust" value="{{ time() }}">
                                 <button type="submit" class="btn btn-danger btn-light w-100" style="background-color: #ffcccc; border-color: #ff9999; color: #cc0000;" onclick="return confirm('Mark this inspection as completed?')">
                                     <div class="d-flex align-items-center justify-content-center">
                                         <span class="fs-5 me-2">⭕</span>
@@ -287,8 +288,9 @@
                             </form>
                         @else
                             <!-- Green Button for completed - Now clickable to undo -->
-                            <form action="{{ route('inspections.undo-complete', $inspection) }}" method="POST" class="w-100">
+                            <form action="{{ route('inspections.undo-complete', $inspection) }}" method="POST" class="w-100" autocomplete="off">
                                 @csrf
+                                <input type="hidden" name="_cache_bust" value="{{ time() }}">
                                 <button type="submit" class="btn btn-success w-100" style="background-color: #ccffcc; border-color: #99cc99; color: #006600;" onclick="return confirm('Are you sure you want to mark this inspection as incomplete?\\n\\nThis will notify the technician that their inspection has been undone.')">
                                     <div class="d-flex align-items-center justify-content-center">
                                         <span class="fs-5 me-2">✅</span>
