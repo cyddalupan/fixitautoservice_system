@@ -1372,25 +1372,36 @@ function submitCompleteRequest(inspectionId) {
     // Create CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     
-    // Send AJAX request
+    // Create FormData (Laravel expects form data, not JSON)
+    const formData = new FormData();
+    formData.append('_token', csrfToken);
+    formData.append('_method', 'POST');
+    formData.append('_cache_bust', Date.now());
+    
+    // Send AJAX request with FormData
     fetch(`/inspections/${inspectionId}/complete`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken,
             'X-Requested-With': 'XMLHttpRequest'
+            // Don't set Content-Type - let browser set it for FormData
         },
-        body: JSON.stringify({
-            _token: csrfToken,
-            _cache_bust: Date.now()
-        })
+        body: formData
     })
     .then(response => {
         console.log('Response status:', response.status);
-        return response.json().then(data => {
-            return { status: response.status, data: data };
-        }).catch(() => {
-            return { status: response.status, data: {} };
+        console.log('Response headers:', response.headers);
+        
+        // Try to parse JSON, but handle non-JSON responses
+        return response.text().then(text => {
+            console.log('Response text:', text);
+            try {
+                const data = JSON.parse(text);
+                return { status: response.status, data: data, text: text };
+            } catch (e) {
+                console.log('Response is not JSON:', text);
+                return { status: response.status, data: { message: text }, text: text };
+            }
         });
     })
     .then(result => {
@@ -1408,10 +1419,19 @@ function submitCompleteRequest(inspectionId) {
                 window.location.reload();
             });
         } else {
-            // Error
+            // Error - show detailed error message
+            console.error('Error details:', result);
+            let errorMessage = 'Failed to mark inspection as complete.';
+            
+            if (result.data && result.data.message) {
+                errorMessage = result.data.message;
+            } else if (result.text && result.text.includes('CSRF')) {
+                errorMessage = 'CSRF token mismatch. Please refresh the page and try again.';
+            }
+            
             Swal.fire({
                 title: 'Error',
-                text: result.data.message || 'Failed to mark inspection as complete.',
+                text: errorMessage,
                 icon: 'error',
                 confirmButtonText: 'OK'
             });
@@ -1445,25 +1465,36 @@ function submitUndoCompleteRequest(inspectionId) {
     // Create CSRF token
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
     
-    // Send AJAX request
+    // Create FormData (Laravel expects form data, not JSON)
+    const formData = new FormData();
+    formData.append('_token', csrfToken);
+    formData.append('_method', 'POST');
+    formData.append('_cache_bust', Date.now());
+    
+    // Send AJAX request with FormData
     fetch(`/inspections/${inspectionId}/undo-complete`, {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrfToken,
             'X-Requested-With': 'XMLHttpRequest'
+            // Don't set Content-Type - let browser set it for FormData
         },
-        body: JSON.stringify({
-            _token: csrfToken,
-            _cache_bust: Date.now()
-        })
+        body: formData
     })
     .then(response => {
         console.log('Response status:', response.status);
-        return response.json().then(data => {
-            return { status: response.status, data: data };
-        }).catch(() => {
-            return { status: response.status, data: {} };
+        console.log('Response headers:', response.headers);
+        
+        // Try to parse JSON, but handle non-JSON responses
+        return response.text().then(text => {
+            console.log('Response text:', text);
+            try {
+                const data = JSON.parse(text);
+                return { status: response.status, data: data, text: text };
+            } catch (e) {
+                console.log('Response is not JSON:', text);
+                return { status: response.status, data: { message: text }, text: text };
+            }
         });
     })
     .then(result => {
@@ -1481,10 +1512,19 @@ function submitUndoCompleteRequest(inspectionId) {
                 window.location.reload();
             });
         } else {
-            // Error
+            // Error - show detailed error message
+            console.error('Error details:', result);
+            let errorMessage = 'Failed to undo inspection completion.';
+            
+            if (result.data && result.data.message) {
+                errorMessage = result.data.message;
+            } else if (result.text && result.text.includes('CSRF')) {
+                errorMessage = 'CSRF token mismatch. Please refresh the page and try again.';
+            }
+            
             Swal.fire({
                 title: 'Error',
-                text: result.data.message || 'Failed to undo inspection completion.',
+                text: errorMessage,
                 icon: 'error',
                 confirmButtonText: 'OK'
             });
