@@ -321,7 +321,8 @@ class VehicleInspection extends Model
 
     public function completeInspection(): bool
     {
-        if ($this->inspection_status === 'in_progress') {
+        // Allow completion from both 'draft' and 'in_progress' statuses
+        if ($this->inspection_status === 'draft' || $this->inspection_status === 'in_progress') {
             $this->update([
                 'inspection_status' => 'completed',
                 'inspection_completed_at' => now(),
