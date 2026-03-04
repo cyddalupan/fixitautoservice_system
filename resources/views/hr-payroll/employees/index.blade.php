@@ -64,22 +64,65 @@
                                         <td>{{ $employee->hrDetail->department ?? 'Not Set' }}</td>
                                         <td>{{ $employee->hrDetail->position ?? 'Not Set' }}</td>
                                         <td>
-                                            @if($employee->employment_type)
-                                                <span class="badge badge-{{ $employee->employment_type_badge_color }}">
-                                                    {{ $employee->formatted_employment_type }}
-                                                </span>
-                                            @else
-                                                <span class="badge badge-light">Not Set</span>
-                                            @endif
+                                            @php
+                                                // Debug: Check what employment_type value we have
+                                                $empType = $employee->employment_type ?? null;
+                                                $badgeColor = 'light';
+                                                $displayText = 'Not Set';
+                                                
+                                                if ($empType) {
+                                                    // Simple color mapping
+                                                    $badgeColor = match($empType) {
+                                                        'full_time' => 'success',
+                                                        'part_time' => 'info',
+                                                        'contract' => 'warning',
+                                                        'temporary' => 'secondary',
+                                                        default => 'light',
+                                                    };
+                                                    $displayText = ucfirst(str_replace('_', ' ', $empType));
+                                                }
+                                            @endphp
+                                            <span class="badge badge-{{ $badgeColor }} @if(in_array($badgeColor, ['light', 'secondary'])) text-dark @endif">
+                                                {{ $displayText }}
+                                            </span>
                                         </td>
                                         <td>
-                                            @if($employee->hrDetail?->employment_status)
-                                                <span class="badge badge-{{ $employee->hrDetail->employment_status_badge_color }}">
-                                                    {{ $employee->hrDetail->employment_status_display }}
-                                                </span>
-                                            @else
-                                                <span class="badge badge-success">Active</span>
-                                            @endif
+                                            @php
+                                                // Debug: Check what employment_status value we have
+                                                $empStatus = $employee->hrDetail?->employment_status ?? 'active';
+                                                $statusBadgeColor = 'light';
+                                                $statusDisplay = 'Not Set';
+                                                
+                                                // Simple color mapping
+                                                $statusBadgeColor = match($empStatus) {
+                                                    'active' => 'success',
+                                                    'on_leave' => 'warning',
+                                                    'suspended' => 'danger',
+                                                    'terminated' => 'danger',
+                                                    'full_time' => 'success',
+                                                    'part_time' => 'info',
+                                                    'contract' => 'warning',
+                                                    'temporary' => 'secondary',
+                                                    'intern' => 'light',
+                                                    default => 'light',
+                                                };
+                                                
+                                                $statusDisplay = match($empStatus) {
+                                                    'active' => 'Active',
+                                                    'on_leave' => 'On Leave',
+                                                    'suspended' => 'Suspended',
+                                                    'terminated' => 'Terminated',
+                                                    'full_time' => 'Full Time',
+                                                    'part_time' => 'Part Time',
+                                                    'contract' => 'Contract',
+                                                    'temporary' => 'Temporary',
+                                                    'intern' => 'Intern',
+                                                    default => ucfirst(str_replace('_', ' ', $empStatus)),
+                                                };
+                                            @endphp
+                                            <span class="badge badge-{{ $statusBadgeColor }} @if(in_array($statusBadgeColor, ['light', 'secondary'])) text-dark @endif">
+                                                {{ $statusDisplay }}
+                                            </span>
                                         </td>
                                         <td>{{ $employee->hrDetail && $employee->hrDetail->hire_date ? \Carbon\Carbon::parse($employee->hrDetail->hire_date)->format('M d, Y') : 'Not Set' }}</td>
                                         <td>
