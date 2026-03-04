@@ -73,7 +73,8 @@
                     </div>
                 </div>
                 <div class="card-body calendar-container">
-                    <div class="calendar-content">
+                    <div class="calendar-content-wrapper">
+                        <div class="calendar-content">
                         <!-- Attendance Statistics -->
                         <div class="row mb-4 attendance-stats">
                             <div class="col-md-3 text-center">
@@ -293,6 +294,7 @@
                     </div>
                 </div>
             </div>
+            </div>
 
             <!-- Employment Information -->
             <div class="card shadow mb-4">
@@ -397,41 +399,56 @@
     min-height: 600px;
 }
 
-/* Calendar content for sliding */
+/* Calendar container for animation */
+.calendar-container {
+    position: relative;
+    overflow: hidden;
+    min-height: 600px;
+}
+
+/* Calendar content wrapper */
+.calendar-content-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+/* Calendar content - will be duplicated for animation */
 .calendar-content {
     position: relative;
-    transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    width: 100%;
+    transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     will-change: transform;
 }
 
-/* Animation classes */
-.calendar-slide-left {
-    animation: slideLeft 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+/* Animation states */
+.calendar-content.sliding-out-left {
+    transform: translateX(-100%);
 }
 
-.calendar-slide-right {
-    animation: slideRight 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+.calendar-content.sliding-out-right {
+    transform: translateX(100%);
 }
 
-@keyframes slideLeft {
-    0% {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    100% {
+.calendar-content.sliding-in-left {
+    transform: translateX(100%);
+    animation: slideInLeft 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+.calendar-content.sliding-in-right {
+    transform: translateX(-100%);
+    animation: slideInRight 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes slideInLeft {
+    to {
         transform: translateX(0);
-        opacity: 1;
     }
 }
 
-@keyframes slideRight {
-    0% {
-        transform: translateX(-100%);
-        opacity: 0;
-    }
-    100% {
+@keyframes slideInRight {
+    to {
         transform: translateX(0);
-        opacity: 1;
     }
 }
 
@@ -608,6 +625,12 @@ $(document).ready(function() {
 
     // Navigation function with smooth animation
     function navigateToMonth(direction) {
+        // Prevent multiple clicks/swipes during animation
+        if (calendarContent.hasClass('sliding-out-left') || calendarContent.hasClass('sliding-out-right') ||
+            calendarContent.hasClass('sliding-in-left') || calendarContent.hasClass('sliding-in-right')) {
+            return;
+        }
+        
         // Get current URL and parameters
         const currentUrl = window.location.href;
         const url = new URL(currentUrl);
@@ -639,9 +662,9 @@ $(document).ready(function() {
         // Show loading overlay
         $('.loading-overlay').addClass('active');
         
-        // Apply slide animation
-        const animationClass = direction === 'prev' ? 'calendar-slide-right' : 'calendar-slide-left';
-        calendarContent.addClass(animationClass);
+        // Animate current content out
+        const outClass = direction === 'prev' ? 'sliding-out-right' : 'sliding-out-left';
+        calendarContent.addClass(outClass);
         
         // Fetch new data
         $.ajax({
@@ -656,36 +679,44 @@ $(document).ready(function() {
                 const newCalendarContent = $(doc).find('.calendar-content').html();
                 const newMonthTitle = $(doc).find('.card-header h6').text();
                 
-                // Update content after animation completes
+                // Wait for slide-out animation to complete
                 setTimeout(function() {
                     // Update calendar content
                     calendarContent.html(newCalendarContent);
                     
+                    // Remove out class and add in class
+                    calendarContent.removeClass(outClass);
+                    const inClass = direction === 'prev' ? 'sliding-in-right' : 'sliding-in-left';
+                    calendarContent.addClass(inClass);
+                    
                     // Update month title
                     $('.card-header h6').text(newMonthTitle);
                     
-                    // Remove animation class
-                    calendarContent.removeClass(animationClass);
-                    
-                    // Update browser URL without reloading page
-                    window.history.pushState({}, '', url.toString());
-                    
-                    // Hide loading overlay
-                    $('.loading-overlay').removeClass('active');
-                    
-                    // Re-initialize event listeners for new content
-                    initializeEventListeners();
-                    
-                    // Show success notification
-                    showNotification(`Switched to ${newMonthTitle}`, 'success');
-                }, 500);
+                    // Wait for slide-in animation to complete
+                    setTimeout(function() {
+                        // Remove in class
+                        calendarContent.removeClass(inClass);
+                        
+                        // Update browser URL without reloading page
+                        window.history.pushState({}, '', url.toString());
+                        
+                        // Hide loading overlay
+                        $('.loading-overlay').removeClass('active');
+                        
+                        // Re-initialize event listeners for new content
+                        initializeEventListeners();
+                        
+                        // Show success notification
+                        showNotification(`Switched to ${newMonthTitle}`, 'success');
+                    }, 400); // Match slide-in animation duration
+                }, 400); // Match slide-out animation duration
             },
             error: function(xhr, status, error) {
                 // Hide loading overlay
                 $('.loading-overlay').removeClass('active');
                 
                 // Remove animation class
-                calendarContent.removeClass(animationClass);
+                calendarContent.removeClass(outClass);
                 
                 // Show error notification
                 showNotification('Failed to load attendance data. Please try again.', 'error');
