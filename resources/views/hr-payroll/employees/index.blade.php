@@ -64,19 +64,21 @@
                                         <td>{{ $employee->hrDetail->department ?? 'Not Set' }}</td>
                                         <td>{{ $employee->hrDetail->position ?? 'Not Set' }}</td>
                                         <td>
-                                            <span class="badge badge-info">
-                                                {{ ucfirst($employee->hrDetail->employment_type ?? 'Not Set') }}
-                                            </span>
+                                            @if($employee->employment_type)
+                                                <span class="badge badge-{{ $employee->employment_type_badge_color }}">
+                                                    {{ $employee->formatted_employment_type }}
+                                                </span>
+                                            @else
+                                                <span class="badge badge-light">Not Set</span>
+                                            @endif
                                         </td>
                                         <td>
-                                            @if(($employee->hrDetail->employment_status ?? 'active') === 'active')
-                                                <span class="badge badge-success">Active</span>
-                                            @elseif(($employee->hrDetail->employment_status ?? 'active') === 'inactive')
-                                                <span class="badge badge-secondary">Inactive</span>
-                                            @elseif(($employee->hrDetail->employment_status ?? 'active') === 'terminated')
-                                                <span class="badge badge-danger">Terminated</span>
+                                            @if($employee->hrDetail?->employment_status)
+                                                <span class="badge badge-{{ $employee->hrDetail->employment_status_badge_color }}">
+                                                    {{ $employee->hrDetail->employment_status_display }}
+                                                </span>
                                             @else
-                                                <span class="badge badge-warning">On Leave</span>
+                                                <span class="badge badge-success">Active</span>
                                             @endif
                                         </td>
                                         <td>{{ $employee->hrDetail && $employee->hrDetail->hire_date ? \Carbon\Carbon::parse($employee->hrDetail->hire_date)->format('M d, Y') : 'Not Set' }}</td>

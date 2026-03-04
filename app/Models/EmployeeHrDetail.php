@@ -193,12 +193,35 @@ class EmployeeHrDetail extends Model
     public function getEmploymentStatusBadgeColorAttribute()
     {
         return match($this->employment_status) {
+            'active' => 'success',
+            'on_leave' => 'warning',
+            'suspended' => 'danger',
+            'terminated' => 'danger',
             'full_time' => 'success',
             'part_time' => 'info',
             'contract' => 'warning',
             'temporary' => 'secondary',
             'intern' => 'light',
             default => 'light',
+        };
+    }
+
+    /**
+     * Get the display text for employment status.
+     */
+    public function getEmploymentStatusDisplayAttribute()
+    {
+        return match($this->employment_status) {
+            'active' => 'Active',
+            'on_leave' => 'On Leave',
+            'suspended' => 'Suspended',
+            'terminated' => 'Terminated',
+            'full_time' => 'Full Time',
+            'part_time' => 'Part Time',
+            'contract' => 'Contract',
+            'temporary' => 'Temporary',
+            'intern' => 'Intern',
+            default => ucfirst(str_replace('_', ' ', $this->employment_status)),
         };
     }
 }
