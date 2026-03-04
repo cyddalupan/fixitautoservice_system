@@ -61,15 +61,13 @@
                 <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold">Monthly Attendance Calendar - {{ \Carbon\Carbon::create($year, $month, 1)->format('F Y') }}</h6>
                     <div class="month-navigation">
-                        <a href="{{ route('hr-payroll.employees.show', ['id' => $employee->id, 'month' => $month - 1 <= 0 ? 12 : $month - 1, 'year' => $month - 1 <= 0 ? $year - 1 : $year]) }}" 
-                           class="btn btn-sm btn-light mr-2" id="prev-month">
+                        <button class="btn btn-sm btn-light mr-2" id="prev-month">
                             <i class="fas fa-chevron-left"></i> Previous Month
-                        </a>
+                        </button>
                         <span class="mx-2 text-white font-weight-bold">{{ \Carbon\Carbon::create($year, $month, 1)->format('F Y') }}</span>
-                        <a href="{{ route('hr-payroll.employees.show', ['id' => $employee->id, 'month' => $month + 1 > 12 ? 1 : $month + 1, 'year' => $month + 1 > 12 ? $year + 1 : $year]) }}" 
-                           class="btn btn-sm btn-light" id="next-month">
+                        <button class="btn btn-sm btn-light" id="next-month">
                             Next Month <i class="fas fa-chevron-right"></i>
-                        </a>
+                        </button>
                     </div>
                 </div>
                 <div class="card-body calendar-container">
@@ -518,7 +516,7 @@
 </style>
 
 <!-- JavaScript for Smooth Swipe Animation -->
-@section('scripts')
+@push('scripts')
 <script>
 $(document).ready(function() {
     // Elements
@@ -739,31 +737,6 @@ $(document).ready(function() {
             }
         );
         
-        // Update navigation button URLs
-        const currentUrl = new URL(window.location.href);
-        const currentMonth = parseInt(currentUrl.searchParams.get('month') || new Date().getMonth() + 1);
-        const currentYear = parseInt(currentUrl.searchParams.get('year') || new Date().getFullYear());
-        
-        // Calculate previous month URL
-        let prevMonth = currentMonth - 1;
-        let prevYear = currentYear;
-        if (prevMonth <= 0) {
-            prevMonth = 12;
-            prevYear = currentYear - 1;
-        }
-        
-        // Calculate next month URL
-        let nextMonth = currentMonth + 1;
-        let nextYear = currentYear;
-        if (nextMonth > 12) {
-            nextMonth = 1;
-            nextYear = currentYear + 1;
-        }
-        
-        // Update button href attributes
-        prevMonthBtn.attr('href', `?month=${prevMonth}&year=${prevYear}`);
-        nextMonthBtn.attr('href', `?month=${nextMonth}&year=${nextYear}`);
-        
         // Update button click handlers
         prevMonthBtn.off('click').on('click', function(e) {
             e.preventDefault();
@@ -819,5 +792,4 @@ $(document).ready(function() {
     });
 });
 </script>
-@endsection
-@endsection
+@endpush
