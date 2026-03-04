@@ -54,130 +54,27 @@
     @endif
 
     <div class="row">
-        <!-- Left Column: Personal Information -->
-        <div class="col-md-4">
+        <!-- Main Column: All Information -->
+        <div class="col-md-12">
+            <!-- Monthly Attendance Calendar with Carousel -->
             <div class="card shadow mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h6 class="m-0 font-weight-bold">Personal Information</h6>
-                </div>
-                <div class="card-body text-center">
-                    <div class="mb-4">
-                        <img src="{{ $employee->profile_photo_url ?? asset('images/default-avatar.png') }}" 
-                             alt="{{ $employee->name }}" 
-                             class="rounded-circle border" 
-                             width="150" 
-                             height="150">
-                    </div>
-                    
-                    <h4 class="mb-1">{{ $employee->name }}</h4>
-                    <p class="text-muted mb-3">{{ $employee->email }}</p>
-                    
-                    <div class="mb-3">
-                        <span class="badge badge-{{ $statusClass }} p-2">
-                            {{ ucfirst($employmentStatus) }}
-                        </span>
-                        <span class="badge badge-info p-2 ml-2">
-                            {{ ucfirst($employee->role) }}
-                        </span>
-                    </div>
-
-                    <div class="text-left">
-                        <p><strong>Employee ID:</strong> {{ $employee->employee_id ?? 'Not Set' }}</p>
-                        <p><strong>Phone:</strong> {{ $employee->phone ?? 'Not Set' }}</p>
-                        <p><strong>Hire Date:</strong> {{ $employee->hire_date ? \Carbon\Carbon::parse($employee->hire_date)->format('M d, Y') : 'Not Set' }}</p>
-                        <p><strong>Account Status:</strong> 
-                            <span class="badge badge-{{ $employee->is_active ? 'success' : 'danger' }}">
-                                {{ $employee->is_active ? 'Active' : 'Inactive' }}
-                            </span>
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Contact Information -->
-            <div class="card shadow mb-4">
-                <div class="card-header bg-info text-white">
-                    <h6 class="m-0 font-weight-bold">Contact Information</h6>
-                </div>
-                <div class="card-body">
-                    <p><strong>Email:</strong> {{ $employee->email }}</p>
-                    <p><strong>Address:</strong><br>
-                    {{ $hrDetail?->address ?? 'Not Provided' }}</p>
-                    
-                    <p><strong>Notes:</strong><br>
-                    {{ $hrDetail?->notes ?? 'No additional notes' }}</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Column: Employment Details -->
-        <div class="col-md-8">
-            <!-- Employment Information -->
-            <div class="card shadow mb-4">
-                <div class="card-header bg-success text-white">
-                    <h6 class="m-0 font-weight-bold">Employment Information</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Department:</strong> {{ $hrDetail?->department ?? 'Not Set' }}</p>
-                            <p><strong>Position:</strong> {{ $hrDetail?->position ?? 'Not Set' }}</p>
-                            <p><strong>Job Title:</strong> {{ $hrDetail?->job_title ?? 'Not Set' }}</p>
-                            <p><strong>Employee Number:</strong> {{ $hrDetail?->employee_number ?? 'Not Set' }}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Hire Date:</strong> {{ $employee->hire_date ? \Carbon\Carbon::parse($employee->hire_date)->format('M d, Y') : 'Not Set' }}</p>
-                            <p><strong>Employment Status:</strong> {{ ucfirst($hrDetail?->employment_status ?? 'Not Set') }}</p>
-                            <p><strong>Employment Type:</strong> {{ ucfirst($employee->employment_type ?? 'Not Set') }}</p>
-                            <p><strong>Tenure:</strong> 
-                                @if($employee->hire_date)
-                                    {{ \Carbon\Carbon::parse($employee->hire_date)->diffInYears(now()) }} years
-                                @else
-                                    Not Available
-                                @endif
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Compensation & Benefits -->
-            <div class="card shadow mb-4">
-                <div class="card-header bg-warning text-white">
-                    <h6 class="m-0 font-weight-bold">Compensation & Benefits</h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p><strong>Base Salary:</strong> ${{ number_format($hrDetail?->base_salary ?? 0, 2) }}</p>
-                            <p><strong>Created:</strong> {{ $employee->created_at ? \Carbon\Carbon::parse($employee->created_at)->format('M d, Y') : 'Not Available' }}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <p><strong>Last Updated:</strong> {{ $hrDetail?->updated_at ? \Carbon\Carbon::parse($hrDetail?->updated_at)->format('M d, Y') : 'Not Available' }}</p>
-                            <p><strong>Last Login:</strong> {{ $employee->last_login_at ? \Carbon\Carbon::parse($employee->last_login_at)->format('M d, Y H:i') : 'Never' }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Attendance Statistics -->
-            <div class="card shadow mb-4">
-                <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold">Monthly Attendance Statistics - {{ \Carbon\Carbon::create($year, $month, 1)->format('F Y') }}</h6>
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold">Monthly Attendance Calendar - {{ \Carbon\Carbon::create($year, $month, 1)->format('F Y') }}</h6>
                     <div class="month-navigation">
                         <a href="{{ route('hr-payroll.employees.show', ['id' => $employee->id, 'month' => $month - 1 <= 0 ? 12 : $month - 1, 'year' => $month - 1 <= 0 ? $year - 1 : $year]) }}" 
-                           class="btn btn-sm btn-light">
-                            <i class="fas fa-chevron-left"></i> Previous
+                           class="btn btn-sm btn-light mr-2" id="prev-month">
+                            <i class="fas fa-chevron-left"></i> Previous Month
                         </a>
-                        <span class="mx-2 text-white">{{ \Carbon\Carbon::create($year, $month, 1)->format('F Y') }}</span>
+                        <span class="mx-2 text-white font-weight-bold">{{ \Carbon\Carbon::create($year, $month, 1)->format('F Y') }}</span>
                         <a href="{{ route('hr-payroll.employees.show', ['id' => $employee->id, 'month' => $month + 1 > 12 ? 1 : $month + 1, 'year' => $month + 1 > 12 ? $year + 1 : $year]) }}" 
-                           class="btn btn-sm btn-light">
-                            Next <i class="fas fa-chevron-right"></i>
+                           class="btn btn-sm btn-light" id="next-month">
+                            Next Month <i class="fas fa-chevron-right"></i>
                         </a>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="row">
+                    <!-- Attendance Statistics -->
+                    <div class="row mb-4">
                         <div class="col-md-3 text-center">
                             <div class="card border-left-primary shadow h-100 py-2">
                                 <div class="card-body">
@@ -272,7 +169,7 @@
                     </div>
                     
                     <!-- Attendance Rate Progress Bar -->
-                    <div class="mt-4">
+                    <div class="mb-4">
                         <div class="d-flex justify-content-between mb-1">
                             <span class="text-sm font-weight-bold">Attendance Rate</span>
                             <span class="text-sm font-weight-bold">{{ $attendanceStats['attendance_rate'] ?? 0 }}%</span>
@@ -288,15 +185,8 @@
                         </div>
                         <small class="text-muted">Based on {{ $attendanceStats['present_days'] ?? 0 }} present days out of {{ $attendanceStats['working_days'] ?? 0 }} working days</small>
                     </div>
-                </div>
-            </div>
 
-            <!-- Monthly Attendance Calendar -->
-            <div class="card shadow mb-4">
-                <div class="card-header bg-info text-white">
-                    <h6 class="m-0 font-weight-bold">Monthly Attendance Calendar - {{ \Carbon\Carbon::create($year, $month, 1)->format('F Y') }}</h6>
-                </div>
-                <div class="card-body">
+                    <!-- Calendar Table -->
                     <div class="table-responsive">
                         <table class="table table-bordered">
                             <thead class="thead-light">
@@ -402,6 +292,41 @@
                 </div>
             </div>
 
+            <!-- Employment Information -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-success text-white">
+                    <h6 class="m-0 font-weight-bold">Employment Information</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Employee Name:</strong> {{ $employee->name }}</p>
+                            <p><strong>Email:</strong> {{ $employee->email }}</p>
+                            <p><strong>Phone:</strong> {{ $employee->phone ?? 'Not Set' }}</p>
+                            <p><strong>Employee ID:</strong> {{ $employee->employee_id ?? 'Not Set' }}</p>
+                            <p><strong>Department:</strong> {{ $hrDetail?->department ?? 'Not Set' }}</p>
+                            <p><strong>Position:</strong> {{ $hrDetail?->position ?? 'Not Set' }}</p>
+                            <p><strong>Job Title:</strong> {{ $hrDetail?->job_title ?? 'Not Set' }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Hire Date:</strong> {{ $employee->hire_date ? \Carbon\Carbon::parse($employee->hire_date)->format('M d, Y') : 'Not Set' }}</p>
+                            <p><strong>Employment Status:</strong> {{ ucfirst($hrDetail?->employment_status ?? 'Not Set') }}</p>
+                            <p><strong>Employment Type:</strong> {{ ucfirst($employee->employment_type ?? 'Not Set') }}</p>
+                            <p><strong>Tenure:</strong> 
+                                @if($employee->hire_date)
+                                    {{ \Carbon\Carbon::parse($employee->hire_date)->diffInYears(now()) }} years
+                                @else
+                                    Not Available
+                                @endif
+                            </p>
+                            <p><strong>Base Salary:</strong> ${{ number_format($hrDetail?->base_salary ?? 0, 2) }}</p>
+                            <p><strong>Address:</strong> {{ $hrDetail?->address ?? 'Not Provided' }}</p>
+                            <p><strong>Notes:</strong> {{ $hrDetail?->notes ?? 'No additional notes' }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Recent Attendance Records -->
             <div class="card shadow mb-4">
                 <div class="card-header bg-primary text-white">
@@ -460,4 +385,45 @@
         </div>
     </div>
 </div>
+
+<!-- JavaScript for Carousel Hover Effect -->
+@section('scripts')
+<script>
+$(document).ready(function() {
+    // Add hover effect to month navigation buttons
+    $('#prev-month, #next-month').hover(
+        function() {
+            $(this).addClass('btn-info').removeClass('btn-light');
+            $(this).find('i').addClass('fa-spin');
+        },
+        function() {
+            $(this).removeClass('btn-info').addClass('btn-light');
+            $(this).find('i').removeClass('fa-spin');
+        }
+    );
+
+    // Add keyboard navigation
+    $(document).keydown(function(e) {
+        if (e.keyCode == 37) { // Left arrow key
+            $('#prev-month')[0].click();
+        } else if (e.keyCode == 39) { // Right arrow key
+            $('#next-month')[0].click();
+        }
+    });
+
+    // Add smooth scrolling to calendar
+    $('.month-navigation a').click(function(e) {
+        e.preventDefault();
+        var href = $(this).attr('href');
+        
+        // Add loading animation
+        $('.card-body').addClass('opacity-50');
+        $('.card-body').append('<div class="text-center py-4"><div class="spinner-border text-info" role="status"><span class="sr-only">Loading...</span></div><p class="mt-2">Loading attendance data...</p></div>');
+        
+        // Navigate to the new month
+        window.location.href = href;
+    });
+});
+</script>
+@endsection
 @endsection
