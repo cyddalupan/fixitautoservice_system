@@ -187,7 +187,7 @@
 
                         <!-- Calendar Table -->
                         <div class="table-responsive">
-                            <table class="table table-bordered">
+                            <table class="table table-bordered calendar-table">
                                 <thead class="thead-light">
                                     <tr>
                                         <th class="text-center">Sun</th>
@@ -388,14 +388,56 @@
 @endsection
 
 @push('styles')
-<!-- CSS for Smooth Swipe Animation -->
+<!-- Professional CSS for Calendar with Animations and Hover Effects -->
 <style>
-/* Calendar container for animation */
+/* ===== PROFESSIONAL CALENDAR DESIGN ===== */
+
+/* Calendar container with modern styling */
 .calendar-container {
     position: relative;
     overflow: hidden;
-    /* Remove min-height to prevent layout issues */
-    /* min-height: 400px; */
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid #e9ecef;
+    transition: all 0.3s ease;
+}
+
+.calendar-container:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+}
+
+/* Calendar header with gradient */
+.card-header.bg-info {
+    background: linear-gradient(135deg, #17a2b8 0%, #138496 100%) !important;
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 3px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Month navigation buttons with hover effects */
+.month-navigation .btn-light {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #138496;
+    font-weight: 600;
+    padding: 0.5rem 1.25rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.month-navigation .btn-light:hover {
+    background: white;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+    border-color: #17a2b8;
+}
+
+.month-navigation .btn-light:active {
+    transform: translateY(0);
 }
 
 /* Calendar content wrapper */
@@ -403,6 +445,7 @@
     position: relative;
     width: 100%;
     height: 100%;
+    padding: 1.5rem;
 }
 
 /* Calendar content - will be duplicated for animation */
@@ -411,6 +454,7 @@
     width: 100%;
     transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     will-change: transform;
+    touch-action: pan-y;
 }
 
 /* Animation states */
@@ -444,21 +488,201 @@
     }
 }
 
-/* Loading overlay */
+/* ===== PROFESSIONAL CALENDAR TABLE ===== */
+.calendar-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.calendar-table thead th {
+    background: linear-gradient(135deg, #f8fafc 0%, #e9ecef 100%);
+    color: #495057;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    padding: 1rem 0.5rem;
+    border-bottom: 2px solid #dee2e6;
+    text-align: center;
+}
+
+.calendar-table tbody td {
+    height: 100px;
+    vertical-align: top;
+    padding: 0.75rem;
+    border: 1px solid #f1f3f5;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Day cell hover effects */
+.calendar-table tbody td:hover {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    z-index: 1;
+}
+
+/* Current month days */
+.calendar-table tbody td:not(.text-muted) {
+    background: white;
+}
+
+/* Other month days */
+.calendar-table tbody td.text-muted {
+    background: #f8f9fa;
+    color: #adb5bd;
+}
+
+/* Today highlight */
+.calendar-table tbody td.border-primary {
+    border: 2px solid #007bff !important;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%) !important;
+    animation: pulseToday 2s infinite;
+}
+
+@keyframes pulseToday {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.4); }
+    50% { box-shadow: 0 0 0 6px rgba(0, 123, 255, 0); }
+}
+
+/* Status colors with gradients */
+.calendar-table tbody td[style*="background-color: #d4edda"] {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%) !important;
+}
+
+.calendar-table tbody td[style*="background-color: #f8d7da"] {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%) !important;
+}
+
+.calendar-table tbody td[style*="background-color: #fff3cd"] {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%) !important;
+}
+
+.calendar-table tbody td[style*="background-color: #d1ecf1"] {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%) !important;
+}
+
+.calendar-table tbody td[style*="background-color: #e2e3e5"] {
+    background: linear-gradient(135deg, #e2e3e5 0%, #d6d8db 100%) !important;
+}
+
+/* Day number styling */
+.calendar-table tbody td .font-weight-bold {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #343a40;
+    transition: all 0.3s ease;
+}
+
+.calendar-table tbody td:hover .font-weight-bold {
+    color: #007bff;
+    transform: scale(1.1);
+}
+
+/* Status badges */
+.calendar-table tbody td .badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.calendar-table tbody td:hover .badge {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Attendance details */
+.calendar-table tbody td .mt-2 {
+    margin-top: 0.5rem !important;
+}
+
+.calendar-table tbody td small {
+    font-size: 0.75rem;
+    line-height: 1.4;
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #6c757d;
+    transition: all 0.3s ease;
+}
+
+.calendar-table tbody td:hover small {
+    color: #495057;
+}
+
+.calendar-table tbody td .fas {
+    font-size: 0.7rem;
+    margin-right: 0.25rem;
+    transition: all 0.3s ease;
+}
+
+.calendar-table tbody td:hover .fas {
+    transform: scale(1.2);
+}
+
+/* ===== STATISTICS CARDS ===== */
+.attendance-stats .card {
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.attendance-stats .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.attendance-stats .card-body {
+    padding: 1.25rem;
+}
+
+.attendance-stats .text-xs {
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+}
+
+.attendance-stats .h5 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.attendance-stats .col-auto .fas {
+    font-size: 2rem;
+    opacity: 0.8;
+    transition: all 0.3s ease;
+}
+
+.attendance-stats .card:hover .col-auto .fas {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+/* ===== LOADING OVERLAY ===== */
 .loading-overlay {
     position: absolute;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.9);
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.95);
     display: flex;
     justify-content: center;
     align-items: center;
     z-index: 1000;
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s, visibility 0.3s;
+    border-radius: 12px;
 }
 
 .loading-overlay.active {
@@ -466,25 +690,19 @@
     visibility: visible;
 }
 
-/* Month navigation buttons with better styling */
-.month-navigation .btn {
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
+.loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #17a2b8;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.month-navigation .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.month-navigation .btn:active {
-    transform: translateY(0);
-}
-
-/* Touch swipe support */
-.calendar-content {
-    touch-action: pan-y;
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 /* Smooth fade for statistics */
@@ -492,20 +710,68 @@
     transition: opacity 0.3s ease;
 }
 
-/* Responsive adjustments */
+/* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
     .calendar-container {
+        margin: 0 -15px;
+        border-radius: 0;
         min-height: 500px;
+    }
+    
+    .calendar-content-wrapper {
+        padding: 1rem;
+    }
+    
+    .calendar-table tbody td {
+        height: 80px;
+        padding: 0.5rem;
     }
     
     .month-navigation {
         flex-direction: column;
+        align-items: flex-start;
         gap: 10px;
     }
     
-    .month-navigation .btn {
+    .month-navigation .btn-light {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .month-navigation span {
+        margin: 0.5rem 0;
+        text-align: center;
         width: 100%;
     }
+}
+
+@media (max-width: 576px) {
+    .calendar-table tbody td {
+        height: 70px;
+    }
+    
+    .calendar-table thead th {
+        padding: 0.75rem 0.25rem;
+        font-size: 0.75rem;
+    }
+    
+    .calendar-table tbody td .font-weight-bold {
+        font-size: 0.9rem;
+    }
+    
+    .calendar-table tbody td .badge {
+        font-size: 0.6rem;
+        padding: 0.15rem 0.35rem;
+    }
+    
+    .attendance-stats .col-md-3 {
+        margin-bottom: 1rem;
+    }
+}
+
+/* ===== SMOOTH TRANSITIONS ===== */
+* {
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 </style>
 @endpush
@@ -699,8 +965,7 @@ $(document).ready(function() {
                         // Re-initialize event listeners for new content
                         initializeEventListeners();
                         
-                        // Show success notification
-                        showNotification(`Switched to ${newMonthTitle}`, 'success');
+                        // No notification needed - month is already displayed in header
                     }, 400); // Match slide-in animation duration
                 }, 400); // Match slide-out animation duration
             },
@@ -711,8 +976,8 @@ $(document).ready(function() {
                 // Remove animation class
                 calendarContent.removeClass(outClass);
                 
-                // Show error notification
-                showNotification('Failed to load attendance data. Please try again.', 'error');
+                // Show subtle error in month header
+                $('.month-navigation span').addClass('text-danger').text('Error loading data');
                 console.error('Error loading attendance data:', error);
             }
         });
