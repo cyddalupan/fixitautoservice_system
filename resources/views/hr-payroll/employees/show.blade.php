@@ -292,7 +292,6 @@
                     </div>
                 </div>
             </div>
-            </div>
 
             <!-- Employment Information -->
             <div class="card shadow mb-4">
@@ -394,14 +393,8 @@
 .calendar-container {
     position: relative;
     overflow: hidden;
-    min-height: 600px;
-}
-
-/* Calendar container for animation */
-.calendar-container {
-    position: relative;
-    overflow: hidden;
-    min-height: 600px;
+    /* Remove min-height to prevent layout issues */
+    /* min-height: 400px; */
 }
 
 /* Calendar content wrapper */
