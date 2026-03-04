@@ -8,8 +8,11 @@
                     <h1 class="h3 mb-0 text-gray-800">Time & Attendance</h1>
                     <p class="text-muted">Track employee working hours and attendance</p>
                 </div>
-                <div>
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTimeEntryModal">
+                <div class="btn-group">
+                    <a href="{{ route('hr-payroll.time-attendance', ['view' => 'calendar']) }}" class="btn btn-primary">
+                        <i class="fas fa-calendar-alt"></i> Calendar View
+                    </a>
+                    <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addTimeEntryModal">
                         <i class="fas fa-plus"></i> Add Time Entry
                     </button>
                     <a href="{{ route('hr-payroll.time-attendance.export') }}" class="btn btn-success">

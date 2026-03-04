@@ -471,6 +471,11 @@ class HrPayrollController extends Controller
      */
     public function timeAttendance(Request $request)
     {
+        // Check if calendar view is requested
+        if ($request->has('view') && $request->view === 'calendar') {
+            return $this->timeAttendanceCalendar($request);
+        }
+        
         $query = TimeAttendance::with('employee');
         
         if ($request->has('employee_id')) {
@@ -494,6 +499,123 @@ class HrPayrollController extends Controller
         $employees = User::whereIn('role', ['technician', 'admin'])->get();
 
         return view('hr-payroll.time-attendance.index', compact('timeAttendance', 'employees'));
+    }
+    
+    /**
+     * Display time and attendance calendar view.
+     */
+    public function timeAttendanceCalendar(Request $request)
+    {
+        $year = $request->has('year') ? $request->year : date('Y');
+        $month = $request->has('month') ? $request->month : date('m');
+        
+        // Get all time attendance records for the month
+        $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+        $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+        
+        $query = TimeAttendance::with('employee')
+            ->whereBetween('work_date', [$startDate, $endDate]);
+        
+        if ($request->has('employee_id')) {
+            $query->where('employee_id', $request->employee_id);
+        }
+        
+        $timeAttendance = $query->get();
+        
+        // Group attendance by date
+        $attendanceByDate = [];
+        foreach ($timeAttendance as $record) {
+            $dateKey = $record->work_date->format('Y-m-d');
+            if (!isset($attendanceByDate[$dateKey])) {
+                $attendanceByDate[$dateKey] = [
+                    'present' => [],
+                    'absent' => [],
+                    'late' => [],
+                    'on_leave' => [],
+                    'total_present' => 0,
+                    'total_absent' => 0,
+                    'total_late' => 0,
+                    'total_on_leave' => 0,
+                    'total_employees' => 0
+                ];
+            }
+            
+            $attendanceByDate[$dateKey][$record->status][] = [
+                'id' => $record->employee->id,
+                'name' => $record->employee->name,
+                'clock_in' => $record->clock_in ? Carbon::parse($record->clock_in)->format('h:i A') : null,
+                'clock_out' => $record->clock_out ? Carbon::parse($record->clock_out)->format('h:i A') : null,
+                'total_hours' => $record->total_hours,
+                'is_approved' => $record->is_approved
+            ];
+            
+            // Update counts
+            $attendanceByDate[$dateKey]['total_' . $record->status]++;
+            $attendanceByDate[$dateKey]['total_employees']++;
+        }
+        
+        // Get all employees for total count
+        $totalEmployees = User::whereIn('role', ['technician', 'admin'])->count();
+        
+        // Create calendar structure
+        $calendar = [];
+        $currentDate = $startDate->copy();
+        
+        while ($currentDate->lte($endDate)) {
+            $dateKey = $currentDate->format('Y-m-d');
+            $dayData = $attendanceByDate[$dateKey] ?? [
+                'present' => [],
+                'absent' => [],
+                'late' => [],
+                'on_leave' => [],
+                'total_present' => 0,
+                'total_absent' => 0,
+                'total_late' => 0,
+                'total_on_leave' => 0,
+                'total_employees' => 0
+            ];
+            
+            // Calculate percentages
+            $presentPercentage = $totalEmployees > 0 ? ($dayData['total_present'] / $totalEmployees) * 100 : 0;
+            $absentPercentage = $totalEmployees > 0 ? ($dayData['total_absent'] / $totalEmployees) * 100 : 0;
+            $latePercentage = $totalEmployees > 0 ? ($dayData['total_late'] / $totalEmployees) * 100 : 0;
+            $onLeavePercentage = $totalEmployees > 0 ? ($dayData['total_on_leave'] / $totalEmployees) * 100 : 0;
+            
+            $calendar[] = [
+                'date' => $currentDate->copy(),
+                'date_key' => $dateKey,
+                'day' => $currentDate->day,
+                'day_of_week' => $currentDate->format('D'),
+                'is_weekend' => $currentDate->isWeekend(),
+                'is_today' => $currentDate->isToday(),
+                'attendance' => $dayData,
+                'total_employees' => $totalEmployees,
+                'present_percentage' => round($presentPercentage, 1),
+                'absent_percentage' => round($absentPercentage, 1),
+                'late_percentage' => round($latePercentage, 1),
+                'on_leave_percentage' => round($onLeavePercentage, 1),
+                'has_data' => $dayData['total_employees'] > 0
+            ];
+            
+            $currentDate->addDay();
+        }
+        
+        // Get employees for filter dropdown
+        $employees = User::whereIn('role', ['technician', 'admin'])->get();
+        
+        // Previous and next month navigation
+        $prevMonth = Carbon::create($year, $month, 1)->subMonth();
+        $nextMonth = Carbon::create($year, $month, 1)->addMonth();
+        
+        return view('hr-payroll.time-attendance.calendar', compact(
+            'calendar',
+            'employees',
+            'year',
+            'month',
+            'prevMonth',
+            'nextMonth',
+            'totalEmployees'
+        ));
     }
 
     /**
