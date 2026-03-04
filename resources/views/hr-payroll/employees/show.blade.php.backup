@@ -227,71 +227,7 @@
                                                         $isCurrentMonth = $day->month == $month;
                                                         $statusColor = $dayData ? $dayData['status_color'] : ($day->isWeekend() ? 'bg-light' : '');
                                                         $isToday = $day->isToday();
-                                                    @endphp
-                                                    <td class="text-center p-2 {{ $isCurrentMonth ? '' : 'text-muted' }} {{ $isToday ? 'border border-primary' : '' }}" 
-                                                        style="height: 100px; vertical-align: top; background-color: {{ $statusColor == 'success' ? '#d4edda' : ($statusColor == 'danger' ? '#f8d7da' : ($statusColor == 'warning' ? '#fff3cd' : ($statusColor == 'info' ? '#d1ecf1' : ($statusColor == 'secondary' ? '#e2e3e5' : '#f8f9fa')))) }}">
-                                                        <div class="d-flex justify-content-between">
-                                                            <small class="font-weight-bold">{{ $day->day }}</small>
-                                                            @if($dayData && $dayData['attendance'])
-                                                                <small class="badge badge-{{ $dayData['status_color'] }}">{{ ucfirst($dayData['status']) }}</small>
-                                                            @endif
-                                                        </div>
-                                                        
-                                                        @if($dayData && $dayData['attendance'])
-                                                            <div class="mt-2 text-left">
-                                                                @if($dayData['clock_in'])
-                                                                    <small class="d-block"><i class="fas fa-sign-in-alt text-success"></i> {{ $dayData['clock_in'] }}</small>
-                                                                @endif
-                                                                @if($dayData['clock_out'])
-                                                                    <small class="d-block"><i class="fas fa-sign-out-alt text-danger"></i> {{ $dayData['clock_out'] }}</small>
-                                                                @endif
-                                                                @if($dayData['total_hours'] > 0)
-                                                                    <small class="d-block"><i class="fas fa-clock text-info"></i> {{ number_format($dayData['total_hours'], 1) }}h</small>
-                                                                @endif
-                                                                @if($dayData['notes'])
-                                                                    <small class="d-block text-truncate" title="{{ $dayData['notes'] }}">
-                                                                        <i class="fas fa-sticky-note text-warning"></i> {{ Str::limit($dayData['notes'], 15) }}
-                                                                    </small>
-                                                                @endif
-                                                            </div>
-                                                        @elseif($day->isWeekend())
-                                                            <div class="mt-2">
-                                                                <small class="text-muted">Weekend</small>
-                                                            </div>
-                                                        @elseif($isCurrentMonth)
-                                                            <div class="mt-2">
-                                                                <small class="text-muted">No record</small>
-                                                            </div>
-                                                        @endif
-                                                    </td>
-                                                @endforeach
-                                            </tr>
-                                            @php $week = []; @endphp
-                                        @endif
-                                        
-                                        @php
-                                            $week[] = $currentDay->copy();
-                                            $currentDay->addDay();
-                                        @endphp
-                                    @endwhile
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <!-- Legend -->
-                        <div class="mt-3">
-                            <h6 class="font-weight-bold">Legend:</h6>
-                            <div class="d-flex flex-wrap">
-                                <span class="badge badge-success mr-2 mb-1">Present</span>
-                                <span class="badge badge-danger mr-2 mb-1">Absent</span>
-                                <span class="badge badge-warning mr-2 mb-1">Late</span>
-                                <span class="badge badge-info mr-2 mb-1">On Leave</span>
-                                <span class="badge badge-secondary mr-2 mb-1">Weekend</span>
-                                <span class="badge badge-light mr-2 mb-1">No Record</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                                                    @
             </div>
 
             <!-- Employment Information -->
