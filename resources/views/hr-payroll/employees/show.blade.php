@@ -63,7 +63,6 @@
                         <button class="btn btn-sm btn-light mr-2" id="prev-month">
                             <i class="fas fa-chevron-left"></i> Previous Month
                         </button>
-                        <span class="mx-2 text-white font-weight-bold">{{ \Carbon\Carbon::create($year, $month, 1)->format('F Y') }}</span>
                         <button class="btn btn-sm btn-light" id="next-month">
                             Next Month <i class="fas fa-chevron-right"></i>
                         </button>
@@ -751,11 +750,7 @@
         margin-bottom: 0.5rem;
     }
     
-    .month-navigation span {
-        margin: 0.5rem 0;
-        text-align: center;
-        width: 100%;
-    }
+    /* .month-navigation span removed - redundant date display */
 }
 
 @media (max-width: 576px) {
@@ -990,7 +985,7 @@ $(document).ready(function() {
                 calendarContent.removeClass(outClass);
                 
                 // Show subtle error in month header
-                $('.month-navigation span').addClass('text-danger').text('Error loading data');
+                $('.card-header h6').addClass('text-danger').text('Error loading attendance data');
                 console.error('Error loading attendance data:', error);
             }
         });
