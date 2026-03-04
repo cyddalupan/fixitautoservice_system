@@ -724,7 +724,7 @@ class VehicleInspectionController extends Controller
         if (!empty($validated['category']) && $validated['category'] !== 'Uncategorized') {
             // Find or create category
             $category = InspectionCategory::firstOrCreate(
-                ['name' => $validated['category']],
+                ['category_name' => $validated['category']],
                 ['is_active' => true]
             );
             $item->category_id = $category->id;
@@ -806,6 +806,71 @@ class VehicleInspectionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to upload photo: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Update vehicle mileage for an inspection (AJAX endpoint)
+     */
+    public function updateMileage(Request $request, VehicleInspection $inspection)
+    {
+        \Log::info('updateMileage called', [
+            'inspection_id' => $inspection->id,
+            'has_csrf_token' => $request->has('_token'),
+            'csrf_token' => $request->input('_token'),
+            'vehicle_mileage' => $request->input('vehicle_mileage'),
+            'is_ajax' => $request->ajax(),
+            'wants_json' => $request->wantsJson(),
+            'headers' => $request->headers->all()
+        ]);
+        
+        try {
+            // Validate the request
+            $validated = $request->validate([
+                'vehicle_mileage' => 'required|integer|min:0'
+            ]);
+            
+            // Update the inspection mileage
+            $inspection->update([
+                'vehicle_mileage' => $validated['vehicle_mileage']
+            ]);
+            
+            // Also update the vehicle's current mileage if this is the latest inspection
+            // Note: Temporarily commented out until we verify the vehicle relationship and field exist
+            /*
+            if ($inspection->vehicle) {
+                $latestInspection = $inspection->vehicle->inspections()
+                    ->where('inspection_status', 'completed')
+                    ->orderBy('inspection_completed_at', 'desc')
+                    ->first();
+                
+                // If this is the latest completed inspection, update vehicle mileage
+                if ($latestInspection && $latestInspection->id === $inspection->id) {
+                    $inspection->vehicle->update([
+                        'current_mileage' => $validated['vehicle_mileage']
+                    ]);
+                }
+            }
+            */
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Mileage updated successfully',
+                'vehicle_mileage' => $validated['vehicle_mileage']
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update mileage: ' . $e->getMessage()
             ], 500);
         }
     }

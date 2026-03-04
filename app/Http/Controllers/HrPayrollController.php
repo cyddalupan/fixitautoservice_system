@@ -100,7 +100,7 @@ class HrPayrollController extends Controller
     /**
      * Display employee details page.
      */
-    public function showEmployee($id)
+    public function showEmployee($id, Request $request)
     {
         $employee = User::with('employeeHrDetails')->findOrFail($id);
         
@@ -111,6 +111,12 @@ class HrPayrollController extends Controller
         $payrollRecords = collect();
         $timeAttendance = collect();
         $currentYearBalance = null;
+        $monthlyAttendance = collect();
+        $attendanceStats = [];
+        
+        // Get month and year from request or use current
+        $month = $request->get('month', now()->month);
+        $year = $request->get('year', now()->year);
         
         // Try to load related data if models exist
         try {
@@ -119,7 +125,20 @@ class HrPayrollController extends Controller
             }
             
             if (class_exists('App\\Models\\TimeAttendance')) {
-                $timeAttendance = \App\Models\TimeAttendance::where('employee_id', $id)->latest()->take(20)->get();
+                // Get time attendance for the selected month
+                $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+                $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+                
+                $timeAttendance = \App\Models\TimeAttendance::where('employee_id', $id)
+                    ->whereBetween('work_date', [$startDate, $endDate])
+                    ->orderBy('work_date', 'desc')
+                    ->get();
+                
+                // Calculate attendance statistics
+                $attendanceStats = $this->calculateAttendanceStats($timeAttendance, $month, $year);
+                
+                // Prepare monthly calendar data
+                $monthlyAttendance = $this->prepareMonthlyCalendar($timeAttendance, $month, $year);
             }
             
             if (class_exists('App\\Models\\LeaveBalance')) {
@@ -136,8 +155,111 @@ class HrPayrollController extends Controller
             'hrDetails',
             'payrollRecords', 
             'timeAttendance',
-            'currentYearBalance'
+            'currentYearBalance',
+            'monthlyAttendance',
+            'attendanceStats',
+            'month',
+            'year'
         ));
+    }
+    
+    /**
+     * Calculate attendance statistics for the month.
+     */
+    private function calculateAttendanceStats($attendance, $month, $year): array
+    {
+        $totalDays = Carbon::create($year, $month, 1)->daysInMonth;
+        $presentDays = 0;
+        $absentDays = 0;
+        $lateDays = 0;
+        $onLeaveDays = 0;
+        $totalHours = 0;
+        $overtimeHours = 0;
+        
+        foreach ($attendance as $record) {
+            if ($record->status === 'present') {
+                $presentDays++;
+                $totalHours += $record->regular_hours;
+                $overtimeHours += $record->overtime_hours;
+            } elseif ($record->status === 'absent') {
+                $absentDays++;
+            } elseif ($record->status === 'late') {
+                $lateDays++;
+                $presentDays++; // Late is still present
+                $totalHours += $record->regular_hours;
+            } elseif ($record->status === 'on_leave') {
+                $onLeaveDays++;
+            }
+        }
+        
+        // Calculate working days (excluding weekends)
+        $workingDays = 0;
+        $startDate = Carbon::create($year, $month, 1);
+        $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+        
+        for ($date = $startDate; $date->lte($endDate); $date->addDay()) {
+            if (!$date->isWeekend()) {
+                $workingDays++;
+            }
+        }
+        
+        $attendanceRate = $workingDays > 0 ? ($presentDays / $workingDays) * 100 : 0;
+        
+        return [
+            'total_days' => $totalDays,
+            'working_days' => $workingDays,
+            'present_days' => $presentDays,
+            'absent_days' => $absentDays,
+            'late_days' => $lateDays,
+            'on_leave_days' => $onLeaveDays,
+            'attendance_rate' => round($attendanceRate, 2),
+            'total_hours' => round($totalHours, 2),
+            'overtime_hours' => round($overtimeHours, 2),
+            'average_hours_per_day' => $presentDays > 0 ? round($totalHours / $presentDays, 2) : 0,
+        ];
+    }
+    
+    /**
+     * Prepare monthly calendar data for display.
+     */
+    private function prepareMonthlyCalendar($attendance, $month, $year): array
+    {
+        $calendar = [];
+        $startDate = Carbon::create($year, $month, 1);
+        $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+        
+        // Group attendance by date for easy lookup
+        $attendanceByDate = [];
+        foreach ($attendance as $record) {
+            $dateKey = $record->work_date->format('Y-m-d');
+            $attendanceByDate[$dateKey] = $record;
+        }
+        
+        // Create calendar structure
+        $currentDate = $startDate->copy();
+        while ($currentDate->lte($endDate)) {
+            $dateKey = $currentDate->format('Y-m-d');
+            $attendanceRecord = $attendanceByDate[$dateKey] ?? null;
+            
+            $calendar[] = [
+                'date' => $currentDate->copy(),
+                'day' => $currentDate->day,
+                'day_of_week' => $currentDate->format('D'),
+                'is_weekend' => $currentDate->isWeekend(),
+                'is_today' => $currentDate->isToday(),
+                'attendance' => $attendanceRecord,
+                'status' => $attendanceRecord ? $attendanceRecord->status : ($currentDate->isWeekend() ? 'weekend' : 'no_record'),
+                'clock_in' => $attendanceRecord ? ($attendanceRecord->clock_in ? Carbon::parse($attendanceRecord->clock_in)->format('h:i A') : null) : null,
+                'clock_out' => $attendanceRecord ? ($attendanceRecord->clock_out ? Carbon::parse($attendanceRecord->clock_out)->format('h:i A') : null) : null,
+                'total_hours' => $attendanceRecord ? $attendanceRecord->calculateTotalHours() : 0,
+                'status_color' => $attendanceRecord ? $attendanceRecord->status_color : ($currentDate->isWeekend() ? 'secondary' : 'light'),
+                'notes' => $attendanceRecord ? $attendanceRecord->notes : null,
+            ];
+            
+            $currentDate->addDay();
+        }
+        
+        return $calendar;
     }
 
     /**

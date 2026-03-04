@@ -139,9 +139,7 @@ class User extends Authenticatable
             return [];
         }
         
-        return array_map(function($skill) {
-            return '<span class="badge bg-primary">' . htmlspecialchars($skill) . '</span>';
-        }, $this->skills);
+        return $this->skills;
     }
 
     public function getFormattedCertificationsAttribute()
@@ -150,9 +148,7 @@ class User extends Authenticatable
             return [];
         }
         
-        return array_map(function($cert) {
-            return '<span class="badge bg-success">' . htmlspecialchars($cert) . '</span>';
-        }, $this->certifications);
+        return $this->certifications;
     }
 
     public function getCompletedServicesCountAttribute()
@@ -225,6 +221,30 @@ class User extends Authenticatable
     public function partsRequests()
     {
         return $this->hasMany(PartsRequest::class, 'technician_id');
+    }
+
+    /**
+     * Get all time logs for this technician.
+     */
+    public function timeLogs()
+    {
+        return $this->hasMany(TimeLog::class, 'technician_id');
+    }
+
+    /**
+     * Get all performance metrics for this technician.
+     */
+    public function performanceMetrics()
+    {
+        return $this->hasMany(PerformanceMetric::class, 'technician_id');
+    }
+
+    /**
+     * Get all training records for this technician.
+     */
+    public function trainingRecords()
+    {
+        return $this->hasMany(TrainingRecord::class, 'technician_id');
     }
 
     public function scopeActive($query)

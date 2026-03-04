@@ -111,6 +111,7 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::post('/inspections/{inspection}/items', [VehicleInspectionController::class, 'storeItem'])->name('inspections.store-item');
     Route::post('/inspections/{inspection}/items/{item}/update', [VehicleInspectionController::class, 'updateItem'])->name('inspections.update-item');
     Route::post('/inspections/{inspection}/upload-photo', [VehicleInspectionController::class, 'uploadPhoto'])->name('inspections.upload-photo');
+    Route::post('/inspections/{inspection}/update-mileage', [VehicleInspectionController::class, 'updateMileage'])->name('inspections.update-mileage');
 
     // Inventory Routes
     Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock'])->name('inventory.low-stock');
@@ -322,6 +323,25 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
         Route::get('/{user}/edit', [\App\Http\Controllers\TechnicianController::class, 'edit'])->name('edit');
         Route::put('/{user}', [\App\Http\Controllers\TechnicianController::class, 'update'])->name('update');
         Route::delete('/{user}', [\App\Http\Controllers\TechnicianController::class, 'destroy'])->name('destroy');
+    });
+
+    // Personnel Management Routes (single page for all staff with position tagging)
+    Route::prefix('personnel')->name('personnel.')->group(function () {
+        // Main personnel dashboard with filtering and sorting
+        Route::get('/', [\App\Http\Controllers\PersonnelController::class, 'index'])->name('index');
+        
+        // Personnel CRUD operations
+        Route::get('/create', [\App\Http\Controllers\PersonnelController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\PersonnelController::class, 'store'])->name('store');
+        Route::get('/{user}', [\App\Http\Controllers\PersonnelController::class, 'show'])->name('show');
+        Route::get('/{user}/edit', [\App\Http\Controllers\PersonnelController::class, 'edit'])->name('edit');
+        Route::put('/{user}', [\App\Http\Controllers\PersonnelController::class, 'update'])->name('update');
+        Route::delete('/{user}', [\App\Http\Controllers\PersonnelController::class, 'destroy'])->name('destroy');
+        
+        // Personnel-specific actions
+        Route::post('/{user}/assign-role', [\App\Http\Controllers\PersonnelController::class, 'assignRole'])->name('assign-role');
+        Route::get('/{user}/performance', [\App\Http\Controllers\PersonnelController::class, 'performance'])->name('performance');
+        Route::get('/export', [\App\Http\Controllers\PersonnelController::class, 'export'])->name('export');
     });
 
     // Quality Control Routes

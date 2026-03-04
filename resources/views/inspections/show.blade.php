@@ -153,7 +153,11 @@
                             <strong>Mileage:</strong> 
                             <input type="number" class="form-control form-control-sm d-inline-block w-auto ms-1" 
                                    name="vehicle_mileage" value="{{ old('vehicle_mileage', $inspection->vehicle_mileage) }}" 
-                                   min="0" step="1" style="width: 120px;"> km
+                                   min="0" step="1" style="width: 120px;" id="vehicle_mileage_input"> km
+                            <button type="button" class="btn btn-sm btn-outline-primary ms-2" id="save_mileage_btn" onclick="saveMileage()">
+                                <i class="fas fa-save me-1"></i> Save
+                            </button>
+                            <span id="mileage_save_status" class="ms-2" style="display: none;"></span>
                         </p>
                     </div>
                 </div>
@@ -1669,6 +1673,177 @@ function submitUndoCompleteRequest(inspectionId) {
         });
     });
 }
+
+// Category Autocomplete Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const categoryInput = document.getElementById('category');
+    
+    if (categoryInput) {
+        // Create datalist element for autocomplete
+        const datalist = document.createElement('datalist');
+        datalist.id = 'category-suggestions';
+        categoryInput.setAttribute('list', 'category-suggestions');
+        document.body.appendChild(datalist);
+        
+        // Fetch categories from inventory
+        function loadCategories() {
+            fetch('{{ route("inventory.categories.api.list") }}')
+                .then(response => response.json())
+                .then(categories => {
+                    // Clear existing options
+                    datalist.innerHTML = '';
+                    
+                    // Add category options
+                    categories.forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category.name;
+                        datalist.appendChild(option);
+                    });
+                    
+                    console.log('Loaded ' + categories.length + ' inventory categories for autocomplete');
+                })
+                .catch(error => {
+                    console.error('Error loading categories:', error);
+                });
+        }
+        
+        // Load categories when input is focused
+        categoryInput.addEventListener('focus', loadCategories);
+        
+        // Also load categories on page load
+        loadCategories();
+        
+        // Add keyboard shortcut for quick category selection
+        categoryInput.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowDown' && this.value === '') {
+                // Show dropdown when arrow down is pressed on empty field
+                this.click();
+            }
+        });
+    }
+});
+
+// Save Mileage Function
+function saveMileage() {
+    const mileageInput = document.getElementById('vehicle_mileage_input');
+    const saveBtn = document.getElementById('save_mileage_btn');
+    const statusSpan = document.getElementById('mileage_save_status');
+    
+    if (!mileageInput || !saveBtn) {
+        console.error('Mileage input or save button not found');
+        return;
+    }
+    
+    const mileage = mileageInput.value.trim();
+    
+    // Validate mileage
+    if (!mileage || isNaN(mileage) || parseInt(mileage) < 0) {
+        showMileageStatus('Please enter a valid mileage (positive number)', 'error');
+        return;
+    }
+    
+    // Disable button and show loading
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+    
+    // Get CSRF token - use the same approach as other successful AJAX calls in this file
+    const csrfToken = '{{ csrf_token() }}';
+    
+    console.log('CSRF Token:', csrfToken ? 'Found (' + csrfToken.substring(0, 10) + '...)' : 'Not found');
+    
+    if (!csrfToken) {
+        console.error('CSRF token not found');
+        showMileageStatus('Security error. Please refresh the page.', 'error');
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Save';
+        return;
+    }
+    
+    // Send AJAX request - Use FormData like other successful AJAX calls
+    const formData = new FormData();
+    formData.append('_token', csrfToken);
+    formData.append('vehicle_mileage', parseInt(mileage));
+    
+    fetch('{{ route("inspections.update-mileage", $inspection) }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+            // Don't set Content-Type - let browser set it for FormData
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showMileageStatus('Mileage saved successfully!', 'success');
+            
+            // Update the input value with the saved value (in case it was formatted)
+            if (data.vehicle_mileage !== undefined) {
+                mileageInput.value = data.vehicle_mileage;
+            }
+            
+            // Reset button after 2 seconds
+            setTimeout(() => {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Save';
+                statusSpan.style.display = 'none';
+            }, 2000);
+        } else {
+            throw new Error(data.message || 'Failed to save mileage');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving mileage:', error);
+        showMileageStatus('Error: ' + error.message, 'error');
+        
+        // Reset button
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Save';
+    });
+}
+
+// Helper function to show status messages
+function showMileageStatus(message, type) {
+    const statusSpan = document.getElementById('mileage_save_status');
+    if (!statusSpan) return;
+    
+    statusSpan.textContent = message;
+    statusSpan.style.display = 'inline';
+    
+    if (type === 'success') {
+        statusSpan.className = 'ms-2 text-success';
+    } else if (type === 'error') {
+        statusSpan.className = 'ms-2 text-danger';
+    } else {
+        statusSpan.className = 'ms-2 text-info';
+    }
+    
+    // Auto-hide after 5 seconds for success messages
+    if (type === 'success') {
+        setTimeout(() => {
+            statusSpan.style.display = 'none';
+        }, 5000);
+    }
+}
+
+// Add keyboard shortcut for mileage input (Enter to save)
+document.addEventListener('DOMContentLoaded', function() {
+    const mileageInput = document.getElementById('vehicle_mileage_input');
+    if (mileageInput) {
+        mileageInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveMileage();
+            }
+        });
+    }
+});
 </script>
 @endpush
 
