@@ -192,7 +192,8 @@ class EmployeeHrDetail extends Model
      */
     public function getEmploymentStatusBadgeColorAttribute()
     {
-        return match($this->employment_status) {
+        $status = $this->employment_status ?? 'active';
+        return match($status) {
             'active' => 'success',
             'on_leave' => 'warning',
             'suspended' => 'danger',

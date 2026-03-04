@@ -311,20 +311,26 @@
                             <p><strong>Hire Date:</strong> {{ $employee->hire_date ? \Carbon\Carbon::parse($employee->hire_date)->format('M d, Y') : 'Not Set' }}</p>
                             <p><strong>Employment Status:</strong> 
                                 @if($hrDetail?->employment_status)
-                                    <span class="badge badge-{{ $hrDetail->employment_status_badge_color }}">
+                                    @php
+                                        $statusColor = $hrDetail->employment_status_badge_color;
+                                    @endphp
+                                    <span class="badge badge-{{ $statusColor }} @if(in_array($statusColor, ['light', 'secondary'])) text-dark @endif">
                                         {{ ucfirst(str_replace('_', ' ', $hrDetail->employment_status)) }}
                                     </span>
                                 @else
-                                    <span class="badge badge-light">Not Set</span>
+                                    <span class="badge badge-light text-dark">Not Set</span>
                                 @endif
                             </p>
                             <p><strong>Employment Type:</strong> 
                                 @if($employee->employment_type)
-                                    <span class="badge badge-{{ $employee->employment_type_badge_color }}">
+                                    @php
+                                        $typeColor = $employee->employment_type_badge_color;
+                                    @endphp
+                                    <span class="badge badge-{{ $typeColor }} @if(in_array($typeColor, ['light', 'secondary'])) text-dark @endif">
                                         {{ ucfirst(str_replace('_', ' ', $employee->employment_type)) }}
                                     </span>
                                 @else
-                                    <span class="badge badge-light">Not Set</span>
+                                    <span class="badge badge-light text-dark">Not Set</span>
                                 @endif
                             </p>
                             <p><strong>Tenure:</strong> 
