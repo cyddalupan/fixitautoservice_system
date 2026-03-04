@@ -186,4 +186,19 @@ class EmployeeHrDetail extends Model
     {
         return $query->where('employment_status', $status);
     }
+
+    /**
+     * Get the badge color for employment status.
+     */
+    public function getEmploymentStatusBadgeColorAttribute()
+    {
+        return match($this->employment_status) {
+            'full_time' => 'success',
+            'part_time' => 'info',
+            'contract' => 'warning',
+            'temporary' => 'secondary',
+            'intern' => 'light',
+            default => 'light',
+        };
+    }
 }

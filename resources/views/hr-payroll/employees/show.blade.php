@@ -309,8 +309,24 @@
                         </div>
                         <div class="col-md-6">
                             <p><strong>Hire Date:</strong> {{ $employee->hire_date ? \Carbon\Carbon::parse($employee->hire_date)->format('M d, Y') : 'Not Set' }}</p>
-                            <p><strong>Employment Status:</strong> {{ ucfirst($hrDetail?->employment_status ?? 'Not Set') }}</p>
-                            <p><strong>Employment Type:</strong> {{ ucfirst($employee->employment_type ?? 'Not Set') }}</p>
+                            <p><strong>Employment Status:</strong> 
+                                @if($hrDetail?->employment_status)
+                                    <span class="badge badge-{{ $hrDetail->employment_status_badge_color }}">
+                                        {{ ucfirst(str_replace('_', ' ', $hrDetail->employment_status)) }}
+                                    </span>
+                                @else
+                                    <span class="badge badge-light">Not Set</span>
+                                @endif
+                            </p>
+                            <p><strong>Employment Type:</strong> 
+                                @if($employee->employment_type)
+                                    <span class="badge badge-{{ $employee->employment_type_badge_color }}">
+                                        {{ ucfirst(str_replace('_', ' ', $employee->employment_type)) }}
+                                    </span>
+                                @else
+                                    <span class="badge badge-light">Not Set</span>
+                                @endif
+                            </p>
                             <p><strong>Tenure:</strong> 
                                 @if($employee->hire_date)
                                     {{ \Carbon\Carbon::parse($employee->hire_date)->diffInYears(now()) }} years
