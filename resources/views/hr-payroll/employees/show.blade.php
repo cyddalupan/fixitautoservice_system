@@ -385,7 +385,9 @@
         </div>
     </div>
 </div>
+@endsection
 
+@push('styles')
 <!-- CSS for Smooth Swipe Animation -->
 <style>
 /* Calendar container for animation */
@@ -506,6 +508,7 @@
     }
 }
 </style>
+@endpush
 
 <!-- JavaScript for Smooth Swipe Animation -->
 @push('scripts')
