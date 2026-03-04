@@ -85,7 +85,7 @@
                                                     $displayText = ucfirst(str_replace('_', ' ', $empType));
                                                 }
                                             @endphp
-                                            <span class="badge badge-{{ $badgeColor }} @if(in_array($badgeColor, ['light', 'secondary'])) text-dark @endif" title="Type: {{ $empType ?? 'null' }}, Color: {{ $badgeColor }}">
+                                            <span class="badge bg-{{ $badgeColor }} @if(in_array($badgeColor, ['light', 'secondary'])) text-dark @endif" title="Type: {{ $empType ?? 'null' }}, Color: {{ $badgeColor }}">
                                                 {{ $displayText }}
                                             </span>
                                         </td>
@@ -126,7 +126,7 @@
                                                     default => ucfirst(str_replace('_', ' ', $empStatus)),
                                                 };
                                             @endphp
-                                            <span class="badge badge-{{ $statusBadgeColor }} @if(in_array($statusBadgeColor, ['light', 'secondary'])) text-dark @endif" title="Status: {{ $empStatus }}, Color: {{ $statusBadgeColor }}">
+                                            <span class="badge bg-{{ $statusBadgeColor }} @if(in_array($statusBadgeColor, ['light', 'secondary'])) text-dark @endif" title="Status: {{ $empStatus }}, Color: {{ $statusBadgeColor }}">
                                                 {{ $statusDisplay }}
                                             </span>
                                         </td>

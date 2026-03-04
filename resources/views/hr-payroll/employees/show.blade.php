@@ -230,7 +230,7 @@
                                                         <div class="d-flex justify-content-between">
                                                             <small class="font-weight-bold">{{ $day->day }}</small>
                                                             @if($dayData && $dayData['attendance'])
-                                                                <small class="badge badge-{{ $dayData['status_color'] }}">{{ ucfirst($dayData['status']) }}</small>
+                                                                <small class="badge bg-{{ $dayData['status_color'] }}">{{ ucfirst($dayData['status']) }}</small>
                                                             @endif
                                                         </div>
                                                         
@@ -279,12 +279,12 @@
                         <div class="mt-3">
                             <h6 class="font-weight-bold">Legend:</h6>
                             <div class="d-flex flex-wrap">
-                                <span class="badge badge-success mr-2 mb-1">Present</span>
-                                <span class="badge badge-danger mr-2 mb-1">Absent</span>
-                                <span class="badge badge-warning mr-2 mb-1">Late</span>
-                                <span class="badge badge-info mr-2 mb-1">On Leave</span>
-                                <span class="badge badge-secondary mr-2 mb-1">Weekend</span>
-                                <span class="badge badge-light mr-2 mb-1">No Record</span>
+                                <span class="badge bg-success mr-2 mb-1">Present</span>
+                                <span class="badge bg-danger mr-2 mb-1">Absent</span>
+                                <span class="badge bg-warning mr-2 mb-1">Late</span>
+                                <span class="badge bg-info mr-2 mb-1">On Leave</span>
+                                <span class="badge bg-secondary mr-2 mb-1">Weekend</span>
+                                <span class="badge bg-light text-dark mr-2 mb-1">No Record</span>
                             </div>
                         </div>
                     </div>
@@ -314,11 +314,11 @@
                                     @php
                                         $statusColor = $hrDetail->employment_status_badge_color;
                                     @endphp
-                                    <span class="badge badge-{{ $statusColor }} @if(in_array($statusColor, ['light', 'secondary'])) text-dark @endif">
+                                    <span class="badge bg-{{ $statusColor }} @if(in_array($statusColor, ['light', 'secondary'])) text-dark @endif">
                                         {{ ucfirst(str_replace('_', ' ', $hrDetail->employment_status)) }}
                                     </span>
                                 @else
-                                    <span class="badge badge-light text-dark">Not Set</span>
+                                    <span class="badge bg-light text-dark">Not Set</span>
                                 @endif
                             </p>
                             <p><strong>Employment Type:</strong> 
@@ -326,11 +326,11 @@
                                     @php
                                         $typeColor = $employee->employment_type_badge_color;
                                     @endphp
-                                    <span class="badge badge-{{ $typeColor }} @if(in_array($typeColor, ['light', 'secondary'])) text-dark @endif">
+                                    <span class="badge bg-{{ $typeColor }} @if(in_array($typeColor, ['light', 'secondary'])) text-dark @endif">
                                         {{ ucfirst(str_replace('_', ' ', $employee->employment_type)) }}
                                     </span>
                                 @else
-                                    <span class="badge badge-light text-dark">Not Set</span>
+                                    <span class="badge bg-light text-dark">Not Set</span>
                                 @endif
                             </p>
                             <p><strong>Tenure:</strong> 
@@ -378,16 +378,16 @@
                                             <td>{{ $record->clock_out ? \Carbon\Carbon::parse($record->clock_out)->format('h:i A') : 'N/A' }}</td>
                                             <td>{{ number_format($record->calculateTotalHours(), 2) }}</td>
                                             <td>
-                                                <span class="badge badge-{{ $record->status_color }}">
+                                                <span class="badge bg-{{ $record->status_color }}">
                                                     {{ ucfirst($record->status) }}
                                                 </span>
                                             </td>
                                             <td>{{ $record->location ?? 'N/A' }}</td>
                                             <td>
                                                 @if($record->approved)
-                                                    <span class="badge badge-success">Yes</span>
+                                                    <span class="badge bg-success">Yes</span>
                                                 @else
-                                                    <span class="badge badge-warning">Pending</span>
+                                                    <span class="badge bg-warning">Pending</span>
                                                 @endif
                                             </td>
                                         </tr>
