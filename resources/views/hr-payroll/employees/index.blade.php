@@ -70,7 +70,10 @@
                                                 $badgeColor = 'light';
                                                 $displayText = 'Not Set';
                                                 
-                                                if ($empType) {
+                                                // DEBUG: Log the value
+                                                // {{-- DEBUG: employment_type = {{ $empType }} --}}
+                                                
+                                                if ($empType && $empType !== '') {
                                                     // Simple color mapping
                                                     $badgeColor = match($empType) {
                                                         'full_time' => 'success',
@@ -82,7 +85,7 @@
                                                     $displayText = ucfirst(str_replace('_', ' ', $empType));
                                                 }
                                             @endphp
-                                            <span class="badge badge-{{ $badgeColor }} @if(in_array($badgeColor, ['light', 'secondary'])) text-dark @endif">
+                                            <span class="badge badge-{{ $badgeColor }} @if(in_array($badgeColor, ['light', 'secondary'])) text-dark @endif" title="Type: {{ $empType ?? 'null' }}, Color: {{ $badgeColor }}">
                                                 {{ $displayText }}
                                             </span>
                                         </td>
@@ -92,6 +95,9 @@
                                                 $empStatus = $employee->hrDetail?->employment_status ?? 'active';
                                                 $statusBadgeColor = 'light';
                                                 $statusDisplay = 'Not Set';
+                                                
+                                                // DEBUG: Log the value
+                                                // {{-- DEBUG: employment_status = {{ $empStatus }} --}}
                                                 
                                                 // Simple color mapping
                                                 $statusBadgeColor = match($empStatus) {
@@ -120,7 +126,7 @@
                                                     default => ucfirst(str_replace('_', ' ', $empStatus)),
                                                 };
                                             @endphp
-                                            <span class="badge badge-{{ $statusBadgeColor }} @if(in_array($statusBadgeColor, ['light', 'secondary'])) text-dark @endif">
+                                            <span class="badge badge-{{ $statusBadgeColor }} @if(in_array($statusBadgeColor, ['light', 'secondary'])) text-dark @endif" title="Status: {{ $empStatus }}, Color: {{ $statusBadgeColor }}">
                                                 {{ $statusDisplay }}
                                             </span>
                                         </td>
