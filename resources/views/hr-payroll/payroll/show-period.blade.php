@@ -89,7 +89,7 @@
                                 <span class="info-box-icon bg-success"><i class="fas fa-money-bill-wave"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text">Total Gross Pay</span>
-                                    <span class="info-box-number">${{ number_format($stats['total_gross'], 2) }}</span>
+                                    <span class="info-box-number">₱{{ number_format($stats['total_gross'], 2) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -98,7 +98,7 @@
                                 <span class="info-box-icon bg-danger"><i class="fas fa-minus-circle"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text">Total Deductions</span>
-                                    <span class="info-box-number">${{ number_format($stats['total_deductions'], 2) }}</span>
+                                    <span class="info-box-number">₱{{ number_format($stats['total_deductions'], 2) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -107,7 +107,7 @@
                                 <span class="info-box-icon bg-primary"><i class="fas fa-hand-holding-usd"></i></span>
                                 <div class="info-box-content">
                                     <span class="info-box-text">Total Net Pay</span>
-                                    <span class="info-box-number">${{ number_format($stats['total_net'], 2) }}</span>
+                                    <span class="info-box-number">₱{{ number_format($stats['total_net'], 2) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -170,12 +170,12 @@
                                         <td>{{ $record->employee->employee_id ?? 'N/A' }}</td>
                                         <td>{{ $record->regular_hours }}</td>
                                         <td>{{ $record->overtime_hours }}</td>
-                                        <td>${{ number_format($record->hourly_rate, 2) }}</td>
-                                        <td>${{ number_format($record->regular_pay, 2) }}</td>
-                                        <td>${{ number_format($record->overtime_pay, 2) }}</td>
-                                        <td>${{ number_format($record->total_gross, 2) }}</td>
-                                        <td>${{ number_format($record->total_deductions, 2) }}</td>
-                                        <td>${{ number_format($record->net_pay, 2) }}</td>
+                                        <td>₱{{ number_format($record->hourly_rate, 2) }}</td>
+                                        <td>₱{{ number_format($record->regular_pay, 2) }}</td>
+                                        <td>₱{{ number_format($record->overtime_pay, 2) }}</td>
+                                        <td>₱{{ number_format($record->total_gross, 2) }}</td>
+                                        <td>₱{{ number_format($record->total_deductions, 2) }}</td>
+                                        <td>₱{{ number_format($record->net_pay, 2) }}</td>
                                         <td>
                                             @php
                                                 $recordStatusColors = [
@@ -195,11 +195,11 @@
                                 <tfoot>
                                     <tr class="table-active">
                                         <td colspan="5" class="text-right"><strong>Totals:</strong></td>
-                                        <td><strong>${{ number_format($payrollRecords->sum('regular_pay'), 2) }}</strong></td>
-                                        <td><strong>${{ number_format($payrollRecords->sum('overtime_pay'), 2) }}</strong></td>
-                                        <td><strong>${{ number_format($payrollRecords->sum('total_gross'), 2) }}</strong></td>
-                                        <td><strong>${{ number_format($payrollRecords->sum('total_deductions'), 2) }}</strong></td>
-                                        <td><strong>${{ number_format($payrollRecords->sum('net_pay'), 2) }}</strong></td>
+                                        <td><strong>₱{{ number_format($payrollRecords->sum('regular_pay'), 2) }}</strong></td>
+                                        <td><strong>₱{{ number_format($payrollRecords->sum('overtime_pay'), 2) }}</strong></td>
+                                        <td><strong>₱{{ number_format($payrollRecords->sum('total_gross'), 2) }}</strong></td>
+                                        <td><strong>₱{{ number_format($payrollRecords->sum('total_deductions'), 2) }}</strong></td>
+                                        <td><strong>₱{{ number_format($payrollRecords->sum('net_pay'), 2) }}</strong></td>
                                         <td></td>
                                     </tr>
                                 </tfoot>
