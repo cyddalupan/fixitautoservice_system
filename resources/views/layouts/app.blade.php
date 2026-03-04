@@ -515,6 +515,9 @@
             overflow: visible !important;
         }
     </style>
+    
+    <!-- Page-specific styles -->
+    @stack('styles')
 </head>
 <body>
     <!-- Navigation -->

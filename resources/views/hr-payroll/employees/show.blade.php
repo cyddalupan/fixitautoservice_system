@@ -392,20 +392,25 @@
 <style>
 /* ===== PROFESSIONAL CALENDAR DESIGN ===== */
 
-/* Calendar container with modern styling */
+/* Main calendar card enhancement */
+.card.shadow.mb-4 {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08) !important;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.card.shadow.mb-4:hover {
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12) !important;
+    transform: translateY(-2px);
+}
+
+/* Calendar container */
 .calendar-container {
     position: relative;
     overflow: hidden;
-    border-radius: 12px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    border: 1px solid #e9ecef;
-    transition: all 0.3s ease;
-}
-
-.calendar-container:hover {
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-    transform: translateY(-2px);
 }
 
 /* Calendar header with gradient */
@@ -518,11 +523,16 @@
 }
 
 /* Day cell hover effects */
+.calendar-table tbody td {
+    cursor: pointer;
+}
+
 .calendar-table tbody td:hover {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    transform: scale(1.02);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    z-index: 1;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+    transform: scale(1.02) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+    z-index: 1 !important;
+    border-color: #007bff !important;
 }
 
 /* Current month days */
@@ -712,9 +722,12 @@
 
 /* ===== RESPONSIVE DESIGN ===== */
 @media (max-width: 768px) {
-    .calendar-container {
+    .card.shadow.mb-4 {
         margin: 0 -15px;
         border-radius: 0;
+    }
+    
+    .calendar-container {
         min-height: 500px;
     }
     
