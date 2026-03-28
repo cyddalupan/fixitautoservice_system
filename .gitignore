@@ -22,3 +22,17 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Backup files and directories
+/tmp/fixit-backup-*
+*.sql
+*.tar.gz
+BACKUP_MANIFEST.md
+
+# Temporary and development files
+*.backup
+*.old
+*.tmp
+test_*.php
+verify_*.php
+clear_opcache.php
