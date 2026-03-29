@@ -34,7 +34,7 @@ class EstimateController extends Controller
             ->orderBy('name')
             ->get();
         
-        // Pre-fill data from appointment or inspection
+        // Pre-fill data from appointment, inspection, or direct customer_id
         $appointment = null;
         $inspection = null;
         $prefilledData = [];
@@ -59,6 +59,30 @@ class EstimateController extends Controller
                     'vehicle_id' => $inspection->vehicle_id,
                     'mileage' => $inspection->vehicle->current_mileage ?? null,
                     'notes' => $inspection->customer_concerns . "\n\n" . $inspection->recommended_services,
+                ];
+            }
+        }
+        
+        // Handle direct customer_id parameter (from quick actions)
+        if ($request->has('customer_id') && empty($prefilledData)) {
+            $customer = \App\Models\Customer::find($request->customer_id);
+            if ($customer) {
+                $prefilledData = [
+                    'customer_id' => $customer->id,
+                    // Try to get customer's first vehicle
+                    'vehicle_id' => $customer->vehicles()->first()?->id,
+                ];
+            }
+        }
+        
+        // Handle direct vehicle_id parameter (from vehicle quick actions)
+        if ($request->has('vehicle_id') && empty($prefilledData)) {
+            $vehicle = \App\Models\Vehicle::with('customer')->find($request->vehicle_id);
+            if ($vehicle && $vehicle->customer) {
+                $prefilledData = [
+                    'customer_id' => $vehicle->customer->id,
+                    'vehicle_id' => $vehicle->id,
+                    'mileage' => $vehicle->current_mileage ?? null,
                 ];
             }
         }
@@ -179,7 +203,7 @@ class EstimateController extends Controller
      */
     public function show(Estimate $estimate)
     {
-        $estimate->load(['customer', 'vehicle', 'items.inventory']);
+        $estimate->load(['customer', 'vehicle', 'items.inventory', 'serviceProgress']);
         return view('estimates.show', compact('estimate'));
     }
 

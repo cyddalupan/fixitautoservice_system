@@ -31,14 +31,19 @@
                             <div class="form-group mb-3">
                                 <label for="customer_id" class="form-label">Customer *</label>
                                 <select class="form-select @error('customer_id') is-invalid @enderror" 
-                                        id="customer_id" name="customer_id" required>
+                                        id="customer_id" name="customer_id" required
+                                        {{ $selectedCustomer ? 'disabled' : '' }}>
                                     <option value="">Select Customer</option>
                                     @foreach($customers as $customer)
-                                        <option value="{{ $customer->id }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
+                                        <option value="{{ $customer->id }}" 
+                                            {{ (old('customer_id', $selectedCustomer ? $selectedCustomer->id : null) == $customer->id) ? 'selected' : '' }}>
                                             {{ $customer->first_name }} {{ $customer->last_name }}
                                         </option>
                                     @endforeach
                                 </select>
+                                @if($selectedCustomer)
+                                    <input type="hidden" name="customer_id" value="{{ $selectedCustomer->id }}">
+                                @endif
                                 @error('customer_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -79,9 +84,10 @@
                                 <select class="form-select @error('status') is-invalid @enderror" 
                                         id="status" name="status" required>
                                     <option value="pending" {{ old('status', 'pending') == 'pending' ? 'selected' : '' }}>Pending</option>
-                                    <option value="in_progress" {{ old('status') == 'in_progress' ? 'selected' : '' }}>In Progress</option>
+                                    <option value="repairing" {{ old('status') == 'repairing' ? 'selected' : '' }}>Repairing</option>
                                     <option value="waiting_parts" {{ old('status') == 'waiting_parts' ? 'selected' : '' }}>Waiting for Parts</option>
                                     <option value="completed" {{ old('status') == 'completed' ? 'selected' : '' }}>Completed</option>
+                                    <option value="released" {{ old('status') == 'released' ? 'selected' : '' }}>Released</option>
                                     <option value="cancelled" {{ old('status') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                                 </select>
                                 @error('status')
@@ -131,17 +137,17 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group mb-3">
-                                <label for="assigned_technician_id" class="form-label">Assigned Technician</label>
-                                <select class="form-select @error('assigned_technician_id') is-invalid @enderror" 
-                                        id="assigned_technician_id" name="assigned_technician_id">
+                                <label for="technician_id" class="form-label">Assigned Technician</label>
+                                <select class="form-select @error('technician_id') is-invalid @enderror" 
+                                        id="technician_id" name="technician_id">
                                     <option value="">Select Technician</option>
                                     @foreach($technicians as $tech)
-                                        <option value="{{ $tech->id }}" {{ old('assigned_technician_id') == $tech->id ? 'selected' : '' }}>
+                                        <option value="{{ $tech->id }}" {{ old('technician_id') == $tech->id ? 'selected' : '' }}>
                                             {{ $tech->name }}
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('assigned_technician_id')
+                                @error('technician_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -204,41 +210,80 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
     $(document).ready(function() {
+        console.log('=== WORK ORDER CREATE PAGE LOADED ===');
+        
+        // Test basic JavaScript functionality
+        console.log('jQuery version:', $.fn.jquery);
+        console.log('Customer select exists:', $('#customer_id').length > 0);
+        console.log('Vehicle select exists:', $('#vehicle_id').length > 0);
+        
         // Load vehicles when customer is selected
         $('#customer_id').on('change', function() {
+            console.log('Customer change event triggered');
+            
             var customerId = $(this).val();
-            if (customerId) {
-                $.ajax({
-                    url: '/api/customers/' + customerId + '/vehicles',
-                    type: 'GET',
-                    success: function(data) {
-                        var vehicleSelect = $('#vehicle_id');
-                        vehicleSelect.empty();
-                        vehicleSelect.append('<option value="">Select Vehicle</option>');
-                        
-                        $.each(data, function(index, vehicle) {
-                            var displayText = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
-                            if (vehicle.trim) {
-                                displayText += ' ' + vehicle.trim;
-                            }
-                            if (vehicle.license_plate) {
-                                displayText += ' (' + vehicle.license_plate + ')';
-                            }
-                            
-                            vehicleSelect.append('<option value="' + vehicle.id + '">' + displayText + '</option>');
-                        });
-                    },
-                    error: function() {
-                        console.log('Error loading vehicles');
-                    }
-                });
-            } else {
-                $('#vehicle_id').empty().append('<option value="">Select Vehicle</option>');
+            if (!customerId) {
+                $('#vehicle_id').html('<option value="">Select Vehicle</option>');
+                return;
             }
+            
+            console.log('Fetching vehicles for customer:', customerId);
+            $('#vehicle_id').html('<option value="">Loading vehicles...</option>');
+            
+            $.ajax({
+                url: '/customers/' + customerId + '/vehicles',
+                type: 'GET',
+                dataType: 'json',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                success: function(response) {
+                    console.log('AJAX success:', response);
+                    
+                    var vehicleSelect = $('#vehicle_id');
+                    vehicleSelect.empty();
+                    vehicleSelect.append('<option value="">Select Vehicle</option>');
+                    
+                    // Get vehicles array from response
+                    var vehicles = response.vehicles || response;
+                    
+                    if (!Array.isArray(vehicles) || vehicles.length === 0) {
+                        vehicleSelect.append('<option value="">No vehicles found</option>');
+                        console.log('No vehicles array found in response');
+                        return;
+                    }
+                    
+                    console.log('Found', vehicles.length, 'vehicles');
+                    
+                    // Add vehicles to dropdown
+                    for (var i = 0; i < vehicles.length; i++) {
+                        var vehicle = vehicles[i];
+                        var text = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
+                        if (vehicle.license_plate) {
+                            text += ' (' + vehicle.license_plate + ')';
+                        }
+                        vehicleSelect.append('<option value="' + vehicle.id + '">' + text + '</option>');
+                    }
+                    
+                    console.log('Vehicle dropdown populated');
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX error:', status, error);
+                    console.error('Response:', xhr.responseText);
+                    
+                    $('#vehicle_id').html('<option value="">Error loading vehicles</option>');
+                }
+            });
         });
+        
+        // Trigger change event if customer is already selected (e.g., form validation error)
+        if ($('#customer_id').val()) {
+            $('#customer_id').trigger('change');
+        }
         
         // Calculate estimated total
         function calculateTotal() {
@@ -258,4 +303,4 @@
         calculateTotal();
     });
 </script>
-@endsection
+@endpush

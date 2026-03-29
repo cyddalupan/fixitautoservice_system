@@ -83,7 +83,7 @@ class PaymentController extends Controller
      */
     public function show(Payment $payment)
     {
-        $payment->load(['invoice.customer', 'customer']);
+        $payment->load(['invoice.customer', 'customer', 'serviceProgress']);
         return view('payments.show', compact('payment'));
     }
 

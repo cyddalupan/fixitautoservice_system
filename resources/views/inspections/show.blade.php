@@ -1,8 +1,20 @@
 @extends('layouts.app')
 
-@section('title', 'Vehicle Inspection #' . $inspection->inspection_number . ' - Fix-It Auto Services')
+@section('title', 'Repair Order #' . $inspection->inspection_number . ' - Fix-It Auto Services')
 
 @section('content')
+<!-- Service Progress Bar -->
+@if($inspection->serviceProgress)
+    <div class="row mb-4">
+        <div class="col-12">
+            @include('components.service-progress-bar', [
+                'progress' => $inspection->serviceProgress,
+                'currentStage' => 'inspection'
+            ])
+        </div>
+    </div>
+@endif
+
 <!-- Main Form for Editing Inspection -->
 <form id="inspection-edit-form" action="{{ route('inspections.update', $inspection) }}" method="POST">
     @csrf
@@ -12,7 +24,7 @@
     <div class="d-flex justify-content-between align-items-center">
         <div>
             <h1 class="h3 mb-0">
-                <i class="fas fa-car me-2"></i>Vehicle Inspection #{{ $inspection->inspection_number }}
+                <i class="fas fa-car me-2"></i>Repair Order #{{ $inspection->inspection_number }}
             </h1>
             <p class="text-muted mb-0">
                 {{ $inspection->customer->full_name ?? 'Unknown Customer' }} | 
@@ -23,7 +35,7 @@
         </div>
         <div>
             <a href="{{ route('inspections.index') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i> Back to Inspections
+                <i class="fas fa-arrow-left me-1"></i> Back to Repair Orders
             </a>
             
             <!-- Save Draft Button -->
@@ -519,36 +531,66 @@
                 </h5>
             </div>
             <div class="card-body">
-                <div class="mb-3">
-                    <h6 class="text-muted mb-2">Technician</h6>
-                    <p class="mb-1">
-                        @if($inspection->technician)
-                            <i class="fas fa-user-check me-2 text-success"></i>
-                            {{ $inspection->technician->full_name }}
-                        @else
-                            <span class="text-muted">Not assigned</span>
-                        @endif
-                    </p>
-                </div>
-                
-                <div class="mb-3">
-                    <h6 class="text-muted mb-2">Service Advisor</h6>
-                    <p class="mb-1">
-                        @if($inspection->serviceAdvisor)
-                            <i class="fas fa-user-tie me-2 text-primary"></i>
-                            {{ $inspection->serviceAdvisor->full_name }}
-                        @else
-                            <span class="text-muted">Not assigned</span>
-                        @endif
-                    </p>
-                </div>
+                <!-- DEBUG: Inspection team form start - PHP executing this line -->
+                <?php /* DEBUG: PHP is executing this section */ ?>
+                <form id="inspection-team-form" action="{{ route('inspections.update-team', $inspection) }}" method="POST">
+                    @csrf
+                    @method('PUT')
+                    
+                    <div class="mb-3">
+                        <h6 class="text-muted mb-2">Technician</h6>
+                        <div class="input-group">
+                            <select name="technician_id" id="technician-select" class="form-select form-select-sm">
+                                <option value="">Not assigned</option>
+                                @foreach($technicians as $technician)
+                                    <option value="{{ $technician->id }}" 
+                                        {{ $inspection->technician_id == $technician->id ? 'selected' : '' }}>
+                                        {{ $technician->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <span class="input-group-text">
+                                <i class="fas fa-user-check text-success"></i>
+                            </span>
+                        </div>
+                        <small class="text-muted">Select a technician to assign to this inspection</small>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="text-muted mb-2">Service Advisor</h6>
+                        <div class="input-group">
+                            <select name="service_advisor_id" id="service-advisor-select" class="form-select form-select-sm">
+                                <option value="">Not assigned</option>
+                                @foreach($serviceAdvisors as $advisor)
+                                    <option value="{{ $advisor->id }}" 
+                                        {{ $inspection->service_advisor_id == $advisor->id ? 'selected' : '' }}>
+                                        {{ $advisor->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <span class="input-group-text">
+                                <i class="fas fa-user-tie text-primary"></i>
+                            </span>
+                        </div>
+                        <small class="text-muted">Select a service advisor to assign to this inspection</small>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <button type="submit" class="btn btn-sm btn-primary">
+                            <i class="fas fa-save me-1"></i> Update Team
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="cancel-team-update" style="display: none;">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
                 
                 <div class="mb-3">
                     <h6 class="text-muted mb-2">Created By</h6>
                     <p class="mb-1">
                         @if($inspection->createdBy)
                             <i class="fas fa-user-plus me-2 text-info"></i>
-                            {{ $inspection->createdBy->full_name }}
+                            {{ $inspection->createdBy->name ?? 'N/A' }}
                         @else
                             <span class="text-muted">System</span>
                         @endif
@@ -560,7 +602,7 @@
                         <h6 class="text-muted mb-2">Approved By</h6>
                         <p class="mb-1">
                             <i class="fas fa-user-check me-2 text-success"></i>
-                            {{ $inspection->approvedBy->full_name }}
+                            {{ $inspection->approvedBy->name ?? 'N/A' }}
                         </p>
                     </div>
                 @endif
@@ -668,7 +710,7 @@
                                             <span class="text-muted">-</span>
                                         @endif
                                     </td>
-                                    <td>{{ $prevInspection->technician->full_name ?? 'Not assigned' }}</td>
+                                    <td>{{ $prevInspection->technician->name ?? 'Not assigned' }}</td>
                                     <td>
                                         <a href="{{ route('inspections.show', $prevInspection) }}" class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-eye"></i>
@@ -863,13 +905,65 @@ function showAddFindingForm() {
         document.getElementById('addFindingForm').scrollIntoView({ behavior: 'smooth' });
         // Focus on first input
         document.getElementById('item_name').focus();
+        
+        // Initialize autocomplete for the item_name field (in case it wasn't initialized yet)
+        setTimeout(() => {
+            if ($('#item_name').length && !$('#item_name').hasClass('ui-autocomplete-input')) {
+                $('#item_name').autocomplete({
+                    source: inspectionItems,
+                    minLength: 0, // Show suggestions even when clicking/empty
+                    delay: 0,
+                    autoFocus: true,
+                    classes: {
+                        "ui-autocomplete": "inspection-autocomplete"
+                    },
+                    position: {
+                        my: "left top",
+                        at: "left bottom",
+                        collision: "flipfit"
+                    }
+                }).focus(function() {
+                    // Show suggestions when field gets focus (click)
+                    $(this).autocomplete('search', $(this).val());
+                }).on('autocompleteselect', function(event, ui) {
+                    // Close dropdown after selection
+                    $(this).autocomplete('close');
+                });
+            }
+        }, 100);
     } else {
         // Show form for empty state
         document.getElementById('addFindingFormEmpty').style.display = 'block';
         // Scroll to form
         document.getElementById('addFindingFormEmpty').scrollIntoView({ behavior: 'smooth' });
         // Focus on first input
-        document.getElementById('item_name').focus();
+        document.getElementById('item_name_empty').focus();
+        
+        // Initialize autocomplete for the item_name_empty field (in case it wasn't initialized yet)
+        setTimeout(() => {
+            if ($('#item_name_empty').length && !$('#item_name_empty').hasClass('ui-autocomplete-input')) {
+                $('#item_name_empty').autocomplete({
+                    source: inspectionItems,
+                    minLength: 0, // Show suggestions even when clicking/empty
+                    delay: 0,
+                    autoFocus: true,
+                    classes: {
+                        "ui-autocomplete": "inspection-autocomplete"
+                    },
+                    position: {
+                        my: "left top",
+                        at: "left bottom",
+                        collision: "flipfit"
+                    }
+                }).focus(function() {
+                    // Show suggestions when field gets focus (click)
+                    $(this).autocomplete('search', $(this).val());
+                }).on('autocompleteselect', function(event, ui) {
+                    // Close dropdown after selection
+                    $(this).autocomplete('close');
+                });
+            }
+        }, 100);
     }
 }
 
@@ -1842,6 +1936,454 @@ document.addEventListener('DOMContentLoaded', function() {
                 saveMileage();
             }
         });
+    }
+    
+    // Initialize autocomplete for inspection item names
+    initializeInspectionItemAutocomplete();
+});
+
+// Common vehicle inspection items for autocomplete
+const inspectionItems = [
+    // Brake System
+    'Brake Pads', 'Brake Rotors', 'Brake Calipers', 'Brake Lines', 'Brake Fluid', 'Brake Master Cylinder',
+    'Brake Booster', 'Parking Brake', 'ABS System', 'Brake Drums', 'Brake Shoes',
+    
+    // Engine Components
+    'Engine Oil', 'Oil Filter', 'Air Filter', 'Fuel Filter', 'Spark Plugs', 'Ignition Coils',
+    'Timing Belt', 'Timing Chain', 'Serpentine Belt', 'Water Pump', 'Thermostat', 'Radiator',
+    'Coolant', 'Engine Mounts', 'PCV Valve', 'Fuel Injectors', 'Fuel Pump',
+    
+    // Electrical System
+    'Battery', 'Alternator', 'Starter', 'Starter Solenoid', 'Voltage Regulator', 'Fuses',
+    'Relays', 'Wiring Harness', 'Ground Connections', 'ECU/ECM', 'Sensors',
+    
+    // Suspension & Steering
+    'Shock Absorbers', 'Struts', 'Springs', 'Control Arms', 'Ball Joints', 'Tie Rods',
+    'Steering Rack', 'Power Steering Fluid', 'Steering Pump', 'Sway Bar Links', 'Bushings',
+    'Wheel Bearings', 'CV Joints', 'CV Boots',
+    
+    // Tires & Wheels
+    'Tire Tread', 'Tire Pressure', 'Tire Wear', 'Wheel Alignment', 'Wheel Balance',
+    'Tire Valves', 'Wheel Lug Nuts', 'Spare Tire', 'Tire Rotation',
+    
+    // Exhaust System
+    'Exhaust Manifold', 'Catalytic Converter', 'Muffler', 'Exhaust Pipes', 'O2 Sensors',
+    'EGR Valve', 'Exhaust Hangers', 'Heat Shields',
+    
+    // Fluid Levels
+    'Engine Oil Level', 'Transmission Fluid', 'Power Steering Fluid', 'Brake Fluid Level',
+    'Coolant Level', 'Windshield Washer Fluid', 'Differential Fluid', 'Transfer Case Fluid',
+    
+    // Lights & Signals
+    'Headlights', 'High Beams', 'Low Beams', 'Turn Signals', 'Brake Lights', 'Tail Lights',
+    'Reverse Lights', 'Fog Lights', 'License Plate Light', 'Interior Lights', 'Dashboard Lights',
+    
+    // Safety Features
+    'Airbags', 'Seatbelts', 'Child Safety Locks', 'Anti-lock Braking System', 'Traction Control',
+    'Stability Control', 'Parking Sensors', 'Backup Camera',
+    
+    // Interior Components
+    'HVAC System', 'AC Compressor', 'AC Refrigerant', 'Heater Core', 'Blower Motor',
+    'Climate Control', 'Windshield Wipers', 'Wiper Blades', 'Windshield Washer Jets',
+    'Power Windows', 'Power Locks', 'Power Mirrors', 'Seat Adjustments',
+    
+    // General Inspection
+    'Underbody Inspection', 'Frame Inspection', 'Rust Inspection', 'Leak Inspection',
+    'Noise Diagnosis', 'Vibration Check', 'Smoke Test', 'Compression Test',
+    
+    // Common Issues
+    'Oil Leak', 'Coolant Leak', 'Transmission Leak', 'Power Steering Leak', 'Brake Fluid Leak',
+    'Exhaust Leak', 'Vacuum Leak', 'Electrical Short', 'Battery Drain', 'Overheating',
+    
+    // Vehicle-Specific (by system)
+    'Transmission', 'Clutch', 'Flywheel', 'Drive Shaft', 'Differential', 'Transfer Case',
+    '4WD System', 'AWD System', 'Turbocharger', 'Supercharger', 'Intercooler'
+];
+
+// Function to initialize autocomplete for all inspection item name fields
+function initializeInspectionItemAutocomplete() {
+    // Initialize for existing fields
+    $('#item_name_empty, #item_name').autocomplete({
+        source: inspectionItems,
+        minLength: 0, // Show suggestions even when clicking/empty
+        delay: 0,
+        autoFocus: true,
+        classes: {
+            "ui-autocomplete": "inspection-autocomplete"
+        },
+        position: {
+            my: "left top",
+            at: "left bottom",
+            collision: "flipfit"
+        }
+    }).focus(function() {
+        // Show suggestions when field gets focus (click)
+        $(this).autocomplete('search', $(this).val());
+    }).on('autocompleteselect', function(event, ui) {
+        // Close dropdown after selection
+        $(this).autocomplete('close');
+    });
+    
+    // Also apply to any dynamically created fields
+    $(document).on('focus', 'input[name*="[item_name]"]', function() {
+        if (!$(this).hasClass('ui-autocomplete-input')) {
+            $(this).autocomplete({
+                source: inspectionItems,
+                minLength: 0, // Show suggestions even when clicking/empty
+                delay: 0,
+                autoFocus: true,
+                classes: {
+                    "ui-autocomplete": "inspection-autocomplete"
+                },
+                position: {
+                    my: "left top",
+                    at: "left bottom",
+                    collision: "flipfit"
+                }
+            }).focus(function() {
+                // Show suggestions when field gets focus (click)
+                $(this).autocomplete('search', $(this).val());
+            }).on('autocompleteselect', function(event, ui) {
+                // Close dropdown after selection
+                $(this).autocomplete('close');
+            });
+        }
+    });
+}
+
+// Update the addFindingInput function to initialize autocomplete for new rows
+const originalAddFindingInput = addFindingInput;
+addFindingInput = function() {
+    const tableBody = document.querySelector('.inspection-items-table tbody');
+    if (!tableBody) return;
+    
+    const newRow = document.createElement('tr');
+    newRow.innerHTML = `
+        <td>
+            <input type="text" class="form-control form-control-sm inspection-item-input" name="new_items[0][item_name]" placeholder="Item name" required>
+        </td>
+        <td>
+            <select class="form-select form-select-sm" name="new_items[0][status]" required>
+                <option value="">Select</option>
+                <option value="passed">Passed</option>
+                <option value="failed">Failed</option>
+                <option value="attention_needed">Attention Needed</option>
+            </select>
+        </td>
+        <td>
+            <input type="text" class="form-control form-control-sm" name="new_items[0][notes]" placeholder="Notes">
+            <input type="hidden" name="new_items[0][inspection_id]" value="{{ $inspection->id }}">
+        </td>
+        <td>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFindingInput(this)">
+                <i class="fas fa-times"></i>
+            </button>
+        </td>
+    `;
+    
+    tableBody.appendChild(newRow);
+    
+    // Initialize autocomplete for the new input field
+    setTimeout(() => {
+        const newInput = newRow.querySelector('.inspection-item-input');
+        if (newInput) {
+            $(newInput).autocomplete({
+                source: inspectionItems,
+                minLength: 0, // Show suggestions even when clicking/empty
+                delay: 0,
+                autoFocus: true,
+                classes: {
+                    "ui-autocomplete": "inspection-autocomplete"
+                },
+                position: {
+                    my: "left top",
+                    at: "left bottom",
+                    collision: "flipfit"
+                }
+            }).focus(function() {
+                // Show suggestions when field gets focus (click)
+                $(this).autocomplete('search', $(this).val());
+            }).on('autocompleteselect', function(event, ui) {
+                // Close dropdown after selection
+                $(this).autocomplete('close');
+            });
+        }
+    }, 10);
+};
+
+// Add CSS for autocomplete dropdown
+const style = document.createElement('style');
+style.textContent = `
+    /* Main autocomplete dropdown container */
+    .inspection-autocomplete {
+        max-height: 300px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        z-index: 9999 !important;
+        font-size: 0.875rem;
+        border: 1px solid #dee2e6 !important;
+        border-radius: 0.375rem !important;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        background-color: white !important;
+        padding: 0 !important;
+        margin-top: 2px !important;
+        width: auto !important;
+        min-width: 300px !important;
+    }
+    
+    /* Ensure dropdown doesn't exceed viewport */
+    .ui-autocomplete {
+        max-width: 100% !important;
+    }
+    
+    /* Individual menu items */
+    .ui-autocomplete .ui-menu-item {
+        padding: 10px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #f8f9fa;
+        margin: 0 !important;
+        white-space: normal !important;
+        line-height: 1.4;
+    }
+    
+    /* Remove last item border */
+    .ui-autocomplete .ui-menu-item:last-child {
+        border-bottom: none;
+    }
+    
+    /* Hover state */
+    .ui-autocomplete .ui-menu-item:hover {
+        background-color: #f8f9fa !important;
+        color: #212529 !important;
+    }
+    
+    /* Selected/active state (keyboard navigation) */
+    .ui-autocomplete .ui-state-active,
+    .ui-autocomplete .ui-state-focus {
+        background-color: #0d6efd !important;
+        color: white !important;
+        border: none !important;
+        margin: 0 !important;
+    }
+    
+    /* Make sure dropdown appears above everything */
+    .ui-front {
+        z-index: 9999 !important;
+    }
+    
+    /* Input field styling when autocomplete is active */
+    .ui-autocomplete-input {
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%236c757d" class="bi bi-chevron-down" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>') !important;
+        background-repeat: no-repeat !important;
+        background-position: right 10px center !important;
+        background-size: 16px 16px !important;
+        padding-right: 35px !important;
+    }
+    
+    /* Loading state (if we add loading indicator later) */
+    .ui-autocomplete-loading {
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%230d6efd" class="bi bi-arrow-clockwise" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>') !important;
+        background-repeat: no-repeat !important;
+        background-position: right 10px center !important;
+        background-size: 16px 16px !important;
+    }
+    
+    /* Scrollbar styling */
+    .inspection-autocomplete::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .inspection-autocomplete::-webkit-scrollbar-track {
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+    
+    .inspection-autocomplete::-webkit-scrollbar-thumb {
+        background: #adb5bd;
+        border-radius: 4px;
+    }
+    
+    .inspection-autocomplete::-webkit-scrollbar-thumb:hover {
+        background: #6c757d;
+    }
+    
+    /* For Firefox */
+    .inspection-autocomplete {
+        scrollbar-width: thin;
+        scrollbar-color: #adb5bd #f8f9fa;
+    }
+    
+    /* Ensure dropdown doesn't get cut off by parent containers */
+    .ui-autocomplete.ui-menu {
+        position: absolute !important;
+        display: block !important;
+    }
+`;
+document.head.appendChild(style);
+
+// Inspection Team Form Handling
+$(document).ready(function() {
+    console.log('DEBUG: Inspection team JavaScript loaded!');
+    console.log('DEBUG: jQuery version:', $.fn.jquery);
+    console.log('DEBUG: Total forms on page:', $('form').length);
+    
+    // List all forms
+    $('form').each(function(i) {
+        console.log('DEBUG: Form', i, 'ID:', $(this).attr('id') || '(no id)', 'Action:', $(this).attr('action'));
+    });
+    
+    console.log('DEBUG: Looking for form with ID inspection-team-form');
+    
+    const teamForm = $('#inspection-team-form');
+    console.log('DEBUG: Form found?', teamForm.length);
+    if (teamForm.length > 0) {
+        console.log('DEBUG: Form HTML:', teamForm.get(0).outerHTML.substring(0, 200));
+    }
+    
+    const cancelBtn = $('#cancel-team-update');
+    console.log('DEBUG: Cancel button found?', cancelBtn.length);
+    
+    // Handle form submission via AJAX
+    teamForm.on('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = $(this).serialize();
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalBtnText = submitBtn.html();
+        
+        // Debug: log form data
+        console.log('Form data being sent:', formData);
+        console.log('Technician select value:', $('#technician-select').val());
+        console.log('Service advisor select value:', $('#service-advisor-select').val());
+        
+        // Show loading state
+        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Updating...');
+        
+        $.ajax({
+            url: $(this).attr('action'),
+            method: 'PUT',
+            data: formData,
+            headers: {
+                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
+                console.log('Update team response:', response);
+                if (response.success) {
+                    // Build success message with details
+                    let message = 'The inspection team has been updated.';
+                    if (response.data.technician) {
+                        message += `<br>Technician: ${response.data.technician.name}`;
+                    } else {
+                        message += `<br>Technician: Not assigned`;
+                    }
+                    if (response.data.service_advisor) {
+                        message += `<br>Service Advisor: ${response.data.service_advisor.name}`;
+                    } else {
+                        message += `<br>Service Advisor: Not assigned`;
+                    }
+                    
+                    // Show success message
+                    showToast('success', 'Team updated successfully!', message);
+                    
+                    // Update UI with new team members
+                    if (response.data.technician) {
+                        $('#technician-select').val(response.data.technician.id);
+                    } else {
+                        $('#technician-select').val('');
+                    }
+                    
+                    if (response.data.service_advisor) {
+                        $('#service-advisor-select').val(response.data.service_advisor.id);
+                    } else {
+                        $('#service-advisor-select').val('');
+                    }
+                    
+                    // Hide cancel button since changes are saved
+                    $('#cancel-team-update').hide();
+                } else {
+                    showToast('error', 'Update failed', response.message || 'Failed to update team.');
+                }
+            },
+            error: function(xhr) {
+                let errorMessage = 'An error occurred while updating the team.';
+                
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                } else if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+                    // Validation errors
+                    const errors = Object.values(xhr.responseJSON.errors).flat();
+                    errorMessage = errors.join('<br>');
+                }
+                
+                showToast('error', 'Update failed', errorMessage);
+            },
+            complete: function() {
+                // Restore button state
+                submitBtn.prop('disabled', false).html(originalBtnText);
+            }
+        });
+    });
+    
+    // Show cancel button when dropdowns change
+    $('#technician-select, #service-advisor-select').on('change', function() {
+        const technicianVal = $('#technician-select').val();
+        const advisorVal = $('#service-advisor-select').val();
+        const originalTechnician = '{{ $inspection->technician_id }}';
+        const originalAdvisor = '{{ $inspection->service_advisor_id }}';
+        
+        // Show cancel button if values changed
+        if (technicianVal != originalTechnician || advisorVal != originalAdvisor) {
+            cancelBtn.show();
+        } else {
+            cancelBtn.hide();
+        }
+    });
+    
+    // Cancel button - reset to original values
+    cancelBtn.on('click', function() {
+        $('#technician-select').val('{{ $inspection->technician_id }}');
+        $('#service-advisor-select').val('{{ $inspection->service_advisor_id }}');
+        $(this).hide();
+    });
+    
+    // Toast notification function
+    function showToast(type, title, message) {
+        // Remove any existing toasts
+        $('.toast').remove();
+        
+        const toastId = 'toast-' + Date.now();
+        const toastHtml = `
+            <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body">
+                        <strong>${title}</strong><br>
+                        ${message}
+                    </div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        `;
+        
+        // Add toast to container
+        $('#toast-container').append(toastHtml);
+        
+        // Initialize and show toast
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, {
+            autohide: true,
+            delay: 5000
+        });
+        toast.show();
+        
+        // Remove toast from DOM after it hides
+        toastElement.addEventListener('hidden.bs.toast', function() {
+            $(this).remove();
+        });
+    }
+    
+    // Create toast container if it doesn't exist
+    if ($('#toast-container').length === 0) {
+        $('body').append('<div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 99999;"></div>');
     }
 });
 </script>

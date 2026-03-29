@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Payment extends Model
 {
@@ -157,5 +158,13 @@ class Payment extends Model
         ];
 
         return $methods[$this->payment_method] ?? $this->payment_method;
+    }
+
+    /**
+     * Get the service progress record for this payment.
+     */
+    public function serviceProgress(): HasOne
+    {
+        return $this->hasOne(ServiceProgress::class, 'payment_id');
     }
 }

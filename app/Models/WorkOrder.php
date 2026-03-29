@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Carbon\Carbon;
 
 class WorkOrder extends Model
@@ -20,8 +21,10 @@ class WorkOrder extends Model
         'work_order_number',
         'work_order_date',
         'work_order_status',
+        'repair_approval_status',
         'priority',
         'work_order_type',
+        'invoice_id',
         'odometer_in',
         'odometer_out',
         'fuel_level',
@@ -196,7 +199,7 @@ class WorkOrder extends Model
 
     public function invoice()
     {
-        return $this->belongsTo(Invoice::class);
+        return $this->hasOne(Invoice::class, 'work_order_id');
     }
 
     public function customer()
@@ -260,12 +263,17 @@ class WorkOrder extends Model
 
     public function scopePending($query)
     {
-        return $query->whereIn('work_order_status', ['draft', 'pending_approval', 'approved']);
+        return $query->where('work_order_status', 'pending');
     }
 
-    public function scopeInProgress($query)
+    public function scopeRepairing($query)
     {
-        return $query->where('work_order_status', 'in_progress');
+        return $query->where('work_order_status', 'repairing');
+    }
+
+    public function scopeWaitingParts($query)
+    {
+        return $query->where('work_order_status', 'waiting_parts');
     }
 
     public function scopeCompleted($query)
@@ -273,9 +281,9 @@ class WorkOrder extends Model
         return $query->where('work_order_status', 'completed');
     }
 
-    public function scopeInvoiced($query)
+    public function scopeReleased($query)
     {
-        return $query->where('work_order_status', 'invoiced');
+        return $query->where('work_order_status', 'released');
     }
 
     public function scopeOverdue($query)
@@ -314,14 +322,12 @@ class WorkOrder extends Model
     public function getStatusColorAttribute(): string
     {
         return match($this->work_order_status) {
-            'draft' => 'secondary',
-            'pending_approval' => 'warning',
-            'approved' => 'info',
-            'in_progress' => 'primary',
-            'on_hold' => 'warning',
+            'pending' => 'warning',
+            'repairing' => 'primary',
+            'waiting_parts' => 'info',
             'completed' => 'success',
+            'released' => 'success',
             'cancelled' => 'danger',
-            'invoiced' => 'success',
             default => 'secondary',
         };
     }
@@ -423,9 +429,9 @@ class WorkOrder extends Model
      */
     public function startWork(): bool
     {
-        if ($this->work_order_status === 'approved') {
+        if ($this->work_order_status === 'pending') {
             $this->update([
-                'work_order_status' => 'in_progress',
+                'work_order_status' => 'repairing',
                 'work_start_time' => now(),
                 'bay_status' => 'occupied',
             ]);
@@ -436,7 +442,7 @@ class WorkOrder extends Model
 
     public function completeWork(): bool
     {
-        if ($this->work_order_status === 'in_progress') {
+        if ($this->work_order_status === 'repairing') {
             $this->update([
                 'work_order_status' => 'completed',
                 'work_complete_time' => now(),
@@ -480,13 +486,16 @@ class WorkOrder extends Model
         return true;
     }
 
-    public function markAsInvoiced(): bool
+    public function markAsReleased(): bool
     {
-        $this->update([
-            'work_order_status' => 'invoiced',
-            'invoice_sent_time' => now(),
-        ]);
-        return true;
+        if ($this->work_order_status === 'completed') {
+            $this->update([
+                'work_order_status' => 'released',
+                'invoice_sent_time' => now(),
+            ]);
+            return true;
+        }
+        return false;
     }
 
     public function calculateTotals(): void
@@ -624,5 +633,13 @@ class WorkOrder extends Model
             'is_overdue' => $this->is_overdue,
             'days_overdue' => $this->days_overdue,
         ];
+    }
+
+    /**
+     * Get the service progress record for this work order.
+     */
+    public function serviceProgress(): HasOne
+    {
+        return $this->hasOne(ServiceProgress::class, 'work_order_id');
     }
 }

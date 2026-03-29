@@ -20,7 +20,7 @@ class WorkOrderController extends Controller
      */
     public function index(Request $request)
     {
-        $query = WorkOrder::with(['customer', 'vehicle', 'technician', 'serviceAdvisor'])
+        $query = WorkOrder::with(['customer', 'vehicle', 'technician', 'serviceAdvisor', 'invoice'])
             ->latest();
         
         // Search filter
@@ -108,9 +108,11 @@ class WorkOrderController extends Controller
         $stats = [
             'total' => WorkOrder::count(),
             'today' => WorkOrder::today()->count(),
-            'in_progress' => WorkOrder::inProgress()->count(),
-            'pending_approval' => WorkOrder::where('work_order_status', 'pending_approval')->count(),
+            'repairing' => WorkOrder::repairing()->count(),
+            'pending' => WorkOrder::pending()->count(),
+            'waiting_parts' => WorkOrder::waitingParts()->count(),
             'completed' => WorkOrder::completed()->count(),
+            'released' => WorkOrder::released()->count(),
             'overdue' => WorkOrder::overdue()->count(),
             'warranty' => WorkOrder::warranty()->count(),
             'insurance' => WorkOrder::insurance()->count(),
@@ -138,15 +140,23 @@ class WorkOrderController extends Controller
             ? Appointment::with(['customer', 'vehicle'])->find($request->appointment_id)
             : null;
         
-        // Pre-select customer if provided
-        $selectedCustomer = $request->filled('customer_id') 
-            ? Customer::find($request->customer_id)
-            : null;
-        
         // Pre-select vehicle if provided
         $selectedVehicle = $request->filled('vehicle_id') 
             ? Vehicle::with('customer')->find($request->vehicle_id)
             : null;
+        
+        // Pre-select customer if provided OR get from selected vehicle/appointment
+        if ($request->filled('customer_id')) {
+            $selectedCustomer = Customer::find($request->customer_id);
+        } elseif ($selectedVehicle && $selectedVehicle->customer) {
+            // If vehicle is provided but customer isn't, get customer from vehicle
+            $selectedCustomer = $selectedVehicle->customer;
+        } elseif ($selectedAppointment && $selectedAppointment->customer) {
+            // If appointment is provided but customer isn't, get customer from appointment
+            $selectedCustomer = $selectedAppointment->customer;
+        } else {
+            $selectedCustomer = null;
+        }
         
         // Common service templates
         $serviceTemplates = $this->getServiceTemplates();
@@ -224,9 +234,9 @@ class WorkOrderController extends Controller
         $validated['work_order_number'] = WorkOrder::generateWorkOrderNumber();
         
         // Set initial status
-        $validated['work_order_status'] = 'draft';
+        $validated['work_order_status'] = 'pending';
         if ($validated['requires_customer_approval'] ?? false) {
-            $validated['work_order_status'] = 'pending_approval';
+            $validated['work_order_status'] = 'pending';
         }
         
         // Set check-in time
@@ -295,7 +305,8 @@ class WorkOrderController extends Controller
             'qualityChecker',
             'items',
             'tasks.assignedTechnician',
-            'appointment'
+            'appointment',
+            'serviceProgress'
         ]);
         
         // Get similar work orders for this customer
@@ -350,84 +361,44 @@ class WorkOrderController extends Controller
      */
     public function update(Request $request, WorkOrder $workOrder)
     {
+        \Log::info('WorkOrder update attempt', [
+            'work_order_id' => $workOrder->id,
+            'request_data' => $request->all(),
+            'current_status' => $workOrder->work_order_status,
+        ]);
+        
         $validated = $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'vehicle_id' => 'required|exists:vehicles,id',
             'work_order_date' => 'required|date',
-            'work_order_type' => 'required|in:repair,maintenance,inspection,diagnostic,recall,other',
-            'work_order_status' => 'required|in:draft,pending_approval,approved,in_progress,on_hold,completed,cancelled,invoiced',
+            'work_order_status' => 'required|in:pending,repairing,waiting_parts,completed,released,cancelled',
             'priority' => 'required|in:low,normal,high,emergency',
-            'odometer_in' => 'nullable|integer|min:0',
-            'odometer_out' => 'nullable|integer|min:0|gte:odometer_in',
-            'fuel_level' => 'nullable|in:full,3/4,1/2,1/4,empty',
-            'vehicle_condition' => 'nullable|string|max:1000',
-            'customer_concerns' => 'required|string|max:2000',
-            'customer_complaints' => 'nullable|string|max:2000',
-            'initial_diagnosis' => 'nullable|string|max:2000',
-            'technician_diagnosis' => 'nullable|string|max:2000',
-            'recommended_services' => 'nullable|string|max:2000',
-            'additional_notes' => 'nullable|string|max:1000',
-            'estimated_labor_hours' => 'nullable|numeric|min:0',
-            'estimated_labor_cost' => 'nullable|numeric|min:0',
-            'estimated_parts_cost' => 'nullable|numeric|min:0',
-            'estimated_tax' => 'nullable|numeric|min:0',
-            'estimate_approved' => 'boolean',
-            'estimate_notes' => 'nullable|string|max:1000',
-            'actual_labor_hours' => 'nullable|numeric|min:0',
-            'actual_labor_cost' => 'nullable|numeric|min:0',
-            'actual_parts_cost' => 'nullable|numeric|min:0',
-            'actual_tax' => 'nullable|numeric|min:0',
-            'discount_amount' => 'nullable|numeric|min:0',
-            'payment_status' => 'required|in:pending,partial,paid,overdue,written_off',
-            'amount_paid' => 'nullable|numeric|min:0',
-            'payment_due_date' => 'nullable|date',
-            'is_warranty_work' => 'boolean',
-            'warranty_type' => 'nullable|string|max:100',
-            'warranty_number' => 'nullable|string|max:100',
-            'warranty_expiry' => 'nullable|date',
-            'warranty_coverage' => 'nullable|numeric|min:0',
-            'is_insurance_work' => 'boolean',
-            'insurance_company' => 'nullable|string|max:100',
-            'insurance_claim_number' => 'nullable|string|max:100',
-            'insurance_adjuster' => 'nullable|string|max:100',
-            'insurance_deductible' => 'nullable|numeric|min:0',
-            'bay_number' => 'nullable|integer|min:1|max:20',
-            'bay_status' => 'nullable|in:assigned,occupied,available,maintenance',
-            'parts_ordered' => 'boolean',
-            'quality_check_passed' => 'boolean',
-            'customer_notified' => 'boolean',
-            'notification_method' => 'nullable|in:sms,email,phone,in_person',
-            'work_performed' => 'nullable|string|max:5000',
-            'technician_notes' => 'nullable|string|max:2000',
-            'service_advisor_notes' => 'nullable|string|max:2000',
-            'customer_feedback' => 'nullable|string|max:2000',
-            'customer_rating' => 'nullable|integer|min:1|max:5',
-            'requires_customer_approval' => 'boolean',
-            'customer_approval_received' => 'boolean',
-            'requires_manager_approval' => 'boolean',
-            'manager_approval_received' => 'boolean',
-            'is_rush_order' => 'boolean',
-            'is_complex_job' => 'boolean',
-            'has_safety_concerns' => 'boolean',
-            'internal_notes' => 'nullable|string|max:2000',
+            'service_advisor_id' => 'nullable|exists:users,id',
+            'technician_id' => 'nullable|exists:users,id',
+            'description' => 'nullable|string',
+            'notes' => 'nullable|string',
+        ]);
+        
+        \Log::info('WorkOrder validation passed', [
+            'work_order_id' => $workOrder->id,
+            'validated_data' => $validated,
         ]);
         
         // Update status timestamps
         if ($validated['work_order_status'] !== $workOrder->work_order_status) {
             $statusField = null;
             switch ($validated['work_order_status']) {
-                case 'approved':
-                    $statusField = 'estimate_approved_at';
-                    break;
-                case 'in_progress':
+                case 'repairing':
                     $statusField = 'work_start_time';
                     break;
                 case 'completed':
                     $statusField = 'work_complete_time';
                     break;
+                case 'released':
+                    $statusField = 'invoice_sent_time';
+                    break;
                 case 'cancelled':
                     $statusField = 'cancelled_at';
-                    break;
-                case 'invoiced':
-                    $statusField = 'invoice_sent_time';
                     break;
             }
             
@@ -436,19 +407,14 @@ class WorkOrderController extends Controller
             }
         }
         
-        // Calculate totals
-        $validated['estimated_total'] = ($validated['estimated_labor_cost'] ?? 0) + 
-                                       ($validated['estimated_parts_cost'] ?? 0) + 
-                                       ($validated['estimated_tax'] ?? 0);
-        
-        $validated['actual_total'] = ($validated['actual_labor_cost'] ?? 0) + 
-                                    ($validated['actual_parts_cost'] ?? 0) + 
-                                    ($validated['actual_tax'] ?? 0);
-        
-        $validated['final_amount'] = $validated['actual_total'] - ($validated['discount_amount'] ?? 0);
-        $validated['balance_due'] = $validated['final_amount'] - ($validated['amount_paid'] ?? 0);
-        
         $workOrder->update($validated);
+        
+        \Log::info('WorkOrder update successful', [
+            'work_order_id' => $workOrder->id,
+            'new_status' => $workOrder->work_order_status,
+            'new_technician_id' => $workOrder->technician_id,
+            'new_service_advisor_id' => $workOrder->service_advisor_id,
+        ]);
         
         return redirect()->route('work-orders.show', $workOrder)
             ->with('success', 'Work order updated successfully.');
@@ -504,13 +470,13 @@ class WorkOrderController extends Controller
     /**
      * Mark work order as invoiced.
      */
-    public function markAsInvoiced(WorkOrder $workOrder)
+    public function markAsReleased(WorkOrder $workOrder)
     {
-        if ($workOrder->markAsInvoiced()) {
-            return redirect()->back()->with('success', 'Work order marked as invoiced.');
+        if ($workOrder->markAsReleased()) {
+            return redirect()->back()->with('success', 'Work order marked as released.');
         }
         
-        return redirect()->back()->with('error', 'Unable to mark as invoiced.');
+        return redirect()->back()->with('error', 'Unable to mark as released.');
     }
     
     /**
@@ -558,10 +524,11 @@ class WorkOrderController extends Controller
         // Daily statistics
         $dailyStats = [
             'total' => WorkOrder::whereDate('work_order_date', $today)->count(),
-            'draft' => WorkOrder::whereDate('work_order_date', $today)->where('work_order_status', 'draft')->count(),
-            'pending_approval' => WorkOrder::whereDate('work_order_date', $today)->where('work_order_status', 'pending_approval')->count(),
-            'in_progress' => WorkOrder::whereDate('work_order_date', $today)->where('work_order_status', 'in_progress')->count(),
+            'pending' => WorkOrder::whereDate('work_order_date', $today)->where('work_order_status', 'pending')->count(),
+            'repairing' => WorkOrder::whereDate('work_order_date', $today)->where('work_order_status', 'repairing')->count(),
+            'waiting_parts' => WorkOrder::whereDate('work_order_date', $today)->where('work_order_status', 'waiting_parts')->count(),
             'completed' => WorkOrder::whereDate('work_order_date', $today)->where('work_order_status', 'completed')->count(),
+            'released' => WorkOrder::whereDate('work_order_date', $today)->where('work_order_status', 'released')->count(),
             'revenue' => WorkOrder::whereDate('work_order_date', $today)->where('work_order_status', 'completed')->sum('final_amount'),
         ];
         
@@ -763,5 +730,61 @@ class WorkOrderController extends Controller
         
         // Calculate estimated totals
         $workOrder->calculateTotals();
+    }
+    
+    /**
+     * Update repair approval status via AJAX.
+     */
+    public function updateRepairApproval(Request $request, WorkOrder $workOrder)
+    {
+        // Validate request
+        $request->validate([
+            'repair_approval_status' => 'required|in:pending,go,no_go'
+        ]);
+        
+        // Check permissions - only staff can update
+        if (!auth()->check()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized. Please log in.'
+            ], 403);
+        }
+        
+        $user = auth()->user();
+        $allowedRoles = ['super_admin', 'admin', 'office_staff', 'technician', 'service_advisor', 'manager'];
+        
+        // Check if user has an allowed role
+        if (!in_array($user->role, $allowedRoles)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized. Only staff members can update repair approval status.'
+            ], 403);
+        }
+        
+        // Update the status
+        $workOrder->update([
+            'repair_approval_status' => $request->repair_approval_status
+        ]);
+        
+        // Log the action (commented out for now - activity log package might not be installed)
+        // activity()
+        //     ->causedBy(auth()->user())
+        //     ->performedOn($workOrder)
+        //     ->withProperties([
+        //         'old_status' => $workOrder->getOriginal('repair_approval_status'),
+        //         'new_status' => $request->repair_approval_status
+        //     ])
+        //     ->log('updated repair approval status');
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Repair approval status updated successfully.',
+            'data' => [
+                'id' => $workOrder->id,
+                'repair_approval_status' => $workOrder->repair_approval_status,
+                'status_text' => $workOrder->repair_approval_status == 'go' ? 'Authorized (GO)' : 
+                                ($workOrder->repair_approval_status == 'no_go' ? 'Not Cleared (NO GO)' : 'Pending Review')
+            ]
+        ]);
     }
 }

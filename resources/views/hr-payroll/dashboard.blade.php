@@ -196,28 +196,34 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-3 mb-3">
+                        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
                             <a href="{{ route('hr-payroll.employees') }}" class="btn btn-outline-primary w-100 py-3">
                                 <i class="fas fa-users fa-2x mb-2"></i>
                                 <div>Manage Employees</div>
                             </a>
                         </div>
-                        <div class="col-md-3 mb-3">
+                        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
                             <a href="{{ route('hr-payroll.payroll.periods') }}" class="btn btn-outline-success w-100 py-3">
                                 <i class="fas fa-money-bill-wave fa-2x mb-2"></i>
                                 <div>Process Payroll</div>
                             </a>
                         </div>
-                        <div class="col-md-3 mb-3">
+                        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
                             <a href="{{ route('hr-payroll.time-attendance') }}" class="btn btn-outline-warning w-100 py-3">
                                 <i class="fas fa-clock fa-2x mb-2"></i>
                                 <div>Time & Attendance</div>
                             </a>
                         </div>
-                        <div class="col-md-3 mb-3">
+                        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
                             <a href="{{ route('hr-payroll.leave') }}" class="btn btn-outline-info w-100 py-3">
                                 <i class="fas fa-calendar-alt fa-2x mb-2"></i>
                                 <div>Leave Management</div>
+                            </a>
+                        </div>
+                        <div class="col-lg-2 col-md-4 col-sm-6 mb-3">
+                            <a href="{{ route('hr-payroll.deductions.index') }}" class="btn btn-outline-danger w-100 py-3">
+                                <i class="fas fa-minus-circle fa-2x mb-2"></i>
+                                <div>Deductions</div>
                             </a>
                         </div>
                     </div>

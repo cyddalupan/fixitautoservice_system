@@ -18,26 +18,26 @@ class AppointmentController extends Controller
     public function index(Request $request)
     {
         // Get appointments by status for tabs
-        $scheduledAppointments = Appointment::with(['customer', 'vehicle', 'technician'])
+        $scheduledAppointments = Appointment::with(['customer', 'technician'])
             ->whereIn('appointment_status', ['scheduled', 'confirmed'])
             ->whereDate('appointment_date', '>=', Carbon::today())
             ->orderBy('appointment_date')
             ->orderBy('appointment_time')
             ->get();
         
-        $arrivedAppointments = Appointment::with(['customer', 'vehicle', 'technician'])
+        $arrivedAppointments = Appointment::with(['customer', 'technician'])
             ->where('appointment_status', 'checked_in')
             ->whereDate('appointment_date', '>=', Carbon::today()->subDays(7))
             ->orderBy('checked_in_at', 'desc')
             ->get();
         
-        $cancelledAppointments = Appointment::with(['customer', 'vehicle'])
+        $cancelledAppointments = Appointment::with(['customer'])
             ->where('appointment_status', 'cancelled')
             ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30))
             ->orderBy('cancelled_at', 'desc')
             ->get();
         
-        $convertedAppointments = Appointment::with(['customer', 'vehicle', 'estimate', 'workOrder'])
+        $convertedAppointments = Appointment::with(['customer', 'estimate', 'workOrder'])
             ->whereHas('estimate')
             ->orWhereHas('workOrder')
             ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30))
@@ -71,15 +71,20 @@ class AppointmentController extends Controller
         $technicians = User::where('role', 'technician')->where('is_active', true)->get();
         $advisors = User::where('role', 'service_advisor')->where('is_active', true)->get();
         
-        // Pre-select customer if provided
-        $selectedCustomer = $request->filled('customer_id') 
-            ? Customer::find($request->customer_id)
-            : null;
-        
         // Pre-select vehicle if provided
         $selectedVehicle = $request->filled('vehicle_id') 
             ? Vehicle::find($request->vehicle_id)
             : null;
+        
+        // Pre-select customer if provided OR get from selected vehicle
+        if ($request->filled('customer_id')) {
+            $selectedCustomer = Customer::find($request->customer_id);
+        } elseif ($selectedVehicle && $selectedVehicle->customer) {
+            // If vehicle is provided but customer isn't, get customer from vehicle
+            $selectedCustomer = $selectedVehicle->customer;
+        } else {
+            $selectedCustomer = null;
+        }
         
         return view('appointments.create', compact('customers', 'vehicles', 'technicians', 'advisors', 'selectedCustomer', 'selectedVehicle'));
     }
@@ -91,32 +96,21 @@ class AppointmentController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
-            'vehicle_id' => 'required|exists:vehicles,id',
+            'vehicle_description' => 'required|string|max:255',
             'appointment_date' => 'required|date|after_or_equal:today',
             'appointment_time' => 'required|date_format:H:i',
-            'appointment_type' => 'required|in:regular_service,emergency,inspection,diagnostic,repair,maintenance,tire_service,oil_change,brake_service,other',
-            'service_request' => 'nullable|string|max:1000',
-            'estimated_duration' => 'nullable|numeric|min:0.5|max:8',
+            'service_type' => 'required|in:oil_change,tire_rotation,brake_service,engine_diagnostic,transmission,ac_service,general_maintenance,emergency',
+            'description' => 'nullable|string|max:1000',
             'estimated_cost' => 'nullable|numeric|min:0',
-            'priority' => 'required|in:low,normal,high,emergency',
-            'assigned_technician_id' => 'nullable|exists:users,id',
-            'service_advisor_id' => 'nullable|exists:users,id',
-            'bay_number' => 'nullable|integer|min:1|max:20',
-            'customer_notes' => 'nullable|string|max:500',
-            'requires_deposit' => 'boolean',
-            'deposit_amount' => 'nullable|required_if:requires_deposit,true|numeric|min:0',
-            'is_waitlist' => 'boolean',
-            'service_types' => 'nullable|array',
-            'service_types.*' => 'string|max:100',
-            'preferred_communication' => 'nullable|array',
-            'preferred_communication.*' => 'in:sms,email,call',
+            'priority' => 'required|in:low,normal,high,urgent',
+            'assigned_to' => 'nullable|exists:users,id',
         ]);
         
         // Generate appointment number
         $validated['appointment_number'] = Appointment::generateAppointmentNumber();
         
         // Set default status
-        $validated['appointment_status'] = $validated['is_waitlist'] ?? false ? 'scheduled' : 'scheduled';
+        $validated['appointment_status'] = 'scheduled';
         
         // Set scheduled timestamp
         $validated['scheduled_at'] = now();
@@ -124,22 +118,50 @@ class AppointmentController extends Controller
         // Set booking source
         $validated['booking_source'] = 'admin_panel';
         
-        // Convert arrays to JSON
-        if (isset($validated['service_types'])) {
-            $validated['service_types'] = json_encode($validated['service_types']);
-        }
+        // Map service_type form values to database appointment_type values
+        $serviceTypeMapping = [
+            'oil_change' => 'oil_change',
+            'tire_rotation' => 'tire_service',
+            'brake_service' => 'brake_service',
+            'engine_diagnostic' => 'diagnostic',
+            'transmission' => 'repair', // Map to repair since transmission isn't in ENUM
+            'ac_service' => 'repair', // Map to repair since ac_service isn't in ENUM
+            'general_maintenance' => 'maintenance',
+            'emergency' => 'emergency',
+        ];
         
-        if (isset($validated['preferred_communication'])) {
-            $validated['preferred_communication'] = json_encode($validated['preferred_communication']);
-        }
+        $appointmentType = $serviceTypeMapping[$validated['service_type']] ?? 'regular_service';
+        
+        // Map form fields to database fields
+        $appointmentData = [
+            'customer_id' => $validated['customer_id'],
+            'vehicle_description' => $validated['vehicle_description'],
+            'appointment_date' => $validated['appointment_date'],
+            'appointment_time' => $validated['appointment_time'],
+            'appointment_type' => $appointmentType,
+            'service_request' => $validated['description'] ?? null,
+            'estimated_cost' => $validated['estimated_cost'] ?? null,
+            'priority' => $validated['priority'],
+            'assigned_technician_id' => $validated['assigned_to'] ?? null,
+            'appointment_number' => $validated['appointment_number'],
+            'appointment_status' => $validated['appointment_status'],
+            'scheduled_at' => $validated['scheduled_at'],
+            'booking_source' => $validated['booking_source'],
+        ];
         
         // Create appointment
-        $appointment = Appointment::create($validated);
+        $appointment = Appointment::create($appointmentData);
         
-        // If not waitlist, check for conflicts
-        if (!$appointment->is_waitlist) {
-            $this->checkForConflicts($appointment);
+        // Record vehicle description in history
+        if (!empty($validated['vehicle_description'])) {
+            \App\Models\VehicleHistory::findOrCreate($validated['vehicle_description'])->incrementUse();
         }
+        
+        // Update service progress
+        \App\Services\ServiceProgressService::updateFromAppointment($appointment);
+        
+        // Check for conflicts
+        $this->checkForConflicts($appointment);
         
         return redirect()->route('appointments.show', $appointment)
             ->with('success', 'Appointment created successfully.');
@@ -150,7 +172,7 @@ class AppointmentController extends Controller
      */
     public function show(Appointment $appointment)
     {
-        $appointment->load(['customer', 'vehicle', 'technician', 'advisor', 'workOrder']);
+        $appointment->load(['customer', 'technician', 'advisor', 'workOrder', 'serviceProgress']);
         
         // Get similar appointments for this customer
         $customerAppointments = Appointment::where('customer_id', $appointment->customer_id)
@@ -170,7 +192,7 @@ class AppointmentController extends Controller
      */
     public function edit(Appointment $appointment)
     {
-        $appointment->load(['customer', 'vehicle']);
+        $appointment->load(['customer']);
         
         $customers = Customer::where('is_active', true)->orderBy('first_name')->get();
         $vehicles = Vehicle::with('customer')->get();
@@ -191,7 +213,7 @@ class AppointmentController extends Controller
             'appointment_type' => 'required|in:regular_service,emergency,inspection,diagnostic,repair,maintenance,tire_service,oil_change,brake_service,other',
             'appointment_status' => 'required|in:scheduled,confirmed,checked_in,in_progress,completed,cancelled,no_show,rescheduled',
             'service_request' => 'nullable|string|max:1000',
-            'estimated_duration' => 'nullable|numeric|min:0.5|max:8',
+            'estimated_duration' => 'nullable|numeric',
             'estimated_cost' => 'nullable|numeric|min:0',
             'priority' => 'required|in:low,normal,high,emergency',
             'assigned_technician_id' => 'nullable|exists:users,id',
@@ -249,20 +271,20 @@ class AppointmentController extends Controller
      */
     public function calendar(Request $request)
     {
-        $date = $request->filled('date') ? Carbon::parse($request->date) : Carbon::today();
+        $date = $request->filled("date") ? \Carbon\Carbon::parse($request->date) : \Carbon\Carbon::today();
         
         // Get appointments for the month
-        $appointments = Appointment::with(['customer', 'vehicle', 'technician'])
-            ->whereYear('appointment_date', $date->year)
-            ->whereMonth('appointment_date', $date->month)
-            ->orderBy('appointment_date')
-            ->orderBy('appointment_time')
+        $appointments = \App\Models\Appointment::with(["customer", "technician"])
+            ->whereYear("appointment_date", $date->year)
+            ->whereMonth("appointment_date", $date->month)
+            ->orderBy("appointment_date")
+            ->orderBy("appointment_time")
             ->get();
         
         // Group by date for calendar
         $calendarData = [];
         foreach ($appointments as $appointment) {
-            $dateKey = $appointment->appointment_date->format('Y-m-d');
+            $dateKey = $appointment->appointment_date->format("Y-m-d");
             if (!isset($calendarData[$dateKey])) {
                 $calendarData[$dateKey] = [];
             }
@@ -270,14 +292,10 @@ class AppointmentController extends Controller
         }
         
         // Get technicians for filter
-        $technicians = User::where('role', 'technician')->where('is_active', true)->get();
+        $technicians = \App\Models\User::where("role", "technician")->where("is_active", true)->get();
         
-        return view('appointments.calendar', compact('date', 'calendarData', 'technicians'));
+        return view("appointments.calendar", compact("date", "calendarData", "technicians"));
     }
-    
-    /**
-     * Check-in an appointment and create vehicle inspection.
-     */
     public function checkIn(Appointment $appointment)
     {
         if ($appointment->appointment_status !== 'confirmed') {
@@ -302,10 +320,11 @@ class AppointmentController extends Controller
         }
         
         // Create vehicle inspection for the appointment
+        // Note: vehicle_id may be null since appointments now use vehicle_description
         $inspection = \App\Models\VehicleInspection::create([
             'appointment_id' => $appointment->id,
             'customer_id' => $appointment->customer_id,
-            'vehicle_id' => $appointment->vehicle_id,
+            'vehicle_id' => $appointment->vehicle_id, // May be null
             'service_advisor_id' => $appointment->service_advisor_id,
             'inspection_type' => 'pre_service',
             'inspection_status' => 'draft',
@@ -613,10 +632,31 @@ class AppointmentController extends Controller
             }
             
             // Create vehicle inspection for the appointment
+            // Note: vehicle_id may be null since appointments now use vehicle_description
+            // Get or create a vehicle for the customer
+            $vehicleId = $appointment->vehicle_id;
+            if (!$vehicleId) {
+                // Try to find any vehicle for this customer
+                $customerVehicle = \App\Models\Vehicle::where('customer_id', $appointment->customer_id)->first();
+                if ($customerVehicle) {
+                    $vehicleId = $customerVehicle->id;
+                } else {
+                    // Create a default vehicle for the customer
+                    $defaultVehicle = \App\Models\Vehicle::create([
+                        'customer_id' => $appointment->customer_id,
+                        'make' => 'Unknown',
+                        'model' => 'Vehicle',
+                        'year' => date('Y'),
+                        'license_plate' => 'TEMP-' . $appointment->id,
+                    ]);
+                    $vehicleId = $defaultVehicle->id;
+                }
+            }
+            
             $inspection = \App\Models\VehicleInspection::create([
                 'appointment_id' => $appointment->id,
                 'customer_id' => $appointment->customer_id,
-                'vehicle_id' => $appointment->vehicle_id,
+                'vehicle_id' => $vehicleId, // Now guaranteed to have a value
                 'service_advisor_id' => $appointment->service_advisor_id,
                 'inspection_type' => 'pre_service',
                 'inspection_status' => 'draft',
@@ -624,6 +664,18 @@ class AppointmentController extends Controller
                 'customer_concerns' => $appointment->service_request,
                 'inspection_started_at' => now(),
                 'created_by' => auth()->id(),
+                // Required fields with NOT NULL constraint
+                'total_items_checked' => 0,
+                'items_passed' => 0,
+                'items_failed' => 0,
+                'items_attention_needed' => 0,
+                'items_not_applicable' => 0,
+                'has_safety_concerns' => 0,
+                'has_urgent_issues' => 0,
+                'has_critical_issues' => 0,
+                'requires_customer_approval' => 1,
+                'customer_approved' => 0,
+                'has_upsell_opportunities' => 0,
             ]);
             
             // If appointment has a service_id, link it to the inspection
@@ -664,16 +716,22 @@ class AppointmentController extends Controller
             $appointment = Appointment::findOrFail($id);
             
             $validated = $request->validate([
-                'cancellation_reason' => 'required|string|max:500',
+                'cancellation_reason' => 'nullable|string|max:500',
             ]);
             
-            $appointment->update([
+            $updateData = [
                 'appointment_status' => 'cancelled',
                 'cancelled_at' => now(),
-                'cancellation_reason' => $validated['cancellation_reason'],
-                'customer_notes' => $appointment->customer_notes . "\n\nCancellation Reason: " . $validated['cancellation_reason'],
                 'bay_status' => 'available',
-            ]);
+            ];
+            
+            // Only add cancellation_reason if provided
+            if (!empty($validated['cancellation_reason'])) {
+                $updateData['cancellation_reason'] = $validated['cancellation_reason'];
+                $updateData['customer_notes'] = $appointment->customer_notes . "\n\nCancellation Reason: " . $validated['cancellation_reason'];
+            }
+            
+            $appointment->update($updateData);
             
             return response()->json([
                 'success' => true,
@@ -690,6 +748,48 @@ class AppointmentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to cancel appointment: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * AJAX: Restore cancelled appointment.
+     */
+    public function ajaxRestore(Request $request, $id)
+    {
+        try {
+            $appointment = Appointment::findOrFail($id);
+            
+            // Check if appointment is actually cancelled
+            if ($appointment->appointment_status !== 'cancelled') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Appointment is not cancelled. Current status: ' . $appointment->appointment_status
+                ], 400);
+            }
+            
+            // Restore to scheduled status
+            $appointment->update([
+                'appointment_status' => 'scheduled',
+                'cancelled_at' => null,
+                'cancellation_reason' => null,
+                'bay_status' => 'available',
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Appointment restored successfully.',
+                'appointment_id' => $appointment->id,
+                'appointment_number' => $appointment->appointment_number,
+                'new_status' => 'scheduled',
+                'new_status_label' => 'Scheduled',
+                'new_status_color' => 'primary',
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to restore appointment: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -731,11 +831,226 @@ class AppointmentController extends Controller
     /**
      * Get appointment statistics.
      */
+    /**
+     * Get calendar data in JSON format for FullCalendar.
+     */
+    public function calendarData(Request $request)
+    {
+        $start = $request->filled("start") ? Carbon::parse($request->start) : Carbon::now()->startOfMonth();
+        $end = $request->filled("end") ? Carbon::parse($request->end) : Carbon::now()->endOfMonth();
+        
+        // Get appointments within date range WITH related models
+        // ONLY show appointments that appear in Scheduled or Cancelled tabs (per user request)
+        // Scheduled tab shows: scheduled OR confirmed status
+        // Cancelled tab shows: cancelled status
+        $appointments = Appointment::with(["customer", "technician", "vehicle", "estimate", "workOrder", "invoice", "payments"])
+            ->whereBetween("appointment_date", [$start, $end])
+            ->whereIn("appointment_status", ["scheduled", "confirmed", "cancelled"])
+            ->orderBy("appointment_date")
+            ->orderBy("appointment_time")
+            ->get();
+        
+        // Format events for FullCalendar
+        $events = [];
+        foreach ($appointments as $appointment) {
+            // Determine the workflow status for color coding
+            $workflowStatus = $this->getWorkflowStatus($appointment);
+            
+            // DEBUG: Log workflow status
+            \Log::debug("Appointment #{$appointment->id} workflow status: {$workflowStatus}", [
+                'has_estimate' => $appointment->estimate ? 'YES' : 'NO',
+                'has_work_order' => $appointment->workOrder ? 'YES' : 'NO',
+                'has_invoice' => $appointment->invoice ? 'YES' : 'NO',
+                'payment_count' => $appointment->payments ? $appointment->payments->count() : 0,
+            ]);
+            
+            $event = [
+                "id" => $appointment->id,
+                "title" => $this->getEventTitle($appointment),
+                "start" => $appointment->appointment_date->format("Y-m-d") . "T" . $appointment->appointment_time,
+                "end" => $appointment->appointment_date->format("Y-m-d") . "T" . $this->calculateEndTime($appointment->appointment_time),
+                "className" => $workflowStatus,
+                "extendedProps" => [
+                    "number" => $appointment->appointment_number,
+                    "customer_name" => $appointment->customer ? $appointment->customer->full_name : "Walk-in Customer",
+                    "customer_phone" => $appointment->customer ? $appointment->customer->phone : null,
+                    "status" => $appointment->appointment_status,
+                    "status_display" => ucfirst(str_replace("_", " ", $appointment->appointment_status)),
+                    "workflow_status" => $workflowStatus,
+                    "workflow_status_display" => $this->getWorkflowStatusDisplay($workflowStatus),
+                    "vehicle_info" => $this->getVehicleInfo($appointment),
+                    "service_type" => $appointment->service_type,
+                    "notes" => $appointment->notes,
+                    "technician_name" => $appointment->technician ? $appointment->technician->name : "Not Assigned",
+                    "tooltip" => $this->getEventTooltip($appointment)
+                ]
+            ];
+            
+            // Store original workflow status for tooltip
+            $originalWorkflowStatus = $workflowStatus;
+            
+            // Add warning class if appointment is within 3 days
+            // WARNING OVERRIDES workflow colors for urgency
+            if ($this->isWithinThreeDays($appointment)) {
+                $event["className"] = "fc-event-warning";
+                // Keep original workflow status in extended props for tooltip
+                $event["extendedProps"]["workflow_status"] = $originalWorkflowStatus;
+                $event["extendedProps"]["workflow_status_display"] = $this->getWorkflowStatusDisplay($originalWorkflowStatus) . " (Within 3 days)";
+            }
+            
+            $events[] = $event;
+        }
+        
+        return response()->json(["events" => $events]);
+    }
+    
+    /**
+     * Determine workflow status for color coding.
+     */
+    private function getWorkflowStatus($appointment)
+    {
+        // Check if has work order (repair order)
+        if ($appointment->workOrder) {
+            // Check if has invoice AND payments (GREEN)
+            if ($appointment->invoice && $appointment->payments && $appointment->payments->count() > 0) {
+                return "fc-event-job-order-paid"; // GREEN (repair order with invoices & payments)
+            }
+            return "fc-event-repair-order"; // LIGHT GREY (repair order without payments)
+        }
+        
+        // Check if has estimate (DARK GREY)
+        if ($appointment->estimate) {
+            return "fc-event-estimate"; // DARK GREY
+        }
+        
+        // Default: Scheduled appointment (BLACK BORDER, WHITE BACKGROUND)
+        return "fc-event-scheduled-default";
+    }
+    
+    /**
+     * Get display text for workflow status.
+     */
+    private function getWorkflowStatusDisplay($workflowStatus)
+    {
+        $statusMap = [
+            "fc-event-scheduled-default" => "Scheduled Appointment",
+            "fc-event-estimate" => "Estimate Created",
+            "fc-event-repair-order" => "Repair Order (No Payments)",
+            "fc-event-job-order-paid" => "Repair Order with Invoices & Payments"
+        ];
+        
+        return $statusMap[$workflowStatus] ?? "Scheduled";
+    }
+    
+    /**
+     * Get event title for calendar.
+     */
+    private function getEventTitle($appointment)
+    {
+        $customerName = $appointment->customer ? $appointment->customer->first_name : "Walk-in";
+        
+        // Format time (e.g., "9:00 AM")
+        $time = date('g:i A', strtotime($appointment->appointment_time));
+        
+        // Get service type abbreviation
+        $serviceType = $this->getServiceTypeAbbreviation($appointment->service_type);
+        
+        // Clean calendar title: Time + Customer + Service
+        // Example: "9:00 AM - John - Oil Change"
+        return "{$time} - {$customerName}" . ($serviceType ? " - {$serviceType}" : "");
+    }
+    
+    /**
+     * Get abbreviated service type for calendar display.
+     */
+    private function getServiceTypeAbbreviation($serviceType)
+    {
+        $abbreviations = [
+            'regular_service' => 'Service',
+            'emergency' => 'Emergency',
+            'inspection' => 'Inspection',
+            'diagnostic' => 'Diagnostic',
+            'repair' => 'Repair',
+            'maintenance' => 'Maintenance',
+            'tire_service' => 'Tires',
+            'oil_change' => 'Oil Change',
+            'brake_service' => 'Brakes',
+            'other' => 'Other'
+        ];
+        
+        return $abbreviations[$serviceType] ?? $serviceType;
+    }
+    
+    /**
+     * Calculate end time for calendar event.
+     */
+    private function calculateEndTime($time)
+    {
+        // Default 1 hour duration
+        $start = Carbon::parse($time);
+        $end = $start->copy()->addHour();
+        return $end->format("H:i:s");
+    }
+    
+    /**
+     * Get vehicle information.
+     */
+    private function getVehicleInfo($appointment)
+    {
+        if ($appointment->vehicle) {
+            $vehicle = $appointment->vehicle;
+            return $vehicle->year . " " . $vehicle->make . " " . $vehicle->model;
+        }
+        
+        if ($appointment->customer && $appointment->customer->vehicles->count() > 0) {
+            $vehicle = $appointment->customer->vehicles->first();
+            return $vehicle->year . " " . $vehicle->make . " " . $vehicle->model;
+        }
+        
+        return "Vehicle info not available";
+    }
+    
+    /**
+     * Get event tooltip.
+     */
+    private function getEventTooltip($appointment)
+    {
+        $customerName = $appointment->customer ? $appointment->customer->full_name : "Walk-in Customer";
+        $time = Carbon::parse($appointment->appointment_time)->format("g:i A");
+        $status = ucfirst(str_replace("_", " ", $appointment->appointment_status));
+        $appointmentNumber = $appointment->appointment_number;
+        
+        // Get workflow status for display
+        $workflowStatus = $this->getWorkflowStatus($appointment);
+        $workflowStatusDisplay = $this->getWorkflowStatusDisplay($workflowStatus);
+        
+        // Improved tooltip with more details
+        $tooltip = "Appointment #: " . $appointmentNumber . "\n";
+        $tooltip .= "Customer: " . $customerName . "\n";
+        $tooltip .= "Time: " . $time . "\n";
+        $tooltip .= "Status: " . $status . "\n";
+        $tooltip .= "Workflow: " . $workflowStatusDisplay . "\n";
+        
+        // Add vehicle info if available
+        $vehicleInfo = $this->getVehicleInfo($appointment);
+        if ($vehicleInfo) {
+            $tooltip .= "Vehicle: " . $vehicleInfo . "\n";
+        }
+        
+        // Add service type
+        if ($appointment->service_type) {
+            $tooltip .= "Service: " . ucfirst(str_replace('_', ' ', $appointment->service_type)) . "\n";
+        }
+        
+        // REMOVED: Color coding explanation (per user request)
+        // Tooltip now only shows appointment details, not color legend
+        
+        return $tooltip;
+    }
+    
     public function statistics()
     {
         $today = Carbon::today();
-        
-        // Daily statistics
         $dailyStats = [
             'total' => Appointment::whereDate('appointment_date', $today)->count(),
             'scheduled' => Appointment::whereDate('appointment_date', $today)->where('appointment_status', 'scheduled')->count(),
@@ -790,5 +1105,18 @@ class AppointmentController extends Controller
             ->get();
         
         return view('appointments.statistics', compact('dailyStats', 'weeklyStats', 'monthlyStats', 'technicianStats'));
+    }
+    /**
+     * Check if appointment is within 3 days.
+     */
+    private function isWithinThreeDays($appointment)
+    {
+        $appointmentDate = \Carbon\Carbon::parse($appointment->appointment_date);
+        $today = \Carbon\Carbon::today();
+        
+        $daysDifference = $today->diffInDays($appointmentDate, false); // false = not absolute
+        
+        // Return true if appointment is within 3 days (0-3 days away)
+        return $daysDifference >= 0 && $daysDifference <= 3;
     }
 }

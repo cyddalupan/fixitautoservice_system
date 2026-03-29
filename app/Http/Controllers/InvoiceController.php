@@ -7,6 +7,9 @@ use App\Models\Invoice;
 use App\Models\Customer;
 use App\Models\WorkOrder;
 use App\Models\Estimate;
+use App\Models\Vehicle;
+use App\Models\TaxRate;
+use App\Models\Discount;
 
 class InvoiceController extends Controller
 {
@@ -25,19 +28,64 @@ class InvoiceController extends Controller
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function create(Request $request)
     {
-        $customers = Customer::where('status', 'active')->orderBy('name')->get();
-        $workOrders = WorkOrder::where('status', 'completed')
-            ->whereDoesntHave('invoice')
+        $customers = Customer::where('is_active', true)->orderBy('first_name')->get();
+        // Load all vehicles initially - we'll filter them with JavaScript
+        $vehicles = Vehicle::orderBy('year', 'desc')->get();
+        
+        // Get work order ID from request if provided
+        $selectedWorkOrderId = $request->get('work_order_id');
+        $selectedWorkOrder = null;
+        
+        // Load work orders
+        $workOrders = WorkOrder::where('work_order_status', 'completed')
+            ->whereDoesntHave('invoice')  // Only show work orders without invoices
             ->orderBy('created_at', 'desc')
             ->get();
+        
+        // If a specific work order ID is provided, load it
+        if ($selectedWorkOrderId) {
+            $selectedWorkOrder = WorkOrder::with(['customer', 'vehicle', 'workOrderItems'])
+                ->where('id', $selectedWorkOrderId)
+                ->where('work_order_status', 'completed')
+                ->whereDoesntHave('invoice')
+                ->first();
+            
+            if ($selectedWorkOrder) {
+                // Pre-select the customer and vehicle
+                $preSelectedCustomer = $selectedWorkOrder->customer;
+                $preSelectedVehicle = $selectedWorkOrder->vehicle;
+            }
+        }
+        
         $estimates = Estimate::where('status', 'approved')
             ->whereDoesntHave('workOrder.invoice')
             ->orderBy('created_at', 'desc')
             ->get();
         
-        return view('invoices.create', compact('customers', 'workOrders', 'estimates'));
+        // Get tax rates
+        $taxRates = TaxRate::where('is_active', true)->orderBy('rate')->get();
+        
+        // Get discounts
+        $discounts = Discount::where('is_active', true)->orderBy('name')->get();
+        
+        // Initialize selected variables as null
+        $selectedCustomer = $preSelectedCustomer ?? null;
+        $selectedVehicle = $preSelectedVehicle ?? null;
+        $selectedWorkOrder = $selectedWorkOrder ?? null;
+        
+        return view('invoices.create', compact(
+            'customers', 
+            'vehicles',
+            'taxRates',
+            'discounts',
+            'workOrders', 
+            'estimates',
+            'selectedCustomer',
+            'selectedVehicle',
+            'selectedWorkOrder'
+        ));
     }
 
     /**
@@ -50,8 +98,8 @@ class InvoiceController extends Controller
             'work_order_id' => 'nullable|exists:work_orders,id',
             'estimate_id' => 'nullable|exists:estimates,id',
             'invoice_number' => 'required|unique:invoices,invoice_number',
-            'issue_date' => 'required|date',
-            'due_date' => 'required|date|after:issue_date',
+            'invoice_date' => 'required|date',
+            'due_date' => 'required|date|after:invoice_date',
             'subtotal' => 'required|numeric|min:0',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
             'tax_amount' => 'nullable|numeric|min:0',
@@ -90,13 +138,39 @@ class InvoiceController extends Controller
         return redirect()->route('invoices.show', $invoice->id)
             ->with('success', 'Invoice created successfully!');
     }
+    
+    /**
+     * Get vehicles by customer ID (AJAX endpoint)
+     */
+    public function getVehiclesByCustomer(Request $request, $customerId)
+    {
+        $vehicles = Vehicle::where('customer_id', $customerId)
+            ->orderBy('year', 'desc')
+            ->get();
+        
+        return response()->json($vehicles);
+    }
+    
+    /**
+     * Get work orders by customer ID (AJAX endpoint)
+     */
+    public function getWorkOrdersByCustomer(Request $request, $customerId)
+    {
+        $workOrders = WorkOrder::where('customer_id', $customerId)
+            ->where('work_order_status', 'completed')
+            ->with('customer') // Include customer relationship for display
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        return response()->json($workOrders);
+    }
 
     /**
      * Display the specified resource.
      */
     public function show(Invoice $invoice)
     {
-        $invoice->load(['customer', 'workOrder', 'items', 'payments']);
+        $invoice->load(['customer', 'workOrder', 'items', 'payments', 'serviceProgress']);
         return view('invoices.show', compact('invoice'));
     }
 
@@ -105,8 +179,8 @@ class InvoiceController extends Controller
      */
     public function edit(Invoice $invoice)
     {
-        $customers = Customer::where('status', 'active')->orderBy('name')->get();
-        $workOrders = WorkOrder::where('status', 'completed')
+        $customers = Customer::where('is_active', true)->orderBy('first_name')->get();
+        $workOrders = WorkOrder::where('work_order_status', 'completed')
             ->orderBy('created_at', 'desc')
             ->get();
         
@@ -124,8 +198,8 @@ class InvoiceController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'work_order_id' => 'nullable|exists:work_orders,id',
             'invoice_number' => 'required|unique:invoices,invoice_number,' . $invoice->id,
-            'issue_date' => 'required|date',
-            'due_date' => 'required|date|after:issue_date',
+            'invoice_date' => 'required|date',
+            'due_date' => 'required|date|after:invoice_date',
             'subtotal' => 'required|numeric|min:0',
             'tax_rate' => 'nullable|numeric|min:0|max:100',
             'tax_amount' => 'nullable|numeric|min:0',

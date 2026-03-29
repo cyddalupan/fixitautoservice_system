@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="container">
-    <h1>Test Vehicle Inspections</h1>
+    <h1>Test Repair Orders</h1>
     
     @php
         try {

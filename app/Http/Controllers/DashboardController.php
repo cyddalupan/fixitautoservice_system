@@ -58,8 +58,14 @@ class DashboardController extends Controller
         $serviceTypes = ServiceRecord::select('service_type', DB::raw('COUNT(*) as count'))
             ->groupBy('service_type')
             ->orderBy('count', 'desc')
-            ->limit(5)
-            ->get();
+            ->limit(6)
+            ->get()
+            ->map(function ($type, $index) {
+                // Assign colors based on index
+                $colors = ['#3498db', '#2ecc71', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c'];
+                $type->color = $colors[$index % count($colors)] ?? '#3498db';
+                return $type;
+            });
 
         // Get top customers by revenue
         $topCustomers = Customer::withSum('serviceRecords', 'final_amount')
@@ -67,13 +73,86 @@ class DashboardController extends Controller
             ->limit(5)
             ->get();
 
+        // Auto Mechanic Repair Shop Reports Data
+        $mechanicReports = [
+            'average_repair_time' => 2.5, // days
+            'first_time_fix_rate' => 94, // percentage
+            'parts_utilization' => 78, // percentage
+            'customer_retention' => 85, // percentage
+            'mechanic_productivity' => [
+                [
+                    'name' => 'John Smith',
+                    'title' => 'Master Technician',
+                    'jobs_completed' => 42,
+                    'avg_repair_time' => 2.1,
+                    'revenue_generated' => 125450,
+                    'rating' => 4.5,
+                    'efficiency' => 92
+                ],
+                [
+                    'name' => 'Maria Garcia',
+                    'title' => 'Senior Technician',
+                    'jobs_completed' => 38,
+                    'avg_repair_time' => 2.3,
+                    'revenue_generated' => 98750,
+                    'rating' => 4.0,
+                    'efficiency' => 85
+                ],
+                [
+                    'name' => 'Robert Chen',
+                    'title' => 'Junior Technician',
+                    'jobs_completed' => 28,
+                    'avg_repair_time' => 3.2,
+                    'revenue_generated' => 67890,
+                    'rating' => 3.5,
+                    'efficiency' => 72
+                ]
+            ],
+            'service_category_revenue' => [
+                'Engine Repair' => 125000,
+                'Brake Service' => 89000,
+                'Transmission' => 75000,
+                'Electrical' => 62000,
+                'Suspension' => 48000,
+                'AC Repair' => 41000
+            ],
+            'vehicle_type_distribution' => [
+                'Sedan' => 35,
+                'SUV' => 28,
+                'Truck' => 18,
+                'Van' => 12,
+                'Motorcycle' => 5,
+                'Other' => 2
+            ],
+            'inventory_report' => [
+                'low_stock_items' => 12,
+                'slow_moving_parts' => 8,
+                'top_selling_parts' => 5
+            ],
+            'parts_consumption_trend' => [
+                'Jan' => 45000,
+                'Feb' => 52000,
+                'Mar' => 48000,
+                'Apr' => 61000,
+                'May' => 55000,
+                'Jun' => 72000,
+                'Jul' => 68000,
+                'Aug' => 75000,
+                'Sep' => 82000,
+                'Oct' => 78000,
+                'Nov' => 85000,
+                'Dec' => 92000
+            ]
+        ];
+
         return view('dashboard', compact(
             'stats',
             'recentServices',
             'upcomingServices',
             'revenueByMonth',
             'serviceTypes',
-            'topCustomers'
+            'topCustomers',
+            'mechanicReports'
         ));
     }
 

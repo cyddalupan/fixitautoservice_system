@@ -8,6 +8,7 @@ use App\Models\ServiceRecord;
 use App\Models\CustomerNote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Storage;
 
 class CustomerController extends Controller
 {
@@ -29,20 +30,29 @@ class CustomerController extends Controller
             });
         }
 
-        // Filter by customer type
-        if ($request->has('customer_type')) {
-            $query->where('customer_type', $request->customer_type);
+        // Filter by minimum number of services
+        if ($request->has('min_services') && is_numeric($request->min_services)) {
+            $minServices = (int)$request->min_services;
+            $query->whereHas('serviceRecords', function($q) use ($minServices) {
+                $q->havingRaw('COUNT(*) >= ?', [$minServices]);
+            }, '>=', $minServices);
         }
 
-        // Filter by segment
-        if ($request->has('segment')) {
-            $query->where('segment', $request->segment);
+        // Filter by last service date
+        if ($request->has('last_service') && is_numeric($request->last_service)) {
+            $days = (int)$request->last_service;
+            $date = now()->subDays($days);
+            $query->whereHas('serviceRecords', function($q) use ($date) {
+                $q->where('service_date', '>=', $date);
+            });
         }
 
-        // Filter by active status
-        if ($request->has('is_active')) {
-            $query->where('is_active', $request->is_active == 'active');
-        }
+        // Load relationships to avoid N+1 queries
+        $query->withCount(['serviceRecords', 'vehicles'])
+              ->withSum('serviceRecords', 'final_amount')
+              ->with(['serviceRecords' => function($q) {
+                  $q->latest('service_date')->limit(1);
+              }]);
 
         // Sorting
         $sortField = $request->get('sort', 'created_at');
@@ -68,57 +78,87 @@ class CustomerController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'first_name' => 'required|string|max:50',
-            'last_name' => 'required|string|max:50',
-            'email' => 'required|email|unique:customers,email',
-            'phone' => 'nullable|string|max:20',
+            'full_name' => 'required|string|max:100',
+            'email' => 'nullable|email|unique:customers,email',
+            'phone' => 'required|string|max:20',
             'address' => 'nullable|string|max:255',
-            'city' => 'nullable|string|max:50',
-            'state' => 'nullable|string|max:2',
-            'zip_code' => 'nullable|string|max:10',
-            'customer_type' => 'required|in:individual,commercial,fleet',
-            'company_name' => 'required_if:customer_type,commercial,fleet',
-            'tax_id' => 'nullable|string|max:50',
-            'credit_limit' => 'nullable|numeric|min:0',
-            'balance' => 'nullable|numeric',
-            'payment_terms' => 'required|in:net_15,net_30,net_60,cod',
-            'preferred_contact' => 'required|in:email,phone,sms',
-            'notes' => 'nullable|string',
-            'segment' => 'nullable|string|max:50',
-            'loyalty_points' => 'nullable|integer|min:0',
+            'facebook_profile' => 'nullable|string|max:255',
+            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            // Optional vehicle fields for immediate vehicle addition
+            'vehicle_make' => 'nullable|string|max:50',
+            'vehicle_model' => 'nullable|string|max:100',
+            'vehicle_year' => 'nullable|integer|min:1900|max:' . (date('Y') + 1),
+            'vehicle_vin' => 'nullable|string|max:17',
+            'vehicle_plate' => 'nullable|string|max:20',
+            'vehicle_color' => 'nullable|string|max:30',
         ]);
 
         if ($validator->fails()) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+            
             return redirect()->back()
                 ->withErrors($validator)
                 ->withInput();
         }
 
+        // Split full name into first and last name
+        $nameParts = explode(' ', $request->full_name, 2);
+        $firstName = $nameParts[0] ?? '';
+        $lastName = $nameParts[1] ?? '';
+        
+        // Handle profile picture upload
+        $profilePicturePath = null;
+        if ($request->hasFile('profile_picture')) {
+            $profilePicturePath = $request->file('profile_picture')->store('profile_pictures', 'public');
+        }
+        
         $customer = Customer::create([
-            'first_name' => $request->first_name,
-            'last_name' => $request->last_name,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
             'email' => $request->email,
             'phone' => $request->phone,
             'address' => $request->address,
-            'city' => $request->city,
-            'state' => $request->state,
-            'zip_code' => $request->zip_code,
-            'customer_type' => $request->customer_type,
-            'company_name' => $request->company_name,
-            'tax_id' => $request->tax_id,
-            'credit_limit' => $request->credit_limit ?? 0,
-            'balance' => $request->balance ?? 0,
-            'payment_terms' => $request->payment_terms,
+            'facebook_profile' => $request->facebook_profile,
+            'profile_picture' => $profilePicturePath,
             'customer_since' => now(),
-            'preferred_contact' => $request->preferred_contact,
-            'notes' => $request->notes,
-            'segment' => $request->segment,
-            'loyalty_points' => $request->loyalty_points ?? 0,
             'is_active' => true,
         ]);
 
+        // Create vehicle if vehicle fields are provided
+        if ($request->filled('vehicle_make') || $request->filled('vehicle_model') || 
+            $request->filled('vehicle_year') || $request->filled('vehicle_vin') || 
+            $request->filled('vehicle_plate') || $request->filled('vehicle_color')) {
+            
+            Vehicle::create([
+                'customer_id' => $customer->id,
+                'make' => $request->vehicle_make,
+                'model' => $request->vehicle_model,
+                'year' => $request->vehicle_year,
+                'vin' => $request->vehicle_vin,
+                'license_plate' => $request->vehicle_plate,
+                'color' => $request->vehicle_color,
+                'is_active' => true,
+            ]);
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer created successfully!' . 
+                    ($request->filled('vehicle_make') ? ' Vehicle added.' : ''),
+                'customer_id' => $customer->id,
+                'redirect_url' => route('customers.show', $customer)
+            ]);
+        }
+        
         return redirect()->route('customers.show', $customer)
-            ->with('success', 'Customer created successfully.');
+            ->with('success', 'Customer created successfully.' . 
+                ($request->filled('vehicle_make') ? ' Vehicle added.' : ''));
     }
 
     /**
@@ -157,6 +197,7 @@ class CustomerController extends Controller
      */
     public function edit(Customer $customer)
     {
+        $customer->load('vehicles');
         return view('customers.edit', compact('customer'));
     }
 
@@ -166,54 +207,107 @@ class CustomerController extends Controller
     public function update(Request $request, Customer $customer)
     {
         $validator = Validator::make($request->all(), [
-            'first_name' => 'required|string|max:50',
-            'last_name' => 'required|string|max:50',
-            'email' => 'required|email|unique:customers,email,' . $customer->id,
-            'phone' => 'nullable|string|max:20',
+            'full_name' => 'required|string|max:100',
+            'email' => 'nullable|email|unique:customers,email,' . $customer->id,
+            'phone' => 'required|string|max:20',
             'address' => 'nullable|string|max:255',
-            'city' => 'nullable|string|max:50',
-            'state' => 'nullable|string|max:2',
-            'zip_code' => 'nullable|string|max:10',
-            'customer_type' => 'required|in:individual,commercial,fleet',
-            'company_name' => 'required_if:customer_type,commercial,fleet',
-            'tax_id' => 'nullable|string|max:50',
-            'credit_limit' => 'nullable|numeric|min:0',
-            'balance' => 'nullable|numeric',
-            'payment_terms' => 'required|in:net_15,net_30,net_60,cod',
-            'preferred_contact' => 'required|in:email,phone,sms',
-            'notes' => 'nullable|string',
-            'segment' => 'nullable|string|max:50',
-            'loyalty_points' => 'nullable|integer|min:0',
-            'is_active' => 'nullable|boolean',
+            'facebook_profile' => 'nullable|string|max:255',
+            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            // Optional vehicle fields
+            'vehicle_vin' => 'nullable|string|max:17',
+            'vehicle_plate' => 'nullable|string|max:20',
+            'vehicle_color' => 'nullable|string|max:30',
+            'vehicle_mileage' => 'nullable|integer|min:0',
+            'engine_no' => 'nullable|string|max:50',
+            // Optional service needed field (can be added in edit)
         ]);
 
         if ($validator->fails()) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+            
             return redirect()->back()
                 ->withErrors($validator)
                 ->withInput();
         }
 
-        $customer->update([
-            'first_name' => $request->first_name,
-            'last_name' => $request->last_name,
+        // Split full name into first and last name
+        $nameParts = explode(' ', $request->full_name, 2);
+        $firstName = $nameParts[0] ?? '';
+        $lastName = $nameParts[1] ?? '';
+        
+        // Handle profile picture upload
+        $updateData = [
+            'first_name' => $firstName,
+            'last_name' => $lastName,
             'email' => $request->email,
             'phone' => $request->phone,
             'address' => $request->address,
-            'city' => $request->city,
-            'state' => $request->state,
-            'zip_code' => $request->zip_code,
-            'customer_type' => $request->customer_type,
-            'company_name' => $request->company_name,
-            'tax_id' => $request->tax_id,
-            'credit_limit' => $request->credit_limit,
-            'payment_terms' => $request->payment_terms,
-            'is_active' => $request->has('is_active'),
-            'preferred_contact' => $request->preferred_contact,
-            'notes' => $request->notes,
-            'segment' => $request->segment,
-            'preferences' => $request->preferences ? json_decode($request->preferences, true) : null,
-        ]);
+            'facebook_profile' => $request->facebook_profile,
+        ];
+        if ($request->hasFile('profile_picture')) {
+            // Delete old profile picture if exists
+            if ($customer->profile_picture) {
+                Storage::disk('public')->delete($customer->profile_picture);
+            }
+            
+            $profilePicturePath = $request->file('profile_picture')->store('profile_pictures', 'public');
+            $updateData['profile_picture'] = $profilePicturePath;
+        }
+        
+        $customer->update($updateData);
 
+        // Handle vehicle creation/update
+        if ($request->filled('vehicle_make') || $request->filled('vehicle_year') || 
+            $request->filled('vehicle_vin') || $request->filled('vehicle_plate') ||
+            $request->filled('vehicle_color') || $request->filled('vehicle_mileage') ||
+            $request->filled('engine_no')) {
+            
+            // Check if customer already has a vehicle
+            $vehicle = $customer->vehicles()->first();
+            
+            if ($vehicle) {
+                // Update existing vehicle
+                $vehicle->update([
+                    'make' => $request->vehicle_make,
+                    'model' => $request->vehicle_model,
+                    'year' => $request->vehicle_year,
+                    'vin' => $request->vehicle_vin,
+                    'license_plate' => $request->vehicle_plate,
+                    'color' => $request->vehicle_color,
+                    'current_mileage' => $request->vehicle_mileage,
+                    'engine_no' => $request->engine_no,
+                ]);
+            } else {
+                // Create new vehicle
+                $vehicle = Vehicle::create([
+                    'customer_id' => $customer->id,
+                    'make' => $request->vehicle_make,
+                    'model' => $request->vehicle_model,
+                    'year' => $request->vehicle_year,
+                    'vin' => $request->vehicle_vin,
+                    'license_plate' => $request->vehicle_plate,
+                    'color' => $request->vehicle_color,
+                    'current_mileage' => $request->vehicle_mileage,
+                    'engine_no' => $request->engine_no,
+                    'is_active' => true,
+                ]);
+            }
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer updated successfully!',
+                'customer_id' => $customer->id,
+                'redirect_url' => route('customers.show', $customer)
+            ]);
+        }
+        
         return redirect()->route('customers.show', $customer)
             ->with('success', 'Customer updated successfully.');
     }
@@ -331,6 +425,30 @@ class CustomerController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
+        // Check if request wants JSON
+        if (request()->wantsJson() || request()->is('api/*')) {
+            return response()->json([
+                'success' => true,
+                'customer_id' => $customer->id,
+                'customer_name' => $customer->name,
+                'vehicles' => $vehicles->map(function($vehicle) {
+                    return [
+                        'id' => $vehicle->id,
+                        'year' => $vehicle->year,
+                        'make' => $vehicle->make,
+                        'model' => $vehicle->model,
+                        'trim' => $vehicle->trim,
+                        'license_plate' => $vehicle->license_plate,
+                        'vin' => $vehicle->vin,
+                        'color' => $vehicle->color,
+                        'created_at' => $vehicle->created_at,
+                        'updated_at' => $vehicle->updated_at
+                    ];
+                }),
+                'total_vehicles' => $vehicles->total()
+            ]);
+        }
+
         return view('customers.vehicles', compact('customer', 'vehicles'));
     }
 
@@ -397,5 +515,357 @@ class CustomerController extends Controller
 
         return redirect()->back()
             ->with('success', 'Service reminders sent successfully.');
+    }
+
+    /**
+     * Upload profile picture via AJAX (like Facebook)
+     */
+    public function uploadProfilePicture(Request $request, Customer $customer)
+    {
+        try {
+            \Log::info('Profile picture upload started for customer: ' . $customer->id);
+            
+            $request->validate([
+                'profile_picture' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+            ]);
+
+            \Log::info('File validation passed');
+            
+            // Delete old profile picture if exists
+            if ($customer->profile_picture) {
+                \Log::info('Deleting old profile picture: ' . $customer->profile_picture);
+                Storage::disk('public')->delete($customer->profile_picture);
+            }
+
+            // Upload new profile picture
+            \Log::info('Uploading new profile picture');
+            $profilePicturePath = $request->file('profile_picture')->store('profile_pictures', 'public');
+            \Log::info('Profile picture stored at: ' . $profilePicturePath);
+            
+            // Update customer
+            $customer->update(['profile_picture' => $profilePicturePath]);
+            \Log::info('Customer record updated');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Profile picture updated successfully.',
+                'profile_picture_url' => asset('storage/' . $profilePicturePath),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Profile picture upload error: ' . $e->getMessage());
+            \Log::error('Error trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Upload failed: ' . $e->getMessage(),
+                'errors' => ['profile_picture' => [$e->getMessage()]]
+            ], 500);
+        }
+    }
+
+    /**
+     * Remove profile picture
+     */
+    public function removeProfilePicture(Customer $customer)
+    {
+        try {
+            \Log::info('Removing profile picture for customer: ' . $customer->id);
+            
+            if ($customer->profile_picture) {
+                \Log::info('Deleting profile picture: ' . $customer->profile_picture);
+                Storage::disk('public')->delete($customer->profile_picture);
+                $customer->update(['profile_picture' => null]);
+                \Log::info('Profile picture removed successfully');
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Profile picture removed successfully.',
+                ]);
+            }
+
+            \Log::info('No profile picture to remove for customer: ' . $customer->id);
+            return response()->json([
+                'success' => false,
+                'message' => 'No profile picture to remove.',
+            ], 400);
+        } catch (\Exception $e) {
+            \Log::error('Remove profile picture error: ' . $e->getMessage());
+            \Log::error('Error trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Remove failed: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Generate a customer form link (Google Form-like)
+     */
+    public function generateForm(Request $request)
+    {
+        try {
+            // Generate a unique token for the form
+            $token = \Illuminate\Support\Str::random(32);
+            
+            // Store form token in session or cache (valid for 3 days)
+            \Cache::put('customer_form_token_' . $token, [
+                'generated_at' => now(),
+                'generated_by' => auth()->id(),
+                'expires_at' => now()->addDays(3),
+            ], now()->addDays(3));
+
+            // Store token key in list for tracking
+            $cacheKeys = \Cache::get('customer_form_tokens', []);
+            $cacheKeys[] = $token;
+            \Cache::put('customer_form_tokens', $cacheKeys, now()->addDays(30));
+
+            // Generate the form URL - Use main website domain for public access
+            $formUrl = 'https://form.fixitautoservices.com/customer-form/' . $token;
+            
+            // Generate a QR code URL for easy mobile access
+            $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' . urlencode($formUrl);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer form generated successfully!',
+                'form_url' => $formUrl,
+                'qr_code_url' => $qrCodeUrl,
+                'token' => $token,
+                'expires_at' => now()->addDays(3)->format('F j, Y \a\t g:i A'),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Generate form error: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to generate form: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Show the customer form (public access)
+     */
+    public function showForm($token)
+    {
+        // Verify token exists and is valid
+        $formData = \Cache::get('customer_form_token_' . $token);
+        
+        if (!$formData) {
+            return view('customers.form-expired');
+        }
+
+        // Check if token is expired
+        if (now()->greaterThan($formData['expires_at'])) {
+            \Cache::forget('customer_form_token_' . $token);
+            return view('customers.form-expired');
+        }
+
+        // Check if form has already been submitted (single submission per link)
+        $submissionCount = Customer::where('form_token', $token)->count();
+        if ($submissionCount > 0) {
+            return view('customers.form-already-submitted', [
+                'token' => $token,
+                'expires_at' => $formData['expires_at']->format('F j, Y \a\t g:i A'),
+            ]);
+        }
+
+        return view('customers.form-public', [
+            'token' => $token,
+            'expires_at' => $formData['expires_at']->format('F j, Y \a\t g:i A'),
+        ]);
+    }
+
+    /**
+     * Submit the customer form (public access)
+     */
+    public function submitForm(Request $request, $token)
+    {
+        // Verify token exists and is valid
+        $formData = \Cache::get('customer_form_token_' . $token);
+        
+        if (!$formData) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Form link has expired or is invalid.',
+            ], 400);
+        }
+
+        // Check if token is expired
+        if (now()->greaterThan($formData['expires_at'])) {
+            \Cache::forget('customer_form_token_' . $token);
+            return response()->json([
+                'success' => false,
+                'message' => 'Form link has expired.',
+            ], 400);
+        }
+
+        // Check if form has already been submitted (single submission per link)
+        $submissionCount = Customer::where('form_token', $token)->count();
+        if ($submissionCount > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This form link has already been used. Each link can only be submitted once.',
+            ], 400);
+        }
+
+        // Validate form data
+        $validator = Validator::make($request->all(), [
+            'full_name' => 'required|string|max:100',
+            'email' => 'nullable|email|unique:customers,email',
+            'phone' => 'required|string|max:20',
+            'address' => 'nullable|string|max:255',
+            'facebook_profile' => 'nullable|string|max:255',
+            // Optional vehicle fields
+            'vehicle_make' => 'nullable|string|max:50',
+            'vehicle_model' => 'nullable|string|max:100',
+            'vehicle_year' => 'nullable|integer|min:1900|max:' . (date('Y') + 1),
+            'vehicle_vin' => 'nullable|string|max:17',
+            'vehicle_plate' => 'nullable|string|max:20',
+            'vehicle_color' => 'nullable|string|max:30',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Create customer
+        $nameParts = explode(' ', $request->full_name, 2);
+        $firstName = $nameParts[0] ?? '';
+        $lastName = $nameParts[1] ?? '';
+
+        $customer = Customer::create([
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'address' => $request->address,
+            'facebook_profile' => $request->facebook_profile,
+            'customer_since' => now(),
+            'is_active' => true,
+            'created_via_form' => true, // Mark as created via form
+            'form_token' => $token, // Store which form was used
+            'form_submitted_at' => now(), // Timestamp when form was submitted
+        ]);
+
+        // Create vehicle if provided
+        if ($request->filled('vehicle_make') || $request->filled('vehicle_model') || 
+            $request->filled('vehicle_year') || $request->filled('vehicle_vin') || 
+            $request->filled('vehicle_plate') || $request->filled('vehicle_color')) {
+            
+            Vehicle::create([
+                'customer_id' => $customer->id,
+                'make' => $request->vehicle_make,
+                'model' => $request->vehicle_model,
+                'year' => $request->vehicle_year,
+                'vin' => $request->vehicle_vin,
+                'license_plate' => $request->vehicle_plate,
+                'color' => $request->vehicle_color,
+                'is_active' => true,
+            ]);
+        }
+
+        // Add a note that customer was created via form
+        $customer->notes()->create([
+            'user_id' => $formData['generated_by'], // User who generated the form
+            'note_type' => 'general',
+            'content' => 'Customer created via public form submission.',
+            'is_important' => false,
+            'tags' => ['form', 'public'],
+        ]);
+
+        // Invalidate the token after successful submission (optional)
+        // \Cache::forget('customer_form_token_' . $token);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Thank you! Your information has been submitted successfully.',
+            'customer_id' => $customer->id,
+        ]);
+    }
+
+    /**
+     * Show generated forms with status
+     */
+    public function generatedForms()
+    {
+        // Get all customers created via form
+        $formCustomers = Customer::where('created_via_form', true)
+            ->orderBy('form_submitted_at', 'desc')
+            ->get();
+
+        // Get all active form tokens from cache
+        $activeForms = [];
+        $cacheKeys = \Cache::get('customer_form_tokens', []);
+        
+        foreach ($cacheKeys as $token) {
+            $formData = \Cache::get('customer_form_token_' . $token);
+            if ($formData) {
+                // Count submissions for this token
+                $submissionCount = Customer::where('form_token', $token)->count();
+                
+                $activeForms[] = [
+                    'token' => $token,
+                    'generated_at' => $formData['generated_at'],
+                    'generated_by' => $formData['generated_by'],
+                    'expires_at' => $formData['expires_at'],
+                    'submission_count' => $submissionCount,
+                    'form_url' => 'https://form.fixitautoservices.com/customer-form/' . $token,
+                    'qr_code_url' => 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' . urlencode('https://form.fixitautoservices.com/customer-form/' . $token),
+                    'is_expired' => now()->greaterThan($formData['expires_at']),
+                ];
+            }
+        }
+
+        // Sort active forms by generated_at (newest first)
+        usort($activeForms, function($a, $b) {
+            return $b['generated_at'] <=> $a['generated_at'];
+        });
+
+        return view('customers.generated-forms', [
+            'formCustomers' => $formCustomers,
+            'activeForms' => $activeForms,
+        ]);
+    }
+
+    /**
+     * Get form details for API
+     */
+    public function formDetails($token)
+    {
+        $formData = \Cache::get('customer_form_token_' . $token);
+        
+        if (!$formData) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Form not found or expired',
+            ], 404);
+        }
+
+        // Count submissions for this token
+        $submissionCount = Customer::where('form_token', $token)->count();
+        
+        // Get user who generated the form
+        $generatedBy = \App\Models\User::find($formData['generated_by']);
+        
+        $formDetails = [
+            'token' => $token,
+            'generated_at' => $formData['generated_at']->format('F j, Y \a\t g:i A'),
+            'generated_by' => $generatedBy ? $generatedBy->name : 'Unknown',
+            'expires_at' => $formData['expires_at']->format('F j, Y \a\t g:i A'),
+            'submission_count' => $submissionCount,
+            'form_url' => 'https://form.fixitautoservices.com/customer-form/' . $token,
+            'qr_code_url' => 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' . urlencode('https://form.fixitautoservices.com/customer-form/' . $token),
+            'is_expired' => now()->greaterThan($formData['expires_at']),
+        ];
+
+        return response()->json([
+            'success' => true,
+            'form' => $formDetails,
+        ]);
     }
 }

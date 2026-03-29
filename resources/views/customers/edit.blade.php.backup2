@@ -1,0 +1,230 @@
+@extends('layouts.app')
+
+@section('title', 'Edit Customer - Fix-It Auto Services')
+
+@section('content')
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h3 mb-0">
+                <i class="fas fa-user-edit me-2"></i>Edit Customer
+            </h1>
+            <p class="text-muted mb-0">Update customer profile</p>
+        </div>
+        <div>
+            <a href="{{ route('customers.index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Customers
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" action="{{ route('customers.update', $customer) }}">
+                    @csrf
+                    @method('PUT')
+                    
+                    <div class="row">
+                        <!-- Required Information -->
+                        <div class="col-md-6">
+                            <h5 class="mb-3 border-bottom pb-2">Required Information</h5>
+                            
+                            <div class="form-group mb-3">
+                                <label for="full_name" class="form-label">Full Name *</label>
+                                <input type="text" class="form-control @error('full_name') is-invalid @enderror" 
+                                       id="full_name" name="full_name" value="{{ old('full_name', $customer->first_name . ' ' . $customer->last_name) }}" required>
+                                @error('full_name')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="phone" class="form-label">Mobile Number *</label>
+                                <input type="tel" class="form-control @error('phone') is-invalid @enderror" 
+                                       id="phone" name="phone" value="{{ old('phone', $customer->phone) }}" required>
+                                @error('phone')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="vehicle_model" class="form-label">Vehicle Model</label>
+                                <input type="text" class="form-control @error('vehicle_model') is-invalid @enderror" 
+                                       id="vehicle_model" name="vehicle_model" value="{{ old('vehicle_model', $customer->vehicle_model) }}">
+                                @error('vehicle_model')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror>
+                                <small class="form-text text-muted">Optional - can be added later</small>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="service_needed" class="form-label">Service Needed</label>
+                                <textarea class="form-control @error('service_needed') is-invalid @enderror" 
+                                          id="service_needed" name="service_needed" rows="3">{{ old('service_needed', $customer->service_needed) }}</textarea>
+                                @error('service_needed')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror>
+                                <small class="form-text text-muted">Optional - can be added or updated later</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Optional Information -->
+                        <div class="col-md-6">
+                            <h5 class="mb-3 border-bottom pb-2">Optional Information</h5>
+                            
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="facebook_profile" class="form-label">Facebook Profile / Messenger</label>
+                                <input type="text" class="form-control @error('facebook_profile') is-invalid @enderror" 
+                                       id="facebook_profile" name="facebook_profile" value="{{ old('facebook_profile', $customer->facebook_profile) }}">
+                                @error('facebook_profile')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror>
+                                <small class="form-text text-muted">Facebook profile URL or Messenger username</small>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="email" class="form-label">Email Address</label>
+                                <input type="email" class="form-control @error('email') is-invalid @enderror" 
+                                       id="email" name="email" value="{{ old('email', $customer->email) }}">
+                                @error('email')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror>
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="address" class="form-label">Address</label>
+                                <input type="text" class="form-control @error('address') is-invalid @enderror" 
+                                       id="address" name="address" value="{{ old('address', $customer->address) }}">
+                                @error('address')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <!-- Submit Buttons -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ route('customers.show', $customer) }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-1"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i> Update Customer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+<script>
+    $(document).ready(function() {
+        // Auto-format phone number
+        $('#phone').on('input', function() {
+            var phone = $(this).val().replace(/\D/g, '');
+            if (phone.length > 3 && phone.length <= 6) {
+                phone = phone.replace(/(\d{3})(\d+)/, '($1) $2');
+            } else if (phone.length > 6) {
+                phone = phone.replace(/(\d{3})(\d{3})(\d+)/, '($1) $2-$3');
+            }
+            $(this).val(phone);
+        });
+
+        // Handle form submission with AJAX and SweetAlert2
+        $('form').on('submit', function(e) {
+            e.preventDefault();
+            
+            var form = $(this);
+            var formData = new FormData(this);
+            var submitButton = form.find('button[type="submit"]');
+            var originalButtonText = submitButton.html();
+            
+            // Show loading state
+            submitButton.prop('disabled', true);
+            submitButton.html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+            
+            // Submit form via AJAX
+            $.ajax({
+                url: form.attr('action'),
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: {
+                    'X-HTTP-Method-Override': 'PUT' // Laravel method spoofing for PUT requests
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Show beautiful success notification
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            text: response.message,
+                            showConfirmButton: true,
+                            confirmButtonText: 'View Customer',
+                            confirmButtonColor: '#3085d6',
+                            allowOutsideClick: false,
+                            timer: 5000,
+                            timerProgressBar: true,
+                            didOpen: (toast) => {
+                                toast.addEventListener('mouseenter', Swal.stopTimer)
+                                toast.addEventListener('mouseleave', Swal.resumeTimer)
+                            }
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                // Redirect to customer profile
+                                window.location.href = response.redirect_url;
+                            } else {
+                                // Auto-redirect after timer
+                                window.location.href = response.redirect_url;
+                            }
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    // Restore button state
+                    submitButton.prop('disabled', false);
+                    submitButton.html(originalButtonText);
+                    
+                    if (xhr.status === 422) {
+                        // Validation errors
+                        var errors = xhr.responseJSON.errors;
+                        var errorMessages = '';
+                        
+                        $.each(errors, function(field, messages) {
+                            errorMessages += '<strong>' + field + ':</strong> ' + messages.join(', ') + '<br>';
+                        });
+                        
+                        // Show error notification
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Validation Error',
+                            html: errorMessages,
+                            confirmButtonText: 'OK',
+                            confirmButtonColor: '#d33'
+                        });
+                    } else {
+                        // General error
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error!',
+                            text: 'An error occurred while updating the customer. Please try again.',
+                            confirmButtonText: 'OK',
+                            confirmButtonColor: '#d33'
+                        });
+                    }
+                }
+            });
+        });
+    });
+</script>
+@endpush

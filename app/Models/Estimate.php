@@ -196,4 +196,12 @@ class Estimate extends Model
     {
         return $this->hasManyThrough(Payment::class, Invoice::class, 'estimate_id', 'invoice_id');
     }
+
+    /**
+     * Get the service progress record for this estimate.
+     */
+    public function serviceProgress(): HasOne
+    {
+        return $this->hasOne(ServiceProgress::class, 'estimate_id');
+    }
 }

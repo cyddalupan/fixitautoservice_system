@@ -48,12 +48,14 @@
                                 <i class="fas fa-user"></i> Customer <span class="text-danger">*</span>
                             </label>
                             <select class="form-select @error('customer_id') is-invalid @enderror" 
-                                    id="customer_id" name="customer_id" required>
+                                    id="customer_id" name="customer_id" required
+                                    {{ isset($prefilledData['customer_id']) ? 'disabled' : '' }}>
                                 <option value="">Select Customer</option>
                                 @foreach($customers as $customer)
                                     <option value="{{ $customer->id }}" 
                                         @if(old('customer_id') == $customer->id) selected @endif
-                                        @if(isset($appointment) && $appointment->customer_id == $customer->id) selected @endif>
+                                        @if(isset($appointment) && $appointment->customer_id == $customer->id) selected @endif
+                                        @if(isset($prefilledData['customer_id']) && $prefilledData['customer_id'] == $customer->id) selected @endif>
                                         {{ $customer->full_name }} 
                                         @if($customer->company_name)
                                             ({{ $customer->company_name }})
@@ -61,6 +63,9 @@
                                     </option>
                                 @endforeach
                             </select>
+                            @if(isset($prefilledData['customer_id']))
+                                <input type="hidden" name="customer_id" value="{{ $prefilledData['customer_id'] }}">
+                            @endif
                             @error('customer_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
@@ -73,19 +78,13 @@
                             </label>
                             <select class="form-select @error('vehicle_id') is-invalid @enderror" 
                                     id="vehicle_id" name="vehicle_id" required>
-                                <option value="">Select Vehicle</option>
-                                @foreach($vehicles as $vehicle)
-                                    <option value="{{ $vehicle->id }}" 
-                                        @if(old('vehicle_id') == $vehicle->id) selected @endif
-                                        @if(isset($appointment) && $appointment->vehicle_id == $vehicle->id) selected @endif>
-                                        {{ $vehicle->year }} {{ $vehicle->make }} {{ $vehicle->model }} 
-                                        ({{ $vehicle->license_plate ?? 'No Plate' }})
-                                    </option>
-                                @endforeach
+                                <option value="">Select Customer First</option>
+                                <!-- Vehicles will be populated dynamically based on customer selection -->
                             </select>
                             @error('vehicle_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                            <small class="form-text text-muted">Select customer first to see their registered vehicles</small>
                         </div>
 
                         <!-- Estimate Number -->
@@ -266,6 +265,106 @@
 
 @push('scripts')
 <script>
+// Vehicle loading implementation for Fixit Auto Services
+
+// Store all vehicles data from server
+var allVehicles = {!! json_encode($vehicles) !!};
+
+// Group vehicles by customer_id for quick lookup
+var vehiclesByCustomer = {};
+allVehicles.forEach(function(vehicle) {
+    if (!vehiclesByCustomer[vehicle.customer_id]) {
+        vehiclesByCustomer[vehicle.customer_id] = [];
+    }
+    vehiclesByCustomer[vehicle.customer_id].push(vehicle);
+});
+
+// Wait for jQuery to be available
+function waitForJQuery(callback) {
+    if (window.jQuery) {
+        callback();
+    } else {
+        setTimeout(function() { waitForJQuery(callback); }, 100);
+    }
+}
+
+waitForJQuery(function() {
+    $(document).ready(function() {
+        // Get elements
+        var $customer = $('#customer_id');
+        var $vehicle = $('#vehicle_id');
+        
+        // Customer change handler (only if not disabled)
+        if (!$customer.prop('disabled')) {
+            $customer.on('change', function() {
+                var customerId = $(this).val();
+                
+                // Clear vehicle dropdown
+                $vehicle.empty();
+                
+                if (!customerId) {
+                    // No customer selected
+                    $vehicle.append('<option value="">Select Customer First</option>');
+                    $vehicle.prop('disabled', true);
+                } else {
+                    // Customer selected
+                    $vehicle.append('<option value="">Select Vehicle</option>');
+                    $vehicle.prop('disabled', false);
+                    
+                    // Get vehicles for this customer
+                    var customerVehicles = vehiclesByCustomer[customerId] || [];
+                    
+                    if (customerVehicles.length > 0) {
+                        // Add customer's actual vehicles
+                        customerVehicles.forEach(function(vehicle) {
+                            var optionText = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
+                            if (vehicle.license_plate) {
+                                optionText += ' (' + vehicle.license_plate + ')';
+                            }
+                            
+                            $vehicle.append('<option value="' + vehicle.id + '">' + optionText + '</option>');
+                        });
+                    } else {
+                        // Customer has no vehicles
+                        $vehicle.append('<option value="">No vehicles registered for this customer</option>');
+                    }
+                }
+            });
+        }
+        
+        // If customer is pre-selected and locked, trigger vehicle load immediately
+        if ($customer.prop('disabled') && $customer.val()) {
+            var customerId = $customer.val();
+            $vehicle.empty();
+            $vehicle.append('<option value="">Select Vehicle</option>');
+            $vehicle.prop('disabled', false);
+            
+            // Get vehicles for this customer
+            var customerVehicles = vehiclesByCustomer[customerId] || [];
+            
+            if (customerVehicles.length > 0) {
+                // Add customer's actual vehicles
+                customerVehicles.forEach(function(vehicle) {
+                    var optionText = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
+                    if (vehicle.license_plate) {
+                        optionText += ' (' + vehicle.license_plate + ')';
+                    }
+                    
+                    $vehicle.append('<option value="' + vehicle.id + '">' + optionText + '</option>');
+                });
+                
+                // Pre-select vehicle if provided in prefilledData
+                @if(isset($prefilledData['vehicle_id']) && $prefilledData['vehicle_id'])
+                    $vehicle.val({{ $prefilledData['vehicle_id'] }});
+                @endif
+            } else {
+                // Customer has no vehicles
+                $vehicle.append('<option value="">No vehicles registered for this customer</option>');
+            }
+        }
+    });
+});
+
 // Simple autocomplete implementation for Fixit Auto Services
 
 // Pass PHP inventory data to JavaScript

@@ -117,6 +117,7 @@ class VehicleInspectionController extends Controller
         $customers = Customer::where('is_active', true)->orderBy('first_name')->get();
         $vehicles = Vehicle::with('customer')->get();
         $technicians = User::where('role', 'technician')->where('is_active', true)->get();
+        $inspectors = User::where('role', 'technician')->where('is_active', true)->get(); // Same as technicians for now
         $advisors = User::where('role', 'service_advisor')->where('is_active', true)->get();
         $workOrders = WorkOrder::whereIn('work_order_status', ['draft', 'pending_approval', 'approved'])
             ->with(['customer', 'vehicle'])
@@ -136,20 +137,32 @@ class VehicleInspectionController extends Controller
             ? Appointment::with(['customer', 'vehicle'])->find($request->appointment_id)
             : null;
         
-        // Pre-select customer if provided
-        $selectedCustomer = $request->filled('customer_id') 
-            ? Customer::find($request->customer_id)
-            : null;
-        
         // Pre-select vehicle if provided
         $selectedVehicle = $request->filled('vehicle_id') 
             ? Vehicle::with('customer')->find($request->vehicle_id)
             : null;
         
+        // Pre-select customer if provided OR get from selected vehicle/appointment/work order
+        if ($request->filled('customer_id')) {
+            $selectedCustomer = Customer::find($request->customer_id);
+        } elseif ($selectedVehicle && $selectedVehicle->customer) {
+            // If vehicle is provided but customer isn't, get customer from vehicle
+            $selectedCustomer = $selectedVehicle->customer;
+        } elseif ($selectedAppointment && $selectedAppointment->customer) {
+            // If appointment is provided but customer isn't, get customer from appointment
+            $selectedCustomer = $selectedAppointment->customer;
+        } elseif ($selectedWorkOrder && $selectedWorkOrder->customer) {
+            // If work order is provided but customer isn't, get customer from work order
+            $selectedCustomer = $selectedWorkOrder->customer;
+        } else {
+            $selectedCustomer = null;
+        }
+        
         return view('inspections.create', compact(
             'customers', 
             'vehicles', 
             'technicians', 
+            'inspectors',
             'advisors', 
             'workOrders',
             'appointments',
@@ -229,11 +242,16 @@ class VehicleInspectionController extends Controller
             'appointment',
             'items.category',
             'createdBy',
-            'approvedBy'
+            'approvedBy',
+            'serviceProgress'
         ]);
         
         // Group items by category
         $itemsByCategory = $inspection->items->groupBy('category.category_name');
+        
+        // Get technicians and service advisors for dropdowns
+        $technicians = User::where('role', 'technician')->where('is_active', true)->orderBy('name')->get();
+        $serviceAdvisors = User::where('role', 'office_staff')->where('is_active', true)->orderBy('name')->get();
         
         // Get statistics
         $itemStats = [
@@ -245,9 +263,6 @@ class VehicleInspectionController extends Controller
             'pass_rate' => $inspection->pass_rate,
             'score' => $inspection->inspection_score,
         ];
-        
-        // Get technicians for assignment
-        $technicians = User::where('role', 'technician')->where('is_active', true)->get();
         
         // Get similar inspections for this vehicle
         $vehicleInspections = VehicleInspection::where('vehicle_id', $inspection->vehicle_id)
@@ -261,6 +276,7 @@ class VehicleInspectionController extends Controller
             'itemsByCategory', 
             'itemStats',
             'technicians',
+            'serviceAdvisors',
             'vehicleInspections'
         ));
         
@@ -871,6 +887,85 @@ class VehicleInspectionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update mileage: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Update inspection team (technician and service advisor)
+     */
+    public function updateTeam(Request $request, VehicleInspection $inspection)
+    {
+        try {
+            \Log::info('updateTeam called', [
+                'inspection_id' => $inspection->id,
+                'technician_id_input' => $request->input('technician_id'),
+                'service_advisor_id_input' => $request->input('service_advisor_id'),
+                'all_inputs' => $request->all()
+            ]);
+            
+            // Validate the request
+            $validated = $request->validate([
+                'technician_id' => 'nullable|exists:users,id',
+                'service_advisor_id' => 'nullable|exists:users,id'
+            ]);
+            
+            \Log::info('updateTeam validated', [
+                'validated_technician_id' => $validated['technician_id'] ?? null,
+                'validated_service_advisor_id' => $validated['service_advisor_id'] ?? null
+            ]);
+            
+            // Update the inspection team - convert empty strings to null
+            $updateData = [];
+            
+            if (isset($validated['technician_id']) && $validated['technician_id'] !== '') {
+                $updateData['technician_id'] = $validated['technician_id'];
+            } else {
+                $updateData['technician_id'] = null;
+            }
+            
+            if (isset($validated['service_advisor_id']) && $validated['service_advisor_id'] !== '') {
+                $updateData['service_advisor_id'] = $validated['service_advisor_id'];
+            } else {
+                $updateData['service_advisor_id'] = null;
+            }
+            
+            $inspection->update($updateData);
+            
+            \Log::info('updateTeam updated', [
+                'updated_technician_id' => $inspection->technician_id,
+                'updated_service_advisor_id' => $inspection->service_advisor_id
+            ]);
+            
+            // Load the updated relationships for the response
+            $inspection->load(['technician', 'serviceAdvisor']);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Inspection team updated successfully',
+                'data' => [
+                    'technician' => $inspection->technician ? [
+                        'id' => $inspection->technician->id,
+                        'name' => $inspection->technician->name
+                    ] : null,
+                    'service_advisor' => $inspection->serviceAdvisor ? [
+                        'id' => $inspection->serviceAdvisor->id,
+                        'name' => $inspection->serviceAdvisor->name
+                    ] : null
+                ]
+            ]);
+            
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update inspection team: ' . $e->getMessage()
             ], 500);
         }
     }

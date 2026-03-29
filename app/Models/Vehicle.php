@@ -20,6 +20,7 @@ class Vehicle extends Model
         'color',
         'vehicle_type',
         'engine_type',
+        'engine_no',
         'transmission',
         'fuel_type',
         'odometer',
@@ -36,6 +37,8 @@ class Vehicle extends Model
         'recall_details',
         'is_active',
         'notes',
+        'photo',
+        'photo_path',
         // New VIN decoding fields
         'trim',
         'body_style',
@@ -96,6 +99,14 @@ class Vehicle extends Model
     public function serviceRecords()
     {
         return $this->hasMany(ServiceRecord::class);
+    }
+
+    /**
+     * Get the vehicle appointments.
+     */
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class);
     }
 
     /**

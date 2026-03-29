@@ -31,29 +31,47 @@
                             <div class="form-group mb-3">
                                 <label for="customer_id" class="form-label">Customer *</label>
                                 <select class="form-select @error('customer_id') is-invalid @enderror" 
-                                        id="customer_id" name="customer_id" required>
+                                        id="customer_id" name="customer_id" required
+                                        {{ isset($selectedCustomer) && $selectedCustomer ? 'disabled' : '' }}>
                                     <option value="">Select Customer</option>
                                     @foreach($customers as $customer)
-                                        <option value="{{ $customer->id }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
+                                        <option value="{{ $customer->id }}" {{ (old('customer_id') == $customer->id || (isset($selectedCustomer) && $selectedCustomer && $selectedCustomer->id == $customer->id)) ? 'selected' : '' }}>
                                             {{ $customer->first_name }} {{ $customer->last_name }}
                                         </option>
                                     @endforeach
                                 </select>
+                                @if(isset($selectedCustomer) && $selectedCustomer)
+                                <input type="hidden" name="customer_id" value="{{ $selectedCustomer->id }}">
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-lock me-1"></i> Customer locked: Scheduling appointment exclusively for {{ $selectedCustomer->first_name }} {{ $selectedCustomer->last_name }}
+                                </small>
+                                @endif
                                 @error('customer_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
                             
                             <div class="form-group mb-3">
-                                <label for="vehicle_id" class="form-label">Vehicle</label>
+                                <label for="vehicle_id" class="form-label">Vehicle *</label>
                                 <select class="form-select @error('vehicle_id') is-invalid @enderror" 
-                                        id="vehicle_id" name="vehicle_id">
-                                    <option value="">Select Vehicle</option>
-                                    <!-- Vehicles will be loaded via AJAX based on customer selection -->
+                                        id="vehicle_id" name="vehicle_id" required>
+                                    <option value="">Select Customer First</option>
+                                    <!-- Vehicles will be populated dynamically based on customer selection -->
                                 </select>
                                 @error('vehicle_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
+                                <small class="form-text text-muted">Select customer first to see their registered vehicles</small>
+                                
+                                <!-- Hidden field to store vehicle description for backward compatibility -->
+                                <input type="hidden" id="vehicle_description" name="vehicle_description" value="{{ old('vehicle_description') }}">
+                            </div>
+                            
+                            <!-- Add New Vehicle Button (Optional) -->
+                            <div class="form-group mb-3">
+                                <button type="button" class="btn btn-outline-primary btn-sm" id="addNewVehicleBtn" style="display: none;">
+                                    <i class="fas fa-plus me-1"></i> Add New Vehicle for This Customer
+                                </button>
                             </div>
                             
                             <div class="form-group mb-3">
@@ -105,23 +123,6 @@
                                     @endforeach
                                 </select>
                                 @error('appointment_time')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            
-                            <div class="form-group mb-3">
-                                <label for="estimated_duration" class="form-label">Estimated Duration</label>
-                                <select class="form-select @error('estimated_duration') is-invalid @enderror" 
-                                        id="estimated_duration" name="estimated_duration">
-                                    <option value="30" {{ old('estimated_duration') == '30' ? 'selected' : '' }}>30 minutes</option>
-                                    <option value="60" {{ old('estimated_duration', '60') == '60' ? 'selected' : '' }}>1 hour</option>
-                                    <option value="90" {{ old('estimated_duration') == '90' ? 'selected' : '' }}>1.5 hours</option>
-                                    <option value="120" {{ old('estimated_duration') == '120' ? 'selected' : '' }}>2 hours</option>
-                                    <option value="180" {{ old('estimated_duration') == '180' ? 'selected' : '' }}>3 hours</option>
-                                    <option value="240" {{ old('estimated_duration') == '240' ? 'selected' : '' }}>4 hours</option>
-                                    <option value="480" {{ old('estimated_duration') == '480' ? 'selected' : '' }}>Full day</option>
-                                </select>
-                                @error('estimated_duration')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -192,48 +193,181 @@
             </div>
         </div>
     </div>
-</div>
-@endsection
-
-@section('scripts')
-<script>
-    $(document).ready(function() {
-        // Load vehicles when customer is selected
-        $('#customer_id').on('change', function() {
-            var customerId = $(this).val();
-            if (customerId) {
-                $.ajax({
-                    url: '/api/customers/' + customerId + '/vehicles',
-                    type: 'GET',
-                    success: function(data) {
-                        var vehicleSelect = $('#vehicle_id');
-                        vehicleSelect.empty();
-                        vehicleSelect.append('<option value="">Select Vehicle</option>');
-                        
-                        $.each(data, function(index, vehicle) {
-                            var displayText = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
-                            if (vehicle.trim) {
-                                displayText += ' ' + vehicle.trim;
-                            }
-                            if (vehicle.license_plate) {
-                                displayText += ' (' + vehicle.license_plate + ')';
-                            }
-                            
-                            vehicleSelect.append('<option value="' + vehicle.id + '">' + displayText + '</option>');
-                        });
-                    },
-                    error: function() {
-                        console.log('Error loading vehicles');
-                    }
-                });
-            } else {
-                $('#vehicle_id').empty().append('<option value="">Select Vehicle</option>');
-            }
-        });
-        
-        // Set minimum date to today
-        var today = new Date().toISOString().split('T')[0];
-        $('#appointment_date').attr('min', today);
+    
+    <!-- JavaScript for dynamic vehicle dropdown -->
+    
+    <!-- JavaScript for dynamic vehicle dropdown -->
+    <script>
+    // Store all vehicles data from server
+    var allVehicles = {!! json_encode($vehicles) !!};
+    
+    // Store selected vehicle ID from server (if any)
+    var selectedVehicleId = {{ $selectedVehicle ? $selectedVehicle->id : 'null' }};
+    
+    // Group vehicles by customer_id for quick lookup
+    var vehiclesByCustomer = {};
+    allVehicles.forEach(function(vehicle) {
+        if (!vehiclesByCustomer[vehicle.customer_id]) {
+            vehiclesByCustomer[vehicle.customer_id] = [];
+        }
+        vehiclesByCustomer[vehicle.customer_id].push(vehicle);
     });
-</script>
+    
+    // Wait for jQuery to be available
+    function waitForJQuery(callback) {
+        if (window.jQuery) {
+            callback();
+        } else {
+            setTimeout(function() { waitForJQuery(callback); }, 100);
+        }
+    }
+    
+    waitForJQuery(function() {
+        $(document).ready(function() {
+            console.log('=== DEBUG: APPOINTMENTS CREATE PAGE LOADED ===');
+            console.log('DEBUG: selectedVehicleId =', selectedVehicleId);
+            
+            // Get elements
+            var $customer = $('#customer_id');
+            var $vehicle = $('#vehicle_id');
+            var $vehicleDescription = $('#vehicle_description');
+            
+            console.log('DEBUG: Customer dropdown disabled?', $customer.prop('disabled'));
+            console.log('DEBUG: Customer dropdown value:', $customer.val());
+            console.log('DEBUG: Vehicle dropdown exists?', $vehicle.length > 0);
+            
+            // Customer change handler (only if not disabled)
+            if (!$customer.prop('disabled')) {
+                $customer.on('change', function() {
+                    var customerId = $(this).val();
+                    
+                    // Clear vehicle dropdown
+                    $vehicle.empty();
+                    
+                    if (!customerId) {
+                        // No customer selected
+                        $vehicle.append('<option value="">Select Customer First</option>');
+                        $vehicle.prop('disabled', true);
+                    } else {
+                        // Customer selected
+                        $vehicle.append('<option value="">Select Vehicle</option>');
+                        $vehicle.prop('disabled', false);
+                        
+                        // Get vehicles for this customer
+                        var customerVehicles = vehiclesByCustomer[customerId] || [];
+                        
+                        if (customerVehicles.length > 0) {
+                            // Add customer's actual vehicles
+                            customerVehicles.forEach(function(vehicle) {
+                                var optionText = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
+                                if (vehicle.plate_number) {
+                                    optionText += ' (' + vehicle.plate_number + ')';
+                                }
+                                
+                                $vehicle.append('<option value="' + vehicle.id + '" data-description="' + optionText + '">' + optionText + '</option>');
+                            });
+                        } else {
+                            // Customer has no vehicles
+                            $vehicle.append('<option value="">No vehicles registered for this customer</option>');
+                        }
+                        
+                        // Select the pre-selected vehicle if any (and if it belongs to this customer)
+                        if (selectedVehicleId && selectedVehicleId !== null) {
+                            setTimeout(function() {
+                                // Check if this vehicle belongs to the selected customer
+                                var vehicleBelongsToCustomer = false;
+                                if (customerVehicles.length > 0) {
+                                    customerVehicles.forEach(function(vehicle) {
+                                        if (vehicle.id == selectedVehicleId) {
+                                            vehicleBelongsToCustomer = true;
+                                        }
+                                    });
+                                }
+                                
+                                if (vehicleBelongsToCustomer) {
+                                    $vehicle.val(selectedVehicleId).trigger('change');
+                                }
+                            }, 50);
+                        }
+                    }
+                    
+                    // Clear vehicle description
+                    $vehicleDescription.val('');
+                });
+            }
+            
+            // If customer is pre-selected and locked, trigger vehicle load immediately
+            if ($customer.prop('disabled') && $customer.val()) {
+                var customerId = $customer.val();
+                $vehicle.empty();
+                $vehicle.append('<option value="">Select Vehicle</option>');
+                $vehicle.prop('disabled', false);
+                
+                // Get vehicles for this customer
+                var customerVehicles = vehiclesByCustomer[customerId] || [];
+                
+                if (customerVehicles.length > 0) {
+                    // Add customer's actual vehicles
+                    customerVehicles.forEach(function(vehicle) {
+                        var optionText = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
+                        if (vehicle.plate_number) {
+                            optionText += ' (' + vehicle.plate_number + ')';
+                        }
+                        
+                        $vehicle.append('<option value="' + vehicle.id + '" data-description="' + optionText + '">' + optionText + '</option>');
+                    });
+                } else {
+                    // Customer has no vehicles
+                    $vehicle.append('<option value="">No vehicles registered for this customer</option>');
+                }
+                
+                // Select the pre-selected vehicle if any
+                if (selectedVehicleId && selectedVehicleId !== null) {
+                    console.log('DEBUG: Customer disabled block - Trying to select vehicle ID:', selectedVehicleId);
+                    console.log('DEBUG: Vehicle options available:', $vehicle.find('option').length);
+                    
+                    setTimeout(function() {
+                        console.log('DEBUG: 50ms timeout - Selecting vehicle ID:', selectedVehicleId);
+                        console.log('DEBUG: Vehicle value before:', $vehicle.val());
+                        $vehicle.val(selectedVehicleId).trigger('change');
+                        console.log('DEBUG: Vehicle value after:', $vehicle.val());
+                        
+                        // Double-check after a bit more time
+                        setTimeout(function() {
+                            console.log('DEBUG: 150ms check - Vehicle value:', $vehicle.val());
+                            console.log('DEBUG: Vehicle selected text:', $vehicle.find('option:selected').text());
+                        }, 100);
+                    }, 50);
+                }
+            }
+            
+            // Update vehicle description when vehicle is selected
+            $vehicle.on('change', function() {
+                var selectedOption = $(this).find('option:selected');
+                var description = selectedOption.data('description') || selectedOption.text();
+                $vehicleDescription.val(description);
+            });
+            
+            // Trigger on page load if customer pre-selected
+            if ($customer.val()) {
+                $customer.trigger('change');
+                
+                // After vehicle dropdown is populated, select the pre-selected vehicle if any
+                setTimeout(function() {
+                    if (selectedVehicleId && selectedVehicleId !== null) {
+                        console.log('DEBUG: Customer trigger change block - Selecting vehicle ID:', selectedVehicleId);
+                        console.log('DEBUG: Vehicle value before (100ms):', $vehicle.val());
+                        $vehicle.val(selectedVehicleId).trigger('change');
+                        console.log('DEBUG: Vehicle value after (100ms):', $vehicle.val());
+                    }
+                }, 100);
+            }
+            
+            // Set minimum date to today
+            var today = new Date().toISOString().split('T')[0];
+            $('#appointment_date').attr('min', today);
+        });
+    });
+    </script>
+</div>
 @endsection

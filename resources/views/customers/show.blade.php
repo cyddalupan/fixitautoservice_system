@@ -2,6 +2,31 @@
 
 @section('title', $customer->first_name . ' ' . $customer->last_name . ' - Fix-It Auto Services')
 
+@section('styles')
+<style>
+    .profile-picture-container:hover .btn {
+        opacity: 1;
+    }
+    
+    .profile-picture-container .btn {
+        opacity: 0.8;
+        transition: opacity 0.3s ease;
+    }
+    
+    .customer-avatar {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 120px;
+        height: 120px;
+        font-size: 48px;
+        background-color: #007bff;
+        color: white;
+        border-radius: 50%;
+    }
+</style>
+@endsection
+
 @section('content')
 <div class="page-header">
     <div class="d-flex justify-content-between align-items-center">
@@ -33,9 +58,33 @@
             </div>
             <div class="card-body">
                 <div class="text-center mb-4">
-                    <div class="customer-avatar mx-auto mb-3">
-                        {{ strtoupper(substr($customer->first_name, 0, 1) . substr($customer->last_name, 0, 1)) }}
+                    <!-- Profile Picture Upload Section -->
+                    <div class="profile-picture-container position-relative mx-auto mb-3" style="width: 120px; height: 120px;">
+                        @if($customer->hasProfilePicture)
+                            <img src="{{ $customer->avatar }}" 
+                                 alt="{{ $customer->first_name }} {{ $customer->last_name }}"
+                                 class="rounded-circle img-fluid border"
+                                 style="width: 120px; height: 120px; object-fit: cover;"
+                                 id="profile-picture-img">
+                        @else
+                            <div class="customer-avatar rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
+                                 style="width: 120px; height: 120px; font-size: 48px; background-color: #007bff; color: white;"
+                                 id="profile-picture-initials">
+                                {{ $customer->avatar }}
+                            </div>
+                        @endif
+                        
+                        <!-- Upload Button (like Facebook) -->
+                        <button type="button" 
+                                class="btn btn-primary btn-sm rounded-circle position-absolute"
+                                style="bottom: 5px; right: 5px; width: 36px; height: 36px;"
+                                data-bs-toggle="modal" 
+                                data-bs-target="#profilePictureModal"
+                                title="Update profile picture">
+                            <i class="fas fa-camera"></i>
+                        </button>
                     </div>
+                    
                     <h5 class="mb-1">{{ $customer->first_name }} {{ $customer->last_name }}</h5>
                     <p class="text-muted mb-2">
                         <span class="badge bg-{{ $customer->is_active ? 'success' : 'danger' }}">
@@ -144,18 +193,22 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('customers.vehicles', $customer) }}" class="btn btn-outline-primary">
-                        <i class="fas fa-car me-2"></i> View Vehicles
-                    </a>
-                    <a href="{{ route('customers.service-history', $customer) }}" class="btn btn-outline-success">
-                        <i class="fas fa-history me-2"></i> Service History
-                    </a>
-                    <a href="{{ route('customers.notes', $customer) }}" class="btn btn-outline-info">
-                        <i class="fas fa-sticky-note me-2"></i> View Notes
-                    </a>
+                    <!-- 1. Schedule Appointment -->
                     <a href="{{ route('appointments.create') }}?customer_id={{ $customer->id }}" class="btn btn-outline-warning">
                         <i class="fas fa-calendar-plus me-2"></i> Schedule Appointment
                     </a>
+                    
+                    <!-- 2. Create Repair Order -->
+                    <a href="{{ route('inspections.create') }}?customer_id={{ $customer->id }}" class="btn btn-outline-primary">
+                        <i class="fas fa-tools me-2"></i> Create Repair Order
+                    </a>
+                    
+                    <!-- 3. Create Estimate -->
+                    <a href="{{ route('estimates.create') }}?customer_id={{ $customer->id }}" class="btn btn-outline-info">
+                        <i class="fas fa-file-invoice-dollar me-2"></i> Create Estimate
+                    </a>
+                    
+                    <!-- 4. Create Work Order -->
                     <a href="{{ route('work-orders.create') }}?customer_id={{ $customer->id }}" class="btn btn-outline-danger">
                         <i class="fas fa-wrench me-2"></i> Create Work Order
                     </a>
@@ -204,8 +257,11 @@
         
         <!-- Recent Vehicles -->
         <div class="card mb-4">
-            <div class="card-header">
+            <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="m-0 font-weight-bold text-primary">Vehicles</h6>
+                <a href="{{ route('vehicles.create') }}?customer_id={{ $customer->id }}" class="btn btn-sm btn-primary">
+                    <i class="fas fa-plus me-1"></i> Add Vehicle
+                </a>
             </div>
             <div class="card-body">
                 @if($customer->vehicles && $customer->vehicles->count() > 0)
@@ -213,10 +269,11 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>Make/Model</th>
+                                    <th>Brand/Model</th>
                                     <th>Year</th>
                                     <th>License Plate</th>
                                     <th>VIN</th>
+                                    <th>Engine No.</th>
                                     <th>Last Service</th>
                                     <th>Actions</th>
                                 </tr>
@@ -241,6 +298,9 @@
                                             <small class="text-muted">{{ $vehicle->vin ? substr($vehicle->vin, 0, 8) . '...' : 'N/A' }}</small>
                                         </td>
                                         <td>
+                                            <small class="text-muted">{{ $vehicle->engine_no ?? 'N/A' }}</small>
+                                        </td>
+                                        <td>
                                             @if($vehicle->last_service_date)
                                                 <small>{{ $vehicle->last_service_date->format('M j, Y') }}</small>
                                             @else
@@ -248,7 +308,7 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <a href="#" class="btn btn-sm btn-outline-primary">
+                                            <a href="{{ route('vehicles.show', $vehicle) }}" class="btn btn-sm btn-outline-primary">
                                                 <i class="fas fa-eye"></i>
                                             </a>
                                         </td>
@@ -266,7 +326,7 @@
                     @endif
                 @else
                     <p class="text-muted mb-0">No vehicles registered for this customer.</p>
-                    <a href="#" class="btn btn-sm btn-primary mt-2">
+                    <a href="{{ route('vehicles.create') }}?customer_id={{ $customer->id }}" class="btn btn-sm btn-primary mt-2">
                         <i class="fas fa-plus me-1"></i> Add Vehicle
                     </a>
                 @endif
@@ -365,16 +425,323 @@
         </div>
     </div>
 </div>
+
+<!-- Profile Picture Upload Modal -->
+<div class="modal fade" id="profilePictureModal" tabindex="-1" aria-labelledby="profilePictureModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="profilePictureModalLabel">Update Profile Picture</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="profilePictureForm" enctype="multipart/form-data">
+                    @csrf
+                    <div class="mb-3">
+                        <label for="profile_picture" class="form-label">Choose a new profile picture</label>
+                        <input type="file" class="form-control" id="profile_picture" name="profile_picture" accept="image/*" required>
+                        <div class="form-text">Supported formats: JPEG, PNG, GIF. Max size: 2MB</div>
+                    </div>
+                    
+                    <!-- Preview -->
+                    <div class="mb-3 text-center">
+                        <img id="imagePreview" src="#" alt="Preview" class="img-fluid rounded d-none" style="max-height: 200px;">
+                    </div>
+                    
+                    @if($customer->hasProfilePicture)
+                    <div class="mb-3">
+                        <button type="button" class="btn btn-outline-danger w-100" id="removeProfilePictureBtn">
+                            <i class="fas fa-trash me-2"></i> Remove Current Picture
+                        </button>
+                    </div>
+                    @endif
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="uploadProfilePictureBtn">Upload Picture</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 @section('scripts')
 <script>
     $(document).ready(function() {
+        console.log('=== CUSTOMER PROFILE PAGE LOADED ===');
+        console.log('Testing upload functionality...');
+        
+        // Check basic requirements
+        if (typeof jQuery === 'undefined') {
+            console.error('CRITICAL ERROR: jQuery is not loaded!');
+            alert('ERROR: jQuery is not loaded. Page functionality will be broken.');
+            return;
+        }
+        
+        console.log('✓ jQuery loaded, version:', $.fn.jquery);
+        
+        // Check if Bootstrap is loaded
+        if (typeof bootstrap === 'undefined') {
+            console.error('WARNING: Bootstrap is not loaded');
+        } else {
+            console.log('✓ Bootstrap loaded');
+        }
+        
         // Initialize tooltips
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
+        console.log('✓ Tooltips initialized');
+
+        // Image preview functionality
+        $('#profile_picture').change(function() {
+            console.log('File input changed');
+            const file = this.files[0];
+            if (file) {
+                console.log('File selected:', file.name, '(', file.size, 'bytes,', file.type, ')');
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    $('#imagePreview').attr('src', e.target.result).removeClass('d-none');
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+        console.log('✓ Image preview handler attached');
+
+        // CRITICAL TEST: Check if upload button exists and is clickable
+        const uploadButton = $('#uploadProfilePictureBtn');
+        console.log('Upload button check:');
+        console.log('  - Selector: #uploadProfilePictureBtn');
+        console.log('  - Found:', uploadButton.length, 'element(s)');
+        console.log('  - HTML:', uploadButton.length > 0 ? uploadButton[0].outerHTML : 'NOT FOUND');
+        
+        if (uploadButton.length === 0) {
+            console.error('ERROR: Upload button not found! The button might have a different ID or might not exist in the DOM.');
+            alert('ERROR: Upload button not found. Please check the page HTML.');
+            return;
+        }
+        
+        console.log('✓ Upload button found in DOM');
+        
+        // Remove ANY existing click handlers first (clean slate)
+        uploadButton.off('click');
+        
+        uploadButton.on("click", function(e) {
+        console.log('Please click the "Upload Picture" button to test if click events work.');
+            e.preventDefault(); // Prevent default form submission
+            
+            console.log('=== UPLOAD BUTTON CLICKED ===');
+            console.log('Button clicked event fired');
+            
+            // Check if file is selected
+            const fileInput = $('#profile_picture')[0];
+            console.log('File input element:', fileInput);
+            console.log('File input files:', fileInput.files);
+            console.log('File input value:', fileInput.value);
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                console.log('ERROR: No file selected');
+                showToast('error', 'Please select a picture to upload.');
+                return;
+            }
+            
+            console.log('File selected:', fileInput.files[0].name, fileInput.files[0].size, 'bytes');
+            
+            // Disable button to prevent multiple clicks
+            const $btn = $(this);
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...');
+            
+            const formData = new FormData($('#profilePictureForm')[0]);
+            const customerId = {{ $customer->id }};
+            const uploadUrl = '{{ route("customers.upload-profile-picture", $customer) }}';
+            const csrfToken = $('meta[name="csrf-token"]').attr('content');
+            
+            console.log('=== UPLOAD DETAILS ===');
+            console.log('Upload URL:', uploadUrl);
+            console.log('CSRF Token:', csrfToken ? 'Found' : 'NOT FOUND');
+            console.log('Customer ID:', customerId);
+            console.log('Form data entries:');
+            for (let pair of formData.entries()) {
+                console.log(pair[0] + ': ' + (pair[0] === 'profile_picture' ? '[FILE]' : pair[1]));
+            }
+            
+            console.log('=== STARTING AJAX REQUEST ===');
+            
+            $.ajax({
+                url: uploadUrl,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(response, status, xhr) {
+                    console.log('=== AJAX SUCCESS RESPONSE ===');
+                    console.log('Response status:', xhr.status);
+                    console.log('Response data:', response);
+                    
+                    if (response.success) {
+                        console.log('Upload successful!');
+                        // Update profile picture on page
+                        if ($('#profile-picture-img').length) {
+                            $('#profile-picture-img').attr('src', response.profile_picture_url + '?' + new Date().getTime());
+                        } else {
+                            // Replace initials with image
+                            $('#profile-picture-initials').replaceWith(
+                                '<img src="' + response.profile_picture_url + '" ' +
+                                'alt="{{ $customer->first_name }} {{ $customer->last_name }}" ' +
+                                'class="rounded-circle img-fluid border" ' +
+                                'style="width: 120px; height: 120px; object-fit: cover;" ' +
+                                'id="profile-picture-img">'
+                            );
+                        }
+                        
+                        // Show success message
+                        showToast('success', 'Profile picture updated successfully!');
+                        
+                        // Close modal
+                        $('#profilePictureModal').modal('hide');
+                        $('#profilePictureForm')[0].reset();
+                        $('#imagePreview').addClass('d-none').attr('src', '#');
+                    } else {
+                        console.log('Upload returned success:false');
+                        showToast('error', response.message || 'Upload failed');
+                    }
+                    
+                    // Re-enable button
+                    $btn.prop('disabled', false).html('Upload Picture');
+                },
+                error: function(xhr, status, error) {
+                    console.log('=== AJAX ERROR ===');
+                    console.log('Status:', status);
+                    console.log('Error:', error);
+                    console.log('XHR object:', xhr);
+                    console.log('Response text:', xhr.responseText);
+                    console.log('Response JSON:', xhr.responseJSON);
+                    console.log('Status code:', xhr.status);
+                    console.log('Status text:', xhr.statusText);
+                    
+                    let errorMessage = 'An error occurred. Please try again.';
+                    if (xhr.responseJSON && xhr.responseJSON.errors) {
+                        errorMessage = Object.values(xhr.responseJSON.errors).join('<br>');
+                    } else if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    } else if (xhr.status === 0) {
+                        errorMessage = 'Network error or CORS issue. Check if you are logged in.';
+                    } else if (xhr.status === 401) {
+                        errorMessage = 'You need to be logged in to upload pictures.';
+                    } else if (xhr.status === 403) {
+                        errorMessage = 'You do not have permission to upload pictures.';
+                    } else if (xhr.status === 404) {
+                        errorMessage = 'Upload endpoint not found.';
+                    } else if (xhr.status === 413) {
+                        errorMessage = 'File too large. Maximum size is 2MB.';
+                    } else if (xhr.status === 422) {
+                        errorMessage = 'Validation error. Please check the file format and size.';
+                    } else if (xhr.status === 500) {
+                        errorMessage = 'Server error. Please try again later.';
+                    }
+                    
+                    console.log('Displaying error:', errorMessage);
+                    showToast('error', errorMessage);
+                    
+                    // Re-enable button
+                    $btn.prop('disabled', false).html('Upload Picture');
+                }
+            });
+        });
+
+        // Remove profile picture
+        $('#removeProfilePictureBtn').click(function() {
+            if (!confirm('Are you sure you want to remove the profile picture?')) {
+                return;
+            }
+
+            $.ajax({
+                url: '{{ route("customers.remove-profile-picture", $customer) }}',
+                type: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Replace image with initials
+                        const initials = '{{ strtoupper(substr($customer->first_name, 0, 1) . substr($customer->last_name, 0, 1)) }}';
+                        $('#profile-picture-img').replaceWith(
+                            '<div class="customer-avatar rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" ' +
+                            'style="width: 120px; height: 120px; font-size: 48px; background-color: #007bff; color: white;" ' +
+                            'id="profile-picture-initials">' + initials + '</div>'
+                        );
+                        
+                        // Hide remove button
+                        $('#removeProfilePictureBtn').remove();
+                        
+                        // Show success message
+                        showToast('success', 'Profile picture removed successfully!');
+                        
+                        // Close modal
+                        $('#profilePictureModal').modal('hide');
+                    }
+                },
+                error: function(xhr) {
+                    showToast('error', 'Failed to remove profile picture. Please try again.');
+                }
+            });
+        });
+
+        // Toast notification function
+        function showToast(type, message) {
+            const toastHtml = `
+                <div class="toast align-items-center text-bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+            
+            const toastContainer = $('#toast-container');
+            if (toastContainer.length === 0) {
+                $('body').append('<div id="toast-container" class="toast-container position-fixed top-0 end-0 p-3"></div>');
+            }
+            
+            $('#toast-container').append(toastHtml);
+            const toastElement = $('#toast-container .toast:last-child');
+            const toast = new bootstrap.Toast(toastElement[0]);
+            toast.show();
+            
+            // Remove toast after it hides
+            toastElement.on('hidden.bs.toast', function () {
+                $(this).remove();
+            });
+        }
+        
+        // SIMPLE TEST: Check if button is clickable
+        console.log('=== SIMPLE UPLOAD BUTTON TEST ===');
+        const testBtn = $('#uploadProfilePictureBtn');
+        console.log('Button found:', testBtn.length > 0);
+        
+        if (testBtn.length > 0) {
+            console.log('Button HTML:', testBtn[0].outerHTML);
+            
+            // Remove any existing handlers and add simple test
+            testBtn.off('click.test').on('click.test', function(e) {
+                console.log('TEST: Button clicked!');
+                alert('TEST SUCCESS: Button is clickable!');
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                return false;
+            });
+            
+            console.log('Test handler added. Click the upload button to test.');
+        } else {
+            console.error('ERROR: Button not found!');
+        }
     });
 </script>
 @endsection

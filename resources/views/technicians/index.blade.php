@@ -133,9 +133,9 @@
 @section('scripts')
 <script>
     $(document).ready(function() {
-        // Auto-dismiss alerts after 5 seconds
+        // Auto-dismiss alerts after 5 seconds (exclude alerts with .no-auto-dismiss class)
         setTimeout(function() {
-            $('.alert').alert('close');
+            $('.alert:not(.no-auto-dismiss)').alert('close');
         }, 5000);
     });
 </script>

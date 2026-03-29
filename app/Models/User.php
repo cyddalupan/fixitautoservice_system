@@ -96,24 +96,29 @@ class User extends Authenticatable
         return $this->employeeHrDetails;
     }
 
+    public function isSuperAdmin()
+    {
+        return $this->role === 'super_admin';
+    }
+
     public function isAdmin()
     {
         return $this->role === 'admin';
     }
 
-    public function isManager()
+    public function isOfficeStaff()
     {
-        return $this->role === 'manager';
-    }
-
-    public function isServiceAdvisor()
-    {
-        return $this->role === 'service_advisor';
+        return $this->role === 'office_staff';
     }
 
     public function isTechnician()
     {
         return $this->role === 'technician';
+    }
+
+    public function isAccounting()
+    {
+        return $this->role === 'accounting';
     }
 
     public function isCustomer()
@@ -124,10 +129,11 @@ class User extends Authenticatable
     public function getRoleBadgeColorAttribute()
     {
         return match($this->role) {
-            'admin' => 'danger',
-            'manager' => 'warning',
-            'service_advisor' => 'info',
+            'super_admin' => 'danger',
+            'admin' => 'warning',
+            'office_staff' => 'info',
             'technician' => 'primary',
+            'accounting' => 'purple',
             'customer' => 'success',
             default => 'secondary',
         };

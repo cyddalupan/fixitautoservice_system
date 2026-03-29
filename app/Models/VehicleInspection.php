@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Carbon\Carbon;
 
 class VehicleInspection extends Model
@@ -615,5 +616,13 @@ class VehicleInspection extends Model
         }
 
         $this->updateItemCounts();
+    }
+
+    /**
+     * Get the service progress record for this inspection.
+     */
+    public function serviceProgress(): HasOne
+    {
+        return $this->hasOne(ServiceProgress::class, 'inspection_id');
     }
 }

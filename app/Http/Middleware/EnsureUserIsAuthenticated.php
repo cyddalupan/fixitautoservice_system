@@ -16,24 +16,9 @@ class EnsureUserIsAuthenticated
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // For demo purposes, auto-login as admin if not authenticated
+        // Check if user is authenticated
         if (!Auth::check()) {
-            // Find admin user or create one
-            $admin = \App\Models\User::where('email', 'admin@fixitautoservices.com')->first();
-            
-            if ($admin) {
-                Auth::login($admin);
-            } else {
-                // Create admin user if doesn't exist
-                $admin = \App\Models\User::create([
-                    'name' => 'Admin User',
-                    'email' => 'admin@fixitautoservices.com',
-                    'password' => bcrypt('FixitAdmin2024!'),
-                    'role' => 'admin',
-                    'is_active' => true,
-                ]);
-                Auth::login($admin);
-            }
+            return redirect()->route('login')->with('error', 'Please login to access this page.');
         }
 
         return $next($request);

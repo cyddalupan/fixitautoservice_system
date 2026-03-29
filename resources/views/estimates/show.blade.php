@@ -4,6 +4,18 @@
 
 @section('content')
 <div class="container-fluid">
+    <!-- Service Progress Bar -->
+    @if($estimate->serviceProgress)
+        <div class="row mb-4">
+            <div class="col-12">
+                @include('components.service-progress-bar', [
+    'progress' => $estimate->serviceProgress,
+    'currentStage' => 'estimate'
+])
+            </div>
+        </div>
+    @endif
+
     <div class="row">
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center mb-4">

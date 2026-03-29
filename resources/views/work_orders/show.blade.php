@@ -3,6 +3,18 @@
 @section('title', 'Work Order ' . $workOrder->work_order_number . ' - Fix-It Auto Services')
 
 @section('content')
+<!-- Service Progress Bar -->
+@if($workOrder->serviceProgress)
+    <div class="row mb-4">
+        <div class="col-12">
+            @include('components.service-progress-bar', [
+    'progress' => $workOrder->serviceProgress,
+    'currentStage' => 'work_order'
+])
+        </div>
+    </div>
+@endif
+
 <div class="page-header">
     <div class="d-flex justify-content-between align-items-center">
         <div>
@@ -29,7 +41,7 @@
 <div class="row mb-4">
     <div class="col-12">
         <div class="d-flex align-items-center">
-            <span class="badge bg-{{ $workOrder->work_order_status === 'completed' ? 'success' : ($workOrder->work_order_status === 'in_progress' ? 'warning' : ($workOrder->work_order_status === 'draft' ? 'secondary' : 'info')) }} me-2">
+            <span class="badge bg-{{ $workOrder->status_color }} me-2">
                 {{ ucfirst(str_replace('_', ' ', $workOrder->work_order_status)) }}
             </span>
             <span class="badge bg-{{ $workOrder->priority === 'high' ? 'danger' : ($workOrder->priority === 'normal' ? 'info' : 'warning') }} me-2">
@@ -317,22 +329,31 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    @if($workOrder->work_order_status === 'draft')
-                    <a href="#" class="btn btn-success">
-                        <i class="fas fa-check me-1"></i> Submit for Approval
-                    </a>
+                    @if($workOrder->work_order_status === 'pending')
+                    <form action="{{ route('work-orders.start-work', $workOrder) }}" method="POST" class="d-inline">
+                        @csrf
+                        <button type="button" class="btn btn-warning btn-start-repair" data-workorder-id="{{ $workOrder->id }}">
+                            <i class="fas fa-play me-1"></i> Start Repair
+                        </button>
+                    </form>
                     @endif
                     
-                    @if($workOrder->work_order_status === 'approved')
-                    <a href="#" class="btn btn-warning">
-                        <i class="fas fa-play me-1"></i> Start Work
-                    </a>
+                    @if($workOrder->work_order_status === 'repairing')
+                    <form action="{{ route('work-orders.complete-work', $workOrder) }}" method="POST" class="d-inline">
+                        @csrf
+                        <button type="button" class="btn btn-success btn-complete-repair" data-workorder-id="{{ $workOrder->id }}">
+                            <i class="fas fa-flag-checkered me-1"></i> Complete Repair
+                        </button>
+                    </form>
                     @endif
                     
-                    @if($workOrder->work_order_status === 'in_progress')
-                    <a href="#" class="btn btn-success">
-                        <i class="fas fa-flag-checkered me-1"></i> Complete Work
-                    </a>
+                    @if($workOrder->work_order_status === 'completed')
+                    <form action="{{ route('work-orders.mark-released', $workOrder) }}" method="POST" class="d-inline">
+                        @csrf
+                        <button type="button" class="btn btn-info btn-mark-released" data-workorder-id="{{ $workOrder->id }}">
+                            <i class="fas fa-truck me-1"></i> Mark as Released
+                        </button>
+                    </form>
                     @endif
                     
                     <a href="{{ route('work-orders.edit', $workOrder) }}" class="btn btn-outline-primary">
@@ -393,4 +414,85 @@
     padding-bottom: 10px;
 }
 </style>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Start Repair Confirmation
+    const startRepairButtons = document.querySelectorAll('.btn-start-repair');
+    startRepairButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const workOrderId = this.getAttribute('data-workorder-id');
+            
+            Swal.fire({
+                title: 'Start Repair?',
+                text: 'Are you sure you want to start repair on this work order?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#ffc107',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, Start Repair',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Submit the form
+                    this.closest('form').submit();
+                }
+            });
+        });
+    });
+    
+    // Complete Repair Confirmation
+    const completeRepairButtons = document.querySelectorAll('.btn-complete-repair');
+    completeRepairButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const workOrderId = this.getAttribute('data-workorder-id');
+            
+            Swal.fire({
+                title: 'Complete Repair?',
+                text: 'Are you sure you want to mark this repair as complete?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#198754',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, Complete Repair',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Submit the form
+                    this.closest('form').submit();
+                }
+            });
+        });
+    });
+    
+    // Mark as Released Confirmation
+    const markReleasedButtons = document.querySelectorAll('.btn-mark-released');
+    markReleasedButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const workOrderId = this.getAttribute('data-workorder-id');
+            
+            Swal.fire({
+                title: 'Mark as Released?',
+                text: 'Are you sure you want to mark this work order as released to customer?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#0dcaf0',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Yes, Mark as Released',
+                cancelButtonText: 'Cancel'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Submit the form
+                    this.closest('form').submit();
+                }
+            });
+        });
+    });
+});
+</script>
+@endpush
 @endsection

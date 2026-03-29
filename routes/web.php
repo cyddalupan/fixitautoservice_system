@@ -8,6 +8,7 @@ use App\Http\Controllers\EstimateController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\VehicleInspectionController;
+use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ReportsController;
 use Illuminate\Support\Facades\Route;
@@ -16,26 +17,127 @@ Route::get('/', function () {
     return redirect()->route('dashboard');
 });
 
-// Authentication Routes (for demo)
+// Public quotation form route
+Route::get('/quotation-form', function () {
+    return view('quotations.public-form');
+})->name('quotation.form');
+
+Route::post('/quotation-submit', [\App\Http\Controllers\QuotationController::class, 'storePublic'])->name('quotation.submit');
+
+// Authentication Routes
 Route::get('/login', function () {
-    // Auto-login for demo
-    return redirect()->route('dashboard');
+    return view('auth.login');
 })->name('login');
+
+Route::post('/login', function (\Illuminate\Http\Request $request) {
+    $request->validate([
+        'email' => ['required'],
+        'password' => ['required'],
+    ]);
+
+    // Handle special username "Admin" (case-insensitive)
+    $loginInput = strtolower(trim($request->email));
+    $credentials = [];
+    
+    if (filter_var($request->email, FILTER_VALIDATE_EMAIL)) {
+        // It's an email
+        $credentials = [
+            'email' => $request->email,
+            'password' => $request->password,
+        ];
+    } elseif ($loginInput === 'admin') {
+        // Special case: "Admin" username maps to admin email
+        $credentials = [
+            'email' => 'admin@fixitautoservices.com',
+            'password' => $request->password,
+        ];
+    } else {
+        // Assume it's employee_id (username)
+        $credentials = [
+            'employee_id' => $request->email,
+            'password' => $request->password,
+        ];
+    }
+
+    if (auth()->attempt($credentials, $request->boolean('remember'))) {
+        $request->session()->regenerate();
+        return redirect()->intended(route('dashboard'));
+    }
+
+    return back()->withErrors([
+        'email' => 'The provided credentials do not match our records.',
+    ])->onlyInput('email');
+})->name('login.post');
 
 Route::post('/logout', function () {
     auth()->logout();
     return redirect('/');
 })->name('logout');
 
+// Public Customer Form Routes (NO authentication required)
+Route::get('/customer-form/{token}', [CustomerController::class, 'showForm'])->name('customers.form.show');
+Route::post('/customer-form/{token}/submit', [CustomerController::class, 'submitForm'])->name('customers.form.submit');
+
 // Protected Routes (with auto-login middleware)
 Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->group(function () {
     // Dashboard Routes
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/analytics', [DashboardController::class, 'analytics'])->name('analytics');
-    Route::get('/reports', [DashboardController::class, 'reports'])->name('reports');
-    Route::post('/reports/generate', [DashboardController::class, 'generateReport'])->name('reports.generate');
+    // Route::get('/reports', [DashboardController::class, 'reports'])->name('dashboard.reports');
+    // Route::post('/reports/generate', [DashboardController::class, 'generateReport'])->name('dashboard.reports.generate');
 
     // Customer Routes
+    
+    // Customer Form Generation Routes (MUST come BEFORE resource route)
+    Route::post('/customers/generate-form', [CustomerController::class, 'generateForm'])->name('customers.generate-form');
+    Route::get('/customers/generated-forms', [CustomerController::class, 'generatedForms'])->name('customers.generated-forms');
+    Route::get('/api/customer-form/{token}/details', [CustomerController::class, 'formDetails'])->name('api.customers.form.details');
+    
+    // Vehicle autocomplete API routes
+    Route::get('/api/vehicle-brands', function() {
+        $term = request('term', '');
+        $brands = \App\Models\Vehicle::where('make', 'LIKE', '%' . $term . '%')
+            ->distinct()
+            ->orderBy('make')
+            ->pluck('make')
+            ->take(20)
+            ->toArray();
+        
+        return response()->json($brands);
+    })->name('api.vehicle-brands');
+    
+    Route::get('/api/vehicle-models', function() {
+        $term = request('term', '');
+        $brand = request('brand', '');
+        
+        $query = \App\Models\Vehicle::where('model', 'LIKE', '%' . $term . '%');
+        
+        if ($brand) {
+            $query->where('make', $brand);
+        }
+        
+        $models = $query->distinct()
+            ->orderBy('model')
+            ->pluck('model')
+            ->take(20)
+            ->toArray();
+        
+        return response()->json($models);
+    })->name('api.vehicle-models');
+    
+    Route::get('/api/vehicle-colors', function() {
+        $term = request('term', '');
+        $colors = \App\Models\Vehicle::whereNotNull('color')
+            ->where('color', 'LIKE', '%' . $term . '%')
+            ->distinct()
+            ->orderBy('color')
+            ->pluck('color')
+            ->take(15)
+            ->toArray();
+        
+        return response()->json($colors);
+    })->name('api.vehicle-colors');
+    // Customer resource routes
     Route::resource('customers', CustomerController::class);
     Route::post('/customers/{customer}/notes', [CustomerController::class, 'addNote'])->name('customers.notes.store');
     Route::post('/customers/{customer}/loyalty', [CustomerController::class, 'updateLoyalty'])->name('customers.loyalty.update');
@@ -44,11 +146,27 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::get('/customers/{customer}/notes', [CustomerController::class, 'notes'])->name('customers.notes');
     Route::get('/customers/{customer}/export/{format?}', [CustomerController::class, 'export'])->name('customers.export');
     Route::post('/customers/{customer}/send-reminder/{vehicle?}', [CustomerController::class, 'sendReminder'])->name('customers.send-reminder');
+    Route::post('/customers/{customer}/upload-profile-picture', [CustomerController::class, 'uploadProfilePicture'])->name('customers.upload-profile-picture');
+    Route::delete('/customers/{customer}/remove-profile-picture', [CustomerController::class, 'removeProfilePicture'])->name('customers.remove-profile-picture');
+
+    // Vehicle Routes
+    Route::resource('vehicles', VehicleController::class);
+    
+    // Expense Routes
+    Route::resource('expenses', \App\Http\Controllers\ExpenseController::class);
+    Route::post('expenses/{expense}/approve', [\App\Http\Controllers\ExpenseController::class, 'approve'])->name('expenses.approve');
+    Route::post('expenses/{expense}/mark-as-paid', [\App\Http\Controllers\ExpenseController::class, 'markAsPaid'])->name('expenses.markAsPaid');
+
+    // Vehicle History Routes
+    Route::prefix('vehicle-history')->group(function () {
+        Route::get('/search', [\App\Http\Controllers\VehicleHistoryController::class, 'search'])->name('vehicle-history.search');
+        Route::post('/record', [\App\Http\Controllers\VehicleHistoryController::class, 'record'])->name('vehicle-history.record');
+        Route::get('/popular', [\App\Http\Controllers\VehicleHistoryController::class, 'popular'])->name('vehicle-history.popular');
+    });
 
     // Appointment Routes
-    Route::resource('appointments', AppointmentController::class);
-    Route::get('/appointments/calendar', [AppointmentController::class, 'calendar'])->name('appointments.calendar');
-    Route::get('/appointments/statistics', [AppointmentController::class, 'statistics'])->name('appointments.statistics');
+    Route::get("/appointments/calendar-data", [AppointmentController::class, "calendarData"])->name("appointments.calendar-data");
+    Route::resource("appointments", AppointmentController::class);
     Route::post('/appointments/{appointment}/check-in', [AppointmentController::class, 'checkIn'])->name('appointments.check-in');
     Route::post('/appointments/{appointment}/start', [AppointmentController::class, 'start'])->name('appointments.start');
     Route::post('/appointments/{appointment}/complete', [AppointmentController::class, 'complete'])->name('appointments.complete');
@@ -65,13 +183,18 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::post('/work-orders/{work_order}/approve-estimate', [WorkOrderController::class, 'approveEstimate'])->name('work-orders.approve-estimate');
     Route::post('/work-orders/{work_order}/start-work', [WorkOrderController::class, 'startWork'])->name('work-orders.start-work');
     Route::post('/work-orders/{work_order}/complete-work', [WorkOrderController::class, 'completeWork'])->name('work-orders.complete-work');
-    Route::post('/work-orders/{work_order}/mark-invoiced', [WorkOrderController::class, 'markAsInvoiced'])->name('work-orders.mark-invoiced');
+    Route::post('/work-orders/{work_order}/mark-released', [WorkOrderController::class, 'markAsReleased'])->name('work-orders.mark-released');
     Route::post('/work-orders/{work_order}/add-payment', [WorkOrderController::class, 'addPayment'])->name('work-orders.add-payment');
     Route::get('/work-orders/{work_order}/print', [WorkOrderController::class, 'print'])->name('work-orders.print');
+    Route::post('/work-orders/{work_order}/update-repair-approval', [WorkOrderController::class, 'updateRepairApproval'])->name('work-orders.update-repair-approval');
 
     // Estimate Routes
     Route::get('/estimates/statistics', [EstimateController::class, 'statistics'])->name('estimates.statistics');
     Route::resource('estimates', EstimateController::class);
+    // Quotation Routes - SPECIFIC ROUTES FIRST!
+    Route::get('/quotations/pending-count', [\App\Http\Controllers\QuotationController::class, 'pendingCount'])->name('quotations.pending-count');
+    Route::patch("/quotations/{quotation}/update-status", [\App\Http\Controllers\QuotationController::class, "updateStatus"])->name("quotations.update-status");
+    Route::resource('quotations', \App\Http\Controllers\QuotationController::class);
     Route::post('/estimates/{estimate}/approve', [EstimateController::class, 'approve'])->name('estimates.approve');
     Route::post('/estimates/{estimate}/reject', [EstimateController::class, 'reject'])->name('estimates.reject');
     Route::patch('/estimates/{estimate}/update-status', [EstimateController::class, 'updateStatus'])->name('estimates.update-status');
@@ -87,9 +210,28 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::get('/invoices/{invoice}/print', [InvoiceController::class, 'print'])->name('invoices.print');
     Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
     Route::get('/invoices/statistics', [InvoiceController::class, 'statistics'])->name('invoices.statistics');
+    
+    // AJAX endpoints for invoice creation
+    Route::get('/invoices/get-vehicles/{customerId}', [InvoiceController::class, 'getVehiclesByCustomer'])->name('invoices.get-vehicles');
+    Route::get('/invoices/get-work-orders/{customerId}', [InvoiceController::class, 'getWorkOrdersByCustomer'])->name('invoices.get-work-orders');
 
     // Payment Routes
-    Route::resource('payments', PaymentController::class);
+    // Payments have been integrated into Invoices interface
+    // Redirect all payment routes to invoices for unified experience
+    Route::get('/payments', function () {
+        return redirect()->route('invoices.index')->with('info', 'Payments are now integrated into the Invoices interface.');
+    })->name('payments.redirect');
+    
+    Route::get('/payments/create', function () {
+        return redirect()->route('invoices.index')->with('info', 'To record a payment, please select an invoice from the list.');
+    })->name('payments.create');
+    
+    Route::get('/payments/{payment}', function ($payment) {
+        return redirect()->route('invoices.index')->with('info', 'Payment details are now available within the corresponding invoice.');
+    })->name('payments.show');
+    
+    // Keep payment API endpoints for functionality but hide from UI
+    Route::resource('payments', PaymentController::class)->except(['index', 'create', 'show']);
     Route::post('/payments/{payment}/mark-as-completed', [PaymentController::class, 'markAsCompleted'])->name('payments.mark-as-completed');
     Route::post('/payments/{payment}/mark-as-failed', [PaymentController::class, 'markAsFailed'])->name('payments.mark-as-failed');
     Route::post('/payments/{payment}/refund', [PaymentController::class, 'refund'])->name('payments.refund');
@@ -112,6 +254,7 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::post('/inspections/{inspection}/items/{item}/update', [VehicleInspectionController::class, 'updateItem'])->name('inspections.update-item');
     Route::post('/inspections/{inspection}/upload-photo', [VehicleInspectionController::class, 'uploadPhoto'])->name('inspections.upload-photo');
     Route::post('/inspections/{inspection}/update-mileage', [VehicleInspectionController::class, 'updateMileage'])->name('inspections.update-mileage');
+    Route::put('/inspections/{inspection}/update-team', [VehicleInspectionController::class, 'updateTeam'])->name('inspections.update-team');
 
     // Inventory Routes
     Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock'])->name('inventory.low-stock');
@@ -372,7 +515,7 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
         Route::post('/compliance/{id}/renew', [\App\Http\Controllers\ComplianceController::class, 'renew'])->name('compliance.renew');
         Route::post('/compliance/{id}/verify', [\App\Http\Controllers\ComplianceController::class, 'verify'])->name('compliance.verify');
         Route::get('/compliance/{id}/download', [\App\Http\Controllers\ComplianceController::class, 'download'])->name('compliance.download');
-        Route::get('/compliance/dashboard', [\App\Http\Controllers\ComplianceController::class, 'dashboard'])->name('compliance.dashboard');
+        Route::get('/compliance/dashboard', [\App\Http\Controllers\ComplianceController::class, 'dashboard'])->name('quality-control.compliance.dashboard');
         Route::get('/compliance/alerts', [\App\Http\Controllers\ComplianceController::class, 'alerts'])->name('compliance.alerts');
         Route::get('/compliance/export', [\App\Http\Controllers\ComplianceController::class, 'export'])->name('compliance.export');
         Route::post('/compliance/bulk-update', [\App\Http\Controllers\ComplianceController::class, 'bulkUpdate'])->name('compliance.bulk-update');
@@ -853,6 +996,23 @@ Route::prefix('hr-payroll')->name('hr-payroll.')->middleware([\App\Http\Middlewa
     Route::get('/reports', [\App\Http\Controllers\HrPayrollController::class, 'reports'])->name('reports');
     Route::get('/reports/payroll', [\App\Http\Controllers\HrPayrollController::class, 'generatePayrollReport'])->name('reports.payroll');
     
+    // Deductions Management
+    Route::resource('deductions', \App\Http\Controllers\DeductionController::class)->names([
+        'index' => 'deductions.index',
+        'create' => 'deductions.create',
+        'store' => 'deductions.store',
+        'show' => 'deductions.show',
+        'edit' => 'deductions.edit',
+        'update' => 'deductions.update',
+        'destroy' => 'deductions.destroy'
+    ]);
+    Route::post('/deductions/{deduction}/approve', [\App\Http\Controllers\DeductionController::class, 'approve'])->name('deductions.approve');
+    Route::post('/deductions/{deduction}/reject', [\App\Http\Controllers\DeductionController::class, 'reject'])->name('deductions.reject');
+    
+    // Bulk Deductions
+    Route::get('/deductions/bulk/create', [\App\Http\Controllers\DeductionController::class, 'bulkCreate'])->name('deductions.bulk-create');
+    Route::post('/deductions/bulk/store', [\App\Http\Controllers\DeductionController::class, 'bulkStore'])->name('deductions.bulk-store');
+    
     // Employee Self-Service Portal
     Route::prefix('portal')->name('portal.')->group(function () {
         Route::get('/', [\App\Http\Controllers\HrPayrollController::class, 'employeePortal'])->name('dashboard');
@@ -932,5 +1092,73 @@ Route::prefix('services')->name('services.')->middleware(['auth'])->group(functi
 Route::prefix('appointments')->name('appointments.')->middleware(['auth'])->group(function () {
     Route::post('/{id}/ajax-check-in', [\App\Http\Controllers\AppointmentController::class, 'ajaxCheckIn'])->name('ajax-check-in');
     Route::post('/{id}/ajax-cancel', [\App\Http\Controllers\AppointmentController::class, 'ajaxCancel'])->name('ajax-cancel');
+    Route::post('/{id}/ajax-restore', [\App\Http\Controllers\AppointmentController::class, 'ajaxRestore'])->name('ajax-restore');
     Route::post('/{id}/ajax-mark-no-show', [\App\Http\Controllers\AppointmentController::class, 'ajaxMarkNoShow'])->name('ajax-mark-no-show');
+});
+
+// DEBUG ROUTE - PUBLIC ACCESS
+Route::get('/debug-appointments', function() {
+    try {
+        // Try to instantiate AppointmentController
+        $controller = new App\Http\Controllers\AppointmentController();
+        return response()->json([
+            'status' => 'success',
+            'message' => 'AppointmentController can be instantiated',
+            'time' => now()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'time' => now()
+        ], 500);
+    }
+});
+
+// DEBUG ROUTE 2 - TEST INDEX METHOD
+Route::get('/debug-appointments-index', function() {
+    try {
+        $controller = new App\Http\Controllers\AppointmentController();
+        // Call index method
+        $result = $controller->index(request());
+        return response()->json([
+            'status' => 'success',
+            'message' => 'AppointmentController::index() works',
+            'result_type' => get_class($result),
+            'time' => now()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'time' => now()
+        ], 500);
+    }
+});
+
+// DEBUG ROUTE 3 - TEST VIEW RENDERING
+Route::get('/debug-appointments-view', function() {
+    try {
+        $controller = new App\Http\Controllers\AppointmentController();
+        $result = $controller->index(request());
+        
+        // Try to render the view
+        $content = $result->render();
+        
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Appointments view renders successfully',
+            'content_length' => strlen($content),
+            'time' => now()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'time' => now()
+        ], 500);
+    }
 });

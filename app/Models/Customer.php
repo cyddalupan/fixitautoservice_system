@@ -33,6 +33,13 @@ class Customer extends Model
         'notes',
         'preferences',
         'segment',
+        'vehicle_model',
+        'service_needed',
+        'facebook_profile',
+        'profile_picture',
+        'created_via_form',
+        'form_token',
+        'form_submitted_at',
     ];
 
     protected $casts = [
@@ -42,6 +49,8 @@ class Customer extends Model
         'customer_since' => 'date',
         'date_of_birth' => 'date',
         'preferences' => 'array',
+        'created_via_form' => 'boolean',
+        'form_submitted_at' => 'datetime',
     ];
 
     public function vehicles()
@@ -98,5 +107,27 @@ class Customer extends Model
             ->where('next_service_date', '>=', now())
             ->orderBy('next_service_date')
             ->get();
+    }
+
+    /**
+     * Get the customer's avatar (profile picture or initials)
+     */
+    public function getAvatarAttribute()
+    {
+        if ($this->profile_picture) {
+            return asset('storage/' . $this->profile_picture);
+        }
+        
+        // Return initials if no profile picture
+        $initials = strtoupper(substr($this->first_name, 0, 1) . substr($this->last_name, 0, 1));
+        return $initials;
+    }
+
+    /**
+     * Check if customer has a profile picture
+     */
+    public function getHasProfilePictureAttribute()
+    {
+        return !empty($this->profile_picture);
     }
 }

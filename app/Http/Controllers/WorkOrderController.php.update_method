@@ -1,0 +1,42 @@
+    public function update(Request $request, WorkOrder $workOrder)
+    {
+        $validated = $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'vehicle_id' => 'required|exists:vehicles,id',
+            'work_order_date' => 'required|date',
+            'work_order_status' => 'required|in:pending,repairing,waiting_parts,completed,released,cancelled',
+            'priority' => 'required|in:low,normal,high,emergency',
+            'service_advisor_id' => 'required|exists:users,id',
+            'technician_id' => 'nullable|exists:users,id',
+            'description' => 'nullable|string',
+            'notes' => 'nullable|string',
+        ]);
+        
+        // Update status timestamps
+        if ($validated['work_order_status'] !== $workOrder->work_order_status) {
+            $statusField = null;
+            switch ($validated['work_order_status']) {
+                case 'repairing':
+                    $statusField = 'work_start_time';
+                    break;
+                case 'completed':
+                    $statusField = 'work_complete_time';
+                    break;
+                case 'released':
+                    $statusField = 'invoice_sent_time';
+                    break;
+                case 'cancelled':
+                    $statusField = 'cancelled_at';
+                    break;
+            }
+            
+            if ($statusField) {
+                $validated[$statusField] = now();
+            }
+        }
+        
+        $workOrder->update($validated);
+        
+        return redirect()->route('work-orders.show', $workOrder)
+            ->with('success', 'Work order updated successfully.');
+    }

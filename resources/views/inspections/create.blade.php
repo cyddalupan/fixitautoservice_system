@@ -1,19 +1,19 @@
 @extends('layouts.app')
 
-@section('title', 'Create Vehicle Inspection - Fix-It Auto Services')
+@section('title', 'Create Repair Order - Fix-It Auto Services')
 
 @section('content')
 <div class="page-header">
     <div class="d-flex justify-content-between align-items-center">
         <div>
             <h1 class="h3 mb-0">
-                <i class="fas fa-car me-2"></i>Create Vehicle Inspection
+                <i class="fas fa-car me-2"></i>Create Repair Order
             </h1>
             <p class="text-muted mb-0">Create a new vehicle inspection record</p>
         </div>
         <div>
             <a href="{{ route('inspections.index') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left me-1"></i> Back to Inspections
+                <i class="fas fa-arrow-left me-1"></i> Back to Repair Orders
             </a>
         </div>
     </div>
@@ -31,14 +31,19 @@
                             <div class="form-group mb-3">
                                 <label for="customer_id" class="form-label">Customer *</label>
                                 <select class="form-select @error('customer_id') is-invalid @enderror" 
-                                        id="customer_id" name="customer_id" required>
+                                        id="customer_id" name="customer_id" required
+                                        {{ $selectedCustomer ? 'disabled' : '' }}>
                                     <option value="">Select Customer</option>
                                     @foreach($customers as $customer)
-                                        <option value="{{ $customer->id }}" {{ old('customer_id') == $customer->id ? 'selected' : '' }}>
+                                        <option value="{{ $customer->id }}" 
+                                            {{ (old('customer_id', $selectedCustomer ? $selectedCustomer->id : null) == $customer->id) ? 'selected' : '' }}>
                                             {{ $customer->first_name }} {{ $customer->last_name }}
                                         </option>
                                     @endforeach
                                 </select>
+                                @if($selectedCustomer)
+                                    <input type="hidden" name="customer_id" value="{{ $selectedCustomer->id }}">
+                                @endif
                                 @error('customer_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
@@ -125,7 +130,7 @@
                                           id="notes" name="notes" rows="3">{{ old('notes') }}</textarea>
                                 @error('notes')
                                     <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror>
+                                @enderror
                                 <small class="form-text text-muted">Add any initial notes or observations</small>
                             </div>
                         </div>
@@ -139,7 +144,7 @@
                                        id="odometer_reading" name="odometer_reading" value="{{ old('odometer_reading') }}" min="0">
                                 @error('odometer_reading')
                                     <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror>
+                                @enderror
                                 <small class="form-text text-muted">Current mileage</small>
                             </div>
                         </div>
@@ -148,12 +153,12 @@
                             <div class="form-group mb-3">
                                 <label for="inspection_fee" class="form-label">Inspection Fee</label>
                                 <div class="input-group">
-                                    <span class="input-group-text">$</span>
+                                    <span class="input-group-text">₱</span>
                                     <input type="number" step="0.01" class="form-control @error('inspection_fee') is-invalid @enderror" 
                                            id="inspection_fee" name="inspection_fee" value="{{ old('inspection_fee', 49.99) }}" min="0">
                                     @error('inspection_fee')
                                         <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror>
+                                    @enderror
                                 </div>
                             </div>
                         </div>
@@ -167,7 +172,7 @@
                                        id="next_inspection_date" name="next_inspection_date" value="{{ old('next_inspection_date') }}">
                                 @error('next_inspection_date')
                                     <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror>
+                                @enderror
                             </div>
                         </div>
                         
@@ -175,12 +180,12 @@
                             <div class="form-group mb-3">
                                 <label for="estimated_repair_cost" class="form-label">Estimated Repair Cost</label>
                                 <div class="input-group">
-                                    <span class="input-group-text">$</span>
+                                    <span class="input-group-text">₱</span>
                                     <input type="number" step="0.01" class="form-control @error('estimated_repair_cost') is-invalid @enderror" 
                                            id="estimated_repair_cost" name="estimated_repair_cost" value="{{ old('estimated_repair_cost') }}" min="0">
                                     @error('estimated_repair_cost')
                                         <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror>
+                                    @enderror
                                 </div>
                             </div>
                         </div>
@@ -215,7 +220,7 @@
                                         <div class="form-check">
                                             <input class="form-check-input" type="checkbox" 
                                                    id="category_{{ $key }}" name="categories[]" 
-                                                   value="{{ $key }}" checked>
+                                                   value="{{ $key }}">
                                             <label class="form-check-label" for="category_{{ $key }}">
                                                 {{ $label }}
                                             </label>
@@ -243,41 +248,98 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
+    // Store all vehicles data from server (passed from controller)
+    var allVehicles = {!! json_encode($vehicles) !!};
+    
+    // Group vehicles by customer_id for quick lookup
+    var vehiclesByCustomer = {};
+    allVehicles.forEach(function(vehicle) {
+        if (!vehiclesByCustomer[vehicle.customer_id]) {
+            vehiclesByCustomer[vehicle.customer_id] = [];
+        }
+        vehiclesByCustomer[vehicle.customer_id].push(vehicle);
+    });
+    
     $(document).ready(function() {
+        // Get elements
+        var $customer = $('#customer_id');
+        var $vehicle = $('#vehicle_id');
+        
         // Load vehicles when customer is selected
-        $('#customer_id').on('change', function() {
+        $customer.on('change', function() {
             var customerId = $(this).val();
-            if (customerId) {
-                $.ajax({
-                    url: '/api/customers/' + customerId + '/vehicles',
-                    type: 'GET',
-                    success: function(data) {
-                        var vehicleSelect = $('#vehicle_id');
-                        vehicleSelect.empty();
-                        vehicleSelect.append('<option value="">Select Vehicle</option>');
-                        
-                        $.each(data, function(index, vehicle) {
-                            var displayText = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
-                            if (vehicle.trim) {
-                                displayText += ' ' + vehicle.trim;
-                            }
-                            if (vehicle.license_plate) {
-                                displayText += ' (' + vehicle.license_plate + ')';
-                            }
-                            
-                            vehicleSelect.append('<option value="' + vehicle.id + '">' + displayText + '</option>');
-                        });
-                    },
-                    error: function() {
-                        console.log('Error loading vehicles');
-                    }
-                });
+            
+            // Clear vehicle dropdown
+            $vehicle.empty();
+            
+            if (!customerId) {
+                // No customer selected
+                $vehicle.append('<option value="">Select Vehicle</option>');
+                $vehicle.prop('disabled', true);
             } else {
-                $('#vehicle_id').empty().append('<option value="">Select Vehicle</option>');
+                // Customer selected
+                $vehicle.append('<option value="">Select Vehicle</option>');
+                $vehicle.prop('disabled', false);
+                
+                // Get vehicles for this customer
+                var customerVehicles = vehiclesByCustomer[customerId] || [];
+                
+                if (customerVehicles.length > 0) {
+                    // Add customer's actual vehicles
+                    customerVehicles.forEach(function(vehicle) {
+                        var displayText = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
+                        if (vehicle.trim) {
+                            displayText += ' ' + vehicle.trim;
+                        }
+                        if (vehicle.license_plate) {
+                            displayText += ' (' + vehicle.license_plate + ')';
+                        }
+                        
+                        $vehicle.append('<option value="' + vehicle.id + '">' + displayText + '</option>');
+                    });
+                } else {
+                    // Customer has no vehicles
+                    $vehicle.append('<option value="">No vehicles registered for this customer</option>');
+                }
             }
         });
+        
+        // If customer is pre-selected and locked, load vehicles immediately
+        if ($customer.prop('disabled') && $customer.val()) {
+            var customerId = $customer.val();
+            
+            $vehicle.empty();
+            $vehicle.append('<option value="">Select Vehicle</option>');
+            $vehicle.prop('disabled', false);
+            
+            // Get vehicles for this customer
+            var customerVehicles = vehiclesByCustomer[customerId] || [];
+            
+            if (customerVehicles.length > 0) {
+                // Add customer's actual vehicles
+                customerVehicles.forEach(function(vehicle) {
+                    var displayText = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
+                    if (vehicle.trim) {
+                        displayText += ' ' + vehicle.trim;
+                    }
+                    if (vehicle.license_plate) {
+                        displayText += ' (' + vehicle.license_plate + ')';
+                    }
+                    
+                    $vehicle.append('<option value="' + vehicle.id + '">' + displayText + '</option>');
+                });
+                
+                // Pre-select vehicle if provided in request
+                @if(request()->has('vehicle_id'))
+                    $vehicle.val({{ request('vehicle_id') }});
+                @endif
+            } else {
+                // Customer has no vehicles
+                $vehicle.append('<option value="">No vehicles registered for this customer</option>');
+            }
+        }
         
         // Set minimum date to today
         var today = new Date().toISOString().split('T')[0];
@@ -285,4 +347,4 @@
         $('#next_inspection_date').attr('min', today);
     });
 </script>
-@endsection
+@endpush

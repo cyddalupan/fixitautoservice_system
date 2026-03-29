@@ -124,7 +124,7 @@
                                         <span class="text-gray-600">N/A</span>
                                     @endif
                                 </td>
-                                <td>{{ $invoice->issue_date->format('M d, Y') }}</td>
+                                <td>{{ $invoice->invoice_date->format('M d, Y') }}</td>
                                 <td>
                                     {{ $invoice->due_date->format('M d, Y') }}
                                     @if($invoice->due_date < now() && $invoice->status !== 'paid')

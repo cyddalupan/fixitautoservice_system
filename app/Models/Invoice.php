@@ -22,7 +22,7 @@ class Invoice extends Model
         'work_order_id',
         'estimate_id',
         'invoice_number',
-        'issue_date',
+        'invoice_date',
         'due_date',
         'subtotal',
         'tax_rate',
@@ -43,7 +43,7 @@ class Invoice extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'issue_date' => 'date',
+        'invoice_date' => 'date',
         'due_date' => 'date',
         'subtotal' => 'decimal:2',
         'tax_rate' => 'decimal:2',
@@ -208,5 +208,46 @@ class Invoice extends Model
         }
 
         return ($this->amount_paid / $this->total_amount) * 100;
+    }
+
+    /**
+     * Get the service progress record for this invoice.
+     */
+    public function serviceProgress(): HasOne
+    {
+        return $this->hasOne(ServiceProgress::class, 'invoice_id');
+    }
+
+    /**
+     * Get the payment for this invoice.
+     */
+    public function payment(): HasOne
+    {
+        return $this->hasOne(Payment::class, 'invoice_id');
+    }
+
+    /**
+     * Format a currency amount.
+     */
+    public function formatted_currency($amount): string
+    {
+        return '₱' . number_format($amount, 2);
+    }
+
+    /**
+     * Get the status color for display.
+     */
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            'draft' => 'secondary',
+            'sent' => 'info',
+            'viewed' => 'primary',
+            'partial' => 'warning',
+            'paid' => 'success',
+            'overdue' => 'danger',
+            'cancelled' => 'dark',
+            default => 'secondary',
+        };
     }
 }

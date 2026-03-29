@@ -104,6 +104,30 @@
             border: none !important;
             background: transparent !important;
         } */
+
+        /* Purple color utilities for Accounting role */
+        .alert-purple {
+            background-color: #f3e8ff;
+            border-color: #d8b4fe;
+            color: #6b21a8;
+        }
+
+        .alert-purple .alert-link {
+            color: #4c1d95;
+        }
+
+        .bg-purple {
+            background-color: #6f42c1 !important;
+        }
+
+        .text-purple {
+            color: #6f42c1 !important;
+        }
+
+        .badge-purple {
+            background-color: #6f42c1;
+            color: white;
+        }
     </style>
     <!-- Custom CSS -->
     <style>
@@ -514,8 +538,47 @@
             min-height: auto !important;
             overflow: visible !important;
         }
+        
+        /* QUOTATION COUNTER STYLES - Professional, non-expanding */
+        .quotation-counter {
+            position: absolute !important;
+            top: 8px !important;
+            right: 8px !important;
+            font-size: 0.6rem !important;
+            padding: 0.15rem 0.35rem !important;
+            min-width: 18px !important;
+            height: 18px !important;
+            line-height: 1 !important;
+            border-radius: 9px !important;
+            border: 1px solid white !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+            transform: scale(0.9) !important;
+            transform-origin: top right !important;
+            z-index: 100 !important;
+            background-color: #dc3545 !important; /* Bootstrap danger color */
+            color: white !important;
+            font-weight: bold !important;
+        }
+        
+        /* Ensure parent has relative positioning for absolute counter */
+        .sidebar .nav-link {
+            position: relative !important;
+            padding-right: 30px !important; /* Make space for counter */
+        }
+        
+        /* Active state adjustments */
+        .sidebar .nav-link.active .quotation-counter {
+            border-color: rgba(255,255,255,0.3) !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+        }
+        
+        /* Hover effect */
+        .sidebar .nav-link:hover .quotation-counter {
+            transform: scale(1) !important;
+            transition: transform 0.2s ease !important;
+        }
     </style>
-    
+
     <!-- Page-specific styles -->
     @stack('styles')
 </head>
@@ -716,8 +779,29 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('quotations.*') ? 'active' : '' }}" href="{{ route('quotations.index') }}">
+                                <i class="fas fa-file-signature"></i> Quotations
+                                @php
+                                    $pendingQuotationsCount = \App\Models\Quotation::where('status', 'pending')->count();
+                                @endphp
+                                @if($pendingQuotationsCount > 0)
+                                    <sup class="quotation-counter" id="quotation-counter">{{ $pendingQuotationsCount }}</sup>
+                                @endif
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}" href="{{ route('customers.index') }}">
                                 <i class="fas fa-users"></i> Customers
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('vehicles.*') ? 'active' : '' }}" href="{{ route('vehicles.index') }}">
+                                <i class="fas fa-car"></i> Vehicles
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}" href="{{ route('expenses.index') }}">
+                                <i class="fas fa-money-bill-wave"></i> Expenses
                             </a>
                         </li>
                         <li class="nav-item">
@@ -725,20 +809,20 @@
                                 // Check if current route is a Service Management route
                                 $isServiceManagementRoute = request()->routeIs([
                                     'appointments.*',
-                                    'estimates.*', 
+                                    'estimates.*',
                                     'work-orders.*',
                                     'invoices.*',
                                     'payments.*',
                                     'inspections.*'
                                 ]);
-                                
+
                                 // Check localStorage for saved state (will be handled by JavaScript)
                                 // For initial load, expand if we're on a Service Management page
                                 $shouldExpand = $isServiceManagementRoute;
                             @endphp
-                            
-                            <a class="nav-link" data-bs-toggle="collapse" href="#serviceManagementCollapse" role="button" 
-                               aria-expanded="{{ $shouldExpand ? 'true' : 'false' }}" 
+
+                            <a class="nav-link" data-bs-toggle="collapse" href="#serviceManagementCollapse" role="button"
+                               aria-expanded="{{ $shouldExpand ? 'true' : 'false' }}"
                                aria-controls="serviceManagementCollapse"
                                id="serviceManagementToggle">
                                 <i class="fas fa-cogs"></i> Service Management
@@ -753,7 +837,7 @@
                                     </li>
                                     <li class="nav-item">
                                         <a class="nav-link {{ request()->routeIs('inspections.*') ? 'active' : '' }}" href="{{ route('inspections.index') }}">
-                                            <i class="fas fa-car"></i> Vehicle Inspections
+                                            <i class="fas fa-tools"></i> Repair Orders
                                         </a>
                                     </li>
                                     <li class="nav-item">
@@ -761,19 +845,16 @@
                                             <i class="fas fa-file-invoice-dollar"></i> Estimates
                                         </a>
                                     </li>
+
                                     <li class="nav-item">
                                         <a class="nav-link {{ request()->routeIs('work-orders.*') ? 'active' : '' }}" href="{{ route('work-orders.index') }}">
-                                            <i class="fas fa-wrench"></i> Work Orders
+                                            <i class="fas fa-clipboard-check"></i> Job Orders
                                         </a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link {{ request()->routeIs('invoices.*') ? 'active' : '' }}" href="{{ route('invoices.index') }}">
-                                            <i class="fas fa-file-invoice"></i> Invoices
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link {{ request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('payments.index') }}">
-                                            <i class="fas fa-credit-card"></i> Payments
+                                        <a class="nav-link {{ request()->routeIs('invoices.*') || request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('invoices.index') }}">
+                                            <i class="fas fa-file-invoice-dollar"></i> Invoices & Payments
+                                            <span class="badge bg-success ms-2" style="font-size: 0.6rem;">Integrated</span>
                                         </a>
                                     </li>
                                 </ul>
@@ -856,53 +937,54 @@
 
     <!-- jQuery (for AJAX and DOM manipulation) - MUST BE BEFORE Bootstrap and DataTables -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
     <!-- SweetAlert2 (for beautiful alerts and confirmations) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    
+
     <!-- DataTables (for table pagination and sorting) -->
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
     <script type="text/javascript" src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
     <script type="text/javascript" src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
-    
+
     <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
-        // Auto-dismiss alerts after 5 seconds
+        // Auto-dismiss alerts after 5 seconds (exclude alerts with .no-auto-dismiss class)
         setTimeout(function() {
-            var alerts = document.querySelectorAll('.alert');
+            var alerts = document.querySelectorAll('.alert:not(.no-auto-dismiss)');
             alerts.forEach(function(alert) {
                 var bsAlert = new bootstrap.Alert(alert);
                 bsAlert.close();
             });
         }, 5000);
-        
+
         // Initialize tooltips
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
-        
+
         // Sidebar toggle functionality for mobile
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebar = document.getElementById('sidebar');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
-        
+
         if (sidebarToggle && sidebar) {
             sidebarToggle.addEventListener('click', function() {
                 sidebar.classList.toggle('show');
                 sidebarOverlay.classList.toggle('show');
             });
-            
+
             // Close sidebar when clicking overlay
             sidebarOverlay.addEventListener('click', function() {
                 sidebar.classList.remove('show');
                 sidebarOverlay.classList.remove('show');
             });
-            
+
             // Close sidebar when clicking a link on mobile
             if (window.innerWidth < 768) {
                 const sidebarLinks = sidebar.querySelectorAll('.nav-link');
@@ -913,7 +995,7 @@
                     });
                 });
             }
-            
+
             // Handle window resize
             window.addEventListener('resize', function() {
                 if (window.innerWidth >= 768) {
@@ -923,13 +1005,13 @@
                 }
             });
         }
-        
+
         // Service Management Collapse State Persistence
         document.addEventListener('DOMContentLoaded', function() {
             const serviceManagementToggle = document.getElementById('serviceManagementToggle');
             const serviceManagementCollapse = document.getElementById('serviceManagementCollapse');
             const chevronIcon = serviceManagementToggle ? serviceManagementToggle.querySelector('.fa-chevron-down, .fa-chevron-up') : null;
-            
+
             if (serviceManagementToggle && serviceManagementCollapse) {
                 // Check if we're on a Service Management page
                 const isServiceManagementPage = window.location.pathname.includes('/appointments') ||
@@ -938,13 +1020,13 @@
                                                window.location.pathname.includes('/invoices') ||
                                                window.location.pathname.includes('/payments') ||
                                                window.location.pathname.includes('/inspections');
-                
+
                 // Check localStorage for saved state
                 const savedState = localStorage.getItem('serviceManagementCollapseState');
-                
+
                 // Determine initial state: saved state OR if we're on a Service Management page
                 const shouldBeExpanded = savedState === 'expanded' || (savedState === null && isServiceManagementPage);
-                
+
                 // Set initial state
                 if (shouldBeExpanded && !serviceManagementCollapse.classList.contains('show')) {
                     serviceManagementCollapse.classList.add('show');
@@ -954,7 +1036,7 @@
                         chevronIcon.classList.add('fa-chevron-up');
                     }
                 }
-                
+
                 // Listen for collapse events
                 serviceManagementCollapse.addEventListener('show.bs.collapse', function() {
                     localStorage.setItem('serviceManagementCollapseState', 'expanded');
@@ -964,7 +1046,7 @@
                         chevronIcon.classList.add('fa-chevron-up');
                     }
                 });
-                
+
                 serviceManagementCollapse.addEventListener('hide.bs.collapse', function() {
                     localStorage.setItem('serviceManagementCollapseState', 'collapsed');
                     serviceManagementToggle.setAttribute('aria-expanded', 'false');
@@ -973,7 +1055,7 @@
                         chevronIcon.classList.add('fa-chevron-down');
                     }
                 });
-                
+
                 // Also update state when clicking the toggle directly (for better UX)
                 serviceManagementToggle.addEventListener('click', function() {
                     // The Bootstrap collapse event will handle the state, but we need to update chevron
@@ -992,8 +1074,54 @@
                 });
             }
         });
+        
+        // Quotation Counter Update Function
+        function updateQuotationCounter() {
+            fetch('{{ route("quotations.pending-count") }}', {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const counterElement = document.getElementById('quotation-counter');
+                if (data.count > 0) {
+                    if (counterElement) {
+                        counterElement.textContent = data.count;
+                    } else {
+                        // Create counter if it doesn't exist
+                        const quotationsLink = document.querySelector('a[href*="quotations"]');
+                        if (quotationsLink) {
+                            const badge = document.createElement('sup');
+                            badge.className = 'quotation-counter';
+                            badge.id = 'quotation-counter';
+                            badge.textContent = data.count;
+                            quotationsLink.appendChild(badge);
+                        }
+                    }
+                } else {
+                    // Remove counter if count is 0
+                    if (counterElement) {
+                        counterElement.remove();
+                    }
+                }
+            })
+            .catch(error => console.error('Error updating quotation counter:', error));
+        }
+        
+        // Update counter every 30 seconds
+        setInterval(updateQuotationCounter, 30000);
+        
+        // Also update when the page becomes visible again
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                updateQuotationCounter();
+            }
+        });
     </script>
-    
+
     @stack('scripts')
 </body>
 </html>

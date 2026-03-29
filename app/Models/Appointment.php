@@ -22,6 +22,7 @@ class Appointment extends Model
     protected $fillable = [
         'customer_id',
         'vehicle_id',
+        'vehicle_description',
         'assigned_technician_id',
         'service_advisor_id',
         'appointment_number',
@@ -108,6 +109,14 @@ class Appointment extends Model
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class);
+    }
+
+    /**
+     * Get the vehicle description for the appointment.
+     */
+    public function vehicleDescription(): string
+    {
+        return $this->vehicle_description ?? 'No vehicle description';
     }
 
     /**
@@ -323,5 +332,13 @@ class Appointment extends Model
     public function payments(): HasManyThrough
     {
         return $this->hasManyThrough(Payment::class, Invoice::class, 'appointment_id', 'invoice_id');
+    }
+
+    /**
+     * Get the service progress associated with the appointment.
+     */
+    public function serviceProgress(): HasOne
+    {
+        return $this->hasOne(ServiceProgress::class, 'appointment_id');
     }
 }

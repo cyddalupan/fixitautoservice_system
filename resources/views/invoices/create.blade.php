@@ -1,5 +1,94 @@
 @extends('layouts.app')
 
+@push('scripts')
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+@endpush
+
+@push('styles')
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+
+<style>
+    /* Invoice Create Page Specific Styles */
+    .invoice-create-page .form-label.required:after {
+        content: " *";
+        color: #dc3545;
+    }
+    
+    .invoice-create-page .card {
+        border: 1px solid #e3e6f0;
+        border-radius: 0.35rem;
+        box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    }
+    
+    .invoice-create-page .card-header {
+        background-color: #f8f9fc;
+        border-bottom: 1px solid #e3e6f0;
+        padding: 0.75rem 1.25rem;
+    }
+    
+    .invoice-create-page .table th {
+        font-weight: 600;
+        color: #5a5c69;
+        background-color: #f8f9fc;
+        border-bottom: 2px solid #e3e6f0;
+    }
+    
+    .invoice-create-page .btn-outline-primary {
+        border-color: #4e73df;
+        color: #4e73df;
+    }
+    
+    .invoice-create-page .btn-outline-primary:hover {
+        background-color: #4e73df;
+        color: white;
+    }
+    
+    .invoice-create-page .quick-actions .btn {
+        transition: all 0.2s ease;
+    }
+    
+    .invoice-create-page .quick-actions .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    
+    /* Item table styling */
+    .invoice-create-page .items-table {
+        background-color: white;
+    }
+    
+    .invoice-create-page .items-table tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .invoice-create-page .items-table .form-control-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    /* Totals section styling */
+    .invoice-create-page .totals-card {
+        background-color: #f8f9fc;
+        border-left: 4px solid #4e73df;
+    }
+    
+    .invoice-create-page .total-row {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: #5a5c69;
+    }
+    
+    .invoice-create-page .grand-total {
+        font-weight: 700;
+        font-size: 1.25rem;
+        color: #1cc88a;
+    }
+</style>
+@endpush
+
 @section('title', 'Create Invoice - Point of Sale')
 
 @section('content')
@@ -26,7 +115,7 @@
     </div>
 @endif
 
-<div class="row">
+<div class="row invoice-create-page">
     <div class="col-md-8">
         <div class="card mb-4">
             <div class="card-header">
@@ -62,7 +151,8 @@
                                 <option value="">Select Vehicle</option>
                                 @foreach($vehicles as $vehicle)
                                     <option value="{{ $vehicle->id }}"
-                                            {{ $selectedVehicle && $selectedVehicle->id == $vehicle->id ? 'selected' : '' }}>
+                                            {{ $selectedVehicle && $selectedVehicle->id == $vehicle->id ? 'selected' : '' }}
+                                            data-customer-id="{{ $vehicle->customer_id }}">
                                         {{ $vehicle->year }} {{ $vehicle->make }} {{ $vehicle->model }}
                                         ({{ $vehicle->license_plate ?? 'No Plate' }})
                                     </option>
@@ -382,62 +472,352 @@
             $('.select2').select2();
         }
         
-        // Add first item
-        addItem();
+        // Add first item (only if addItem function exists)
+        if (typeof addItem === 'function') {
+            addItem();
+        } else {
+            console.warn('addItem function not defined yet');
+        }
         
         // Add item button
-        document.getElementById('addItemBtn').addEventListener('click', addItem);
+        const addItemBtn = document.getElementById('addItemBtn');
+        if (addItemBtn) {
+            addItemBtn.addEventListener('click', function() {
+                if (typeof addItem === 'function') {
+                    addItem();
+                } else {
+                    console.error('addItem function not defined');
+                }
+            });
+        }
         
         // Common service items
         document.querySelectorAll('.add-service-item').forEach(button => {
             button.addEventListener('click', function() {
-                addItem();
-                const lastRow = itemsBody.lastElementChild;
-                lastRow.querySelector('.item-type').value = this.dataset.type;
-                lastRow.querySelector('.item-name').value = this.dataset.name;
-                lastRow.querySelector('.item-price').value = this.dataset.price;
-                updateItemTotal(lastRow);
+                if (typeof addItem === 'function') {
+                    addItem();
+                    const lastRow = itemsBody.lastElementChild;
+                    if (lastRow) {
+                        lastRow.querySelector('.item-type').value = this.dataset.type;
+                        lastRow.querySelector('.item-name').value = this.dataset.name;
+                        lastRow.querySelector('.item-price').value = this.dataset.price;
+                        updateItemTotal(lastRow);
+                    }
+                } else {
+                    console.error('addItem function not defined');
+                }
                 calculateTotals();
             });
         });
         
         // Customer selection
         const customerSelect = document.getElementById('customerSelect');
-        const vehicleSelect = document.getElementById('vehicleSelect');
-        const workOrderSelect = document.getElementById('workOrderSelect');
-        const customerInfo = document.getElementById('customerInfo');
+        // DOM elements will be accessed inside document.ready
+        console.log('DOM elements loaded, waiting for document.ready...');
         
-        if (customerSelect) {
-            customerSelect.addEventListener('change', function() {
-                updateCustomerInfo(this.value);
+        // Initialize everything after document is ready
+        $(document).ready(function() {
+            console.log('=== DOCUMENT READY ===');
+            
+            // Define helper functions
+            function updateCustomerInfo(customerId) {
+                console.log('Updating customer info for ID:', customerId);
+                const customerInfo = document.getElementById('customerInfo');
                 
-                // Filter vehicles for this customer
-                if (vehicleSelect) {
-                    const customerId = this.value;
-                    Array.from(vehicleSelect.options).forEach(option => {
-                        if (option.value === '') return;
-                        option.style.display = 'block';
-                    });
+                if (!customerId) {
+                    if (customerInfo) {
+                        customerInfo.innerHTML = '<div class="alert alert-info mb-0">Select a customer to see their details</div>';
+                    }
+                    return;
                 }
                 
-                // Filter work orders for this customer
-                if (workOrderSelect) {
-                    const customerId = this.value;
-                    Array.from(workOrderSelect.options).forEach(option => {
-                        if (option.value === '') return;
-                        const customerMatch = option.dataset.customerId === customerId;
-                        option.style.display = customerMatch ? 'block' : 'none';
-                    });
+                // Show loading message
+                if (customerInfo) {
+                    customerInfo.innerHTML = `
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-spinner fa-spin me-2"></i>
+                            Loading customer details...
+                        </div>
+                    `;
                 }
+                
+                // Make AJAX call to get customer vehicles
+                $.ajax({
+                    url: '/customers/' + customerId + '/vehicles',
+                    method: 'GET',
+                    dataType: 'json',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    success: function(response) {
+                        console.log('Customer vehicles loaded:', response);
+                        
+                        if (customerInfo) {
+                            if (response.vehicles && response.vehicles.length > 0) {
+                                let vehiclesHtml = '';
+                                response.vehicles.forEach(function(vehicle) {
+                                    vehiclesHtml += `
+                                        <div class="mb-2">
+                                            <i class="fas fa-car me-2 text-muted"></i>
+                                            <strong>${vehicle.year} ${vehicle.make} ${vehicle.model}</strong>
+                                            <small class="text-muted ms-2">(${vehicle.license_plate || 'No plate'})</small>
+                                            <br>
+                                            <small class="text-muted">VIN: ${vehicle.vin || 'N/A'}</small>
+                                        </div>
+                                    `;
+                                });
+                                
+                                customerInfo.innerHTML = `
+                                    <div class="card border-primary">
+                                        <div class="card-header bg-primary text-white py-2">
+                                            <i class="fas fa-user me-2"></i>Customer Information
+                                        </div>
+                                        <div class="card-body p-3">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <small class="text-muted d-block">Customer ID</small>
+                                                    <strong>${customerId}</strong>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <small class="text-muted d-block">Total Vehicles</small>
+                                                    <strong>${response.vehicles.length}</strong>
+                                                </div>
+                                            </div>
+                                            <hr class="my-2">
+                                            <div class="mt-2">
+                                                <small class="text-muted d-block mb-2">Customer Vehicles:</small>
+                                                ${vehiclesHtml}
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            } else {
+                                customerInfo.innerHTML = `
+                                    <div class="card border-warning">
+                                        <div class="card-header bg-warning text-white py-2">
+                                            <i class="fas fa-user me-2"></i>Customer Information
+                                        </div>
+                                        <div class="card-body p-3">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <small class="text-muted d-block">Customer ID</small>
+                                                    <strong>${customerId}</strong>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <small class="text-muted d-block">Total Vehicles</small>
+                                                    <strong>0</strong>
+                                                </div>
+                                            </div>
+                                            <hr class="my-2">
+                                            <div class="alert alert-warning mb-0">
+                                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                                This customer has no vehicles registered.
+                                            </div>
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Error loading customer vehicles:', error);
+                        
+                        if (customerInfo) {
+                            customerInfo.innerHTML = `
+                                <div class="card border-danger">
+                                    <div class="card-header bg-danger text-white py-2">
+                                        <i class="fas fa-user me-2"></i>Customer Information
+                                    </div>
+                                    <div class="card-body p-3">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Customer ID</small>
+                                                <strong>${customerId}</strong>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <small class="text-muted d-block">Status</small>
+                                                <span class="badge bg-danger">Error Loading</span>
+                                            </div>
+                                        </div>
+                                        <hr class="my-2">
+                                        <div class="alert alert-danger mb-0">
+                                            <i class="fas fa-exclamation-circle me-2"></i>
+                                            Could not load customer vehicles. Please try again.
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                });
+            }
+            
+            // Initialize Select2
+            console.log('Initializing Select2');
+            $('.select2').select2({
+                theme: 'bootstrap-5',
+                width: '100%'
             });
-        }
-        
-        // Work order selection
-        if (workOrderSelect) {
-            workOrderSelect.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                if (selectedOption.value && selectedOption.dataset.customerId) {
-                    // Set customer
-                    if (customerSelect) {
-                        customerSelect.value = selectedOption.dataset.customerId;
-                        updateCustomerInfo(selectedOption.dataset.customerId);
+            console.log('Select2 initialized');
+            
+            // Now attach event listeners AFTER Select2 is initialized
+            console.log('Attaching event listeners...');
+            
+            const customerSelect = document.getElementById('customerSelect');
+            const vehicleSelect = document.getElementById('vehicleSelect');
+            const workOrderSelect = document.getElementById('workOrderSelect');
+            
+            if (customerSelect) {
+                console.log('Found customer select element');
+                
+                // Use Select2 change event
+                $(customerSelect).on('change.select2', function() {
+                    const customerId = this.value;
+                    console.log('=== CUSTOMER CHANGE EVENT FIRED ===');
+                    console.log('Customer changed to:', customerId);
+                    updateCustomerInfo(customerId);
+                    
+                    // Filter vehicles for this customer
+                    if (vehicleSelect) {
+                        console.log('=== FILTERING VEHICLES ===');
+                        console.log('Customer ID selected:', customerId);
+                        console.log('Total options in vehicle dropdown:', vehicleSelect.options.length);
+                        
+                        // Log all options before filtering
+                        console.log('All vehicle options:');
+                        Array.from(vehicleSelect.options).forEach((option, index) => {
+                            console.log(`  [${index}] Value: ${option.value}, Text: ${option.text}, data-customer-id: ${option.dataset.customerId}`);
+                        });
+                        
+                        // First, enable all options
+                        Array.from(vehicleSelect.options).forEach(option => {
+                            option.disabled = false;
+                            option.style.display = 'block';
+                        });
+                        
+                        // If a customer is selected, disable options that don't match
+                        if (customerId) {
+                            console.log('Disabling non-matching vehicles for customer:', customerId);
+                            let disabledCount = 0;
+                            let enabledCount = 0;
+                            
+                            Array.from(vehicleSelect.options).forEach(option => {
+                                if (option.value === '') {
+                                    console.log('  Keeping "Select Vehicle" option enabled');
+                                    return; // Keep "Select Vehicle" enabled
+                                }
+                                
+                                const customerMatch = option.dataset.customerId === customerId;
+                                console.log(`  Option ${option.value}: customer=${option.dataset.customerId}, match=${customerMatch}`);
+                                
+                                if (!customerMatch) {
+                                    option.disabled = true;
+                                    option.style.display = 'none';
+                                    disabledCount++;
+                                    
+                                    // If this option was selected but doesn't match, clear selection
+                                    if (option.selected) {
+                                        console.log('  Clearing selected vehicle that doesnt match:', option.value);
+                                        option.selected = false;
+                                        vehicleSelect.value = '';
+                                    }
+                                } else {
+                                    enabledCount++;
+                                }
+                            });
+                            
+                            console.log(`Filtering complete: ${enabledCount} enabled, ${disabledCount} disabled`);
+                        } else {
+                            console.log('No customer selected, showing all vehicles');
+                        }
+                        
+                        // Update Select2
+                        $(vehicleSelect).trigger('change.select2');
+                        console.log('=== FILTERING COMPLETE ===');
+                    }
+                    
+                    // Filter work orders for this customer
+                    if (workOrderSelect) {
+                        console.log('Filtering work orders for customer:', customerId);
+                        
+                        // First, enable all options
+                        Array.from(workOrderSelect.options).forEach(option => {
+                            option.disabled = false;
+                            option.style.display = 'block';
+                        });
+                        
+                        // If a customer is selected, disable options that don't match
+                        if (customerId) {
+                            Array.from(workOrderSelect.options).forEach(option => {
+                                if (option.value === '') return; // Keep "Select Work Order" enabled
+                                
+                                const customerMatch = option.dataset.customerId === customerId;
+                                
+                                if (!customerMatch) {
+                                    option.disabled = true;
+                                    option.style.display = 'none';
+                                    
+                                    // If this option was selected but doesn't match, clear selection
+                                    if (option.selected) {
+                                        option.selected = false;
+                                        workOrderSelect.value = '';
+                                    }
+                                }
+                            });
+                        }
+                        
+                        // Update Select2
+                        $(workOrderSelect).trigger('change.select2');
+                        console.log('Work order dropdown filtered');
+                    }
+                });
+                
+                console.log('Customer change event listener attached');
+                
+                // If customer is pre-selected, trigger the change event
+                if (customerSelect.value) {
+                    console.log('Customer pre-selected:', customerSelect.value);
+                    $(customerSelect).trigger('change.select2');
+                }
+            } else {
+                console.error('Customer select element not found!');
+            }
+            
+            // Work order selection event
+            if (workOrderSelect) {
+                console.log('Found work order select element');
+                
+                $(workOrderSelect).on('change.select2', function() {
+                    const selectedOption = this.options[this.selectedIndex];
+                    console.log('Work order selected:', selectedOption.value);
+                    
+                    if (selectedOption.value && selectedOption.dataset.customerId) {
+                        console.log('Setting customer from work order:', selectedOption.dataset.customerId);
+                        
+                        // Set customer
+                        if (customerSelect) {
+                            customerSelect.value = selectedOption.dataset.customerId;
+                            $(customerSelect).trigger('change.select2');
+                            
+                            // Select the vehicle if it matches the work order
+                            if (vehicleSelect && selectedOption.dataset.vehicleId) {
+                                // Wait a bit for the filtering to complete
+                                setTimeout(() => {
+                                    console.log('Setting vehicle from work order:', selectedOption.dataset.vehicleId);
+                                    vehicleSelect.value = selectedOption.dataset.vehicleId;
+                                    $(vehicleSelect).trigger('change.select2');
+                                }, 200);
+                            }
+                        }
+                    }
+                });
+                
+                console.log('Work order change event listener attached');
+            }
+            
+            console.log('=== EVENT LISTENERS ATTACHED ===');
+        });
+    });
+</script>
+@endsection

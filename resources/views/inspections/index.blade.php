@@ -1,19 +1,19 @@
 @extends('layouts.app')
 
-@section('title', 'Vehicle Inspections - Fix-It Auto Services')
+@section('title', 'Repair Orders - Fix-It Auto Services')
 
 @section('content')
 <div class="page-header">
     <div class="d-flex justify-content-between align-items-center">
         <div>
             <h1 class="h3 mb-0">
-                <i class="fas fa-car me-2"></i>Vehicle Inspections
+                <i class="fas fa-tools me-2"></i>Repair Orders
             </h1>
-            <p class="text-muted mb-0">Digital vehicle inspections with photo/video documentation</p>
+            <p class="text-muted mb-0">Repair orders with photo/video documentation</p>
         </div>
         <div>
             <a href="{{ route('inspections.create') }}" class="btn btn-primary">
-                <i class="fas fa-plus me-1"></i> New Inspection
+                <i class="fas fa-plus me-1"></i> New Repair Order
             </a>
             <a href="{{ route('inspections.statistics') }}" class="btn btn-outline-primary ms-2">
                 <i class="fas fa-chart-bar me-1"></i> Statistics
