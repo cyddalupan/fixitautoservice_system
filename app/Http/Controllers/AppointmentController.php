@@ -6,8 +6,10 @@ use App\Models\Appointment;
 use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\User;
+use App\Services\ServiceRecordService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class AppointmentController extends Controller
@@ -20,7 +22,7 @@ class AppointmentController extends Controller
         // Get appointments by status for tabs
         $scheduledAppointments = Appointment::with(['customer', 'technician'])
             ->whereIn('appointment_status', ['scheduled', 'confirmed'])
-            ->whereDate('appointment_date', '>=', Carbon::today())
+            ->whereDate('appointment_date', '>=', Carbon::today()->subDays(7))
             ->orderBy('appointment_date')
             ->orderBy('appointment_time')
             ->get();
@@ -37,12 +39,29 @@ class AppointmentController extends Controller
             ->orderBy('cancelled_at', 'desc')
             ->get();
         
-        $convertedAppointments = Appointment::with(['customer', 'estimate', 'workOrder'])
-            ->whereHas('estimate')
-            ->orWhereHas('workOrder')
-            ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30))
-            ->orderBy('appointment_date', 'desc')
-            ->get();
+        // Get converted appointments - handle case where estimates table might not have appointment_id column
+        $convertedAppointments = collect();
+        
+        try {
+            // Check if the estimates table has appointment_id column
+            if (\Schema::hasColumn('estimates', 'appointment_id')) {
+                $convertedAppointments = Appointment::with(['customer', 'estimate', 'workOrder'])
+                    ->whereHas('estimate')
+                    ->orWhereHas('workOrder')
+                    ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30))
+                    ->orderBy('appointment_date', 'desc')
+                    ->get();
+            } else {
+                // If column doesn't exist, just get appointments with date filter
+                $convertedAppointments = Appointment::with(['customer', 'estimate', 'workOrder'])
+                    ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30))
+                    ->orderBy('appointment_date', 'desc')
+                    ->get();
+            }
+        } catch (\Exception $e) {
+            // If any error occurs, use empty collection
+            $convertedAppointments = collect();
+        }
         
         // Get statistics for tabs
         $stats = [
@@ -86,7 +105,17 @@ class AppointmentController extends Controller
             $selectedCustomer = null;
         }
         
-        return view('appointments.create', compact('customers', 'vehicles', 'technicians', 'advisors', 'selectedCustomer', 'selectedVehicle'));
+        // Get customer vehicles and history
+        $customerVehicles = $selectedCustomer ? $selectedCustomer->vehicles()->orderBy('created_at', 'desc')->get() : collect();
+        $customerHistory = $selectedCustomer ? Appointment::where('customer_id', $selectedCustomer->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get() : collect();
+        
+        // All technicians for multi-select
+        $allTechnicians = $technicians;
+        
+        return view('appointments.create', compact('customers', 'vehicles', 'technicians', 'advisors', 'selectedCustomer', 'selectedVehicle', 'customerVehicles', 'customerHistory', 'allTechnicians'));
     }
 
     /**
@@ -104,6 +133,8 @@ class AppointmentController extends Controller
             'estimated_cost' => 'nullable|numeric|min:0',
             'priority' => 'required|in:low,normal,high,urgent',
             'assigned_to' => 'nullable|exists:users,id',
+            'technicians' => 'nullable|array',
+            'technicians.*' => 'exists:users,id',
         ]);
         
         // Generate appointment number
@@ -152,6 +183,18 @@ class AppointmentController extends Controller
         // Create appointment
         $appointment = Appointment::create($appointmentData);
         
+        // Sync multi-technician assignments
+        if ($request->filled('technicians')) {
+            $technicianIds = array_filter($request->input('technicians', []));
+            if (!empty($technicianIds)) {
+                $syncData = [];
+                foreach ($technicianIds as $techId) {
+                    $syncData[$techId] = ['role' => 'technician'];
+                }
+                $appointment->technicians()->sync($syncData);
+            }
+        }
+        
         // Record vehicle description in history
         if (!empty($validated['vehicle_description'])) {
             \App\Models\VehicleHistory::findOrCreate($validated['vehicle_description'])->incrementUse();
@@ -172,7 +215,18 @@ class AppointmentController extends Controller
      */
     public function show(Appointment $appointment)
     {
-        $appointment->load(['customer', 'technician', 'advisor', 'workOrder', 'serviceProgress']);
+        // Load relationships with error handling for serviceProgress
+        $appointment->load(['customer', 'technician', 'advisor', 'workOrder']);
+        
+        // Try to load serviceProgress, but handle case where table might not exist
+        try {
+            if (\Schema::hasTable('service_progress')) {
+                $appointment->load('serviceProgress');
+            }
+        } catch (\Exception $e) {
+            // If error, set empty relationship
+            $appointment->setRelation('serviceProgress', collect());
+        }
         
         // Get similar appointments for this customer
         $customerAppointments = Appointment::where('customer_id', $appointment->customer_id)
@@ -181,10 +235,21 @@ class AppointmentController extends Controller
             ->limit(5)
             ->get();
         
+        // Get all customer vehicles for summary card
+        $customerVehicles = $appointment->customer ? 
+            \App\Models\Vehicle::where('customer_id', $appointment->customer_id)->get() : collect();
+        
+        // Selected customer for summary card
+        $selectedCustomer = $appointment->customer;
+        
+        // Get customer history for summary card display
+        $customerHistory = $appointment->customer ? 
+            \App\Models\WorkOrder::where('customer_id', $appointment->customer_id)->count() : 0;
+        
         // Get available time slots for rescheduling
         $availableSlots = $this->getAvailableTimeSlots($appointment->appointment_date);
         
-        return view('appointments.show', compact('appointment', 'customerAppointments', 'availableSlots'));
+        return view('appointments.show', compact('appointment', 'customerAppointments', 'availableSlots', 'customerVehicles', 'selectedCustomer', 'customerHistory'));
     }
 
     /**
@@ -192,14 +257,15 @@ class AppointmentController extends Controller
      */
     public function edit(Appointment $appointment)
     {
-        $appointment->load(['customer']);
+        $appointment->load(['customer', 'technicians']);
         
         $customers = Customer::where('is_active', true)->orderBy('first_name')->get();
         $vehicles = Vehicle::with('customer')->get();
         $technicians = User::where('role', 'technician')->where('is_active', true)->get();
+        $allTechnicians = $technicians;
         $advisors = User::where('role', 'service_advisor')->where('is_active', true)->get();
         
-        return view('appointments.edit', compact('appointment', 'customers', 'vehicles', 'technicians', 'advisors'));
+        return view('appointments.edit', compact('appointment', 'customers', 'vehicles', 'technicians', 'allTechnicians', 'advisors'));
     }
 
     /**
@@ -217,6 +283,8 @@ class AppointmentController extends Controller
             'estimated_cost' => 'nullable|numeric|min:0',
             'priority' => 'required|in:low,normal,high,emergency',
             'assigned_technician_id' => 'nullable|exists:users,id',
+            'technicians' => 'nullable|array',
+            'technicians.*' => 'exists:users,id',
             'service_advisor_id' => 'nullable|exists:users,id',
             'bay_number' => 'nullable|integer|min:1|max:20',
             'bay_status' => 'nullable|in:available,occupied,maintenance',
@@ -250,6 +318,21 @@ class AppointmentController extends Controller
         }
         
         $appointment->update($validated);
+        
+        // Sync multi-technician assignments
+        if ($request->has('technicians')) {
+            $technicianIds = array_filter($request->input('technicians', []));
+            if (!empty($technicianIds)) {
+                $syncData = [];
+                foreach ($technicianIds as $techId) {
+                    $syncData[$techId] = ['role' => 'technician'];
+                }
+                $appointment->technicians()->sync($syncData);
+            } else {
+                // If empty array submitted, clear all
+                $appointment->technicians()->sync([]);
+            }
+        }
         
         return redirect()->route('appointments.show', $appointment)
             ->with('success', 'Appointment updated successfully.');
@@ -298,7 +381,7 @@ class AppointmentController extends Controller
     }
     public function checkIn(Appointment $appointment)
     {
-        if ($appointment->appointment_status !== 'confirmed') {
+        if (!in_array($appointment->appointment_status, ['scheduled', 'confirmed'])) {
             return redirect()->back()->with('error', 'Only confirmed appointments can be checked in.');
         }
         
@@ -362,9 +445,6 @@ class AppointmentController extends Controller
         return redirect()->back()->with('success', 'Appointment started successfully.');
     }
     
-    /**
-     * Complete an appointment.
-     */
     public function complete(Appointment $appointment)
     {
         if ($appointment->appointment_status !== 'in_progress') {

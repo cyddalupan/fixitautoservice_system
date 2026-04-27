@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Carbon\Carbon;
 
 class VehicleInspection extends Model
@@ -61,9 +62,11 @@ class VehicleInspection extends Model
         'created_by',
         'updated_by',
         'approved_by',
+        'categories',
     ];
 
     protected $casts = [
+        'inspection_type' => 'json',
         'photos' => 'array',
         'videos' => 'array',
         'documents' => 'array',
@@ -82,6 +85,8 @@ class VehicleInspection extends Model
         'inspection_completed_at' => 'datetime',
         'report_generated_at' => 'datetime',
         'report_sent_at' => 'datetime',
+        'categories' => 'array',
+        'findings' => 'array',
         'customer_approved_at' => 'datetime',
     ];
 
@@ -141,6 +146,11 @@ class VehicleInspection extends Model
     public function items()
     {
         return $this->hasMany(InspectionItem::class, 'inspection_id');
+    }
+
+    public function inspectionFindings()
+    {
+        return $this->hasMany(InspectionFinding::class, 'inspection_id')->orderBy('sort_order');
     }
 
     /**
@@ -224,6 +234,33 @@ class VehicleInspection extends Model
 
     public function getTypeLabelAttribute(): string
     {
+        // Handle array of inspection types
+        if (is_array($this->inspection_type)) {
+            $labels = [];
+            foreach ($this->inspection_type as $type) {
+                $labels[] = match($type) {
+                    'pre_service' => 'Pre-Service',
+                    'post_service' => 'Post-Service',
+                    'pre_purchase' => 'Pre-Purchase',
+                    'safety' => 'Safety',
+                    'emissions' => 'Emissions',
+                    'routine' => 'Routine',
+                    'diagnostic' => 'Diagnostic',
+                    'post_repair' => 'Post-Repair',
+                    'comprehensive' => 'Comprehensive',
+                    'custom' => 'Custom',
+                    default => ucfirst(str_replace('_', ' ', $type)),
+                };
+            }
+            
+            if (count($labels) === 1) {
+                return $labels[0] . ' Inspection';
+            } else {
+                return 'Multiple: ' . implode(', ', $labels);
+            }
+        }
+        
+        // Handle single string (backward compatibility)
         return match($this->inspection_type) {
             'pre_service' => 'Pre-Service Inspection',
             'post_service' => 'Post-Service Inspection',
@@ -236,6 +273,13 @@ class VehicleInspection extends Model
 
     public function getTypeColorAttribute(): string
     {
+        // Handle array of inspection types
+        if (is_array($this->inspection_type)) {
+            // Return primary color for multiple types
+            return 'primary';
+        }
+        
+        // Handle single string (backward compatibility)
         return match($this->inspection_type) {
             'pre_service' => 'primary',
             'post_service' => 'success',
@@ -519,7 +563,7 @@ class VehicleInspection extends Model
         return $inspection;
     }
 
-    private function createDefaultItems(): void
+    public function createDefaultItems(): void
     {
         $defaultItems = [
             [
@@ -624,5 +668,15 @@ class VehicleInspection extends Model
     public function serviceProgress(): HasOne
     {
         return $this->hasOne(ServiceProgress::class, 'inspection_id');
+    }
+
+    /**
+     * The technicians assigned to this inspection.
+     */
+    public function technicians(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'inspection_technician', 'inspection_id', 'user_id')
+            ->withPivot('role')
+            ->withTimestamps();
     }
 }

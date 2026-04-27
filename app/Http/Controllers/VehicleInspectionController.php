@@ -6,6 +6,7 @@ use App\Models\VehicleInspection;
 use App\Models\InspectionItem;
 use App\Models\InspectionCategory;
 use App\Models\InspectionTemplate;
+use App\Models\InspectionFinding;
 use App\Models\WorkOrder;
 use App\Models\Appointment;
 use App\Models\Customer;
@@ -13,6 +14,7 @@ use App\Models\Vehicle;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class VehicleInspectionController extends Controller
@@ -24,6 +26,13 @@ class VehicleInspectionController extends Controller
     {
         $query = VehicleInspection::with(['customer', 'vehicle', 'technician', 'workOrder'])
             ->latest();
+        
+        // By default, only show active inspections (not completed/converted)
+        // User can override with status filter
+        if (!$request->filled('status')) {
+            $query->whereNotIn('inspection_status', ['completed'])
+                  ->whereNull('work_order_id');
+        }
         
         // Search filter
         if ($request->filled('search')) {
@@ -118,7 +127,7 @@ class VehicleInspectionController extends Controller
         $vehicles = Vehicle::with('customer')->get();
         $technicians = User::where('role', 'technician')->where('is_active', true)->get();
         $inspectors = User::where('role', 'technician')->where('is_active', true)->get(); // Same as technicians for now
-        $advisors = User::where('role', 'service_advisor')->where('is_active', true)->get();
+        $advisors = User::whereIn('role', ['service_advisor', 'office_staff'])->where('is_active', true)->get();
         $workOrders = WorkOrder::whereIn('work_order_status', ['draft', 'pending_approval', 'approved'])
             ->with(['customer', 'vehicle'])
             ->get();
@@ -158,6 +167,16 @@ class VehicleInspectionController extends Controller
             $selectedCustomer = null;
         }
         
+        // Get customer vehicles and history
+        $customerVehicles = $selectedCustomer ? $selectedCustomer->vehicles()->orderBy('created_at', 'desc')->get() : collect();
+        $customerHistory = $selectedCustomer ? VehicleInspection::where('customer_id', $selectedCustomer->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get() : collect();
+        
+        // All technicians for multi-select
+        $allTechnicians = $technicians;
+        
         return view('inspections.create', compact(
             'customers', 
             'vehicles', 
@@ -170,7 +189,10 @@ class VehicleInspectionController extends Controller
             'selectedWorkOrder',
             'selectedAppointment',
             'selectedCustomer',
-            'selectedVehicle'
+            'selectedVehicle',
+            'customerVehicles',
+            'customerHistory',
+            'allTechnicians'
         ));
     }
 
@@ -185,33 +207,66 @@ class VehicleInspectionController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'vehicle_id' => 'required|exists:vehicles,id',
             'technician_id' => 'nullable|exists:users,id',
+            'technicians' => 'nullable|array',
+            'technicians.*' => 'exists:users,id',
             'service_advisor_id' => 'nullable|exists:users,id',
-            'inspection_type' => 'required|in:pre_service,post_service,safety,comprehensive,custom',
+            'inspection_type' => 'required|array',
+            'inspection_type.*' => 'in:pre_purchase,safety,emissions,routine,diagnostic,post_repair,comprehensive,custom',
             'inspection_name' => 'nullable|string|max:255',
             'inspection_notes' => 'nullable|string|max:2000',
             'customer_concerns' => 'nullable|string|max:2000',
             'requires_customer_approval' => 'boolean',
             'template_id' => 'nullable|exists:inspection_templates,id',
-        ]);
+            'vehicle_mileage' => 'nullable|integer|min:0',
+        
+            'categories' => 'nullable|array',
+            'categories.*' => 'string',]);
         
         // Set default inspection name if not provided
         if (empty($validated['inspection_name'])) {
-            $typeLabel = match($validated['inspection_type']) {
-                'pre_service' => 'Pre-Service Inspection',
-                'post_service' => 'Post-Service Inspection',
-                'safety' => 'Safety Inspection',
-                'comprehensive' => 'Comprehensive Inspection',
-                'custom' => 'Custom Inspection',
-                default => 'Inspection',
-            };
-            $validated['inspection_name'] = $typeLabel . ' - ' . Carbon::today()->format('M d, Y');
+            // Handle multiple inspection types
+            $typeLabels = [];
+            foreach ($validated['inspection_type'] as $type) {
+                $typeLabels[] = match($type) {
+                    'pre_purchase' => 'Pre-Purchase',
+                    'safety' => 'Safety',
+                    'emissions' => 'Emissions',
+                    'routine' => 'Routine',
+                    'diagnostic' => 'Diagnostic',
+                    'post_repair' => 'Post-Repair',
+                    'comprehensive' => 'Comprehensive',
+                    'custom' => 'Custom',
+                    default => 'Inspection',
+                };
+            }
+            
+            if (count($typeLabels) === 1) {
+                $validated['inspection_name'] = $typeLabels[0] . ' Inspection - ' . Carbon::today()->format('M d, Y');
+            } else {
+                $validated['inspection_name'] = 'Multiple Inspections (' . implode(', ', $typeLabels) . ') - ' . Carbon::today()->format('M d, Y');
+            }
         }
+        
+        // Convert inspection_type array to JSON for storage
+        $validated['inspection_type'] = json_encode($validated['inspection_type']);
         
         // Set created by
         $validated['created_by'] = auth()->id();
         
         // Create inspection
         $inspection = VehicleInspection::create($validated);
+        
+        // Sync multi-technician assignments
+        if ($request->filled('technicians')) {
+            $technicianIds = array_filter($request->input('technicians', []));
+            if (!empty($technicianIds)) {
+                $syncData = [];
+                foreach ($technicianIds as $techId) {
+                    $syncData[$techId] = ['role' => 'technician'];
+                }
+                $inspection->technicians()->sync($syncData);
+            }
+        }
         
         // Apply template if selected
         if ($request->filled('template_id')) {
@@ -234,16 +289,17 @@ class VehicleInspectionController extends Controller
     public function show(VehicleInspection $inspection)
     {
         $inspection->load([
-            'customer', 
-            'vehicle', 
-            'technician', 
-            'serviceAdvisor', 
+            'customer',
+            'vehicle',
+            'technician',
+            'serviceAdvisor',
             'workOrder',
             'appointment',
             'items.category',
             'createdBy',
             'approvedBy',
-            'serviceProgress'
+            'serviceProgress',
+            'inspectionFindings.technician'
         ]);
         
         // Group items by category
@@ -251,7 +307,7 @@ class VehicleInspectionController extends Controller
         
         // Get technicians and service advisors for dropdowns
         $technicians = User::where('role', 'technician')->where('is_active', true)->orderBy('name')->get();
-        $serviceAdvisors = User::where('role', 'office_staff')->where('is_active', true)->orderBy('name')->get();
+        $serviceAdvisors = User::whereIn('role', ['service_advisor', 'office_staff'])->where('is_active', true)->orderBy('name')->get();
         
         // Get statistics
         $itemStats = [
@@ -293,12 +349,12 @@ class VehicleInspectionController extends Controller
      */
     public function edit(VehicleInspection $inspection)
     {
-        $inspection->load(['customer', 'vehicle', 'items']);
+        $inspection->load(['customer', 'vehicle', 'items', 'technicians']);
         
         $customers = Customer::where('is_active', true)->orderBy('first_name')->get();
         $vehicles = Vehicle::with('customer')->get();
         $technicians = User::where('role', 'technician')->where('is_active', true)->get();
-        $advisors = User::where('role', 'service_advisor')->where('is_active', true)->get();
+        $advisors = User::whereIn('role', ['service_advisor', 'office_staff'])->where('is_active', true)->get();
         $workOrders = WorkOrder::whereIn('work_order_status', ['draft', 'pending_approval', 'approved'])
             ->with(['customer', 'vehicle'])
             ->get();
@@ -306,11 +362,15 @@ class VehicleInspectionController extends Controller
             ->with(['customer', 'vehicle'])
             ->get();
         
+        // All technicians for multi-select
+        $allTechnicians = $technicians;
+        
         return view('inspections.edit', compact(
             'inspection', 
             'customers', 
             'vehicles', 
             'technicians', 
+            'allTechnicians',
             'advisors', 
             'workOrders', 
             'appointments'
@@ -341,8 +401,155 @@ class VehicleInspectionController extends Controller
             ]);
         }
         
+        // Check for update_type parameter for partial updates
+        if ($request->has('update_type')) {
+            switch ($request->update_type) {
+                case 'status':
+                    $validated = $request->validate([
+                        'inspection_status' => 'required|in:draft,in_progress,completed,approved,rejected,cancelled',
+                        'status_notes' => 'nullable|string|max:2000',
+                    ]);
+                    
+                    // Update status timestamps
+                    if ($validated['inspection_status'] !== $inspection->inspection_status) {
+                        $statusField = null;
+                        switch ($validated['inspection_status']) {
+                            case 'in_progress':
+                                $statusField = 'inspection_started_at';
+                                break;
+                            case 'completed':
+                                $statusField = 'inspection_completed_at';
+                                break;
+                            case 'approved':
+                                $statusField = 'report_generated_at';
+                                break;
+                        }
+                        
+                        if ($statusField) {
+                            $validated[$statusField] = now();
+                        }
+                    }
+                    
+                    // Update updated by
+                    $validated['updated_by'] = auth()->id();
+                    
+                    // Update only the status field and timestamp if needed
+                    $updateData = [
+                        'inspection_status' => $validated['inspection_status'],
+                        'updated_by' => $validated['updated_by'],
+                    ];
+                    
+                    if ($statusField && isset($validated[$statusField])) {
+                        $updateData[$statusField] = $validated[$statusField];
+                    }
+                    
+                    $inspection->update($updateData);
+                    
+                    // If there are status notes, add them to inspection_notes
+                    if (!empty($validated['status_notes'])) {
+                        $currentNotes = $inspection->inspection_notes ?? '';
+                        $newNotes = "Status changed to " . $validated['inspection_status'] . " at " . now()->format('Y-m-d H:i:s') . ":\n" . $validated['status_notes'];
+                        
+                        if (!empty($currentNotes)) {
+                            $newNotes = $currentNotes . "\n\n---\n\n" . $newNotes;
+                        }
+                        
+                        $inspection->update(['inspection_notes' => $newNotes]);
+                    }
+                    
+                    return redirect()->route('inspections.show', $inspection)
+                        ->with('success', 'Inspection status updated successfully.');
+                    
+                case 'checklist':
+                    $validated = $request->validate([
+                        'categories' => 'nullable|array',
+                        'categories.*' => 'string|in:engine,brakes,suspension,electrical,tires,exhaust,interior,exterior,fluids,ac',
+                    ]);
+                    
+                    // Update categories
+                    $inspection->update([
+                        'categories' => $validated['categories'] ?? [],
+                        'updated_by' => auth()->id(),
+                    ]);
+                    
+                    return redirect()->route('inspections.show', $inspection)
+                        ->with('success', 'Inspection checklist updated successfully.');
+                    
+                case 'concerns':
+                    $validated = $request->validate([
+                        'customer_concerns' => 'nullable|string|max:2000',
+                    ]);
+                    
+                    // Update customer concerns
+                    $inspection->update([
+                        'customer_concerns' => $validated['customer_concerns'] ?? null,
+                        'updated_by' => auth()->id(),
+                    ]);
+                    
+                    return redirect()->route('inspections.show', $inspection)
+                        ->with('success', 'Customer concerns updated successfully.');
+                    
+                case 'findings':
+                    $validated = $request->validate([
+                        'findings_data' => 'required|json',
+                    ]);
+                    
+                    // Decode JSON data
+                    $findingsData = json_decode($validated['findings_data'], true);
+                    
+                    if (!is_array($findingsData)) {
+                        return redirect()->back()->with('error', 'Invalid findings data format.');
+                    }
+                    
+                    // Process findings data into structured array
+                    $findingsArray = [];
+                    foreach ($findingsData as $finding) {
+                        if (!isset($finding['category'], $finding['part'], $finding['condition'])) {
+                            continue; // Skip invalid entries
+                        }
+                        
+                        // Map condition to status/color
+                        $status = 'normal';
+                        $color = 'info';
+                        if ($finding['condition'] === 'Good') { $status = 'good'; $color = 'success'; }
+                        if ($finding['condition'] === 'Needs Repair') { $status = 'repair'; $color = 'warning'; }
+                        if ($finding['condition'] === 'Needs Replacement') { $status = 'replace'; $color = 'danger'; }
+                        if ($finding['condition'] === 'Critical') { $status = 'critical'; $color = 'danger'; }
+                        if ($finding['condition'] === 'Monitor') { $status = 'monitor'; $color = 'info'; }
+                        
+                        $findingsArray[] = [
+                            'category' => $finding['category'],
+                            'part' => $finding['part'],
+                            'condition' => $finding['condition'],
+                            'priority' => $finding['priority'] ?? 'Low',
+                            'description' => $finding['description'] ?? '',
+                            'action' => $finding['action'] ?? '',
+                            'status' => $status,
+                            'color' => $color,
+                            'timestamp' => $finding['timestamp'] ?? now()->toISOString(),
+                        ];
+                    }
+                    
+                    // Update findings (casting will handle JSON encoding)
+                    $inspection->findings = $findingsArray;
+                    $inspection->updated_by = auth()->id();
+                    $inspection->save();
+                    
+                    return redirect()->route('inspections.show', $inspection)
+                        ->with('success', 'Inspection findings updated successfully.');
+                    
+                // Add other update_type cases here as needed
+                // case 'notes':
+                // case 'mileage':
+                // etc.
+            }
+        }
+        
         // Full form submission (non-AJAX)
         $validated = $request->validate([
+            'technician_id' => 'nullable|exists:users,id',
+            'technicians' => 'nullable|array',
+            'technicians.*' => 'exists:users,id',
             'inspection_type' => 'required|in:pre_purchase,routine_maintenance,safety,comprehensive,diagnostic,emissions,custom',
             'inspection_status' => 'required|in:draft,in_progress,completed,approved,rejected,cancelled',
             'inspection_name' => 'required|string|max:255',
@@ -389,6 +596,20 @@ class VehicleInspectionController extends Controller
         
         $inspection->update($validated);
         
+        // Sync multi-technician assignments
+        if ($request->has('technicians')) {
+            $technicianIds = array_filter($request->input('technicians', []));
+            if (!empty($technicianIds)) {
+                $syncData = [];
+                foreach ($technicianIds as $techId) {
+                    $syncData[$techId] = ['role' => 'technician'];
+                }
+                $inspection->technicians()->sync($syncData);
+            } else {
+                $inspection->technicians()->sync([]);
+            }
+        }
+        
         return redirect()->route('inspections.show', $inspection)
             ->with('success', 'Vehicle inspection updated successfully.');
     }
@@ -398,10 +619,22 @@ class VehicleInspectionController extends Controller
      */
     public function destroy(VehicleInspection $inspection)
     {
-        $inspection->delete();
+        // Archive the inspection record before deletion
+        try {
+            $archiveService = app(\App\Services\ArchiveService::class);
+            $archiveService->archive(
+                $inspection,
+                'inspection',
+                auth()->id(),
+                []
+            );
+        } catch (\Exception $e) {
+            // If archiving fails, fall back to simple delete
+            $inspection->delete();
+        }
         
         return redirect()->route('inspections.index')
-            ->with('success', 'Vehicle inspection deleted successfully.');
+            ->with('success', 'Inspection moved to archive successfully.');
     }
     
     /**
@@ -714,6 +947,115 @@ class VehicleInspectionController extends Controller
     /**
      * Store a new inspection item.
      */
+        // ========================
+    // FINDINGS CRUD METHODS
+    // ========================
+
+    public function storeFinding(Request $request, VehicleInspection $inspection)
+    {
+        $validated = $request->validate([
+            'category' => 'required|string|max:100',
+            'issue_title' => 'required|string|max:255',
+            'detailed_notes' => 'nullable|string',
+            'severity' => 'required|in:low,medium,high,critical',
+            'recommended_action' => 'nullable|string',
+            'estimated_urgency' => 'required|in:routine,soon,urgent,immediate',
+            'estimated_cost' => 'nullable|numeric|min:0',
+            'tech_id' => 'nullable|exists:users,id',
+        ]);
+
+        $validated['tech_id'] = $validated['tech_id'] ?? auth()->id();
+        $validated['sort_order'] = ($inspection->inspectionFindings()->max('sort_order') ?? -1) + 1;
+
+        $finding = $inspection->inspectionFindings()->create($validated);
+        $finding->load('technician');
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'finding' => $finding]);
+        }
+
+        return redirect()->route('inspections.show', $inspection)->with('success', 'Finding added successfully.');
+    }
+
+    public function updateFinding(Request $request, InspectionFinding $finding)
+    {
+        $validated = $request->validate([
+            'category' => 'required|string|max:100',
+            'issue_title' => 'required|string|max:255',
+            'detailed_notes' => 'nullable|string',
+            'severity' => 'required|in:low,medium,high,critical',
+            'recommended_action' => 'nullable|string',
+            'estimated_urgency' => 'required|in:routine,soon,urgent,immediate',
+            'estimated_cost' => 'nullable|numeric|min:0',
+        ]);
+
+        $finding->update($validated);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'finding' => $finding->fresh()->load('technician')]);
+        }
+
+        return redirect()->route('inspections.show', $finding->inspection_id)->with('success', 'Finding updated.');
+    }
+
+    public function destroyFinding(Request $request, InspectionFinding $finding)
+    {
+        $inspectionId = $finding->inspection_id;
+        $finding->delete();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true]);
+        }
+
+        return redirect()->route('inspections.show', $inspectionId)->with('success', 'Finding removed.');
+    }
+
+    public function reorderFindings(Request $request, VehicleInspection $inspection)
+    {
+        $request->validate([
+            'order' => 'required|array',
+            'order.*' => 'exists:inspection_findings,id',
+        ]);
+
+        foreach ($request->order as $index => $id) {
+            InspectionFinding::where('id', $id)
+                ->where('inspection_id', $inspection->id)
+                ->update(['sort_order' => $index]);
+        }
+
+        return response()->json(['success' => true]);
+    }
+
+    public function bulkAddFindings(Request $request, VehicleInspection $inspection)
+    {
+        $request->validate([
+            'findings' => 'required|array',
+            'findings.*.category' => 'required|string|max:100',
+            'findings.*.issue_title' => 'required|string|max:255',
+        ]);
+
+        $currentMax = $inspection->inspectionFindings()->max('sort_order') ?? -1;
+        $techId = auth()->id();
+        $created = [];
+
+        foreach ($request->findings as $i => $findingData) {
+            $finding = $inspection->inspectionFindings()->create([
+                'category' => $findingData['category'],
+                'issue_title' => $findingData['issue_title'],
+                'detailed_notes' => $findingData['detailed_notes'] ?? null,
+                'severity' => $findingData['severity'] ?? 'medium',
+                'recommended_action' => $findingData['recommended_action'] ?? null,
+                'estimated_urgency' => $findingData['estimated_urgency'] ?? 'routine',
+                'estimated_cost' => $findingData['estimated_cost'] ?? null,
+                'tech_id' => $techId,
+                'sort_order' => $currentMax + 1 + $i,
+            ]);
+            $created[] = $finding;
+        }
+
+        return response()->json(['success' => true, 'count' => count($created), 'findings' => $created]);
+    }
+
     public function storeItem(Request $request, VehicleInspection $inspection)
     {
         // Validate the request
@@ -822,6 +1164,55 @@ class VehicleInspectionController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to upload photo: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Delete a photo from an inspection (AJAX endpoint)
+     */
+    public function deletePhoto(Request $request, VehicleInspection $inspection, $photoIndex)
+    {
+        try {
+            // Convert photoIndex to integer
+            $photoIndex = (int) $photoIndex;
+            
+            // Get current photos
+            $photos = $inspection->photos ?? [];
+            
+            // Check if photo index exists
+            if (!isset($photos[$photoIndex])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Photo not found at index ' . $photoIndex
+                ], 404);
+            }
+            
+            // Get the photo path for potential file deletion
+            $photoToDelete = $photos[$photoIndex];
+            $photoPath = $photoToDelete['path'] ?? null;
+            
+            // Remove the photo from the array
+            array_splice($photos, $photoIndex, 1);
+            
+            // Update the inspection with the new photos array
+            $inspection->update(['photos' => $photos]);
+            
+            // Optional: Delete the actual file from storage
+            if ($photoPath && Storage::disk('public')->exists($photoPath)) {
+                Storage::disk('public')->delete($photoPath);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Photo deleted successfully',
+                'photoIndex' => $photoIndex
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete photo: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -968,5 +1359,22 @@ class VehicleInspectionController extends Controller
                 'message' => 'Failed to update inspection team: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Get all findings for a customer's recent inspections.
+     */
+    public function findingsByCustomer(Customer $customer)
+    {
+        $findings = \App\Models\InspectionFinding::whereHas('inspection', function ($q) use ($customer) {
+            $q->where('customer_id', $customer->id);
+        })->with(['inspection', 'technician'])
+          ->orderBy('created_at', 'desc')
+          ->get();
+
+        return response()->json([
+            'success' => true,
+            'findings' => $findings,
+        ]);
     }
 }
