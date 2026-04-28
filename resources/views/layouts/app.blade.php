@@ -261,6 +261,7 @@
             .container-fluid > .row {
                 display: flex !important;
                 min-height: auto !important;
+                flex-wrap: nowrap !important; /* Prevent sidebar from wrapping below content */
             }
 
             /* Sidebar stays sticky below top navbar */
@@ -281,7 +282,8 @@
 
             /* Main content fills remaining space */
             .main-content-area {
-                flex: 1 !important; /* Take remaining space */
+                flex: 1 1 0 !important; /* Take remaining space, allow shrink below min-content */
+                min-width: 0 !important; /* Allow content to shrink below natural min-width */
                 padding: 20px !important;
                 background-color: #f5f7fa !important;
                 overflow-y: auto !important;
