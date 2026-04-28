@@ -944,7 +944,7 @@
     <!-- Page-specific styles -->
     @stack('styles')
 </head>
-<body>
+<body class="@yield('body-class')">
     <!-- jQuery (for AJAX and DOM manipulation) - MUST be BEFORE content scripts that use $() -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
