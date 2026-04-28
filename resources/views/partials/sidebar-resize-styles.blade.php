@@ -18,37 +18,39 @@
     position: absolute !important;
     top: 0 !important;
     right: 0 !important;
-    width: 10px !important;
+    width: 18px !important;
     height: 100% !important;
     cursor: col-resize !important;
-    z-index: 150 !important;
-    background: rgba(148, 163, 184, 0.08) !important;
+    z-index: 1030 !important;
+    background: rgba(148, 163, 184, 0.12) !important;
     transition: background 0.15s ease !important;
     touch-action: none !important; /* Prevent scroll interference on touch devices */
 }
 
-.sidebar-resize-handle:hover,
-.sidebar-resize-handle:active,
-.sidebar-resize-handle.dragging {
-    background: rgba(59, 130, 246, 0.25) !important;
-}
 
 /* Vertical indicator line — subtle full-height accent */
 .sidebar-resize-handle::after {
     content: '' !important;
     position: absolute !important;
-    top: 0 !important;
+    top: 50% !important;
     left: 50% !important;
-    transform: translateX(-50%) !important;
-    width: 2px !important;
-    height: 100% !important;
-    background: rgba(148, 163, 184, 0.12) !important;
-    transition: all 0.2s ease !important;
+    transform: translate(-50%, -50%) !important;
+    width: 3px !important;
+    height: 60% !important;
+    background: rgba(148, 163, 184, 0.15) !important;
+    border-radius: 2px !important;
+    transition: all 0.15s ease !important;
+}
+
+.sidebar-resize-handle:hover,
+.sidebar-resize-handle:active,
+.sidebar-resize-handle.dragging {
+    background: rgba(59, 130, 246, 0.4) !important;
 }
 
 .sidebar-resize-handle:hover::after,
 .sidebar-resize-handle.dragging::after {
-    background: rgba(59, 130, 246, 0.5) !important;
+    background: rgba(59, 130, 246, 0.8) !important;
 }
 
 /* Dot grip indicator — always faintly visible */
