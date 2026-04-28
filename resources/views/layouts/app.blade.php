@@ -596,353 +596,21 @@
             transition: transform 0.2s ease !important;
         }
 
-        /* ===== DARK MODE THEME ===== */
-        [data-theme="dark"] {
-            --dark-bg: #1a1d23;
-            --dark-surface: #22262e;
-            --dark-card: #2a2f38;
-            --dark-text: #e4e7eb;
-            --dark-text-secondary: #9ca3af;
-            --dark-border: #374151;
-            --dark-hover: #333842;
-            --dark-input-bg: #1f232b;
-            --dark-sidebar-bg: #16181e;
-            --dark-navbar-bg: #16181e;
-        }
-
-        [data-theme="dark"] body {
-            background-color: var(--dark-bg) !important;
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .main-content-area {
-            background-color: var(--dark-bg) !important;
-        }
-
-        [data-theme="dark"] .card {
-            background-color: var(--dark-card) !important;
-            border-color: var(--dark-border) !important;
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .card-header {
-            background-color: var(--dark-surface) !important;
-            border-color: var(--dark-border) !important;
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .card-body {
-            background-color: var(--dark-card) !important;
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .table {
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .table th {
-            color: var(--dark-text) !important;
-            border-color: var(--dark-border) !important;
-        }
-
-        [data-theme="dark"] .table td {
-            border-color: var(--dark-border) !important;
-        }
-
-        [data-theme="dark"] .table-hover tbody tr:hover {
-            background-color: var(--dark-hover) !important;
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) {
-            background-color: rgba(255,255,255,0.03) !important;
-        }
-
-        [data-theme="dark"] .page-header {
-            border-color: var(--dark-border) !important;
-        }
-
-        [data-theme="dark"] .modal-content {
-            background-color: var(--dark-card) !important;
-            border-color: var(--dark-border) !important;
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .modal-header {
-            border-color: var(--dark-border) !important;
-        }
-
-        [data-theme="dark"] .modal-footer {
-            border-color: var(--dark-border) !important;
-        }
-
-        [data-theme="dark"] .btn-close {
-            filter: invert(1) !important;
-        }
-
-        [data-theme="dark"] input,
-        [data-theme="dark"] select,
-        [data-theme="dark"] textarea {
-            background-color: var(--dark-input-bg) !important;
-            border-color: var(--dark-border) !important;
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] input:focus,
-        [data-theme="dark"] select:focus,
-        [data-theme="dark"] textarea:focus {
-            background-color: var(--dark-input-bg) !important;
-            border-color: #4f9cf7 !important;
-            color: var(--dark-text) !important;
-            box-shadow: 0 0 0 0.2rem rgba(79, 156, 247, 0.25) !important;
-        }
-
-        [data-theme="dark"] .form-control {
-            background-color: var(--dark-input-bg) !important;
-            border-color: var(--dark-border) !important;
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .form-select {
-            background-color: var(--dark-input-bg) !important;
-            border-color: var(--dark-border) !important;
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .alert {
-            background-color: var(--dark-surface) !important;
-            border-color: var(--dark-border) !important;
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .alert-success {
-            background-color: #1a3a2a !important;
-            border-color: #2d6a4f !important;
-            color: #95d5b2 !important;
-        }
-
-        [data-theme="dark"] .alert-danger {
-            background-color: #3a1a1a !important;
-            border-color: #6a2d2d !important;
-            color: #f5a5a5 !important;
-        }
-
-        [data-theme="dark"] .alert-warning {
-            background-color: #3a2e1a !important;
-            border-color: #6a5a2d !important;
-            color: #f0d58c !important;
-        }
-
-        [data-theme="dark"] .alert-info {
-            background-color: #1a2a3a !important;
-            border-color: #2d4a6a !important;
-            color: #95c5f0 !important;
-        }
-
-        [data-theme="dark"] .dropdown-menu {
-            background-color: var(--dark-card) !important;
-            border-color: var(--dark-border) !important;
-        }
-
-        [data-theme="dark"] .dropdown-item {
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .dropdown-item:hover {
-            background-color: var(--dark-hover) !important;
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .dropdown-divider {
-            border-color: var(--dark-border) !important;
-        }
-
-        [data-theme="dark"] .dropdown-header {
-            color: var(--dark-text-secondary) !important;
-        }
-
-        [data-theme="dark"] .bg-white {
-            background-color: var(--dark-card) !important;
-        }
-
-        [data-theme="dark"] .bg-light {
-            background-color: var(--dark-surface) !important;
-        }
-
-        [data-theme="dark"] .text-dark {
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .text-muted {
-            color: var(--dark-text-secondary) !important;
-        }
-
-        [data-theme="dark"] .text-gray-600 {
-            color: var(--dark-text-secondary) !important;
-        }
-
-        [data-theme="dark"] .border {
-            border-color: var(--dark-border) !important;
-        }
-
-        [data-theme="dark"] .border-top {
-            border-top-color: var(--dark-border) !important;
-        }
-
-        [data-theme="dark"] .border-bottom {
-            border-bottom-color: var(--dark-border) !important;
-        }
-
-        [data-theme="dark"] .navbar {
-            background-color: var(--dark-navbar-bg) !important;
-        }
-
-        [data-theme="dark"] .sidebar {
-            background-color: var(--dark-sidebar-bg) !important;
-        }
-
-        [data-theme="dark"] .sidebar .nav-link {
-            color: var(--dark-text-secondary) !important;
-        }
-
-        [data-theme="dark"] .sidebar .nav-link:hover,
-        [data-theme="dark"] .sidebar .nav-link.active {
-            color: var(--dark-text) !important;
-            background-color: var(--dark-hover) !important;
-        }
-
-        [data-theme="dark"] .bg-soft-* {
-            /* placeholder */
-        }
-
-        [data-theme="dark"] .nav-tabs {
-            border-color: var(--dark-border) !important;
-        }
-
-        [data-theme="dark"] .nav-tabs .nav-link {
-            color: var(--dark-text-secondary) !important;
-        }
-
-        [data-theme="dark"] .nav-tabs .nav-link.active {
-            background-color: var(--dark-card) !important;
-            border-color: var(--dark-border) !important;
-            border-bottom-color: var(--dark-card) !important;
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .nav-tabs .nav-link:hover {
-            border-color: var(--dark-border) !important;
-        }
-
-        [data-theme="dark"] .nav-link {
-            color: var(--dark-text-secondary) !important;
-        }
-
-        [data-theme="dark"] .pagination .page-link {
-            background-color: var(--dark-card) !important;
-            border-color: var(--dark-border) !important;
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .pagination .page-link:hover {
-            background-color: var(--dark-hover) !important;
-        }
-
-        [data-theme="dark"] .pagination .page-item.active .page-link {
-            background-color: #2c3e50 !important;
-            border-color: #2c3e50 !important;
-        }
-
-        [data-theme="dark"] .pagination .page-item.disabled .page-link {
-            background-color: var(--dark-surface) !important;
-            color: var(--dark-text-secondary) !important;
-        }
-
-        [data-theme="dark"] .chart-container {
-            background-color: var(--dark-card) !important;
-        }
-
-        [data-theme="dark"] .badge.bg-light {
-            background-color: var(--dark-surface) !important;
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .progress {
-            background-color: var(--dark-surface) !important;
-        }
-
-        [data-theme="dark"] .list-group-item {
-            background-color: var(--dark-card) !important;
-            border-color: var(--dark-border) !important;
-            color: var(--dark-text) !important;
-        }
-
-        [data-theme="dark"] .list-group-item:hover {
-            background-color: var(--dark-hover) !important;
-        }
-
-        /* Inventory page specifics */
-        [data-theme="dark"] .inventory-content {
-            background-color: var(--dark-card) !important;
-        }
-
-        /* HR Payroll page specifics */
-        [data-theme="dark"] .hr-payroll-content {
-            background-color: var(--dark-card) !important;
-        }
-
-        /* Sidebar resize handle */
-        [data-theme="dark"] .sidebar-resize-handle {
-            background-color: var(--dark-border) !important;
-        }
-
-        /* Stat cards - keep original gradient colors but adjust */
-        [data-theme="dark"] .stat-card.bg-primary { background: linear-gradient(135deg, #1a2a4a 0%, #4a2560 100%) !important; }
-        [data-theme="dark"] .stat-card.bg-success { background: linear-gradient(135deg, #0a5a4e 0%, #1a6a3a 100%) !important; }
-        [data-theme="dark"] .stat-card.bg-warning { background: linear-gradient(135deg, #7a4a0e 0%, #8a6a00 100%) !important; }
-        [data-theme="dark"] .stat-card.bg-danger { background: linear-gradient(135deg, #7a2136 0%, #7a2525 100%) !important; }
-        [data-theme="dark"] .stat-card.bg-info { background: linear-gradient(135deg, #005a7a 0%, #003a7a 100%) !important; }
-        [data-theme="dark"] .stat-card.bg-secondary { background: linear-gradient(135deg, #4a4a5a 0%, #3a3a4a 100%) !important; }
-
-        /* Switch button styles */
-        .theme-toggle-btn {
-            background: none !important;
-            border: 1px solid rgba(255,255,255,0.25) !important;
-            color: rgba(255,255,255,0.8) !important;
-            border-radius: 50% !important;
-            width: 36px !important;
-            height: 36px !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            cursor: pointer !important;
-            font-size: 16px !important;
-            transition: all 0.3s ease !important;
-            padding: 0 !important;
-        }
-
-        .theme-toggle-btn:hover {
-            background-color: rgba(255,255,255,0.1) !important;
-            color: #ffffff !important;
-            border-color: rgba(255,255,255,0.5) !important;
-        }
-
-        [data-theme="dark"] .theme-toggle-btn {
-            border-color: rgba(255,255,255,0.15) !important;
-        }
-
-        [data-theme="dark"] .theme-toggle-btn:hover {
-            background-color: rgba(255,255,255,0.08) !important;
-        }
-
-        /* Fix for badges with colored backgrounds */
-        [data-theme="dark"] .badge:not(.bg-light):not(.bg-white) {
-            /* Keep original badge colors */
-        }
     </style>
 
     <!-- Page-specific styles -->
     @stack('styles')
+
+    {{-- Anti-flash script: apply theme instantly before any rendering --}}
+    <script>
+        (function() {
+            var saved = localStorage.getItem('fixit_theme');
+            if (saved === 'dark' || (!saved && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
+    <noscript><style>[data-theme="dark"] { display: none; }</style></noscript>
 </head>
 <body class="@yield('body-class')">
     <!-- jQuery (for AJAX and DOM manipulation) - MUST be BEFORE content scripts that use $() -->
@@ -1364,8 +1032,22 @@
             const DARK_THEME = 'dark';
             const LIGHT_THEME = 'light';
 
-            function getTheme() {
-                return localStorage.getItem(STORAGE_KEY) || LIGHT_THEME;
+            /**
+             * Determine initial theme:
+             * 1. Use localStorage if previously saved
+             * 2. Fall back to system preference (prefers-color-scheme)
+             * 3. Default to light
+             */
+            function getInitialTheme() {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved === DARK_THEME || saved === LIGHT_THEME) {
+                    return saved;
+                }
+                // Auto-detect system preference
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    return DARK_THEME;
+                }
+                return LIGHT_THEME;
             }
 
             function setTheme(theme) {
@@ -1381,13 +1063,13 @@
             }
 
             function toggleTheme() {
-                const current = getTheme();
+                const current = localStorage.getItem(STORAGE_KEY) || LIGHT_THEME;
                 const next = current === DARK_THEME ? LIGHT_THEME : DARK_THEME;
                 setTheme(next);
             }
 
-            // Apply theme on page load
-            setTheme(getTheme());
+            // Apply theme immediately on page load (before DOMContentLoaded)
+            setTheme(getInitialTheme());
 
             // Bind toggle button
             document.addEventListener('DOMContentLoaded', function() {
@@ -1395,6 +1077,24 @@
                 if (btn) {
                     btn.addEventListener('click', toggleTheme);
                 }
+
+                // Listen for system theme changes (e.g., user changes OS setting)
+                if (window.matchMedia) {
+                    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+                        // Only auto-switch if user hasn't manually set a preference
+                        if (!localStorage.getItem(STORAGE_KEY)) {
+                            setTheme(e.matches ? DARK_THEME : LIGHT_THEME);
+                        }
+                    });
+                }
+
+                // Add keyboard shortcut (Alt+T) to toggle theme
+                document.addEventListener('keydown', function(e) {
+                    if (e.altKey && e.key.toLowerCase() === 't') {
+                        e.preventDefault();
+                        toggleTheme();
+                    }
+                });
             });
         })();
     </script>
