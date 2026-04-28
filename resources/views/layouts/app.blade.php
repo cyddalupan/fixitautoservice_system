@@ -857,16 +857,12 @@
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
 
-        // Sidebar toggle functionality for mobile
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const sidebar = document.getElementById('sidebar');
-        const sidebarOverlay = document.getElementById('sidebarOverlay');
-
-        if (sidebarToggle && sidebar) {
-            sidebarToggle.addEventListener('click', function() {
-                sidebar.classList.toggle('show');
-                sidebarOverlay.classList.toggle('show');
-            });
+        // Mobile sidebar toggle is handled in sidebar-resize-scripts.blade.php
+        // Only keep the close-on-link-click for mobile
+        (function() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            if (!sidebar || !sidebarOverlay) return;
 
             // Close sidebar when clicking overlay
             sidebarOverlay.addEventListener('click', function() {
@@ -875,25 +871,24 @@
             });
 
             // Close sidebar when clicking a link on mobile
-            if (window.innerWidth < 768) {
-                const sidebarLinks = sidebar.querySelectorAll('.nav-link');
-                sidebarLinks.forEach(link => {
-                    link.addEventListener('click', function() {
+            const sidebarLinks = sidebar.querySelectorAll('.nav-link');
+            sidebarLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth < 768) {
                         sidebar.classList.remove('show');
                         sidebarOverlay.classList.remove('show');
-                    });
+                    }
                 });
-            }
+            });
 
             // Handle window resize
             window.addEventListener('resize', function() {
                 if (window.innerWidth >= 768) {
-                    // On desktop, ensure sidebar is visible
                     sidebar.classList.remove('show');
                     sidebarOverlay.classList.remove('show');
                 }
             });
-        }
+        })();
 
         // Service Management Collapse State Persistence
         document.addEventListener('DOMContentLoaded', function() {

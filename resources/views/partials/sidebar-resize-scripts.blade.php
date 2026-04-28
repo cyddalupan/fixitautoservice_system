@@ -133,16 +133,21 @@
     //  MOBILE TOGGLE
     // ============================================================
 
-    if (mobileToggle && mobileOverlay) {
-        mobileToggle.addEventListener('click', function() {
+    if (mobileToggle && mobileOverlay && !mobileToggle.hasAttribute('data-sidebar-bound')) {
+        mobileToggle.setAttribute('data-sidebar-bound', 'true');
+        mobileToggle.addEventListener('click', function(e) {
+            e.preventDefault();
             sidebar.classList.toggle('show');
             mobileOverlay.classList.toggle('show');
         });
 
-        mobileOverlay.addEventListener('click', function() {
-            sidebar.classList.remove('show');
-            mobileOverlay.classList.remove('show');
-        });
+        if (!mobileOverlay.hasAttribute('data-sidebar-bound')) {
+            mobileOverlay.setAttribute('data-sidebar-bound', 'true');
+            mobileOverlay.addEventListener('click', function() {
+                sidebar.classList.remove('show');
+                mobileOverlay.classList.remove('show');
+            });
+        }
     }
 
     // ============================================================
