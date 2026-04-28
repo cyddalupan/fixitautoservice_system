@@ -237,6 +237,11 @@ class WorkOrder extends Model
         return $this->hasMany(WorkOrderTask::class);
     }
 
+    public function vehicleInspection()
+    {
+        return $this->hasOne(VehicleInspection::class, 'work_order_id');
+    }
+
     /**
      * Scopes
      */

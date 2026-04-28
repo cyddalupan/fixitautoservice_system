@@ -142,7 +142,24 @@ class InventoryController extends Controller
      */
     public function show(Inventory $inventory)
     {
-        $inventory->load(['category', 'supplier', 'purchaseOrderItems.purchaseOrder', 'workOrderItems.workOrder']);
+        // Load relationships safely - some tables might not exist yet
+        $inventory->load(['category', 'supplier']);
+        
+        // Try to load purchaseOrderItems if the table exists
+        try {
+            $inventory->load(['purchaseOrderItems.purchaseOrder']);
+        } catch (\Exception $e) {
+            // Table doesn't exist or other error - set empty collection
+            $inventory->setRelation('purchaseOrderItems', collect());
+        }
+        
+        // Try to load workOrderItems if the table exists
+        try {
+            $inventory->load(['workOrderItems.workOrder']);
+        } catch (\Exception $e) {
+            // Table doesn't exist or other error - set empty collection
+            $inventory->setRelation('workOrderItems', collect());
+        }
         
         // Statistics for this item
         $stats = [
@@ -159,24 +176,28 @@ class InventoryController extends Controller
         
         // Add purchase order items
         foreach ($inventory->purchaseOrderItems as $item) {
-            $transactions->push([
-                'date' => $item->created_at,
-                'type' => 'purchase',
-                'quantity' => $item->quantity_ordered,
-                'reference' => $item->purchaseOrder->po_number,
-                'status' => $item->status,
-            ]);
+            if ($item->purchaseOrder) {
+                $transactions->push([
+                    'date' => $item->created_at,
+                    'type' => 'purchase',
+                    'quantity' => $item->quantity_ordered,
+                    'reference' => $item->purchaseOrder->po_number,
+                    'status' => $item->status,
+                ]);
+            }
         }
         
         // Add work order items (sales)
         foreach ($inventory->workOrderItems as $item) {
-            $transactions->push([
-                'date' => $item->created_at,
-                'type' => 'sale',
-                'quantity' => $item->quantity,
-                'reference' => $item->workOrder->work_order_number,
-                'status' => $item->workOrder->status,
-            ]);
+            if ($item->workOrder) {
+                $transactions->push([
+                    'date' => $item->created_at,
+                    'type' => 'sale',
+                    'quantity' => $item->quantity,
+                    'reference' => $item->workOrder->work_order_number,
+                    'status' => $item->workOrder->status,
+                ]);
+            }
         }
         
         // Sort by date

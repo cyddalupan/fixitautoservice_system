@@ -31,6 +31,7 @@ class Quotation extends Model
 
     protected $casts = [
         'vehicle_year' => 'integer',
+        'service_type' => 'array',
         'service_checklist' => 'array',
         'photos' => 'array',
         'budget_min' => 'decimal:2',

@@ -193,10 +193,14 @@ class PaymentController extends Controller
             ]);
         }
         
-        $payment->delete();
-        
-        return redirect()->route('payments.index')
-            ->with('success', 'Payment deleted successfully!');
+        try {
+            \App\Services\ArchiveService::archive($payment, 'payment');
+            return redirect()->route('payments.index')
+                ->with('success', 'Payment moved to archive.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to archive payment: ' . $e->getMessage());
+        }
     }
 
     /**

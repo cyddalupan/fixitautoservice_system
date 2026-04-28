@@ -246,6 +246,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Work orders where this user is the assigned technician.
+     */
+    public function workOrders()
+    {
+        return $this->hasMany(WorkOrder::class, 'technician_id');
+    }
+
+    /**
      * Get all training records for this technician.
      */
     public function trainingRecords()

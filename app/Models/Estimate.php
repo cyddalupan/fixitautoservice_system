@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -11,16 +12,13 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class Estimate extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'customer_id',
         'vehicle_id',
+        'appointment_id',
+        'inspection_id',
         'estimate_number',
         'issue_date',
         'expiry_date',
@@ -30,16 +28,30 @@ class Estimate extends Model
         'subtotal',
         'tax_rate',
         'tax_amount',
+        'tax_total',
+        'discount_type',
+        'discount_value',
+        'discount_amount',
         'total_amount',
+        'deposit_required',
+        'balance_remaining',
+        'parts_total',
+        'labor_total',
         'notes',
+        'internal_notes',
+        'customer_notes',
+        'terms',
         'status',
+        'service_advisor_id',
+        'approved_at',
+        'rejected_at',
+        'rejection_reason',
+        'sent_at',
+        'viewed_at',
+        'user_id',
+        'approved_by',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'issue_date' => 'date',
         'expiry_date' => 'date',
@@ -48,160 +60,191 @@ class Estimate extends Model
         'subtotal' => 'decimal:2',
         'tax_rate' => 'decimal:2',
         'tax_amount' => 'decimal:2',
+        'tax_total' => 'decimal:2',
+        'discount_value' => 'decimal:2',
+        'discount_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'deposit_required' => 'decimal:2',
+        'balance_remaining' => 'decimal:2',
+        'parts_total' => 'decimal:2',
+        'labor_total' => 'decimal:2',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'rejected_at' => 'datetime',
+        'sent_at' => 'datetime',
+        'viewed_at' => 'datetime',
     ];
 
-    /**
-     * Get the customer that owns the estimate.
-     */
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
     }
 
-    /**
-     * Get the vehicle that owns the estimate.
-     */
     public function vehicle(): BelongsTo
     {
         return $this->belongsTo(Vehicle::class);
     }
 
-    /**
-     * Get the items for the estimate.
-     */
     public function items(): HasMany
     {
-        return $this->hasMany(EstimateItem::class);
+        return $this->hasMany(EstimateItem::class)->orderBy('sort_order');
     }
 
-    /**
-     * Get the work order associated with the estimate.
-     */
     public function workOrder(): HasOne
     {
         return $this->hasOne(WorkOrder::class);
     }
 
-    /**
-     * Scope a query to only include estimates with a specific status.
-     */
-    public function scopeStatus($query, $status)
+        public function user(): BelongsTo
     {
-        return $query->where('status', $status);
+        return $this->belongsTo(User::class, 'user_id');
     }
 
-    /**
-     * Scope a query to only include estimates that are not expired.
-     */
-    public function scopeNotExpired($query)
+    public function approvedBy(): BelongsTo
     {
-        return $query->where('expiry_date', '>=', now());
+        return $this->belongsTo(User::class, 'approved_by');
     }
 
-    /**
-     * Scope a query to only include estimates that are expired.
-     */
-    public function scopeExpired($query)
+public function serviceAdvisor(): BelongsTo
     {
-        return $query->where('expiry_date', '<', now());
+        return $this->belongsTo(User::class, 'service_advisor_id');
     }
 
-    /**
-     * Check if the estimate is expired.
-     */
-    public function isExpired(): bool
+    public function inspection(): BelongsTo
     {
-        return $this->expiry_date < now();
+        return $this->belongsTo(VehicleInspection::class, 'inspection_id');
     }
 
-    /**
-     * Check if the estimate can be converted to a work order.
-     */
-    public function canConvertToWorkOrder(): bool
-    {
-        return $this->status === 'approved' && !$this->isExpired() && !$this->workOrder;
-    }
-
-    /**
-     * Get the formatted total amount.
-     */
-    public function getFormattedTotalAttribute(): string
-    {
-        return '₱' . number_format($this->total_amount, 2);
-    }
-
-    /**
-     * Get the formatted subtotal amount.
-     */
-    public function getFormattedSubtotalAttribute(): string
-    {
-        return '₱' . number_format($this->subtotal, 2);
-    }
-
-    /**
-     * Get the formatted tax amount.
-     */
-    public function getFormattedTaxAttribute(): string
-    {
-        return '₱' . number_format($this->tax_amount, 2);
-    }
-
-    /**
-     * Get the days until expiry.
-     */
-    public function getDaysUntilExpiryAttribute(): int
-    {
-        return now()->diffInDays($this->expiry_date, false);
-    }
-
-    /**
-     * Get the status badge class.
-     */
-    public function getStatusBadgeClassAttribute(): string
-    {
-        $classes = [
-            'draft' => 'bg-secondary',
-            'pending' => 'bg-warning',
-            'approved' => 'bg-success',
-            'rejected' => 'bg-danger',
-            'expired' => 'bg-dark',
-        ];
-
-        return $classes[$this->status] ?? 'bg-secondary';
-    }
-
-    /**
-     * Get the appointment associated with the estimate.
-     */
     public function appointment(): BelongsTo
     {
         return $this->belongsTo(Appointment::class);
     }
 
-    /**
-     * Get the invoice associated with the estimate.
-     */
     public function invoice(): HasOne
     {
         return $this->hasOne(Invoice::class, 'estimate_id');
     }
 
-    /**
-     * Get all payments for the estimate through the invoice.
-     */
     public function payments(): HasManyThrough
     {
         return $this->hasManyThrough(Payment::class, Invoice::class, 'estimate_id', 'invoice_id');
     }
 
-    /**
-     * Get the service progress record for this estimate.
-     */
-    public function serviceProgress(): HasOne
+    // ── Status Helpers ──
+
+    public const STATUSES = [
+        'draft'               => 'Draft',
+        'sent'                => 'Sent',
+        'viewed'              => 'Viewed',
+        'waiting_approval'    => 'Waiting Approval',
+        'approved'            => 'Approved',
+        'rejected'            => 'Rejected',
+        'expired'             => 'Expired',
+        'converted_to_work_order' => 'Converted to Work Order',
+        'converted_to_repair_order' => 'Converted to Repair Order',
+    ];
+
+    public const STATUS_BADGES = [
+        'draft'               => 'badge-draft',
+        'sent'                => 'badge-sent',
+        'viewed'              => 'badge-viewed',
+        'waiting_approval'    => 'badge-waiting',
+        'approved'            => 'badge-approved',
+        'rejected'            => 'badge-rejected',
+        'expired'             => 'badge-expired',
+        'converted_to_work_order' => 'badge-converted',
+        'converted_to_repair_order' => 'badge-converted',
+    ];
+
+    public function scopeStatus($query, $status)
     {
-        return $this->hasOne(ServiceProgress::class, 'estimate_id');
+        return $query->where('status', $status);
+    }
+
+    public function scopeNotExpired($query)
+    {
+        return $query->where('expiry_date', '>=', now());
+    }
+
+    public function scopeExpired($query)
+    {
+        return $query->where('expiry_date', '<', now());
+    }
+
+    public function isExpired(): bool
+    {
+        return $this->expiry_date < now();
+    }
+
+    public function canConvertToWorkOrder(): bool
+    {
+        return $this->status === 'approved' && !$this->isExpired() && !$this->workOrder;
+    }
+
+    public function getFormattedTotalAttribute(): string
+    {
+        return '₱' . number_format($this->total_amount, 2);
+    }
+
+    public function getFormattedSubtotalAttribute(): string
+    {
+        return '₱' . number_format($this->subtotal, 2);
+    }
+
+    public function getFormattedTaxAttribute(): string
+    {
+        return '₱' . number_format($this->tax_amount, 2);
+    }
+
+    public function getFormattedDepositAttribute(): string
+    {
+        return '₱' . number_format($this->deposit_required, 2);
+    }
+
+    public function getFormattedBalanceAttribute(): string
+    {
+        return '₱' . number_format($this->balance_remaining, 2);
+    }
+
+    public function getFormattedPartsTotalAttribute(): string
+    {
+        return '₱' . number_format($this->parts_total, 2);
+    }
+
+    public function getFormattedLaborTotalAttribute(): string
+    {
+        return '₱' . number_format($this->labor_total, 2);
+    }
+
+    public function getFormattedDiscountAttribute(): string
+    {
+        return '₱' . number_format($this->discount_amount, 2);
+    }
+
+    public function getDaysUntilExpiryAttribute(): int
+    {
+        return now()->diffInDays($this->expiry_date, false);
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return self::STATUSES[$this->status] ?? ucfirst($this->status);
+    }
+
+    public function getStatusBadgeClassAttribute(): string
+    {
+        $map = [
+            'draft'               => 'bg-secondary',
+            'sent'                => 'bg-info',
+            'viewed'              => 'bg-info',
+            'waiting_approval'    => 'bg-warning text-dark',
+            'approved'            => 'bg-success',
+            'rejected'            => 'bg-danger',
+            'expired'             => 'bg-dark',
+            'converted_to_work_order'  => 'bg-primary',
+            'converted_to_repair_order' => 'bg-primary',
+        ];
+        return $map[$this->status] ?? 'bg-secondary';
     }
 }

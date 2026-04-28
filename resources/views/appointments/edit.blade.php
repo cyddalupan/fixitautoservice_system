@@ -79,26 +79,16 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label for="appointment_type" class="form-label">Service Type <span class="text-danger">*</span></label>
-                                    <select class="form-select @error('appointment_type') is-invalid @enderror" 
-                                            id="appointment_type" name="appointment_type" required>
-                                        <option value="">Select Service Type</option>
-                                        <option value="regular_service" {{ old('appointment_type', $appointment->appointment_type) == 'regular_service' ? 'selected' : '' }}>Regular Service</option>
-                                        <option value="emergency" {{ old('appointment_type', $appointment->appointment_type) == 'emergency' ? 'selected' : '' }}>Emergency</option>
-                                        <option value="inspection" {{ old('appointment_type', $appointment->appointment_type) == 'inspection' ? 'selected' : '' }}>Inspection</option>
-                                        <option value="diagnostic" {{ old('appointment_type', $appointment->appointment_type) == 'diagnostic' ? 'selected' : '' }}>Diagnostic</option>
-                                        <option value="repair" {{ old('appointment_type', $appointment->appointment_type) == 'repair' ? 'selected' : '' }}>Repair</option>
-                                        <option value="maintenance" {{ old('appointment_type', $appointment->appointment_type) == 'maintenance' ? 'selected' : '' }}>Maintenance</option>
-                                        <option value="tire_service" {{ old('appointment_type', $appointment->appointment_type) == 'tire_service' ? 'selected' : '' }}>Tire Service</option>
-                                        <option value="oil_change" {{ old('appointment_type', $appointment->appointment_type) == 'oil_change' ? 'selected' : '' }}>Oil Change</option>
-                                        <option value="brake_service" {{ old('appointment_type', $appointment->appointment_type) == 'brake_service' ? 'selected' : '' }}>Brake Service</option>
-                                        <option value="other" {{ old('appointment_type', $appointment->appointment_type) == 'other' ? 'selected' : '' }}>Other</option>
-                                    </select>
-                                    @error('appointment_type')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                                @include('partials.service-type-selector', [
+                                    'selected' => old('appointment_type', $appointment->appointment_type ?? ''),
+                                    'name' => 'appointment_type',
+                                    'label' => 'SERVICE TYPE',
+                                    'required' => true,
+                                    'showIcons' => true,
+                                    'multiple' => true,
+                                    'placeholder' => 'Select Service Type',
+                                    'module' => 'appointments',
+                                ])
                             </div>
                         </div>
                     </div>
@@ -199,33 +189,13 @@
                             </div>
                             <!-- Multi-Technician Assignment -->
                             <div class="col-md-6">
-                                <div class="form-group mb-3">
-                                    <label class="form-label">Additional Technicians</label>
-                                    <div class="technician-select-wrapper">
-                                        <div class="technician-tags">
-                                            @php $existingTechIds = $appointment->technicians->pluck('id')->toArray(); @endphp
-                                        </div>
-                                        <button type="button" class="btn btn-outline-primary btn-sm tech-select-trigger" style="font-size: 0.82rem;">
-                                            <i class="fas fa-plus me-1"></i> Add Technician
-                                        </button>
-                                        
-                                        <div class="technician-dropdown">
-                                            <input type="text" class="search-input" placeholder="Search technicians...">
-                                            @foreach($allTechnicians as $tech)
-                                            <div class="tech-option {{ in_array($tech->id, $existingTechIds) ? 'selected' : '' }}" data-id="{{ $tech->id }}" data-name="{{ $tech->name }}" data-role="Technician">
-                                                <span class="tech-check {{ in_array($tech->id, $existingTechIds) ? 'checked' : '' }}"></span>
-                                                <span>{{ $tech->name }}</span>
-                                            </div>
-                                            @endforeach
-                                        </div>
-                                        @forelse($existingTechIds as $techId)
-                                        <input type="hidden" name="technicians[]" value="{{ $techId }}">
-                                        @empty
-                                        <input type="hidden" name="technicians[]" value="">
-                                        @endforelse
-                                    </div>
-                                    <small class="text-muted">Assign additional technicians to this appointment</small>
-                                </div>
+                                @php $existingTechIds = $appointment->technicians->pluck('id')->toArray(); @endphp
+                                @include('partials.technician-selector', [
+                                    'technicians' => $allTechnicians,
+                                    'selectedIds' => old('technicians', $existingTechIds),
+                                    'label' => 'Additional Technicians',
+                                    'helpText' => 'Assign additional technicians to this appointment',
+                                ])
                             </div>
                         </div>
                     </div>
@@ -380,7 +350,7 @@ $(document).ready(function() {
         }
     }
     
-    initTechnicianMultiSelect();
+    initTechnicianMultiSelect(".technician-select-wrapper:not([data-tech-init])");
 });
 </script>
 @endpush

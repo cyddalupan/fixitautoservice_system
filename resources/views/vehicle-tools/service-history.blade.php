@@ -262,8 +262,8 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                <a href="{{ route('service-records.show', $record->id) }}" 
-                                                   class="btn btn-sm btn-outline-primary">
+                                                <a href="#" onclick="return false;" 
+                                                   class="btn btn-sm btn-outline-primary disabled">
                                                     <i class="fas fa-eye"></i> View
                                                 </a>
                                             </td>
@@ -282,8 +282,8 @@
                                 <i class="fas fa-history fa-3x text-muted mb-3"></i>
                                 <h5 class="text-muted">No Service Records Found</h5>
                                 <p class="text-muted">This vehicle has no service history yet.</p>
-                                <a href="{{ route('service-records.create', ['vehicle_id' => $vehicle->id]) }}" 
-                                   class="btn btn-primary">
+                                <a href="#" onclick="return false;" 
+                                   class="btn btn-primary disabled">
                                     <i class="fas fa-plus"></i> Add First Service Record
                                 </a>
                             </div>

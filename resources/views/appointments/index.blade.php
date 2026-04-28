@@ -1253,35 +1253,7 @@ function restoreAppointment(appointmentId, appointmentNumber, customerName) {
 
 
 
-<!-- Quick Stats -->
-<div class="row mt-4">
-    <div class="col-md-3">
-        <div class="card bg-primary text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title mb-0">Scheduled</h6>
-                        <h2 class="mb-0">{{ $stats['scheduled'] }}</h2>
-                    </div>
-                    <i class="fas fa-calendar fa-2x opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card bg-warning text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title mb-0">Arrived</h6>
-                        <h2 class="mb-0">{{ $stats['arrived'] }}</h2>
-                    </div>
-                    <i class="fas fa-user-check fa-2x opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 @push('scripts')
 <script>

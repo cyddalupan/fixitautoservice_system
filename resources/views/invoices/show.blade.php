@@ -671,24 +671,29 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Cancel Invoice</h5>
+                <h5 class="modal-title"><i class="fas fa-archive me-2"></i>Archive Invoice</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <p>Are you sure you want to cancel this invoice? This action cannot be undone.</p>
-                <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" id="cancelInvoiceForm">
-                    @csrf
-                    @method('DELETE')
-                    <div class="mb-3">
+            <form action="{{ route('invoices.destroy', $invoice) }}" method="POST" id="cancelInvoiceForm">
+                @csrf
+                @method('DELETE')
+                <div class="modal-body">
+                    <div class="alert alert-warning mb-3">
+                        <i class="fas fa-archive me-2"></i>Are you sure you want to move this invoice to archive?
+                    </div>
+                    <p class="mb-0 text-muted small">The record will be preserved in the archive and can be restored later.</p>
+                    <div class="mb-3 mt-3">
                         <label for="cancellation_reason" class="form-label">Reason for Cancellation</label>
                         <textarea class="form-control" id="cancellation_reason" name="cancellation_reason" rows="3" required></textarea>
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="submit" form="cancelInvoiceForm" class="btn btn-danger">Cancel Invoice</button>
-            </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-archive me-1"></i> Move to Archive
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

@@ -219,6 +219,8 @@ class VehicleInspectionController extends Controller
             'template_id' => 'nullable|exists:inspection_templates,id',
             'vehicle_mileage' => 'nullable|integer|min:0',
         
+            'service_type' => 'nullable|array',
+            'service_type.*' => 'string|in:' . implode(',', array_keys(config('service-types.list'))),
             'categories' => 'nullable|array',
             'categories.*' => 'string',]);
         
@@ -249,6 +251,11 @@ class VehicleInspectionController extends Controller
         
         // Convert inspection_type array to JSON for storage
         $validated['inspection_type'] = json_encode($validated['inspection_type']);
+        
+        // Convert service_type array to JSON for storage
+        if (isset($validated['service_type']) && is_array($validated['service_type'])) {
+            $validated['service_type'] = json_encode($validated['service_type']);
+        }
         
         // Set created by
         $validated['created_by'] = auth()->id();

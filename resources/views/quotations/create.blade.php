@@ -98,23 +98,25 @@
                                 <h5 class="mb-3" style="color: #B50C09;"><i class="fas fa-tools me-2"></i>Service Information</h5>
                             </div>
                             
-                            <div class="col-md-6 mb-3">
-                                <label for="service_type" class="form-label">Service Type *</label>
-                                <select class="form-select @error('service_type') is-invalid @enderror" 
-                                        id="service_type" name="service_type" required>
-                                    <option value="">Select Service Type</option>
-                                    <option value="General Maintenance" {{ old('service_type') == 'General Maintenance' ? 'selected' : '' }}>General Maintenance</option>
-                                    <option value="Brake Service" {{ old('service_type') == 'Brake Service' ? 'selected' : '' }}>Brake Service</option>
-                                    <option value="Engine Repair" {{ old('service_type') == 'Engine Repair' ? 'selected' : '' }}>Engine Repair</option>
-                                    <option value="Transmission" {{ old('service_type') == 'Transmission' ? 'selected' : '' }}>Transmission</option>
-                                    <option value="Electrical" {{ old('service_type') == 'Electrical' ? 'selected' : '' }}>Electrical</option>
-                                    <option value="AC Repair" {{ old('service_type') == 'AC Repair' ? 'selected' : '' }}>AC Repair</option>
-                                    <option value="Tire Service" {{ old('service_type') == 'Tire Service' ? 'selected' : '' }}>Tire Service</option>
-                                    <option value="Body Work" {{ old('service_type') == 'Body Work' ? 'selected' : '' }}>Body Work</option>
-                                    <option value="Other" {{ old('service_type') == 'Other' ? 'selected' : '' }}>Other</option>
-                                </select>
+                            <div class="col-md-12 mb-3">
+                                <label class="form-label">Service Type * (Select all that apply)</label>
+                                @php $allServiceTypes = ['PREVENTIVE MAINTENANCE', 'AUTO-MECHANICAL', 'AUTO-ELECTRICAL', 'AUTO-ELECTRONICS', 'AUTO AIR-CONDITIONING', 'BODY REPAIR AND PAINTING', 'AUTO PARTS SALES', 'HOME SERVICE REQUEST']; @endphp
+                                <div class="row g-3 mt-1">
+                                    @foreach($allServiceTypes as $st)
+                                        <div class="col-md-6">
+                                            <label class="service-card">
+                                                <input type="checkbox" name="service_type[]" value="{{ $st }}" class="service-card-input"
+                                                    {{ is_array(old('service_type')) && in_array($st, old('service_type')) ? 'checked' : '' }}>
+                                                <div class="service-card-body">
+                                                    <i class="fas fa-tools service-card-icon"></i>
+                                                    <span class="service-card-label">{{ $st }}</span>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    @endforeach
+                                </div>
                                 @error('service_type')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                             </div>
                             
@@ -186,3 +188,53 @@
     });
 </script>
 @endsection
+
+@push('styles')
+<style>
+.service-card {
+    display: block;
+    cursor: pointer;
+    width: 100%;
+}
+.service-card-input {
+    display: none;
+}
+.service-card-body {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border: 2px solid #dee2e6;
+    border-radius: 10px;
+    background: #fff;
+    transition: all 0.25s ease;
+    user-select: none;
+    height: 100%;
+}
+.service-card-body:hover {
+    border-color: #B50C09;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(181, 12, 9, 0.15);
+}
+.service-card-input:checked + .service-card-body {
+    border-color: #B50C09;
+    background: rgba(181, 12, 9, 0.08);
+    box-shadow: 0 0 0 3px rgba(181, 12, 9, 0.15);
+}
+.service-card-icon {
+    font-size: 22px;
+    color: #B50C09;
+    width: 32px;
+    text-align: center;
+    flex-shrink: 0;
+}
+.service-card-label {
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.3;
+}
+.service-card-input:checked + .service-card-body .service-card-label {
+    color: #B50C09;
+}
+</style>
+@endpush

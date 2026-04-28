@@ -220,8 +220,8 @@
                             </button>
                         @endif
                         
-                        <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                            <i class="fas fa-trash me-1"></i> Delete Payment
+                        <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                            <i class="fas fa-archive me-1"></i> Archive Payment
                         </button>
                     </div>
                 </div>
@@ -334,23 +334,28 @@
     </div>
 </div>
 
-<!-- Delete Modal -->
+<!-- Archive Modal -->
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteModalLabel">Delete Payment</h5>
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="fas fa-archive me-2"></i>Archive Payment</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="{{ route('payments.destroy', $payment) }}" method="POST">
                 @csrf
                 @method('DELETE')
                 <div class="modal-body">
-                    <p>Are you sure you want to delete this payment? This action cannot be undone.</p>
+                    <div class="alert alert-warning mb-3">
+                        <i class="fas fa-archive me-2"></i>Are you sure you want to move this payment to archive?
+                    </div>
+                    <p class="mb-0 text-muted small">The record will be preserved in the archive and can be restored later.</p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-danger">Delete Payment</button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-archive me-1"></i> Move to Archive
+                    </button>
                 </div>
             </form>
         </div>

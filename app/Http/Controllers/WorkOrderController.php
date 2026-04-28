@@ -218,6 +218,8 @@ class WorkOrderController extends Controller
             'is_complex_job' => 'boolean',
             'has_safety_concerns' => 'boolean',
             'service_template' => 'nullable|string',
+            'service_type' => 'nullable|array',
+            'service_type.*' => 'string|in:' . implode(',', array_keys(config('service-types.list'))),
             'items' => 'nullable|array',
             'items.*.item_type' => 'required|in:labor,part,sublet,fee,tax,discount',
             'items.*.description' => 'required|string|max:500',
@@ -275,6 +277,13 @@ class WorkOrderController extends Controller
         // Apply service template if selected
         if ($request->filled('service_template')) {
             $this->applyServiceTemplate($workOrder, $request->service_template);
+        }
+        
+        // Handle multi-select service types
+        if ($request->filled('service_type')) {
+            $serviceTypes = $request->service_type;
+            $workOrder->service_type = is_array($serviceTypes) ? json_encode($serviceTypes) : $serviceTypes;
+            $workOrder->save();
         }
         
         // Update appointment status if linked
@@ -591,108 +600,26 @@ class WorkOrderController extends Controller
      */
     private function getServiceTemplates(): array
     {
-        return [
-            'oil_change' => [
-                'name' => 'Oil Change Service',
-                'description' => 'Standard oil change with filter replacement',
+        // Use the centralized service types config
+        $templates = [];
+        $list = config('service-types.list', []);
+        foreach ($list as $key => $info) {
+            $name = is_array($info) ? ($info['name'] ?? ucfirst(str_replace('_', ' ', $key))) : $info;
+            $templates[$key] = [
+                'name' => $name,
+                'description' => $name . ' - Standard service',
                 'items' => [
                     [
                         'item_type' => 'labor',
-                        'description' => 'Oil Change Labor',
-                        'quantity' => 0.5,
+                        'description' => $name . ' Labor',
+                        'quantity' => 1.0,
                         'unit' => 'hours',
                         'unit_cost' => 85.00,
                     ],
-                    [
-                        'item_type' => 'part',
-                        'description' => 'Synthetic Oil 5W-30',
-                        'part_number' => 'OIL-5W30-SYN',
-                        'quantity' => 5,
-                        'unit' => 'quarts',
-                        'unit_cost' => 8.50,
-                    ],
-                    [
-                        'item_type' => 'part',
-                        'description' => 'Oil Filter',
-                        'part_number' => 'OF-1234',
-                        'quantity' => 1,
-                        'unit' => 'each',
-                        'unit_cost' => 12.99,
-                    ],
                 ],
-            ],
-            'brake_service' => [
-                'name' => 'Brake Service',
-                'description' => 'Front brake pad and rotor replacement',
-                'items' => [
-                    [
-                        'item_type' => 'labor',
-                        'description' => 'Brake Service Labor',
-                        'quantity' => 2.0,
-                        'unit' => 'hours',
-                        'unit_cost' => 85.00,
-                    ],
-                    [
-                        'item_type' => 'part',
-                        'description' => 'Brake Pads (Front)',
-                        'part_number' => 'BP-F-5678',
-                        'quantity' => 1,
-                        'unit' => 'set',
-                        'unit_cost' => 89.99,
-                    ],
-                    [
-                        'item_type' => 'part',
-                        'description' => 'Brake Rotors (Front)',
-                        'part_number' => 'BR-F-9012',
-                        'quantity' => 2,
-                        'unit' => 'each',
-                        'unit_cost' => 65.00,
-                    ],
-                ],
-            ],
-            'tire_rotation' => [
-                'name' => 'Tire Rotation & Balance',
-                'description' => 'Four-tire rotation and balance',
-                'items' => [
-                    [
-                        'item_type' => 'labor',
-                        'description' => 'Tire Rotation Labor',
-                        'quantity' => 0.75,
-                        'unit' => 'hours',
-                        'unit_cost' => 85.00,
-                    ],
-                    [
-                        'item_type' => 'part',
-                        'description' => 'Wheel Weights',
-                        'part_number' => 'WW-001',
-                        'quantity' => 8,
-                        'unit' => 'each',
-                        'unit_cost' => 0.50,
-                    ],
-                ],
-            ],
-            'battery_replacement' => [
-                'name' => 'Battery Replacement',
-                'description' => 'Battery replacement and testing',
-                'items' => [
-                    [
-                        'item_type' => 'labor',
-                        'description' => 'Battery Replacement Labor',
-                        'quantity' => 0.5,
-                        'unit' => 'hours',
-                        'unit_cost' => 85.00,
-                    ],
-                    [
-                        'item_type' => 'part',
-                        'description' => 'Car Battery',
-                        'part_number' => 'BAT-750CCA',
-                        'quantity' => 1,
-                        'unit' => 'each',
-                        'unit_cost' => 149.99,
-                    ],
-                ],
-            ],
-        ];
+            ];
+        }
+        return $templates;
     }
     
     /**
@@ -707,6 +634,10 @@ class WorkOrderController extends Controller
         }
         
         $template = $templates[$templateKey];
+        
+        // Set service_type from template
+        $workOrder->service_type = json_encode([$templateKey]);
+        $workOrder->save();
         
         // Update work order description
         $workOrder->update([

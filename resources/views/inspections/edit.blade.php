@@ -267,39 +267,13 @@
                         <!-- Multi-Technician -->
                         <div class="row g-3 mt-2">
                             <div class="col-12">
-                                <div class="form-group">
-                                    <label class="form-label fw-medium">
-                                        <i class="fas fa-users me-1 text-primary"></i>Additional Technicians
-                                    </label>
-                                    <div class="technician-select-wrapper">
-                                        <div class="technician-tags"></div>
-                                        <button type="button" class="btn btn-outline-primary btn-sm tech-select-trigger" style="font-size: 0.82rem;">
-                                            <i class="fas fa-plus me-1"></i> Add Technician
-                                        </button>
-                                        
-                                        <div class="technician-dropdown">
-                                            <input type="text" class="search-input" placeholder="Search technicians...">
-                                            @foreach($allTechnicians as $tech)
-                                            @php
-                                                $isSelected = $inspection->technicians->contains($tech->id);
-                                            @endphp
-                                            <div class="tech-option {{ $isSelected ? 'selected' : '' }}" data-id="{{ $tech->id }}" data-name="{{ $tech->name }}" data-role="Technician">
-                                                <span class="tech-check {{ $isSelected ? 'checked' : '' }}"></span>
-                                                <span>{{ $tech->name }}</span>
-                                            </div>
-                                            @endforeach
-                                        </div>
-                                        @php
-                                            $existingTechIds = $inspection->technicians->pluck('id')->toArray();
-                                        @endphp
-                                        @forelse($existingTechIds as $techId)
-                                        <input type="hidden" name="technicians[]" value="{{ $techId }}">
-                                        @empty
-                                        <input type="hidden" name="technicians[]" value="">
-                                        @endforelse
-                                    </div>
-                                    <small class="text-muted">Assign additional technicians to perform this inspection</small>
-                                </div>
+                                @php $existingTechIds = $inspection->technicians->pluck('id')->toArray(); @endphp
+                                @include('partials.technician-selector', [
+                                    'technicians' => $allTechnicians,
+                                    'selectedIds' => old('technicians', $existingTechIds),
+                                    'label' => 'Additional Technicians',
+                                    'helpText' => 'Assign additional technicians to perform this inspection',
+                                ])
                             </div>
                         </div>
                     </div>
@@ -382,7 +356,7 @@ function toggleSection(header) {
 }
 
 $(document).ready(function() {
-    initTechnicianMultiSelect();
+    initTechnicianMultiSelect(".technician-select-wrapper:not([data-tech-init])");
 });
 </script>
 @endpush

@@ -245,10 +245,14 @@ class InvoiceController extends Controller
             $invoice->workOrder->update(['invoice_status' => null]);
         }
         
-        $invoice->delete();
-        
-        return redirect()->route('invoices.index')
-            ->with('success', 'Invoice deleted successfully!');
+        try {
+            \App\Services\ArchiveService::archive($invoice, 'invoice');
+            return redirect()->route('invoices.index')
+                ->with('success', 'Invoice moved to archive.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to archive invoice: ' . $e->getMessage());
+        }
     }
 
     /**

@@ -123,9 +123,17 @@
                                     <div class="mb-3">
                                         <label class="form-label text-muted small mb-1">Service Type</label>
                                         <div>
-                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-3 py-2">
-                                                {{ $quotation->service_type }}
-                                            </span>
+                                            @if($quotation->service_type && count($quotation->service_type) > 0)
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    @foreach($quotation->service_type as $service)
+                                                        <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-3 py-2">
+                                                            {{ $service }}
+                                                        </span>
+                                                    @endforeach
+                                                </div>
+                                            @else
+                                                <span class="text-muted">Not specified</span>
+                                            @endif
                                         </div>
                                     </div>
                                     

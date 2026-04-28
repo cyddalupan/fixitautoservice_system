@@ -1,350 +1,413 @@
 @extends('layouts.app')
 
-@section('title', 'Create Repair Order - Fix-It Auto Services')
+@section('title', 'Create Vehicle Inspection - Fix-It Auto Services')
 
 @section('content')
-<div class="page-header">
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <h1 class="h3 mb-0">
-                <i class="fas fa-car me-2"></i>Create Repair Order
-            </h1>
-            <p class="text-muted mb-0">Create a new vehicle inspection record</p>
-        </div>
-        <div>
-            <a href="{{ route('inspections.index') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left me-1"></i> Back to Repair Orders
-            </a>
-        </div>
+<div class="container-fluid py-3">
+    @include('partials.customer-process-assets')
+    @include('partials.customer-summary-card')
+    
+    <div class="auto-save-toast" style="display:none;"><i class="fas fa-check-circle"></i> <span></span></div>
+    
+    <!-- Section Navigation -->
+    <div class="section-nav" id="sectionNav">
+        <button class="nav-pill active" data-section="details" onclick="scrollToSection('details')">
+            <i class="fas fa-info-circle"></i> Details
+        </button>
+        <button class="nav-pill" data-section="findings" onclick="scrollToSection('findings')">
+            <i class="fas fa-search"></i> Findings
+        </button>
+        <button class="nav-pill" data-section="team" onclick="scrollToSection('team')">
+            <i class="fas fa-users"></i> Team
+        </button>
+        <button class="nav-pill" data-section="notes" onclick="scrollToSection('notes')">
+            <i class="fas fa-sticky-note"></i> Notes
+        </button>
+        <button class="nav-pill" data-section="history" onclick="scrollToSection('historySection')">
+            <i class="fas fa-history"></i> History
+        </button>
     </div>
-</div>
-
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
-                <form method="POST" action="{{ route('inspections.store') }}">
-                    @csrf
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label for="customer_id" class="form-label">Customer *</label>
-                                <select class="form-select @error('customer_id') is-invalid @enderror" 
-                                        id="customer_id" name="customer_id" required
-                                        {{ $selectedCustomer ? 'disabled' : '' }}>
+    
+    <form action="{{ route('inspections.store') }}" method="POST" autocomplete="off">
+        @csrf
+        <input type="hidden" name="customer_selection_mode" value="{{ $selectedCustomer ? 'from_url' : 'manual' }}">
+        
+        <!-- ===== SECTION: Details ===== -->
+        <div class="form-section" id="details">
+            <div class="form-section-header">
+                <h6><i class="fas fa-info-circle"></i> Inspection Details</h6>
+                <div class="collapse-icon"><i class="fas fa-chevron-down"></i></div>
+            </div>
+            <div class="form-section-body">
+                <div class="row g-3">
+                    <!-- Customer -->
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="customer_id" class="form-label field-required">Customer</label>
+                            @if($selectedCustomer)
+                                <input type="hidden" name="customer_id" value="{{ $selectedCustomer->id }}">
+                                <div class="form-control-plaintext fw-bold" style="padding: 6px 0;">
+                                    <i class="fas fa-user text-primary me-1"></i>
+                                    {{ $selectedCustomer->name }}
+                                    <small class="text-muted ms-2">({{ $selectedCustomer->phone ?? '' }})</small>
+                                </div>
+                            @else
+                                <select class="form-select @error('customer_id') is-invalid @enderror"
+                                        id="customer_id" name="customer_id" required>
                                     <option value="">Select Customer</option>
-                                    @foreach($customers as $customer)
-                                        <option value="{{ $customer->id }}" 
-                                            {{ (old('customer_id', $selectedCustomer ? $selectedCustomer->id : null) == $customer->id) ? 'selected' : '' }}>
-                                            {{ $customer->first_name }} {{ $customer->last_name }}
+                                    @foreach($customers as $c)
+                                        <option value="{{ $c->id }}" 
+                                            {{ old('customer_id', $selectedCustomer->id ?? '') == $c->id ? 'selected' : '' }}>
+                                            {{ $c->name }} {{ $c->phone ? '- '.$c->phone : '' }}
                                         </option>
                                     @endforeach
                                 </select>
-                                @if($selectedCustomer)
-                                    <input type="hidden" name="customer_id" value="{{ $selectedCustomer->id }}">
-                                @endif
-                                @error('customer_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            
-                            <div class="form-group mb-3">
-                                <label for="vehicle_id" class="form-label">Vehicle *</label>
-                                <select class="form-select @error('vehicle_id') is-invalid @enderror" 
-                                        id="vehicle_id" name="vehicle_id" required>
-                                    <option value="">Select Vehicle</option>
-                                    <!-- Vehicles will be loaded via AJAX based on customer selection -->
-                                </select>
-                                @error('vehicle_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            
-                            <div class="form-group mb-3">
-                                <label for="inspection_type" class="form-label">Inspection Type *</label>
-                                <select class="form-select @error('inspection_type') is-invalid @enderror" 
-                                        id="inspection_type" name="inspection_type" required>
-                                    <option value="">Select Type</option>
-                                    <option value="pre_purchase" {{ old('inspection_type') == 'pre_purchase' ? 'selected' : '' }}>Pre-Purchase Inspection</option>
-                                    <option value="safety" {{ old('inspection_type') == 'safety' ? 'selected' : '' }}>Safety Inspection</option>
-                                    <option value="emissions" {{ old('inspection_type') == 'emissions' ? 'selected' : '' }}>Emissions Inspection</option>
-                                    <option value="routine" {{ old('inspection_type') == 'routine' ? 'selected' : '' }}>Routine Maintenance Check</option>
-                                    <option value="diagnostic" {{ old('inspection_type') == 'diagnostic' ? 'selected' : '' }}>Diagnostic Inspection</option>
-                                    <option value="post_repair" {{ old('inspection_type') == 'post_repair' ? 'selected' : '' }}>Post-Repair Verification</option>
-                                </select>
-                                @error('inspection_type')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label for="status" class="form-label">Status *</label>
-                                <select class="form-select @error('status') is-invalid @enderror" 
-                                        id="status" name="status" required>
-                                    <option value="pending" {{ old('status', 'pending') == 'pending' ? 'selected' : '' }}>Pending</option>
-                                    <option value="in_progress" {{ old('status') == 'in_progress' ? 'selected' : '' }}>In Progress</option>
-                                    <option value="completed" {{ old('status') == 'completed' ? 'selected' : '' }}>Completed</option>
-                                    <option value="approved" {{ old('status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                                    <option value="rejected" {{ old('status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
-                                </select>
-                                @error('status')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            
-                            <div class="form-group mb-3">
-                                <label for="inspection_date" class="form-label">Inspection Date *</label>
-                                <input type="date" class="form-control @error('inspection_date') is-invalid @enderror" 
-                                       id="inspection_date" name="inspection_date" value="{{ old('inspection_date', date('Y-m-d')) }}" required>
-                                @error('inspection_date')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            
-                            <div class="form-group mb-3">
-                                <label for="inspector_id" class="form-label">Inspector *</label>
-                                <select class="form-select @error('inspector_id') is-invalid @enderror" 
-                                        id="inspector_id" name="inspector_id" required>
-                                    <option value="">Select Inspector</option>
-                                    @foreach($inspectors as $inspector)
-                                        <option value="{{ $inspector->id }}" {{ old('inspector_id') == $inspector->id ? 'selected' : '' }}>
-                                            {{ $inspector->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('inspector_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
+                                @error('customer_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            @endif
                         </div>
                     </div>
                     
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="form-group mb-3">
-                                <label for="notes" class="form-label">Initial Notes</label>
-                                <textarea class="form-control @error('notes') is-invalid @enderror" 
-                                          id="notes" name="notes" rows="3">{{ old('notes') }}</textarea>
-                                @error('notes')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <small class="form-text text-muted">Add any initial notes or observations</small>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label for="odometer_reading" class="form-label">Odometer Reading</label>
-                                <input type="number" class="form-control @error('odometer_reading') is-invalid @enderror" 
-                                       id="odometer_reading" name="odometer_reading" value="{{ old('odometer_reading') }}" min="0">
-                                @error('odometer_reading')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <small class="form-text text-muted">Current mileage</small>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label for="inspection_fee" class="form-label">Inspection Fee</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">₱</span>
-                                    <input type="number" step="0.01" class="form-control @error('inspection_fee') is-invalid @enderror" 
-                                           id="inspection_fee" name="inspection_fee" value="{{ old('inspection_fee', 49.99) }}" min="0">
-                                    @error('inspection_fee')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label for="next_inspection_date" class="form-label">Next Inspection Due</label>
-                                <input type="date" class="form-control @error('next_inspection_date') is-invalid @enderror" 
-                                       id="next_inspection_date" name="next_inspection_date" value="{{ old('next_inspection_date') }}">
-                                @error('next_inspection_date')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="form-group mb-3">
-                                <label for="estimated_repair_cost" class="form-label">Estimated Repair Cost</label>
-                                <div class="input-group">
-                                    <span class="input-group-text">₱</span>
-                                    <input type="number" step="0.01" class="form-control @error('estimated_repair_cost') is-invalid @enderror" 
-                                           id="estimated_repair_cost" name="estimated_repair_cost" value="{{ old('estimated_repair_cost') }}" min="0">
-                                    @error('estimated_repair_cost')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <hr>
-                    
-                    <!-- Inspection Categories -->
-                    <div class="row">
-                        <div class="col-12">
-                            <h5 class="mb-3">Inspection Categories</h5>
-                            <p class="text-muted mb-3">Select the categories to include in this inspection:</p>
-                            
-                            <div class="row">
-                                @php
-                                    $categories = [
-                                        'engine' => 'Engine & Transmission',
-                                        'brakes' => 'Brake System',
-                                        'suspension' => 'Suspension & Steering',
-                                        'electrical' => 'Electrical System',
-                                        'tires' => 'Tires & Wheels',
-                                        'exhaust' => 'Exhaust System',
-                                        'interior' => 'Interior & Safety',
-                                        'exterior' => 'Exterior & Body',
-                                        'fluids' => 'Fluids & Filters',
-                                        'ac' => 'A/C & Heating',
-                                    ];
-                                @endphp
-                                
-                                @foreach($categories as $key => $label)
-                                    <div class="col-md-4 mb-2">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" 
-                                                   id="category_{{ $key }}" name="categories[]" 
-                                                   value="{{ $key }}">
-                                            <label class="form-check-label" for="category_{{ $key }}">
-                                                {{ $label }}
-                                            </label>
-                                        </div>
-                                    </div>
+                    <!-- Vehicle -->
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="vehicle_id" class="form-label field-required">Vehicle</label>
+                            <select class="form-select @error('vehicle_id') is-invalid @enderror"
+                                    id="vehicle_id" name="vehicle_id" required>
+                                <option value="">Select Vehicle</option>
+                                @foreach($vehicles as $v)
+                                    <option value="{{ $v->id }}" 
+                                        data-plate="{{ $v->license_plate ?? '' }}"
+                                        data-customer="{{ $v->customer_id }}"
+                                        {{ old('vehicle_id', $selectedVehicle->id ?? '') == $v->id ? 'selected' : '' }}>
+                                        {{ $v->year }} {{ $v->make }} {{ $v->model }}
+                                        @if($v->license_plate) [{{ $v->license_plate }}] @endif
+                                        @if($v->customer) - {{ $v->customer->name }} @endif
+                                    </option>
                                 @endforeach
+                            </select>
+                            @error('vehicle_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                        <small class="text-muted">
+                            <i class="fas fa-lightbulb"></i> Tip: Select customer first to filter available vehicles
+                        </small>
+                    </div>
+                    
+                    <!-- Inspection Type (Multi-select) -->
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label class="form-label field-required">Inspection Type</label>
+                            <div class="inspection-type-grid">
+                                <label class="type-card {{ collect(old('inspection_type', []))->contains('pre_purchase') ? 'selected' : '' }}">
+                                    <input type="checkbox" name="inspection_type[]" value="pre_purchase"
+                                        {{ collect(old('inspection_type', []))->contains('pre_purchase') ? 'checked' : '' }}>
+                                    <i class="fas fa-search-dollar"></i>
+                                    <span>Pre-Purchase</span>
+                                </label>
+                                <label class="type-card {{ collect(old('inspection_type', []))->contains('safety') ? 'selected' : '' }}">
+                                    <input type="checkbox" name="inspection_type[]" value="safety"
+                                        {{ collect(old('inspection_type', []))->contains('safety') ? 'checked' : '' }}>
+                                    <i class="fas fa-shield-alt"></i>
+                                    <span>Safety</span>
+                                </label>
+                                <label class="type-card {{ collect(old('inspection_type', []))->contains('emissions') ? 'selected' : '' }}">
+                                    <input type="checkbox" name="inspection_type[]" value="emissions"
+                                        {{ collect(old('inspection_type', []))->contains('emissions') ? 'checked' : '' }}>
+                                    <i class="fas fa-smog"></i>
+                                    <span>Emissions</span>
+                                </label>
+                                <label class="type-card {{ collect(old('inspection_type', []))->contains('routine') ? 'selected' : '' }}">
+                                    <input type="checkbox" name="inspection_type[]" value="routine"
+                                        {{ collect(old('inspection_type', []))->contains('routine') ? 'checked' : '' }}>
+                                    <i class="fas fa-clipboard-check"></i>
+                                    <span>Routine</span>
+                                </label>
+                                <label class="type-card {{ collect(old('inspection_type', []))->contains('diagnostic') ? 'selected' : '' }}">
+                                    <input type="checkbox" name="inspection_type[]" value="diagnostic"
+                                        {{ collect(old('inspection_type', []))->contains('diagnostic') ? 'checked' : '' }}>
+                                    <i class="fas fa-stethoscope"></i>
+                                    <span>Diagnostic</span>
+                                </label>
+                                <label class="type-card {{ collect(old('inspection_type', []))->contains('post_repair') ? 'selected' : '' }}">
+                                    <input type="checkbox" name="inspection_type[]" value="post_repair"
+                                        {{ collect(old('inspection_type', []))->contains('post_repair') ? 'checked' : '' }}>
+                                    <i class="fas fa-tools"></i>
+                                    <span>Post-Repair</span>
+                                </label>
+                                <label class="type-card {{ collect(old('inspection_type', []))->contains('comprehensive') ? 'selected' : '' }}">
+                                    <input type="checkbox" name="inspection_type[]" value="comprehensive"
+                                        {{ collect(old('inspection_type', []))->contains('comprehensive') ? 'checked' : '' }}>
+                                    <i class="fas fa-list-alt"></i>
+                                    <span>Comprehensive</span>
+                                </label>
+                                <label class="type-card {{ collect(old('inspection_type', []))->contains('custom') ? 'selected' : '' }}">
+                                    <input type="checkbox" name="inspection_type[]" value="custom"
+                                        {{ collect(old('inspection_type', []))->contains('custom') ? 'checked' : '' }}>
+                                    <i class="fas fa-star"></i>
+                                    <span>Custom</span>
+                                </label>
                             </div>
+                            @error('inspection_type')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                         </div>
                     </div>
                     
-                    <hr>
-                    
-                    <div class="d-flex justify-content-between">
-                        <a href="{{ route('inspections.index') }}" class="btn btn-secondary">
-                            <i class="fas fa-times me-1"></i> Cancel
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-1"></i> Create Inspection
-                        </button>
+                    <!-- Inspection Name -->
+                    <div class="col-md-8">
+                        <div class="form-group">
+                            <label for="inspection_name" class="form-label">Inspection Name</label>
+                            <input type="text" class="form-control @error('inspection_name') is-invalid @enderror"
+                                   id="inspection_name" name="inspection_name"
+                                   value="{{ old('inspection_name') }}"
+                                   placeholder="Auto-generated if empty">
+                            @error('inspection_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
                     </div>
-                </form>
+                    
+                    <!-- Template Select -->
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="template_id" class="form-label">Inspection Template</label>
+                            <select class="form-select @error('template_id') is-invalid @enderror"
+                                    id="template_id" name="template_id">
+                                <option value="">Standard Checklist</option>
+                                @foreach($templates ?? [] as $tpl)
+                                    <option value="{{ $tpl->id }}" {{ old('template_id') == $tpl->id ? 'selected' : '' }}>
+                                        {{ $tpl->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('template_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                    
+                    <!-- Vehicle Mileage -->
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="vehicle_mileage" class="form-label">Vehicle Mileage (km)</label>
+                            <input type="number" min="0" step="1"
+                                   class="form-control @error('vehicle_mileage') is-invalid @enderror"
+                                   id="vehicle_mileage" name="vehicle_mileage"
+                                   value="{{ old('vehicle_mileage', $selectedVehicle->odometer ?? '') }}"
+                                   placeholder="Current odometer reading">
+                            @error('vehicle_mileage')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                    
+                    <!-- Service Type -->
+                    <div class="col-12">
+                        @include('partials.service-type-selector', [
+                            'selected' => old('service_type', $inspection->service_type ?? ''),
+                            'name' => 'service_type',
+                            'label' => 'SERVICE TYPE',
+                            'required' => true,
+                            'showIcons' => true,
+                            'multiple' => true,
+                            'placeholder' => 'Select Service Type',
+                            'module' => 'inspections',
+                        ])
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-</div>
-@endsection
-
-@push('scripts')
-<script>
-    // Store all vehicles data from server (passed from controller)
-    var allVehicles = {!! json_encode($vehicles) !!};
-    
-    // Group vehicles by customer_id for quick lookup
-    var vehiclesByCustomer = {};
-    allVehicles.forEach(function(vehicle) {
-        if (!vehiclesByCustomer[vehicle.customer_id]) {
-            vehiclesByCustomer[vehicle.customer_id] = [];
-        }
-        vehiclesByCustomer[vehicle.customer_id].push(vehicle);
-    });
-    
-    $(document).ready(function() {
-        // Get elements
-        var $customer = $('#customer_id');
-        var $vehicle = $('#vehicle_id');
         
-        // Load vehicles when customer is selected
-        $customer.on('change', function() {
-            var customerId = $(this).val();
-            
-            // Clear vehicle dropdown
-            $vehicle.empty();
-            
-            if (!customerId) {
-                // No customer selected
-                $vehicle.append('<option value="">Select Vehicle</option>');
-                $vehicle.prop('disabled', true);
-            } else {
-                // Customer selected
-                $vehicle.append('<option value="">Select Vehicle</option>');
-                $vehicle.prop('disabled', false);
-                
-                // Get vehicles for this customer
-                var customerVehicles = vehiclesByCustomer[customerId] || [];
-                
-                if (customerVehicles.length > 0) {
-                    // Add customer's actual vehicles
-                    customerVehicles.forEach(function(vehicle) {
-                        var displayText = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
-                        if (vehicle.trim) {
-                            displayText += ' ' + vehicle.trim;
-                        }
-                        if (vehicle.license_plate) {
-                            displayText += ' (' + vehicle.license_plate + ')';
-                        }
-                        
-                        $vehicle.append('<option value="' + vehicle.id + '">' + displayText + '</option>');
-                    });
-                } else {
-                    // Customer has no vehicles
-                    $vehicle.append('<option value="">No vehicles registered for this customer</option>');
-                }
-            }
-        });
-        
-        // If customer is pre-selected and locked, load vehicles immediately
-        if ($customer.prop('disabled') && $customer.val()) {
-            var customerId = $customer.val();
-            
-            $vehicle.empty();
-            $vehicle.append('<option value="">Select Vehicle</option>');
-            $vehicle.prop('disabled', false);
-            
-            // Get vehicles for this customer
-            var customerVehicles = vehiclesByCustomer[customerId] || [];
-            
-            if (customerVehicles.length > 0) {
-                // Add customer's actual vehicles
-                customerVehicles.forEach(function(vehicle) {
-                    var displayText = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
-                    if (vehicle.trim) {
-                        displayText += ' ' + vehicle.trim;
-                    }
-                    if (vehicle.license_plate) {
-                        displayText += ' (' + vehicle.license_plate + ')';
-                    }
+        <!-- ===== SECTION: Findings ===== -->
+        <div class="form-section" id="findings">
+            <div class="form-section-header">
+                <h6><i class="fas fa-search"></i> Inspection Findings</h6>
+                <div class="collapse-icon"><i class="fas fa-chevron-down"></i></div>
+            </div>
+            <div class="form-section-body">
+                <div class="row g-3">
+                    <!-- Customer Concerns -->
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label for="customer_concerns" class="form-label">Customer Concerns</label>
+                            <textarea class="form-control @error('customer_concerns') is-invalid @enderror"
+                                      id="customer_concerns" name="customer_concerns" rows="3"
+                                      placeholder="What did the customer report? ...">{{ old('customer_concerns', $selectedAppointment->service_request ?? $selectedWorkOrder->customer_concerns ?? '') }}</textarea>
+                            @error('customer_concerns')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
                     
-                    $vehicle.append('<option value="' + vehicle.id + '">' + displayText + '</option>');
-                });
-                
-                // Pre-select vehicle if provided in request
-                @if(request()->has('vehicle_id'))
-                    $vehicle.val({{ request('vehicle_id') }});
-                @endif
-            } else {
-                // Customer has no vehicles
-                $vehicle.append('<option value="">No vehicles registered for this customer</option>');
-            }
-        }
+                    <!-- Inspection Notes -->
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label for="inspection_notes" class="form-label">Inspection Notes</label>
+                            <textarea class="form-control @error('inspection_notes') is-invalid @enderror"
+                                      id="inspection_notes" name="inspection_notes" rows="5"
+                                      placeholder="Enter inspection findings, observations, and recommendations...">{{ old('inspection_notes') }}</textarea>
+                            
+                            <div class="d-flex flex-wrap gap-1 mt-2">
+                                <span class="quick-note-btn" onclick="appendNote('inspection_notes', '⚠️ SAFETY: Brake pads below minimum thickness - recommend immediate replacement')"><i class="fas fa-exclamation-triangle"></i> Safety Issue</span>
+                                <span class="quick-note-btn" onclick="appendNote('inspection_notes', '🟡 RECOMMEND: Tires worn unevenly - alignment check recommended')"><i class="fas fa-info-circle"></i> Recommendation</span>
+                                <span class="quick-note-btn" onclick="appendNote('inspection_notes', '✅ PASS: All lights, signals, and wipers functioning properly')"><i class="fas fa-check"></i> Pass</span>
+                                <span class="quick-note-btn" onclick="appendNote('inspection_notes', '🔴 CRITICAL: Transmission fluid leaking from pan gasket')"><i class="fas fa-times-circle"></i> Critical</span>
+                                <span class="quick-note-btn" onclick="appendNote('inspection_notes', '📝 NOTE: Customer declined additional diagnostic at this time')"><i class="fas fa-pen"></i> Note</span>
+                            </div>
+                            
+                            @error('inspection_notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                    
+                    <!-- Requires Customer Approval -->
+                    <div class="col-12">
+                        <div class="form-group">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input"
+                                       id="requires_customer_approval" name="requires_customer_approval" value="1"
+                                       {{ old('requires_customer_approval') ? 'checked' : '' }}>
+                                <label class="form-check-label" for="requires_customer_approval">
+                                    <i class="fas fa-file-signature text-primary me-1"></i>
+                                    Requires Customer Approval
+                                </label>
+                                <small class="d-block text-muted" style="margin-left: 1.5rem;">
+                                    Check this if the findings require customer authorization before proceeding
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         
-        // Set minimum date to today
-        var today = new Date().toISOString().split('T')[0];
-        $('#inspection_date').attr('min', today);
-        $('#next_inspection_date').attr('min', today);
-    });
+        <!-- ===== SECTION: Team ===== -->
+        <div class="form-section" id="team">
+            <div class="form-section-header">
+                <h6><i class="fas fa-users"></i> Team Assignment</h6>
+                <div class="collapse-icon"><i class="fas fa-chevron-down"></i></div>
+            </div>
+            <div class="form-section-body">
+                <div class="row g-3">
+                    <!-- Primary Technician (existing) -->
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="technician_id" class="form-label field-required">Lead Technician</label>
+                            <select class="form-select @error('technician_id') is-invalid @enderror"
+                                    id="technician_id" name="technician_id" required>
+                                <option value="">Select Technician</option>
+                                @foreach($inspectors as $inspector)
+                                    <option value="{{ $inspector->id }}" {{ old('technician_id', $selectedAppointment->assigned_technician_id ?? '') == $inspector->id ? 'selected' : '' }}>
+                                        {{ $inspector->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('technician_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                    
+                    <!-- Service Advisor -->
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="service_advisor_id" class="form-label">Service Advisor</label>
+                            <select class="form-select @error('service_advisor_id') is-invalid @enderror"
+                                    id="service_advisor_id" name="service_advisor_id">
+                                <option value="">-- Not Assigned --</option>
+                                @foreach($advisors as $adv)
+                                    <option value="{{ $adv->id }}" {{ old('service_advisor_id', $selectedAppointment->service_advisor_id ?? '') == $adv->id ? 'selected' : '' }}>
+                                        {{ $adv->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('service_advisor_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                    
+                    <!-- Multi-Technician -->
+                    <div class="col-12">
+                        @include('partials.technician-selector', [
+                            'technicians' => $allTechnicians,
+                            'selectedIds' => old('technicians', []),
+                            'label' => 'Additional Technicians',
+                            'helpText' => 'Assign additional technicians to perform this inspection',
+                        ])
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ===== SECTION: Notes ===== -->
+        <div class="form-section" id="notes">
+            <div class="form-section-header">
+                <h6><i class="fas fa-sticky-note"></i> Additional Notes</h6>
+                <div class="collapse-icon"><i class="fas fa-chevron-down"></i></div>
+            </div>
+            <div class="form-section-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="form-group">
+                            <label for="notes" class="form-label">Admin Notes</label>
+                            <textarea class="form-control @error('notes') is-invalid @enderror"
+                                      id="notes" name="notes" rows="3"
+                                      placeholder="Internal notes...">{{ old('notes') }}</textarea>
+                            @error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ===== SECTION: History ===== -->
+        <div id="historySection">
+            @php
+                $inspectionHistory = $customerHistory ?? collect([]);
+                $processedInspections = $inspectionHistory->map(function($record) {
+                    $record->historyTitle = $record->inspection_name ?? 'Inspection #'.$record->id;
+                    $record->iconClass = match($record->inspection_status ?? '') {
+                        'completed' => 'fas fa-check-circle',
+                        'in_progress' => 'fas fa-spinner',
+                        'approved' => 'fas fa-thumbs-up',
+                        'cancelled' => 'fas fa-times-circle',
+                        'draft' => 'fas fa-pen',
+                        default => 'fas fa-clipboard-check',
+                    };
+                    $record->statusClass = match($record->inspection_status ?? '') {
+                        'completed', 'approved' => 'completed',
+                        'cancelled' => 'cancelled',
+                        'draft', 'in_progress' => 'pending',
+                        default => 'info',
+                    };
+                    $record->statusLabel = $record->inspection_status ? ucfirst(str_replace('_', ' ', $record->inspection_status)) : '';
+                    return $record;
+                });
+            @endphp
+            @include('partials.customer-history', [
+                'customerHistory' => $processedInspections,
+                'historyTitle' => 'Inspection History',
+                'historyType' => 'inspection',
+                'historyRoute' => '#',
+            ])
+        </div>
+        
+        <!-- Sticky Save Bar -->
+        <div style="height: 70px;"></div>
+        <div class="sticky-save-bar visible">
+            <div class="save-info">
+                <i class="fas fa-save text-primary"></i>
+                <span>All changes are saved as draft automatically</span>
+                <span class="auto-save-indicator">• Auto-save active</span>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('inspections.index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-primary btn-sm px-4">
+                    <i class="fas fa-check me-1"></i> Create Inspection
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+function appendNote(fieldId, text) {
+    var $field = $('#' + fieldId);
+    var current = $field.val() || '';
+    $field.val(current + (current ? '\n' : '') + text);
+    $field.focus();
+    $field.trigger('input');
+}
+
+$(document).ready(function() {
+    initTechnicianMultiSelect(".technician-select-wrapper:not([data-tech-init])");
+});
 </script>
-@endpush
+@endsection

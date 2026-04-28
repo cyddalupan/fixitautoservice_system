@@ -257,21 +257,9 @@
         // VEHICLE AUTOCOMPLETE FUNCTIONALITY
         // ============================================
 
-        // Common car brands in the Philippines (static list + database)
-        const commonBrands = [
-            'Toyota', 'Honda', 'Ford', 'Chevrolet', 'Nissan', 'Hyundai', 'Kia', 
-            'Mitsubishi', 'Mazda', 'Subaru', 'Volkswagen', 'BMW', 'Mercedes-Benz',
-            'Audi', 'Lexus', 'Isuzu', 'Suzuki', 'Volvo', 'Jeep', 'Dodge', 'Chrysler',
-            'Ram', 'GMC', 'Buick', 'Cadillac', 'Acura', 'Infiniti', 'Lincoln',
-            'Mini', 'Porsche', 'Land Rover', 'Jaguar', 'Ferrari', 'Lamborghini',
-            'Maserati', 'Bentley', 'Rolls-Royce', 'Tesla', 'Fiat', 'Alfa Romeo',
-            // Additional brands common in the Philippines
-            'Foton', 'JAC', 'Geely', 'MG', 'Peugeot', 'Renault', 'SsangYong',
-            'Chery', 'Changan', 'BYD', 'Haima', 'DFSK', 'Mahindra', 'Tata',
-            'Proton', 'Great Wall', 'Haval', 'JMC', 'King Long', 'Golden Dragon',
-            'Yutong', 'Higer', 'Fuso', 'Hino', 'UD Trucks', 'Scania', 'MAN',
-            'Iveco', 'Kenworth', 'Peterbilt', 'Freightliner', 'Mack', 'Volvo Trucks'
-        ];
+        // ----- Vehicle Brand & Model Autocomplete (DB-backed via API) -----
+        var brandApiUrl = '{{ route("api.vehicle-brands") }}';
+        var modelApiUrl = '{{ route("api.vehicle-models") }}';
 
         // Common car colors
         const commonColors = [
@@ -282,104 +270,65 @@
             'Midnight Black', 'Royal Blue', 'Forest Green', 'Sunset Orange'
         ];
 
-        // Car models by brand (common models in the Philippines)
-        const carModelsByBrand = {
-            'Toyota': ['Vios', 'Wigo', 'Fortuner', 'Hilux', 'Innova', 'Corolla', 'Camry', 'RAV4', 'Land Cruiser', 'Hiace', 'Rush', 'Avanza', 'Yaris', 'Prius', 'C-HR', 'Alphard', 'Vellfire', 'Granvia', 'Coaster', '86', 'Supra', 'GR Yaris', 'GR Corolla', 'Sienna', 'Tacoma', 'Tundra', '4Runner', 'Highlander', 'Sequoia'],
-            'Honda': ['City', 'Brio', 'Civic', 'Accord', 'CR-V', 'HR-V', 'BR-V', 'Jazz', 'Mobilio', 'Odyssey', 'Pilot', 'Ridgeline', 'HRV', 'CRV', 'Fit', 'Legend', 'NSX'],
-            'Ford': ['Ranger', 'Everest', 'Territory', 'F-150', 'Raptor', 'Wildtrak', 'Explorer', 'Expedition', 'Escape', 'Focus', 'Mustang', 'Fiesta', 'EcoSport', 'Edge', 'Bronco', 'Maverick', 'Transit'],
-            'Chevrolet': ['Trailblazer', 'Colorado', 'Captiva', 'Spark', 'Cruze', 'Malibu', 'Tahoe', 'Suburban', 'Silverado', 'Traverse', 'Orlando', 'Aveo', 'Optra', 'Sail', 'Beat'],
-            'Nissan': ['Navara', 'Terra', 'Urvan', 'Almera', 'X-Trail', 'Patrol', 'Juke', 'Kicks', 'Leaf', 'Sentra', 'Altima', 'Maxima', '370Z', 'GT-R', 'NV350', 'Livina', 'Grand Livina', 'Serena'],
-            'Hyundai': ['Accent', 'Elantra', 'Sonata', 'Tucson', 'Santa Fe', 'Creta', 'Staria', 'Stargazer', 'Ioniq', 'Kona', 'Palisade', 'Venue', 'i10', 'i20', 'i30', 'H-100', 'Grand Starex', 'Starex', 'H350'],
-            'Kia': ['Seltos', 'Sportage', 'Sorento', 'Carnival', 'Stonic', 'Rio', 'Forte', 'Optima', 'Soul', 'Telluride', 'Picanto', 'K2500', 'K2700', 'Pride', 'Carens', 'Niro', 'EV6', 'Soul EV'],
-            'Mitsubishi': ['Montero Sport', 'Strada', 'Xpander', 'Mirage', 'Mirage G4', 'Lancer', 'Outlander', 'Eclipse Cross', 'Pajero', 'L300', 'Adventure', 'Delica', 'Fuso', 'Canter', 'Xforce'],
-            'Mazda': ['CX-5', 'CX-9', 'CX-30', 'CX-8', 'Mazda3', 'Mazda6', 'BT-50', 'MX-5', 'CX-3', 'CX-60', 'CX-90', '2', '5', '8', 'RX-8', 'RX-7'],
-            'Subaru': ['Forester', 'Outback', 'XV', 'Impreza', 'Legacy', 'WRX', 'BRZ', 'Levorg', 'Ascent', 'Solterra', 'Crosstrek'],
-            'Volkswagen': ['Tiguan', 'Teramont', 'Santana', 'Lavida', 'Polo', 'Golf', 'Passat', 'T-Cross', 'T-Roc', 'Beetle', 'Jetta', 'Touran', 'Sharan', 'Caddy', 'Transporter', 'Amarok'],
-            'BMW': ['3 Series', '5 Series', '7 Series', 'X1', 'X3', 'X5', 'X7', 'i3', 'i8', '2 Series', '4 Series', '6 Series', '8 Series', 'X2', 'X4', 'X6', 'i4', 'iX', 'Z4', 'M3', 'M5'],
-            'Mercedes-Benz': ['C-Class', 'E-Class', 'S-Class', 'GLA', 'GLC', 'GLE', 'GLS', 'A-Class', 'B-Class', 'CLA', 'CLS', 'G-Class', 'GLB', 'GLC Coupe', 'GLE Coupe', 'AMG GT', 'EQC', 'EQE', 'EQS'],
-            'Audi': ['A3', 'A4', 'A6', 'A8', 'Q2', 'Q3', 'Q5', 'Q7', 'Q8', 'TT', 'A1', 'A5', 'A7', 'Q4', 'e-tron', 'e-tron GT', 'RS3', 'RS5', 'RS6', 'RS7', 'R8'],
-            'Lexus': ['ES', 'LS', 'RX', 'NX', 'UX', 'LX', 'GX', 'IS', 'RC', 'LC', 'LM', 'UX 300e', 'RZ'],
-            'Isuzu': ['D-Max', 'MU-X', 'Crosswind', 'Alterra', 'Hi-Lander', 'N-Series', 'F-Series', 'Giga', 'Forward', 'ELF', 'Journey', 'Sportivo', 'X-Rider'],
-            'Suzuki': ['Ertiga', 'Swift', 'Ciaz', 'Vitara', 'Jimny', 'Carry', 'APV', 'Celerio', 'S-Presso', 'XL7', 'Baleno', 'Ignis', 'S-Cross', 'Every', 'Super Carry', 'Katana', 'Burgman'],
-            'Volvo': ['XC40', 'XC60', 'XC90', 'S60', 'S90', 'V60', 'V90', 'C40', 'EX30', 'EX90', 'S40', 'V40', 'C30', 'XC70', 'V70', 'S80'],
-            // Additional brands common in the Philippines
-            'Foton': ['Thunder', 'Gratour', 'Tunland', 'View', 'Blizzard', 'Toplander', 'Midi', 'Sauvana'],
-            'JAC': ['S3', 'S5', 'T6', 'T8', 'N56', 'N90', 'X200', 'X500'],
-            'Geely': ['Coolray', 'Azkarra', 'Okavango', 'Emgrand', 'Geometry C', 'Geometry A', 'Borui', 'Boyue', 'Xingyue'],
-            'MG': ['ZS', 'HS', 'RX5', 'RX8', '5', '6', 'ZS EV', 'HS Plug-in', 'Marvel R'],
-            'Peugeot': ['2008', '3008', '5008', '208', '308', '508', 'Partner', 'Expert', 'Traveller'],
-            'Renault': ['Koleos', 'Captur', 'Megane', 'Clio', 'Talisman', 'Kadjar', 'Arkana', 'Zoe', 'Twizy'],
-            'SsangYong': ['Tivoli', 'Korando', 'Rexton', 'Musso', 'Actyon', 'Rodius', 'Stavic', 'Kyron'],
-            'Chery': ['Tiggo', 'Arrizo', 'QQ', 'Fulwin', 'OMODA', 'Jaecoo'],
-            'Changan': ['CS35', 'CS55', 'CS75', 'CS85', 'CS95', 'Eado', 'Alsvin', 'Hunter', 'UNI-K', 'UNI-V'],
-            'BYD': ['Dolphin', 'Atto 3', 'Han', 'Tang', 'Song', 'Qin', 'Yuan', 'Seal', 'Seagull']
-        };
-
-        // Initialize autocomplete for Vehicle Brand
+        // Initialize autocomplete for Vehicle Brand (DB-backed)
         $('#make').autocomplete({
             source: function(request, response) {
-                var term = request.term.toLowerCase();
-                var matches = [];
-                
-                // Check static list first
-                $.each(commonBrands, function(i, brand) {
-                    if (brand.toLowerCase().indexOf(term) >= 0) {
-                        matches.push(brand);
-                    }
+                $.getJSON(brandApiUrl, { term: request.term }, function(data) {
+                    response(data || []);
+                }).fail(function() {
+                    response([]);
                 });
-                
-                // If no term (empty search), show all brands
-                if (!term) {
-                    matches = commonBrands.slice(0, 20);
-                }
-                
-                // Sort alphabetically and return
-                matches.sort();
-                response(matches.slice(0, 15));
             },
-            minLength: 0, // Show suggestions even when clicking/empty
-            delay: 100,
+            minLength: 0,
+            delay: 150,
             select: function(event, ui) {
-                // When a brand is selected, update model suggestions
+                // When a brand is selected, update model source for this brand
+                $('#model').autocomplete('option', 'source', function(req, resp) {
+                    $.getJSON(modelApiUrl, { term: req.term, brand: ui.item.value }, function(data) {
+                        resp(data || []);
+                    }).fail(function() {
+                        resp([]);
+                    });
+                });
                 updateModelSuggestions(ui.item.value);
             }
         }).focus(function() {
-            // Trigger autocomplete when field gets focus
             $(this).autocomplete('search', $(this).val());
         });
 
-        // Initialize autocomplete for Vehicle Model
+        // Initialize autocomplete for Vehicle Model (DB-backed)
         $('#model').autocomplete({
             source: function(request, response) {
-                var term = request.term.toLowerCase();
                 var selectedBrand = $('#make').val();
-                var matches = [];
-                
-                // If a brand is selected, show models for that brand
-                if (selectedBrand && carModelsByBrand[selectedBrand]) {
-                    $.each(carModelsByBrand[selectedBrand], function(i, model) {
-                        if (!term || model.toLowerCase().indexOf(term) >= 0) {
-                            matches.push(model);
-                        }
+                if (selectedBrand) {
+                    $.getJSON(modelApiUrl, { term: request.term, brand: selectedBrand }, function(data) {
+                        response(data || []);
+                    }).fail(function() {
+                        response([]);
                     });
+                } else {
+                    response([]);
                 }
-                
-                // If no term (empty search) and no brand selected, show popular models
-                if (!term && !selectedBrand) {
-                    // Show some popular models from common brands
-                    var popularModels = ['Camry', 'Corolla', 'Civic', 'Accord', 'F-150', 'RAV4', 'CR-V'];
-                    matches = popularModels;
-                }
-                
-                // Sort alphabetically and return
-                matches.sort();
-                response(matches.slice(0, 15));
             },
-            minLength: 0, // Show suggestions even when clicking/empty
-            delay: 100
+            minLength: 0,
+            delay: 150
         }).focus(function() {
-            // Trigger autocomplete when field gets focus
-            $(this).autocomplete('search', $(this).val());
+            var selectedBrand = $('#make').val();
+            if (selectedBrand) {
+                $(this).autocomplete('search', $(this).val());
+            }
+        });
+
+        // If brand changes via typing (not selection), update model source
+        $('#make').on('keyup change', function() {
+            var brand = $(this).val();
+            $('#model').autocomplete('option', 'source', function(request, response) {
+                $.getJSON(modelApiUrl, { term: request.term, brand: brand }, function(data) {
+                    response(data || []);
+                }).fail(function() {
+                    response([]);
+                });
+            });
         });
 
         // Initialize autocomplete for Vehicle Color
@@ -411,22 +360,28 @@
             $(this).autocomplete('search', $(this).val());
         });
 
-        // Function to update model suggestions based on selected brand
+        // Function to update model quick-select badges based on selected brand (DB-backed)
         function updateModelSuggestions(brand) {
             var quickSelect = $('#model-quick-select');
             
-            if (brand && carModelsByBrand[brand]) {
-                // Pre-populate some common models for quick selection
-                var commonModels = carModelsByBrand[brand].slice(0, 5);
-                
-                if (quickSelect.length === 0) {
-                    quickSelect = $('<div id="model-quick-select" class="mt-2"></div>');
-                    $('#model').after(quickSelect);
-                }
-                
-                quickSelect.html('<small class="text-muted">Common ' + brand + ' models: </small>');
-                $.each(commonModels, function(i, model) {
-                    quickSelect.append('<span class="badge bg-light text-dark me-1 mb-1 cursor-pointer" style="cursor: pointer;" onclick="$(\'#model\').val(\'' + model + '\');">' + model + '</span> ');
+            if (brand) {
+                // Fetch top models for this brand from API
+                $.getJSON(modelApiUrl, { term: '', brand: brand }, function(data) {
+                    var models = data || [];
+                    var commonModels = models.slice(0, 5);
+                    
+                    var qs = $('#model-quick-select');
+                    if (qs.length === 0) {
+                        qs = $('<div id="model-quick-select" class="mt-2"></div>');
+                        $('#model').after(qs);
+                    }
+                    
+                    qs.html('<small class="text-muted">Common ' + brand + ' models: </small>');
+                    $.each(commonModels, function(i, model) {
+                        qs.append('<span class="badge bg-light text-dark me-1 mb-1 cursor-pointer" style="cursor: pointer;" onclick="$(\'#model\').val(\'' + model.replace(/'/g, "\\'") + '\');">' + model + '</span> ');
+                    });
+                }).fail(function() {
+                    quickSelect.remove();
                 });
             } else {
                 quickSelect.remove();

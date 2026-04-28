@@ -34,6 +34,10 @@
                         $appointment = \App\Models\Appointment::find(request('appointment_id'));
                     @endphp
                 @endif
+                
+                @if(request('inspection_id'))
+                    <input type="hidden" name="inspection_id" value="{{ request('inspection_id') }}">
+                @endif
 
                 <!-- Basic Information -->
                 <div class="row mb-4">
@@ -84,6 +88,9 @@
                             @error('vehicle_id')
                                 <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
+                            @if(isset($prefilledData['vehicle_id']) && $prefilledData['vehicle_id'])
+                                <input type="hidden" name="vehicle_id" value="{{ $prefilledData['vehicle_id'] }}">
+                            @endif
                             <small class="form-text text-muted">Select customer first to see their registered vehicles</small>
                         </div>
 
@@ -192,15 +199,15 @@
                                 <tfoot class="table-light">
                                     <tr>
                                         <td colspan="3" class="text-end fw-bold">Subtotal:</td>
-                                        <td>₱0.00</td>
+                                        <td id="subtotalCell">₱0.00</td>
                                     </tr>
                                     <tr>
                                         <td colspan="3" class="text-end fw-bold">Tax (0%):</td>
-                                        <td>₱0.00</td>
+                                        <td id="taxCell">₱0.00</td>
                                     </tr>
                                     <tr class="table-primary">
                                         <td colspan="3" class="text-end fw-bold fs-5">Total:</td>
-                                        <td class="fw-bold fs-5">₱0.00</td>
+                                        <td id="totalCell" class="fw-bold fs-5">₱0.00</td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -335,12 +342,17 @@ waitForJQuery(function() {
         // If customer is pre-selected and locked, trigger vehicle load immediately
         if ($customer.prop('disabled') && $customer.val()) {
             var customerId = $customer.val();
+            console.log('Customer pre-selected and locked, loading vehicles for customer:', customerId);
+            
             $vehicle.empty();
             $vehicle.append('<option value="">Select Vehicle</option>');
             $vehicle.prop('disabled', false);
             
             // Get vehicles for this customer
             var customerVehicles = vehiclesByCustomer[customerId] || [];
+            
+            console.log('Found', customerVehicles.length, 'vehicles for customer', customerId);
+            console.log('vehiclesByCustomer keys:', Object.keys(vehiclesByCustomer));
             
             if (customerVehicles.length > 0) {
                 // Add customer's actual vehicles
@@ -355,12 +367,19 @@ waitForJQuery(function() {
                 
                 // Pre-select vehicle if provided in prefilledData
                 @if(isset($prefilledData['vehicle_id']) && $prefilledData['vehicle_id'])
-                    $vehicle.val({{ $prefilledData['vehicle_id'] }});
+                    console.log('Pre-selecting vehicle ID:', {{ $prefilledData['vehicle_id'] ?? 'null' }});
+                    $vehicle.val({{ $prefilledData['vehicle_id'] ?? 'null' }});
+                    // Disable vehicle dropdown since it's pre-selected from inspection
+                    $vehicle.prop('disabled', true);
+                    console.log('Vehicle dropdown disabled (pre-selected from inspection)');
                 @endif
             } else {
                 // Customer has no vehicles
                 $vehicle.append('<option value="">No vehicles registered for this customer</option>');
+                console.log('No vehicles found for customer', customerId);
             }
+            
+            console.log('Vehicle dropdown populated for pre-selected customer');
         }
     });
 });
@@ -380,14 +399,17 @@ const inventoryItems = rawInventoryItems.map(item => ({
     type: 'inventory'
 }));
 
-// Test services data (you can replace with real services from database)
-const services = [
-    { id: 1001, name: 'Oil Change Service', description: 'Complete oil change with filter', retail_price: 89.99, type: 'service' },
-    { id: 1002, name: 'Tire Rotation', description: 'Rotate all four tires', retail_price: 39.99, type: 'service' },
-    { id: 1003, name: 'Brake Service', description: 'Brake inspection and service', retail_price: 129.99, type: 'service' },
-    { id: 1004, name: 'Wheel Alignment', description: 'Four-wheel alignment service', retail_price: 79.99, type: 'service' },
-    { id: 1005, name: 'AC Recharge', description: 'Air conditioning system recharge', retail_price: 99.99, type: 'service' }
-];
+// Pass PHP service items data to JavaScript
+const rawServiceItems = @json($serviceItems);
+
+// Transform service items to match expected format
+const services = rawServiceItems.map(item => ({
+    id: item.id + 10000, // Add offset to distinguish from inventory IDs
+    name: item.name,
+    description: item.description,
+    retail_price: parseFloat(item.retail_price),
+    type: 'service'
+}));
 
 // Combine inventory and services for autocomplete
 const allSuggestions = [...inventoryItems, ...services];
@@ -397,6 +419,7 @@ console.log('Transformed inventory items:', inventoryItems.length);
 console.log('Services loaded:', services.length);
 console.log('Total suggestions:', allSuggestions.length);
 console.log('Sample inventory item:', inventoryItems[0]);
+console.log('Sample service item:', services[0]);
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('Estimate form loaded');
@@ -446,6 +469,7 @@ function addNewItemRow() {
                    name="items[${itemCounter}][quantity]" 
                    value="1" min="1" step="1"
                    onchange="calculateTotal(${itemCounter})"
+                   oninput="calculateTotal(${itemCounter})"
                    required>
         </td>
         <td>
@@ -456,6 +480,7 @@ function addNewItemRow() {
                        name="items[${itemCounter}][unit_price]" 
                        value="0.00" min="0" step="0.01"
                        onchange="calculateTotal(${itemCounter})"
+                       oninput="calculateTotal(${itemCounter})"
                        required>
             </div>
         </td>
@@ -508,7 +533,7 @@ function showAutocomplete(input, rowId) {
             <div style="padding: 8px 12px; border-bottom: 1px solid #eee; cursor: pointer;"
                  onclick="selectSuggestion(this, ${rowId}, '${item.name.replace(/'/g, "\\'")}', ${item.retail_price}, ${item.id || 'null'})">
                 <strong>${item.name}</strong>
-                <span style="float: right; color: green;">$${item.retail_price.toFixed(2)}</span>
+                <span style="float: right; color: green;">₱${item.retail_price.toFixed(2)}</span>
                 <div style="font-size: 12px; color: #666;">
                     ${item.type === 'inventory' ? 'Inventory Item' : 'Service'}
                     ${item.part_number ? ` • ${item.part_number}` : ''}
@@ -558,7 +583,7 @@ function selectSuggestion(element, rowId, name, price, inventoryId) {
     inventoryIdInput.value = inventoryId !== 'null' ? inventoryId : '';
     
     calculateTotal(rowId);
-    console.log(`Selected: ${name} for $${price}, inventory_id: ${inventoryId}`);
+    console.log(`Selected: ${name} for ₱${price}, inventory_id: ${inventoryId}`);
 }
 
 function calculateTotal(rowId) {
@@ -579,10 +604,16 @@ function updateGrandTotal() {
     
     // Update UI if there are subtotal/total elements
     const subtotalEl = document.getElementById('subtotalCell');
+    const taxEl = document.getElementById('taxCell');
     const totalEl = document.getElementById('totalCell');
     
+    const taxRate = 0; // Tax rate (0% for now)
+    const tax = subtotal * (taxRate / 100);
+    const total = subtotal + tax;
+    
     if (subtotalEl) subtotalEl.textContent  = '₱' + subtotal.toFixed(2);
-    if (totalEl) totalEl.textContent  = '₱' + subtotal.toFixed(2);
+    if (taxEl) taxEl.textContent  = '₱' + tax.toFixed(2);
+    if (totalEl) totalEl.textContent  = '₱' + total.toFixed(2);
 }
 
 function removeItem(rowId) {

@@ -79,8 +79,9 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25">
-                                                {{ $quotation->service_type }}
+                                            @php $stList = (array) $quotation->service_type; @endphp
+                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25" title="{{ implode(', ', $stList) }}">
+                                                {{ count($stList) > 1 ? implode(', ', array_slice($stList, 0, 2)) . (count($stList) > 2 ? ' +' . (count($stList)-2) : '') : $stList[0] ?? 'N/A' }}
                                             </span>
                                         </td>
                                         <td>

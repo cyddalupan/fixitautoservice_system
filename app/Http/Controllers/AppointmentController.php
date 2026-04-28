@@ -128,7 +128,8 @@ class AppointmentController extends Controller
             'vehicle_description' => 'required|string|max:255',
             'appointment_date' => 'required|date|after_or_equal:today',
             'appointment_time' => 'required|date_format:H:i',
-            'service_type' => 'required|in:oil_change,tire_rotation,brake_service,engine_diagnostic,transmission,ac_service,general_maintenance,emergency',
+            'service_type' => 'nullable|array',
+            'service_type.*' => 'string|in:' . implode(',', array_keys(config('service-types.list'))),
             'description' => 'nullable|string|max:1000',
             'estimated_cost' => 'nullable|numeric|min:0',
             'priority' => 'required|in:low,normal,high,urgent',
@@ -151,17 +152,23 @@ class AppointmentController extends Controller
         
         // Map service_type form values to database appointment_type values
         $serviceTypeMapping = [
-            'oil_change' => 'oil_change',
-            'tire_rotation' => 'tire_service',
-            'brake_service' => 'brake_service',
-            'engine_diagnostic' => 'diagnostic',
-            'transmission' => 'repair', // Map to repair since transmission isn't in ENUM
-            'ac_service' => 'repair', // Map to repair since ac_service isn't in ENUM
-            'general_maintenance' => 'maintenance',
-            'emergency' => 'emergency',
+            'preventive_maintenance' => 'maintenance',
+            'auto_mechanical' => 'repair',
+            'auto_electrical' => 'repair',
+            'auto_electronics' => 'repair',
+            'auto_air_conditioning' => 'repair',
+            'body_repair_painting' => 'repair',
+            'auto_parts_sales' => 'regular_service',
+            'home_service_request' => 'regular_service',
         ];
         
-        $appointmentType = $serviceTypeMapping[$validated['service_type']] ?? 'regular_service';
+        // Handle multi-select service types
+        $selectedServiceTypes = $validated['service_type'] ?? [];
+        // Store as JSON in service_types (plural) column, use first type for appointment_type
+        $serviceTypesJson = json_encode($selectedServiceTypes);
+        $appointmentType = count($selectedServiceTypes) > 0
+            ? ($serviceTypeMapping[$selectedServiceTypes[0]] ?? 'regular_service')
+            : 'regular_service';
         
         // Map form fields to database fields
         $appointmentData = [

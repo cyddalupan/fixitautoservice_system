@@ -9,6 +9,7 @@ use App\Models\CustomerNote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class CustomerController extends Controller
 {
@@ -84,13 +85,14 @@ class CustomerController extends Controller
             'address' => 'nullable|string|max:255',
             'facebook_profile' => 'nullable|string|max:255',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            // Optional vehicle fields for immediate vehicle addition
-            'vehicle_make' => 'nullable|string|max:50',
-            'vehicle_model' => 'nullable|string|max:100',
-            'vehicle_year' => 'nullable|integer|min:1900|max:' . (date('Y') + 1),
-            'vehicle_vin' => 'nullable|string|max:17',
-            'vehicle_plate' => 'nullable|string|max:20',
-            'vehicle_color' => 'nullable|string|max:30',
+            // Vehicle fields (array format for multiple vehicles)
+            'vehicles' => 'nullable|array',
+            'vehicles.*.make' => 'nullable|string|max:50',
+            'vehicles.*.model' => 'nullable|string|max:100',
+            'vehicles.*.year' => 'nullable|integer|min:1900|max:' . (date('Y') + 1),
+            'vehicles.*.vin' => 'nullable|string|max:17',
+            'vehicles.*.plate' => 'nullable|string|max:20',
+            'vehicles.*.color' => 'nullable|string|max:30',
         ]);
 
         if ($validator->fails()) {
@@ -111,46 +113,80 @@ class CustomerController extends Controller
         $firstName = $nameParts[0] ?? '';
         $lastName = $nameParts[1] ?? '';
         
+        // Convert empty strings to null for database
+        $firstName = $firstName ?: null;
+        $lastName = $lastName ?: ''; // Keep as empty string, not null (last_name column is NOT NULL)
+        
         // Handle profile picture upload
         $profilePicturePath = null;
         if ($request->hasFile('profile_picture')) {
             $profilePicturePath = $request->file('profile_picture')->store('profile_pictures', 'public');
         }
         
-        $customer = Customer::create([
+        // Create customer data array (only include fields that exist in database)
+        $customerData = [
             'first_name' => $firstName,
             'last_name' => $lastName,
             'email' => $request->email,
             'phone' => $request->phone,
             'address' => $request->address,
-            'facebook_profile' => $request->facebook_profile,
-            'profile_picture' => $profilePicturePath,
             'customer_since' => now(),
             'is_active' => true,
-        ]);
-
-        // Create vehicle if vehicle fields are provided
-        if ($request->filled('vehicle_make') || $request->filled('vehicle_model') || 
-            $request->filled('vehicle_year') || $request->filled('vehicle_vin') || 
-            $request->filled('vehicle_plate') || $request->filled('vehicle_color')) {
-            
-            Vehicle::create([
-                'customer_id' => $customer->id,
-                'make' => $request->vehicle_make,
-                'model' => $request->vehicle_model,
-                'year' => $request->vehicle_year,
-                'vin' => $request->vehicle_vin,
-                'license_plate' => $request->vehicle_plate,
-                'color' => $request->vehicle_color,
-                'is_active' => true,
+        ];
+        
+        // Only include facebook_profile if column exists (migration might not be run)
+        // $customerData['facebook_profile'] = $request->facebook_profile;
+        
+        // Only include profile_picture if column exists and we have a path
+        // if ($profilePicturePath) {
+        //     $customerData['profile_picture'] = $profilePicturePath;
+        // }
+        
+        try {
+            $customer = Customer::create($customerData);
+        } catch (\Exception $e) {
+            \Log::error('Customer creation failed: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request_data' => $request->all(),
+                'customer_data' => $customerData,
             ]);
+            
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Customer creation failed: ' . $e->getMessage(),
+                ], 500);
+            }
+            
+            return back()->withInput()->with('error', 'Customer creation failed: ' . $e->getMessage());
+        }
+
+        // Create vehicles if provided (array format)
+        if ($request->has('vehicles') && is_array($request->vehicles)) {
+            foreach ($request->vehicles as $vehicleData) {
+                // Only create vehicle if at least make or model is provided
+                if (!empty($vehicleData['make']) || !empty($vehicleData['model']) || 
+                    !empty($vehicleData['license_plate'])) {
+                    
+                    Vehicle::create([
+                        'customer_id' => $customer->id,
+                        'make' => $vehicleData['make'] ?? null,
+                        'model' => $vehicleData['model'] ?? null,
+                        'year' => $vehicleData['year'] ?? null,
+                        'vin' => $vehicleData['vin'] ?? null,
+                        'license_plate' => $vehicleData['plate'] ?? null,
+                        'color' => $vehicleData['color'] ?? null,
+                        'is_active' => true,
+                    ]);
+                }
+            }
         }
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => 'Customer created successfully!' . 
-                    ($request->filled('vehicle_make') ? ' Vehicle added.' : ''),
+                    ($request->has('vehicles') ? ' Vehicle(s) added.' : ''),
                 'customer_id' => $customer->id,
                 'redirect_url' => route('customers.show', $customer)
             ]);
@@ -240,6 +276,10 @@ class CustomerController extends Controller
         $firstName = $nameParts[0] ?? '';
         $lastName = $nameParts[1] ?? '';
         
+        // Convert empty strings to null for database
+        $firstName = $firstName ?: null;
+        $lastName = $lastName ?: ''; // Keep as empty string, not null (last_name column is NOT NULL)
+        
         // Handle profile picture upload
         $updateData = [
             'first_name' => $firstName,
@@ -247,17 +287,18 @@ class CustomerController extends Controller
             'email' => $request->email,
             'phone' => $request->phone,
             'address' => $request->address,
-            'facebook_profile' => $request->facebook_profile,
+            // 'facebook_profile' => $request->facebook_profile, // Column might not exist
         ];
-        if ($request->hasFile('profile_picture')) {
-            // Delete old profile picture if exists
-            if ($customer->profile_picture) {
-                Storage::disk('public')->delete($customer->profile_picture);
-            }
-            
-            $profilePicturePath = $request->file('profile_picture')->store('profile_pictures', 'public');
-            $updateData['profile_picture'] = $profilePicturePath;
-        }
+        // Profile picture update disabled - column might not exist in database
+        // if ($request->hasFile('profile_picture')) {
+        //     // Delete old profile picture if exists
+        //     if ($customer->profile_picture) {
+        //         Storage::disk('public')->delete($customer->profile_picture);
+        //     }
+        //     
+        //     $profilePicturePath = $request->file('profile_picture')->store('profile_pictures', 'public');
+        //     $updateData['profile_picture'] = $profilePicturePath;
+        // }
         
         $customer->update($updateData);
 
@@ -317,6 +358,18 @@ class CustomerController extends Controller
      */
     public function destroy(Customer $customer)
     {
+        // Check if customer has vehicles
+        if ($customer->vehicles()->count() > 0) {
+            return redirect()->route('customers.index')
+                ->with('error', 'Cannot delete customer with vehicles. Please delete or reassign vehicles first.');
+        }
+        
+        // Check if customer has service records
+        if ($customer->serviceRecords()->count() > 0) {
+            return redirect()->route('customers.index')
+                ->with('error', 'Cannot delete customer with service records. Please delete service records first.');
+        }
+        
         $customer->delete();
 
         return redirect()->route('customers.index')
@@ -605,34 +658,34 @@ class CustomerController extends Controller
     public function generateForm(Request $request)
     {
         try {
-            // Generate a unique token for the form
+            // Generate a unique token for the form (valid for 7 days exactly)
             $token = \Illuminate\Support\Str::random(32);
+            $now = now();
+            $expiresAt = $now->copy()->addDays(7)->endOfDay(); // Expire at end of 7th day
             
-            // Store form token in session or cache (valid for 3 days)
-            \Cache::put('customer_form_token_' . $token, [
-                'generated_at' => now(),
+            // Store form token in database (survives cache clears)
+            \DB::table('customer_form_tokens')->insert([
+                'token' => $token,
                 'generated_by' => auth()->id(),
-                'expires_at' => now()->addDays(3),
-            ], now()->addDays(3));
+                'generated_at' => $now,
+                'expires_at' => $expiresAt,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
 
-            // Store token key in list for tracking
-            $cacheKeys = \Cache::get('customer_form_tokens', []);
-            $cacheKeys[] = $token;
-            \Cache::put('customer_form_tokens', $cacheKeys, now()->addDays(30));
-
-            // Generate the form URL - Use main website domain for public access
+            // Generate the form URL
             $formUrl = 'https://form.fixitautoservices.com/customer-form/' . $token;
             
-            // Generate a QR code URL for easy mobile access
+            // Generate QR code URL
             $qrCodeUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' . urlencode($formUrl);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Customer form generated successfully!',
+                'message' => 'Customer form generated successfully! (Valid for 7 days)',
                 'form_url' => $formUrl,
                 'qr_code_url' => $qrCodeUrl,
                 'token' => $token,
-                'expires_at' => now()->addDays(3)->format('F j, Y \a\t g:i A'),
+                'expires_at' => $expiresAt->format('F j, Y \a\t g:i A'),
             ]);
         } catch (\Exception $e) {
             \Log::error('Generate form error: ' . $e->getMessage());
@@ -649,16 +702,17 @@ class CustomerController extends Controller
      */
     public function showForm($token)
     {
-        // Verify token exists and is valid
-        $formData = \Cache::get('customer_form_token_' . $token);
+        // Get token from database
+        $formData = \DB::table('customer_form_tokens')->where('token', $token)->first();
         
         if (!$formData) {
             return view('customers.form-expired');
         }
 
+        $expiresAt = \Carbon\Carbon::parse($formData->expires_at);
+
         // Check if token is expired
-        if (now()->greaterThan($formData['expires_at'])) {
-            \Cache::forget('customer_form_token_' . $token);
+        if (now()->greaterThan($expiresAt)) {
             return view('customers.form-expired');
         }
 
@@ -667,13 +721,13 @@ class CustomerController extends Controller
         if ($submissionCount > 0) {
             return view('customers.form-already-submitted', [
                 'token' => $token,
-                'expires_at' => $formData['expires_at']->format('F j, Y \a\t g:i A'),
+                'expires_at' => $expiresAt->format('F j, Y \a\t g:i A'),
             ]);
         }
 
         return view('customers.form-public', [
             'token' => $token,
-            'expires_at' => $formData['expires_at']->format('F j, Y \a\t g:i A'),
+            'expires_at' => $expiresAt->format('F j, Y \a\t g:i A'),
         ]);
     }
 
@@ -682,8 +736,8 @@ class CustomerController extends Controller
      */
     public function submitForm(Request $request, $token)
     {
-        // Verify token exists and is valid
-        $formData = \Cache::get('customer_form_token_' . $token);
+        // Get token from database
+        $formData = \DB::table('customer_form_tokens')->where('token', $token)->first();
         
         if (!$formData) {
             return response()->json([
@@ -692,9 +746,10 @@ class CustomerController extends Controller
             ], 400);
         }
 
+        $expiresAt = \Carbon\Carbon::parse($formData->expires_at);
+
         // Check if token is expired
-        if (now()->greaterThan($formData['expires_at'])) {
-            \Cache::forget('customer_form_token_' . $token);
+        if (now()->greaterThan($expiresAt)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Form link has expired.',
@@ -737,6 +792,9 @@ class CustomerController extends Controller
         $nameParts = explode(' ', $request->full_name, 2);
         $firstName = $nameParts[0] ?? '';
         $lastName = $nameParts[1] ?? '';
+        
+        // Ensure last_name is not null (database constraint)
+        $lastName = $lastName ?: '';
 
         $customer = Customer::create([
             'first_name' => $firstName,
@@ -771,7 +829,7 @@ class CustomerController extends Controller
 
         // Add a note that customer was created via form
         $customer->notes()->create([
-            'user_id' => $formData['generated_by'], // User who generated the form
+            'user_id' => $formData->generated_by, // User who generated the form
             'note_type' => 'general',
             'content' => 'Customer created via public form submission.',
             'is_important' => false,
@@ -798,33 +856,30 @@ class CustomerController extends Controller
             ->orderBy('form_submitted_at', 'desc')
             ->get();
 
-        // Get all active form tokens from cache
-        $activeForms = [];
-        $cacheKeys = \Cache::get('customer_form_tokens', []);
+        // Get all form tokens from database (survives cache clears)
+        $dbTokens = \DB::table('customer_form_tokens')
+            ->orderBy('generated_at', 'desc')
+            ->get();
         
-        foreach ($cacheKeys as $token) {
-            $formData = \Cache::get('customer_form_token_' . $token);
-            if ($formData) {
-                // Count submissions for this token
-                $submissionCount = Customer::where('form_token', $token)->count();
-                
-                $activeForms[] = [
-                    'token' => $token,
-                    'generated_at' => $formData['generated_at'],
-                    'generated_by' => $formData['generated_by'],
-                    'expires_at' => $formData['expires_at'],
-                    'submission_count' => $submissionCount,
-                    'form_url' => 'https://form.fixitautoservices.com/customer-form/' . $token,
-                    'qr_code_url' => 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' . urlencode('https://form.fixitautoservices.com/customer-form/' . $token),
-                    'is_expired' => now()->greaterThan($formData['expires_at']),
-                ];
-            }
+        $activeForms = [];
+        foreach ($dbTokens as $formData) {
+            // Count submissions for this token
+            $submissionCount = Customer::where('form_token', $formData->token)->count();
+            
+            // Get user who generated the form
+            $generatedBy = $formData->generated_by ? \App\Models\User::find($formData->generated_by) : null;
+            
+            $activeForms[] = [
+                'token' => $formData->token,
+                'generated_at' => \Carbon\Carbon::parse($formData->generated_at),
+                'generated_by' => $formData->generated_by,
+                'expires_at' => \Carbon\Carbon::parse($formData->expires_at),
+                'submission_count' => $submissionCount,
+                'form_url' => 'https://form.fixitautoservices.com/customer-form/' . $formData->token,
+                'qr_code_url' => 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' . urlencode('https://form.fixitautoservices.com/customer-form/' . $formData->token),
+                'is_expired' => now()->greaterThan($formData->expires_at),
+            ];
         }
-
-        // Sort active forms by generated_at (newest first)
-        usort($activeForms, function($a, $b) {
-            return $b['generated_at'] <=> $a['generated_at'];
-        });
 
         return view('customers.generated-forms', [
             'formCustomers' => $formCustomers,
@@ -837,7 +892,7 @@ class CustomerController extends Controller
      */
     public function formDetails($token)
     {
-        $formData = \Cache::get('customer_form_token_' . $token);
+        $formData = \DB::table('customer_form_tokens')->where('token', $token)->first();
         
         if (!$formData) {
             return response()->json([
@@ -850,22 +905,356 @@ class CustomerController extends Controller
         $submissionCount = Customer::where('form_token', $token)->count();
         
         // Get user who generated the form
-        $generatedBy = \App\Models\User::find($formData['generated_by']);
+        $generatedBy = $formData->generated_by ? \App\Models\User::find($formData->generated_by) : null;
         
         $formDetails = [
-            'token' => $token,
-            'generated_at' => $formData['generated_at']->format('F j, Y \a\t g:i A'),
-            'generated_by' => $generatedBy ? $generatedBy->name : 'Unknown',
-            'expires_at' => $formData['expires_at']->format('F j, Y \a\t g:i A'),
+            'token' => $formData->token,
+            'generated_at' => \Carbon\Carbon::parse($formData->generated_at)->format('F j, Y \a\t g:i A'),
+            'generated_by' => $generatedBy ? $generatedBy->name : 'System',
+            'expires_at' => \Carbon\Carbon::parse($formData->expires_at)->format('F j, Y \a\t g:i A'),
             'submission_count' => $submissionCount,
-            'form_url' => 'https://form.fixitautoservices.com/customer-form/' . $token,
-            'qr_code_url' => 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' . urlencode('https://form.fixitautoservices.com/customer-form/' . $token),
-            'is_expired' => now()->greaterThan($formData['expires_at']),
+            'form_url' => 'https://form.fixitautoservices.com/customer-form/' . $formData->token,
+            'qr_code_url' => 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' . urlencode('https://form.fixitautoservices.com/customer-form/' . $formData->token),
+            'is_expired' => now()->greaterThan($formData->expires_at),
         ];
 
         return response()->json([
             'success' => true,
             'form' => $formDetails,
         ]);
+    }
+
+    /**
+     * API: Smart customer search with progressive loading.
+     */
+    public function apiSearch(Request $request)
+    {
+        $query = Customer::query()->whereNull('customers.deleted_at');
+        $search = $request->get('q', '');
+        $page = (int) $request->get('page', 1);
+        $perPage = 20;
+        $filters = $request->get('filters', []);
+
+        // === SMART SEARCH (cross-field, partial match) ===
+        if (!empty($search) && strlen(trim($search)) >= 1) {
+            $terms = explode(' ', trim($search));
+            $query->where(function ($q) use ($terms) {
+                foreach ($terms as $term) {
+                    $like = '%' . $term . '%';
+                    $q->where(function ($sub) use ($like, $term) {
+                        $sub->where('customers.first_name', 'LIKE', $like)
+                            ->orWhere('customers.last_name', 'LIKE', $like)
+                            ->orWhere('customers.email', 'LIKE', $like)
+                            ->orWhere('customers.phone', 'LIKE', $like)
+                            ->orWhere('customers.address', 'LIKE', $like)
+                            ->orWhere('customers.city', 'LIKE', $like)
+                            ->orWhere('customers.notes', 'LIKE', $like)
+                            ->orWhereHas('vehicles', function ($v) use ($like, $term) {
+                                $v->where(function ($vq) use ($like, $term) {
+                                    $vq->where('license_plate', 'LIKE', $like)
+                                        ->orWhere('make', 'LIKE', $like)
+                                        ->orWhere('model', 'LIKE', $like)
+                                        ->orWhere('vin', 'LIKE', $like)
+                                        ->orWhere('color', 'LIKE', $like)
+                                        ->orWhere('engine_type', 'LIKE', $like)
+                                        ->orWhere('engine_no', 'LIKE', $like)
+                                        ->orWhere('year', 'LIKE', $like);
+                                });
+                            })
+                            ->orWhereHas('serviceRecords', function ($sr) use ($like) {
+                                $sr->where('service_type', 'LIKE', $like);
+                            })
+                            ->orWhereHas('invoices', function ($inv) use ($like) {
+                                $inv->where('invoice_number', 'LIKE', $like);
+                            });
+                    });
+                }
+            });
+        }
+
+        // === FILTERS ===
+        if (!empty($filters)) {
+            $this->applySearchFilters($query, $filters);
+        }
+
+        // === SEARCH RANKING ===
+        if (!empty($search) && strlen(trim($search)) >= 1) {
+            $query->orderByRaw(
+                "CASE 
+                    WHEN CONCAT(customers.first_name, ' ', customers.last_name) = ? THEN 0
+                    WHEN customers.first_name LIKE ? OR customers.last_name LIKE ? THEN 1
+                    WHEN customers.phone LIKE ? THEN 2
+                    WHEN customers.email LIKE ? THEN 3
+                    ELSE 4
+                END",
+                [$search, $search . '%', $search . '%', $search . '%', $search . '%']
+            );
+        }
+
+        // Recent & frequent customers prioritized
+        $query->orderBy('customers.updated_at', 'desc');
+
+        // === LOAD RELATIONSHIPS ===
+        $query->withCount(['serviceRecords', 'vehicles'])
+            ->withSum('serviceRecords', 'final_amount')
+            ->with(['vehicles', 'serviceRecords' => function ($sr) {
+                $sr->latest('service_date')->limit(1);
+            }]);
+
+        // === PAGINATION (progressive loading) ===
+        $total = $query->count();
+        $customers = $query->skip(($page - 1) * $perPage)
+            ->take($perPage + 1)
+            ->get();
+
+        $hasMore = $customers->count() > $perPage;
+        if ($hasMore) {
+            $customers = $customers->take($perPage);
+        }
+
+        $totalPages = max(1, (int) ceil($total / $perPage));
+
+        $results = $customers->map(function ($customer) {
+            $lastService = $customer->serviceRecords->first();
+            $primaryVehicle = $customer->vehicles->first();
+
+            $hasUnpaid = $customer->invoices()
+                ->whereIn('status', ['sent', 'partial', 'overdue'])
+                ->where('balance_due', '>', 0)
+                ->exists();
+
+            return [
+                'id' => $customer->id,
+                'full_name' => $customer->full_name,
+                'first_name' => $customer->first_name,
+                'last_name' => $customer->last_name,
+                'email' => $customer->email,
+                'phone' => $customer->phone,
+                'address' => $customer->address,
+                'city' => $customer->city,
+                'avatar' => $customer->avatar,
+                'has_profile_picture' => $customer->has_profile_picture,
+                'is_active' => (bool) $customer->is_active,
+                'balance' => (float) $customer->balance,
+                'has_unpaid' => $hasUnpaid,
+                'vehicles_count' => (int) ($customer->vehicles_count ?? $customer->vehicles->count()),
+                'service_records_count' => (int) ($customer->service_records_count ?? 0),
+                'total_spent' => (float) ($customer->service_records_sum_final_amount ?? 0),
+                'last_service_date' => $lastService ? $lastService->service_date->format('Y-m-d') : null,
+                'last_service_type' => $lastService ? $lastService->service_type : null,
+                'customer_since' => $customer->customer_since ? $customer->customer_since->format('Y-m-d') : null,
+                'vehicles' => $customer->vehicles->map(function ($v) {
+                    return [
+                        'id' => $v->id,
+                        'make' => $v->make,
+                        'model' => $v->model,
+                        'year' => $v->year,
+                        'license_plate' => $v->license_plate,
+                        'color' => $v->color,
+                    ];
+                }),
+                'show_url' => route('customers.show', $customer),
+                'edit_url' => route('customers.edit', $customer),
+            ];
+        });
+
+        return response()->json([
+            'customers' => $results,
+            'has_more' => $hasMore,
+            'page' => $page,
+            'total' => $total,
+            'total_pages' => $totalPages,
+        ]);
+    }
+
+    /**
+     * API: Autocomplete suggestions.
+     */
+    public function apiAutocomplete(Request $request)
+    {
+        $term = $request->get('q', '');
+        if (strlen(trim($term)) < 1) {
+            return response()->json([]);
+        }
+
+        $like = '%' . $term . '%';
+        $suggestions = collect();
+
+        // Names
+        $names = Customer::whereNull('deleted_at')
+            ->where(function ($q) use ($like, $term) {
+                $q->where('first_name', 'LIKE', $like)
+                    ->orWhere('last_name', 'LIKE', $like)
+                    ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", [$like]);
+            })
+            ->selectRaw("CONCAT(first_name, ' ', last_name) as value, 'name' as type")
+            ->distinct()
+            ->limit(5)
+            ->pluck('value');
+
+        foreach ($names as $n) {
+            $suggestions->push(['value' => $n, 'type' => 'name', 'label' => 'Customer']);
+        }
+
+        // Plates
+        $plates = Vehicle::whereNull('deleted_at')
+            ->where('license_plate', 'LIKE', $like)
+            ->whereNotNull('license_plate')->where('license_plate', '!=', '')
+            ->selectRaw("DISTINCT license_plate as value, 'plate' as type")
+            ->limit(5)
+            ->pluck('value');
+
+        foreach ($plates as $p) {
+            $suggestions->push(['value' => $p, 'type' => 'plate', 'label' => 'Plate #']);
+        }
+
+        // Models
+        $models = Vehicle::whereNull('deleted_at')
+            ->where('model', 'LIKE', $like)
+            ->whereNotNull('model')->where('model', '!=', '')
+            ->selectRaw("DISTINCT model as value, 'model' as type")
+            ->limit(5)
+            ->pluck('value');
+
+        foreach ($models as $m) {
+            $suggestions->push(['value' => $m, 'type' => 'model', 'label' => 'Vehicle Model']);
+        }
+
+        // Locations (cities)
+        $locations = Customer::whereNull('deleted_at')
+            ->where('city', 'LIKE', $like)
+            ->whereNotNull('city')->where('city', '!=', '')
+            ->selectRaw("DISTINCT city as value, 'location' as type")
+            ->limit(5)
+            ->pluck('value');
+
+        foreach ($locations as $l) {
+            $suggestions->push(['value' => $l, 'type' => 'location', 'label' => 'Location']);
+        }
+
+        return response()->json($suggestions->take(10)->values());
+    }
+
+    /**
+     * API: Get filter options (brands, models, locations).
+     */
+    public function apiFilterOptions()
+    {
+        $brands = Vehicle::whereNull('deleted_at')
+            ->whereNotNull('make')->where('make', '!=', '')
+            ->select('make as value', 'make as label')
+            ->distinct()
+            ->orderBy('make')
+            ->get();
+
+        $models = Vehicle::whereNull('deleted_at')
+            ->whereNotNull('model')->where('model', '!=', '')
+            ->select('model as value', 'model as label')
+            ->distinct()
+            ->orderBy('model')
+            ->get();
+
+        $locations = Customer::whereNull('deleted_at')
+            ->whereNotNull('city')->where('city', '!=', '')
+            ->select('city as value', 'city as label')
+            ->distinct()
+            ->orderBy('city')
+            ->get();
+
+        return response()->json([
+            'brands' => $brands,
+            'models' => $models,
+            'locations' => $locations,
+        ]);
+    }
+
+    /**
+     * API: Get vehicles for a customer (used by JS loadVehicles function).
+     */
+    public function apiCustomerVehicles()
+    {
+        $customerId = request('customer_id');
+        if (!$customerId) {
+            return response()->json([]);
+        }
+        
+        $vehicles = Vehicle::where('customer_id', $customerId)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($v) {
+                return [
+                    'id' => $v->id,
+                    'year' => $v->year,
+                    'make' => $v->make,
+                    'model' => $v->model,
+                    'license_plate' => $v->license_plate,
+                    'color' => $v->color,
+                    'odometer' => $v->odometer,
+                ];
+            });
+        
+        return response()->json($vehicles);
+    }
+
+    /**
+     * Apply optional filters to the search query.
+     */
+    private function applySearchFilters($query, $filters)
+    {
+        if (!empty($filters['brand'])) {
+            $query->whereHas('vehicles', function ($v) use ($filters) {
+                $v->where('make', $filters['brand']);
+            });
+        }
+        if (!empty($filters['model'])) {
+            $query->whereHas('vehicles', function ($v) use ($filters) {
+                $v->where('model', $filters['model']);
+            });
+        }
+        if (!empty($filters['location'])) {
+            $query->where('city', 'LIKE', '%' . $filters['location'] . '%');
+        }
+        if (!empty($filters['last_service_days'])) {
+            $days = (int) $filters['last_service_days'];
+            $query->whereHas('serviceRecords', function ($sr) use ($days) {
+                $sr->where('service_date', '>=', now()->subDays($days));
+            });
+        }
+        if (isset($filters['is_active'])) {
+            $query->where('is_active', $filters['is_active'] ? 1 : 0);
+        }
+        if (!empty($filters['unpaid_balance'])) {
+            $query->whereHas('invoices', function ($inv) {
+                $inv->whereIn('status', ['sent', 'partial', 'overdue'])
+                    ->where('balance_due', '>', 0);
+            });
+        }
+        if (!empty($filters['frequent'])) {
+            $query->has('serviceRecords', '>=', 5);
+        }
+        if (!empty($filters['new_customers'])) {
+            $query->where('created_at', '>=', now()->subDays(30));
+        }
+    }
+
+    /**
+     * Archive (soft-delete) a customer. Admin/super_admin only.
+     */
+    public function archive(Customer $customer)
+    {
+        if (!auth()->user()->isSuperAdmin() && !auth()->user()->isAdmin()) {
+            return redirect()->route('customers.index')
+                ->with('error', 'Only administrators can archive customers.');
+        }
+
+        try {
+            \App\Services\ArchiveService::archive($customer, 'customer');
+
+            return redirect()->route('customers.index')
+                ->with('success', 'Customer archived successfully.');
+        } catch (\Exception $e) {
+            return redirect()->route('customers.index')
+                ->with('error', 'Failed to archive customer: ' . $e->getMessage());
+        }
     }
 }

@@ -17,6 +17,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {{-- Modern Redesign Styles --}}
+    @include('partials.redesign-styles')
     <!-- SweetAlert2 CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <style>
@@ -131,6 +133,16 @@
     </style>
     <!-- Custom CSS -->
     <style>
+        /* Sidebar active border colors by module */
+        .sidebar .nav-link.active[href*="appointments"] { border-left-color: #3b82f6 !important; }
+        .sidebar .nav-link.active[href*="inspections"] { border-left-color: #0ea5e9 !important; }
+        .sidebar .nav-link.active[href*="estimates"] { border-left-color: #8b5cf6 !important; }
+        .sidebar .nav-link.active[href*="work-orders"] { border-left-color: #f97316 !important; }
+        .sidebar .nav-link.active[href*="service-records"] { border-left-color: #6366f1 !important; }
+        .sidebar .nav-link.active[href*="archives"] { border-left-color: #6b7280 !important; }
+        .sidebar .nav-link.active[href*="invoices"] { border-left-color: #10b981 !important; }
+        .sidebar .nav-link.active[href*="payments"] { border-left-color: #10b981 !important; }
+
         :root {
             --primary-color: #2c3e50;
             --secondary-color: #3498db;
@@ -241,37 +253,35 @@
             /* Use flexbox for proper sidebar layout */
             .container-fluid > .row {
                 display: flex !important;
-                /* align-items: flex-start !important; */ /* Prevent stretching of children */
-                /* Remove min-height to prevent stretching issues */
-                /* min-height: calc(100vh - 56px) !important; */
+                min-height: calc(100vh - 56px) !important;
             }
 
-            /* Sidebar stays sticky */
+            /* Sidebar stays sticky below top navbar */
             .sidebar {
                 position: sticky !important;
                 top: 56px !important;
                 height: calc(100vh - 56px) !important;
                 overflow-y: auto !important;
+                overflow-x: hidden !important;
                 z-index: 1000 !important;
                 background-color: #2c3e50 !important;
-                flex: 0 0 250px !important; /* Fixed width */
+                flex: 0 0 250px; /* Fixed width - no !important so JS can override inline */
             }
 
             /* Main content fills remaining space */
             .main-content-area {
                 flex: 1 !important; /* Take remaining space */
                 padding: 20px !important;
-                /* Remove min-height to prevent card-body stretching */
-                /* min-height: calc(100vh - 56px) !important; */
                 background-color: #f5f7fa !important;
                 overflow-y: auto !important;
+                min-height: calc(100vh - 56px) !important;
             }
         }
 
         /* Adjust for larger screens */
         @media (min-width: 992px) {
             .sidebar {
-                flex: 0 0 200px !important; /* Slightly narrower on larger screens */
+                flex: 0 0 200px; /* Slightly narrower on larger screens */
             }
         }
 
@@ -583,6 +593,10 @@
     @stack('styles')
 </head>
 <body>
+    <!-- jQuery (for AJAX and DOM manipulation) - MUST be BEFORE content scripts that use $() -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid">
@@ -600,8 +614,6 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <!-- Notification Bell -->
-                    <li class="nav-item dropdown">
                     <!-- Quality Control & Compliance -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="qualityDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -609,36 +621,44 @@
                             <span>Quality & Compliance</span>
                         </a>
                         <div class="dropdown-menu" aria-labelledby="qualityDropdown">
-                            <a class="dropdown-item" href="{{ route("quality-control.dashboard.index") }}">
+                            <a class="dropdown-item" href="{{ route("quality-control.work-order-quality.index") }}">
+                                <i class="fas fa-clipboard-check"></i> Work Order Quality
+                            </a>
+                            <!-- Temporarily commented out - routes not yet implemented
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-tachometer-alt"></i> Quality Dashboard
                             </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.checklists.index") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-list-check"></i> Checklists
                             </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.audits.index") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-clipboard-list"></i> Quality Audits
                             </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.ncrs.index") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-exclamation-triangle"></i> NCRs
                             </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.corrective-actions.index") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-wrench"></i> Corrective Actions
                             </a>
                             <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{{ route("compliance.dashboard") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-shield-alt"></i> Compliance Dashboard
                             </a>
-                            <a class="dropdown-item" href="{{ route("compliance.standards.index") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-book"></i> Standards
                             </a>
-                            <a class="dropdown-item" href="{{ route("compliance.documents.index") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-file-alt"></i> Documents
                             </a>
-                            <a class="dropdown-item" href="{{ route("audit.dashboard") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-search"></i> Audit Management
                             </a>
+                            -->
                         </div>
                     </li>
+                    
+                    <!-- Notification Bell -->
+                    <li class="nav-item dropdown">
                         <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-bell"></i>
                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationCount">
@@ -704,50 +724,24 @@
 
                     <!-- User Profile Dropdown -->
                     <li class="nav-item dropdown">
-                    <!-- Quality Control & Compliance -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="qualityDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="fas fa-clipboard-check"></i>
-                            <span>Quality & Compliance</span>
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-circle"></i>
+                            <span>{{ Auth::user()->name ?? 'User' }}</span>
                         </a>
-                        <div class="dropdown-menu" aria-labelledby="qualityDropdown">
-                            <a class="dropdown-item" href="{{ route("quality-control.dashboard.index") }}">
-                                <i class="fas fa-tachometer-alt"></i> Quality Dashboard
+                        <div class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <a class="dropdown-item" href="#">
+                                <i class="fas fa-user me-2"></i> Profile
                             </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.checklists.index") }}">
-                                <i class="fas fa-list-check"></i> Checklists
-                            </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.audits.index") }}">
-                                <i class="fas fa-clipboard-list"></i> Quality Audits
-                            </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.ncrs.index") }}">
-                                <i class="fas fa-exclamation-triangle"></i> NCRs
-                            </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.corrective-actions.index") }}">
-                                <i class="fas fa-wrench"></i> Corrective Actions
+                            <a class="dropdown-item" href="#">
+                                <i class="fas fa-cog me-2"></i> Settings
                             </a>
                             <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{{ route("compliance.dashboard") }}">
-                                <i class="fas fa-shield-alt"></i> Compliance Dashboard
-                            </a>
-                            <a class="dropdown-item" href="{{ route("compliance.standards.index") }}">
-                                <i class="fas fa-book"></i> Standards
-                            </a>
-                            <a class="dropdown-item" href="{{ route("compliance.documents.index") }}">
-                                <i class="fas fa-file-alt"></i> Documents
-                            </a>
-                            <a class="dropdown-item" href="{{ route("audit.dashboard") }}">
-                                <i class="fas fa-search"></i> Audit Management
-                            </a>
-                        </div>
-                    </li>
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user-circle me-1"></i>
-                            {{ auth()->user()->name ?? 'User' }}
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="dropdown-item">
+                                    <i class="fas fa-sign-out-alt me-2"></i> Logout
+                                </button>
+
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form method="POST" action="{{ route('logout') }}">
@@ -770,145 +764,26 @@
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
-            <div class="col-lg-2 col-md-3 sidebar d-md-block" id="sidebar">
-                <div class="pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
-                                <i class="fas fa-tachometer-alt"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('quotations.*') ? 'active' : '' }}" href="{{ route('quotations.index') }}">
-                                <i class="fas fa-file-signature"></i> Quotations
-                                @php
-                                    $pendingQuotationsCount = \App\Models\Quotation::where('status', 'pending')->count();
-                                @endphp
-                                @if($pendingQuotationsCount > 0)
-                                    <sup class="quotation-counter" id="quotation-counter">{{ $pendingQuotationsCount }}</sup>
-                                @endif
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}" href="{{ route('customers.index') }}">
-                                <i class="fas fa-users"></i> Customers
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('vehicles.*') ? 'active' : '' }}" href="{{ route('vehicles.index') }}">
-                                <i class="fas fa-car"></i> Vehicles
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}" href="{{ route('expenses.index') }}">
-                                <i class="fas fa-money-bill-wave"></i> Expenses
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            @php
-                                // Check if current route is a Service Management route
-                                $isServiceManagementRoute = request()->routeIs([
-                                    'appointments.*',
-                                    'estimates.*',
-                                    'work-orders.*',
-                                    'invoices.*',
-                                    'payments.*',
-                                    'inspections.*'
-                                ]);
+            <div class="sidebar d-md-block" id="sidebar">
+                @include('partials.sidebar')
 
-                                // Check localStorage for saved state (will be handled by JavaScript)
-                                // For initial load, expand if we're on a Service Management page
-                                $shouldExpand = $isServiceManagementRoute;
-                            @endphp
-
-                            <a class="nav-link" data-bs-toggle="collapse" href="#serviceManagementCollapse" role="button"
-                               aria-expanded="{{ $shouldExpand ? 'true' : 'false' }}"
-                               aria-controls="serviceManagementCollapse"
-                               id="serviceManagementToggle">
-                                <i class="fas fa-cogs"></i> Service Management
-                                <i class="fas fa-chevron-{{ $shouldExpand ? 'up' : 'down' }} float-end mt-1"></i>
-                            </a>
-                            <div class="collapse {{ $shouldExpand ? 'show' : '' }}" id="serviceManagementCollapse">
-                                <ul class="nav flex-column ms-4">
-                                    <li class="nav-item">
-                                        <a class="nav-link {{ request()->routeIs('appointments.*') ? 'active' : '' }}" href="{{ route('appointments.index') }}">
-                                            <i class="fas fa-calendar-alt"></i> Appointments
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link {{ request()->routeIs('inspections.*') ? 'active' : '' }}" href="{{ route('inspections.index') }}">
-                                            <i class="fas fa-tools"></i> Repair Orders
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link {{ request()->routeIs('estimates.*') ? 'active' : '' }}" href="{{ route('estimates.index') }}">
-                                            <i class="fas fa-file-invoice-dollar"></i> Estimates
-                                        </a>
-                                    </li>
-
-                                    <li class="nav-item">
-                                        <a class="nav-link {{ request()->routeIs('work-orders.*') ? 'active' : '' }}" href="{{ route('work-orders.index') }}">
-                                            <i class="fas fa-clipboard-check"></i> Job Orders
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link {{ request()->routeIs('invoices.*') || request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('invoices.index') }}">
-                                            <i class="fas fa-file-invoice-dollar"></i> Invoices & Payments
-                                            <span class="badge bg-success ms-2" style="font-size: 0.6rem;">Integrated</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('inventory.*') ? 'active' : '' }}" href="{{ route('inventory.index') }}">
-                                <i class="fas fa-box"></i> Inventory
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('personnel.*') ? 'active' : '' }}" href="{{ route('personnel.index') }}">
-                                <i class="fas fa-users"></i> Personnel
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">
-                                <i class="fas fa-chart-bar"></i> Reports
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('hr-payroll.*') ? 'active' : '' }}" href="{{ route('hr-payroll.dashboard') }}">
-                                <i class="fas fa-users-cog"></i> HR Payroll
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">
-                                <i class="fas fa-cog"></i> Settings
-                            </a>
-                        </li>
-                    </ul>
-
-                    <div class="mt-4 px-3">
-                        <small class="text-gray-600">QUICK STATS</small>
-                        <div class="mt-2">
-                            <div class="d-flex justify-content-between text-gray-700 mb-1">
-                                <small>Today's Appointments</small>
-                                <small>12</small>
-                            </div>
-                            <div class="d-flex justify-content-between text-gray-700 mb-1">
-                                <small>Pending Services</small>
-                                <small>8</small>
-                            </div>
-                            <div class="d-flex justify-content-between text-gray-700">
-                                <small>Revenue Today</small>
-                                <small>₱2,450</small>
-                            </div>
-                        </div>
-                    </div>
+                {{-- Drag resize handle --}}
+                <div class="sidebar-resize-handle" id="sidebarResizeHandle">
+                    <span class="handle-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </span>
                 </div>
+
+                {{-- Collapse toggle button --}}
+                <button class="sidebar-collapse-toggle" id="sidebarCollapseBtn" title="Toggle sidebar">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
             </div>
 
             <!-- Main Content -->
-            <div class="col-lg-10 col-md-9 px-4 py-3 main-content-area">
+            <div class="px-4 py-3 main-content-area" id="mainContent">
                 @if(session('success'))
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                         {{ session('success') }}
@@ -930,14 +805,18 @@
                     </div>
                 @endif
 
+                @if(session('info'))
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        {{ session('info') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                @endif
+
+    @include('layouts.branch-indicator')
                 @yield('content')
             </div>
         </div>
     </div>
-
-    <!-- jQuery (for AJAX and DOM manipulation) - MUST BE BEFORE Bootstrap and DataTables -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 
     <!-- SweetAlert2 (for beautiful alerts and confirmations) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -949,6 +828,8 @@
 
     <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {{-- Resizable Sidebar Scripts --}}
+    @include('partials.sidebar-resize-scripts')
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 

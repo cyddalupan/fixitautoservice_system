@@ -37,7 +37,7 @@ class QuotationController extends Controller
             'vehicle_make' => 'required|string|max:100',
             'vehicle_model' => 'required|string|max:100',
             'vehicle_year' => 'required|integer|min:1900|max:' . (date('Y') + 1),
-            'service_type' => 'required|string|max:100',
+            'service_type' => 'required',
             'service_description' => 'required|string',
             'status' => 'sometimes|in:pending,reviewed,contacted,converted,rejected',
             'admin_notes' => 'nullable|string'
@@ -65,7 +65,7 @@ class QuotationController extends Controller
             'vin_number' => 'nullable|string|max:50',
             'preferred_date' => 'nullable|date|after_or_equal:today',
             'preferred_time' => 'nullable|string|in:morning,afternoon,evening,anytime',
-            'service_type' => 'required|string|max:100',
+            'service_type' => 'required',
             'service_checklist' => 'nullable|array',
             'service_checklist.*' => 'string|max:100',
             'parts_preference' => 'nullable|string|in:oem,aftermarket,no_preference',
@@ -150,7 +150,7 @@ class QuotationController extends Controller
             'vehicle_make' => 'required|string|max:100',
             'vehicle_model' => 'required|string|max:100',
             'vehicle_year' => 'required|integer|min:1900|max:' . (date('Y') + 1),
-            'service_type' => 'required|string|max:100',
+            'service_type' => 'required',
             'service_description' => 'required|string',
             'status' => 'required|in:pending,reviewed,contacted,converted,rejected',
             'admin_notes' => 'nullable|string'
@@ -197,11 +197,20 @@ class QuotationController extends Controller
      */
     public function pendingCount()
     {
+        // Temporarily return 0 to debug issues
+        return response()->json([
+            'count' => 0,
+            'timestamp' => now()->toDateTimeString(),
+            'debug' => 'Temporarily disabled for debugging'
+        ]);
+        
+        /*
         $count = Quotation::where('status', 'pending')->count();
         
         return response()->json([
             'count' => $count,
             'timestamp' => now()->toDateTimeString()
         ]);
+        */
     }
 }

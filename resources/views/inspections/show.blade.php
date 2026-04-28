@@ -1,2435 +1,1447 @@
 @extends('layouts.app')
 
-@section('title', 'Repair Order #' . $inspection->inspection_number . ' - Fix-It Auto Services')
-
 @section('content')
-<!-- Service Progress Bar -->
-@if($inspection->serviceProgress)
-    <div class="row mb-4">
-        <div class="col-12">
-            @include('components.service-progress-bar', [
-                'progress' => $inspection->serviceProgress,
-                'currentStage' => 'inspection'
-            ])
-        </div>
-    </div>
-@endif
-
-<!-- Main Form for Editing Inspection -->
-<form id="inspection-edit-form" action="{{ route('inspections.update', $inspection) }}" method="POST">
-    @csrf
-    @method('PUT')
-    
-<div class="page-header">
-    <div class="d-flex justify-content-between align-items-center">
+@include('partials.customer-process-assets')
+<div class="container-fluid px-4 py-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="h3 mb-0">
-                <i class="fas fa-car me-2"></i>Repair Order #{{ $inspection->inspection_number }}
-            </h1>
+            <h4 class="fw-bold mb-1" style="color: #1a237e;">
+                <i class="fas fa-search me-2"></i>Inspection #{{ $inspection->id }}
+            </h4>
             <p class="text-muted mb-0">
-                {{ $inspection->customer->full_name ?? 'Unknown Customer' }} | 
-                {{ $inspection->vehicle->make ?? '' }} {{ $inspection->vehicle->model ?? '' }} | 
-                {{ $inspection->vehicle->year ?? '' }} | 
-                {{ $inspection->vehicle->license_plate ?? 'No Plate' }}
+                <i class="fas fa-calendar me-1"></i>
+                {{ $inspection->created_at ? $inspection->created_at->format('F j, Y g:i A') : 'N/A' }}
+                &middot; {{ ucfirst(str_replace('_', ' ', $inspection->inspection_type ?? 'Standard')) }}
             </p>
         </div>
-        <div>
-            <a href="{{ route('inspections.index') }}" class="btn btn-outline-secondary">
-                <i class="fas fa-arrow-left me-1"></i> Back to Repair Orders
+        <div class="d-flex gap-2">
+            <div class="dropdown">
+                <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-forward me-1"></i>Proceed To
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item" href="{{ route('estimates.create', ['customer_id' => $inspection->customer_id, 'vehicle_id' => $inspection->vehicle_id]) }}">
+                            <i class="fas fa-file-invoice me-2 text-primary"></i> Create Estimate
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="{{ route('work-orders.create', ['customer_id' => $inspection->customer_id, 'vehicle_id' => $inspection->vehicle_id, 'inspection_id' => $inspection->id]) }}">
+                            <i class="fas fa-wrench me-2 text-warning"></i> Create Job Order
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            <a href="{{ route('inspections.edit', $inspection) }}" class="btn btn-primary">
+                <i class="fas fa-edit me-1"></i>Edit
             </a>
-            
-            <!-- Save Draft Button -->
-            <div class="btn-group ms-2" role="group">
-                <!-- Save Draft Button -->
-                @if($inspection->inspection_status === 'in_progress')
-                    <button type="submit" name="status" value="draft" class="btn btn-primary" onclick="return confirm('Save inspection as draft? You can continue later.')">
-                        <i class="fas fa-save me-1"></i> Save Draft
-                    </button>
-                @else
-                    <button type="button" class="btn btn-primary disabled">
-                        <i class="fas fa-save me-1"></i> Save Draft
-                    </button>
-                @endif
-            </div>
-            
-            <!-- Quick Actions Buttons -->
-            <div class="btn-group ms-2" role="group">
-                <!-- Create Estimate Button -->
-                @if($inspection->inspection_status === 'completed' && !$inspection->workOrder)
-                    <a href="{{ route('estimates.create', ['inspection_id' => $inspection->id]) }}" class="btn btn-success">
-                        <i class="fas fa-file-invoice-dollar me-1"></i> Create Estimate
-                    </a>
-                @else
-                    <button type="button" class="btn btn-success disabled">
-                        <i class="fas fa-file-invoice-dollar me-1"></i> Create Estimate
-                    </button>
-                @endif
-                
-                <!-- Report Button -->
-                <a href="{{ route('inspections.report', $inspection) }}" class="btn btn-outline-primary" target="_blank">
-                    <i class="fas fa-print me-1"></i> Report
-                </a>
-                
-                <!-- View Work Order Button -->
-                @if($inspection->workOrder)
-                    <a href="{{ route('work-orders.show', $inspection->workOrder->id) }}" class="btn btn-info">
-                        <i class="fas fa-wrench me-1"></i> Work Order
-                    </a>
-                @endif
-                
-                <!-- View Appointment Button -->
-                @if($inspection->appointment)
-                    <a href="{{ route('appointments.show', $inspection->appointment) }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-calendar me-1"></i> Appointment
-                    </a>
-                @endif
-            </div>
+            <a href="{{ route('inspections.index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back
+            </a>
         </div>
     </div>
-</div>
 
-<!-- Status Badge -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="d-flex align-items-center">
-            <span class="badge 
-                @if($inspection->inspection_status === 'completed') bg-success
-                @elseif($inspection->inspection_status === 'in_progress') bg-warning
-                @elseif($inspection->inspection_status === 'draft') bg-secondary
-                @elseif($inspection->inspection_status === 'cancelled') bg-danger
-                @else bg-info @endif
-                fs-6 px-3 py-2 me-3">
-                {{ ucfirst(str_replace('_', ' ', $inspection->status)) }}
-            </span>
-            
-            <div class="d-inline-block me-3">
-                <select class="form-select form-select-sm" name="inspection_type" style="width: auto; display: inline-block;">
-                    <option value="">Select Inspection Type</option>
-                    <option value="pre_purchase" {{ old('inspection_type', $inspection->inspection_type) == 'pre_purchase' ? 'selected' : '' }}>Pre-Purchase Inspection</option>
-                    <option value="routine_maintenance" {{ old('inspection_type', $inspection->inspection_type) == 'routine_maintenance' ? 'selected' : '' }}>Routine Maintenance</option>
-                    <option value="diagnostic" {{ old('inspection_type', $inspection->inspection_type) == 'diagnostic' ? 'selected' : '' }}>Diagnostic Inspection</option>
-                    <option value="safety" {{ old('inspection_type', $inspection->inspection_type) == 'safety' ? 'selected' : '' }}>Safety Inspection</option>
-                    <option value="emissions" {{ old('inspection_type', $inspection->inspection_type) == 'emissions' ? 'selected' : '' }}>Emissions Inspection</option>
-                    <option value="custom" {{ old('inspection_type', $inspection->inspection_type) == 'custom' ? 'selected' : '' }}>Custom Inspection</option>
-                </select>
-            </div>
-            
-            @if($inspection->inspection_score)
-                <span class="badge 
-                    @if($inspection->inspection_score >= 90) bg-success
-                    @elseif($inspection->inspection_score >= 70) bg-warning
-                    @else bg-danger @endif
-                    fs-6 px-3 py-2">
-                    Score: {{ $inspection->inspection_score }}%
-                </span>
-            @endif
+    @if(session('success'))
+        <div class="alert alert-success alert-dismissible fade show border-0 shadow-sm rounded-3" role="alert">
+            <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-    </div>
-</div>
+    @endif
 
-<div class="row">
-    <!-- Left Column - Inspection Details -->
-    <div class="col-md-8">
-        <!-- Customer & Vehicle Information -->
-        <div class="card mb-4">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">
-                    <i class="fas fa-user me-2"></i>Customer & Vehicle Information
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <h6 class="text-muted mb-2">Customer Details</h6>
-                        <p class="mb-1"><strong>Name:</strong> {{ $inspection->customer->full_name ?? 'N/A' }}</p>
-                        <p class="mb-1"><strong>Phone:</strong> {{ $inspection->customer->phone ?? 'N/A' }}</p>
-                        <p class="mb-1"><strong>Email:</strong> {{ $inspection->customer->email ?? 'N/A' }}</p>
-                        
-                        @if($inspection->appointment)
-                            <div class="mt-3">
-                                <h6 class="text-muted mb-2">Appointment</h6>
-                                <p class="mb-1"><strong>Appointment #:</strong> {{ $inspection->appointment->appointment_number ?? 'N/A' }}</p>
-                                <p class="mb-1"><strong>Service Request:</strong> {{ $inspection->appointment->service_request ?? 'N/A' }}</p>
-                            </div>
-                        @endif
-                    </div>
-                    
-                    <div class="col-md-6">
-                        <h6 class="text-muted mb-2">Vehicle Details</h6>
-                        <p class="mb-1"><strong>Make:</strong> {{ $inspection->vehicle->make ?? 'N/A' }}</p>
-                        <p class="mb-1"><strong>Model:</strong> {{ $inspection->vehicle->model ?? 'N/A' }}</p>
-                        <p class="mb-1"><strong>Year:</strong> {{ $inspection->vehicle->year ?? 'N/A' }}</p>
-                        <p class="mb-1"><strong>License Plate:</strong> {{ $inspection->vehicle->license_plate ?? 'N/A' }}</p>
-                        <p class="mb-1"><strong>VIN:</strong> {{ $inspection->vehicle->vin ?? 'N/A' }}</p>
-                        <p class="mb-1">
-                            <strong>Mileage:</strong> 
-                            <input type="number" class="form-control form-control-sm d-inline-block w-auto ms-1" 
-                                   name="vehicle_mileage" value="{{ old('vehicle_mileage', $inspection->vehicle_mileage) }}" 
-                                   min="0" step="1" style="width: 120px;" id="vehicle_mileage_input"> km
-                            <button type="button" class="btn btn-sm btn-outline-primary ms-2" id="save_mileage_btn" onclick="saveMileage()">
-                                <i class="fas fa-save me-1"></i> Save
-                            </button>
-                            <span id="mileage_save_status" class="ms-2" style="display: none;"></span>
-                        </p>
-                    </div>
-                </div>
-                
-                <div class="mt-3" id="customer-concerns-section">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="text-muted mb-0">Customer Concerns</h6>
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="edit-concerns-btn" onclick="editCustomerConcerns()">
-                            <i class="fas fa-edit me-1"></i> Edit
-                        </button>
-                    </div>
-                    
-                    <!-- Single container that switches between view and edit -->
-                    <div id="concerns-container" class="border rounded p-3 bg-light">
-                        <!-- View Mode Content -->
-                        <div id="concerns-view">
-                            <p class="mb-0" id="concerns-text">{{ $inspection->customer_concerns ?? 'No concerns recorded' }}</p>
-                        </div>
-                        
-                        <!-- Edit Mode Content (Hidden by default) -->
-                        <div id="concerns-edit" style="display: none;">
-                            <textarea class="form-control mb-2" id="concerns-input" rows="3" placeholder="Enter customer concerns here...">{{ old('customer_concerns', $inspection->customer_concerns) }}</textarea>
-                            <div class="d-flex justify-content-end">
-                                <button type="button" class="btn btn-sm btn-success me-1" onclick="saveCustomerConcerns()">
-                                    <i class="fas fa-save me-1"></i> Save
-                                </button>
-                                <button type="button" class="btn btn-sm btn-secondary" onclick="cancelEditConcerns()">
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mt-3" id="technician-notes-section">
-                    <div class="d-flex justify-content-between align-items-center mb-2">
-                        <h6 class="text-muted mb-0">Technician Notes</h6>
-                        <button type="button" class="btn btn-sm btn-outline-primary" id="edit-notes-btn" onclick="editTechnicianNotes()">
-                            <i class="fas fa-edit me-1"></i> Edit
-                        </button>
-                    </div>
-                    
-                    <!-- Single container that switches between view and edit -->
-                    <div id="notes-container" class="border rounded p-3 bg-info bg-opacity-10">
-                        <!-- View Mode Content -->
-                        <div id="notes-view">
-                            <p class="mb-0" id="notes-text">{{ $inspection->technician_notes ?? 'No notes recorded' }}</p>
-                        </div>
-                        
-                        <!-- Edit Mode Content (Hidden by default) -->
-                        <div id="notes-edit" style="display: none;">
-                            <textarea class="form-control mb-2" id="notes-input" rows="3" placeholder="Enter technician notes here...">{{ old('technician_notes', $inspection->technician_notes) }}</textarea>
-                            <div class="d-flex justify-content-end">
-                                <button type="button" class="btn btn-sm btn-success me-1" onclick="saveTechnicianNotes()">
-                                    <i class="fas fa-save me-1"></i> Save
-                                </button>
-                                <button type="button" class="btn btn-sm btn-secondary" onclick="cancelEditNotes()">
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- Section Navigation Pills -->
+    <ul class="nav nav-pills section-nav mb-4" id="detailTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="overview-tab" data-bs-toggle="pill" data-bs-target="#overview" type="button" role="tab">
+                <i class="fas fa-info-circle me-1"></i>Overview
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="findings-tab" data-bs-toggle="pill" data-bs-target="#findings" type="button" role="tab">
+                <i class="fas fa-clipboard-check me-1"></i>Findings
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="items-tab" data-bs-toggle="pill" data-bs-target="#items" type="button" role="tab">
+                <i class="fas fa-list me-1"></i>Inspection Items
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="photos-tab" data-bs-toggle="pill" data-bs-target="#photos" type="button" role="tab">
+                <i class="fas fa-camera me-1"></i>Photos
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="timeline-tab" data-bs-toggle="pill" data-bs-target="#timeline" type="button" role="tab">
+                <i class="fas fa-history me-1"></i>Timeline
+            </button>
+        </li>
+    </ul>
 
-        <!-- Inspection Items by Category -->
-        <div class="card mb-4">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-clipboard-check me-2"></i>Inspection Items
-                </h5>
-                <div>
-                    <span class="badge bg-success me-2">Passed: {{ $itemStats['passed'] ?? 0 }}</span>
-                    <span class="badge bg-danger me-2">Failed: {{ $itemStats['failed'] ?? 0 }}</span>
-                    <span class="badge bg-warning">Attention: {{ $itemStats['attention_needed'] ?? 0 }}</span>
-                </div>
-            </div>
-            
-            <!-- Inspection Action Buttons - Moved here as requested -->
-            <div class="card-body border-bottom bg-light">
-                <div class="row g-2">
-                    <!-- Add Findings Button -->
-                    <div class="col-md-3">
-                        <button type="button" class="btn btn-primary w-100 
-                            @if(in_array($inspection->status, ['completed', 'cancelled'])) disabled @endif"
-                            onclick="showAddFindingForm()"
-                            @if(in_array($inspection->status, ['completed', 'cancelled'])) disabled @endif>
-                            <div class="d-flex align-items-center justify-content-center">
-                                <span class="fs-5 me-2">➕</span>
-                                <div class="text-start">
-                                    <div class="fw-bold">Add Findings</div>
-                                    <small class="opacity-75">Record findings</small>
+    <div class="tab-content">
+
+        <!-- === OVERVIEW TAB === -->
+        <div class="tab-pane fade show active" id="overview" role="tabpanel">
+            <div class="row g-3">
+                <!-- Customer Summary -->
+                @if($inspection->customer)
+                    @include('partials.customer-summary-card', ['customer' => $inspection->customer])
+                @endif
+
+                <!-- Left Column -->
+                <div class="col-lg-8">
+                    <!-- Basic Info -->
+                    <div class="form-section">
+                        <div class="form-section-header no-collapse">
+                            <h6><i class="fas fa-info-circle"></i>Inspection Details</h6>
+                            <span class="badge bg-{{ $inspection->status_badge ?? 'secondary' }}">
+                                {{ ucfirst($inspection->inspection_status ?? 'unknown') }}
+                            </span>
+                        </div>
+                        <div class="form-section-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label class="text-muted small text-uppercase">Type</label>
+                                    <p class="fw-semibold mb-0">{{ ucfirst(str_replace('_', ' ', $inspection->inspection_type ?? 'N/A')) }}</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="text-muted small text-uppercase">Status</label>
+                                    <p class="fw-semibold mb-0">
+                                        <span class="badge bg-{{ $inspection->status_badge ?? 'secondary' }}">
+                                            {{ ucfirst($inspection->inspection_status ?? 'unknown') }}
+                                        </span>
+                                    </p>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="text-muted small text-uppercase">Mileage</label>
+                                    <p class="fw-semibold mb-0">
+                                        <i class="fas fa-tachometer-alt me-1 text-primary"></i>
+                                        {{ $inspection->vehicle_mileage ? number_format($inspection->vehicle_mileage) . ' mi' : 'N/A' }}
+                                    </p>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="text-muted small text-uppercase">Service Type</label>
+                                    <p class="fw-semibold mb-0">
+                                        @if($inspection->service_type)
+                                            <span class="badge bg-soft-primary text-primary">
+                                                @php
+                                                    $st = $inspection->service_type;
+                                                    $stArr = is_string($st) && str_starts_with($st, '[') ? json_decode($st, true) : (is_array($st) ? $st : [$st]);
+                                                    $stArr = array_filter((array)$stArr);
+                                                @endphp
+                                                @if(!empty($stArr))
+                                                    @foreach($stArr as $stItem)
+                                                        <span class="badge bg-soft-primary text-primary me-1" style="font-weight:500;font-size:.75rem">
+                                                            {{ config('service-types.list.' . $stItem . '.name', ucfirst(str_replace('_', ' ', $stItem))) }}
+                                                        </span>
+                                                    @endforeach
+                                                @else
+                                                    <span class="text-muted">N/A</span>
+                                                @endif
+                                            </span>
+                                        @else
+                                            <span class="text-muted">N/A</span>
+                                        @endif
+                                    </p>
                                 </div>
                             </div>
-                        </button>
+                        </div>
                     </div>
-                    
-                    <!-- Upload Photos Button -->
-                    <div class="col-md-3">
-                        <button type="button" class="btn btn-primary w-100 
-                            @if(in_array($inspection->status, ['completed', 'cancelled'])) disabled @endif"
-                            data-bs-toggle="modal" data-bs-target="#uploadPhotoModal"
-                            @if(in_array($inspection->status, ['completed', 'cancelled'])) disabled @endif>
-                            <div class="d-flex align-items-center justify-content-center">
-                                <span class="fs-5 me-2">📷</span>
-                                <div class="text-start">
-                                    <div class="fw-bold">Upload Photos</div>
-                                    <small class="opacity-75">Add photos</small>
+
+                    <!-- Vehicle Info -->
+                    <div class="form-section">
+                        <div class="form-section-header no-collapse">
+                            <h6><i class="fas fa-car"></i>Vehicle Information</h6>
+                        </div>
+                        <div class="form-section-body">
+                            @if($inspection->vehicle)
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="text-muted small text-uppercase">Vehicle</label>
+                                        <p class="fw-semibold mb-0">{{ $inspection->vehicle->year }} {{ $inspection->vehicle->make }} {{ $inspection->vehicle->model }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="text-muted small text-uppercase">License Plate</label>
+                                        <p class="fw-semibold mb-0">{{ $inspection->vehicle->license_plate ?? 'N/A' }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="text-muted small text-uppercase">VIN</label>
+                                        <p class="fw-semibold mb-0 text-monospace">{{ $inspection->vehicle->vin ?? 'N/A' }}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="text-muted small text-uppercase">Color</label>
+                                        <p class="fw-semibold mb-0">{{ $inspection->vehicle->color ?? 'N/A' }}</p>
+                                    </div>
+                                </div>
+                            @else
+                                <p class="text-muted mb-0"><i class="fas fa-exclamation-circle me-1"></i>No vehicle assigned</p>
+                            @endif
+                        </div>
+                    </div>
+
+                    <!-- Assigned Team -->
+                    <div class="form-section">
+                        <div class="form-section-header no-collapse">
+                            <h6><i class="fas fa-users"></i>Assigned Team</h6>
+                        </div>
+                        <div class="form-section-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="text-muted small text-uppercase">Technician</label>
+                                    <p class="fw-semibold mb-0">
+                                        <i class="fas fa-user-cog me-1 text-primary"></i>
+                                        {{ $inspection->technician->name ?? 'Unassigned' }}
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="text-muted small text-uppercase">Service Advisor</label>
+                                    <p class="fw-semibold mb-0">
+                                        <i class="fas fa-user-tie me-1 text-primary"></i>
+                                        {{ $inspection->advisor->name ?? 'Unassigned' }}
+                                    </p>
                                 </div>
                             </div>
-                        </button>
+                        </div>
                     </div>
-                    
-                    
-                    <!-- Complete Inspection Toggle Button -->
-                    <div class="col-md-3">
-                        @if($inspection->inspection_status !== 'completed')
-                            <!-- Light Red Button for NOT completed -->
-                            <div class="w-100">
-                                <button type="button" class="btn btn-danger btn-light w-100" style="background-color: #ffcccc; border-color: #ff9999; color: #cc0000;" onclick="markInspectionAsComplete({{ $inspection->id }})">
-                                    <div class="d-flex align-items-center justify-content-center">
-                                        <span class="fs-5 me-2">⭕</span>
-                                        <div class="text-start">
-                                            <div class="fw-bold">Mark as Complete</div>
-                                            <small class="opacity-75">Click to complete inspection</small>
+
+                    <!-- Customer Concerns -->
+                    @if($inspection->customer_concerns)
+                    <div class="form-section">
+                        <div class="form-section-header no-collapse">
+                            <h6><i class="fas fa-question-circle"></i>Customer Concerns</h6>
+                        </div>
+                        <div class="form-section-body">
+                            <p class="mb-0">{{ $inspection->customer_concerns }}</p>
+                        </div>
+                    </div>
+                    @endif
+
+                    <!-- Technician Findings -->
+                    @if($inspection->technician_notes)
+                    <div class="form-section">
+                        <div class="form-section-header no-collapse">
+                            <h6><i class="fas fa-stethoscope"></i>Technician Findings</h6>
+                        </div>
+                        <div class="form-section-body">
+                            <p class="mb-0" style="white-space: pre-wrap;">{{ $inspection->technician_notes }}</p>
+                        </div>
+                    </div>
+                    @endif
+                </div>
+
+                <!-- Right Column -->
+                <div class="col-lg-4">
+                    <!-- Status Card -->
+                    <div class="form-section">
+                        <div class="form-section-header no-collapse">
+                            <h6><i class="fas fa-flag"></i>Status Timeline</h6>
+                        </div>
+                        <div class="form-section-body">
+                            <div class="mb-3">
+                                <span class="badge bg-{{ $inspection->status_badge ?? 'secondary' }} fs-6 px-3 py-2">
+                                    {{ ucfirst($inspection->inspection_status ?? 'unknown') }}
+                                </span>
+                            </div>
+                            @php
+                                $statusLog = [];
+                                if($inspection->inspection_started_at) $statusLog[] = ['label' => 'Started', 'time' => $inspection->inspection_started_at, 'icon' => 'fa-play', 'color' => 'info'];
+                                if($inspection->inspection_completed_at) $statusLog[] = ['label' => 'Completed', 'time' => $inspection->inspection_completed_at, 'icon' => 'fa-check', 'color' => 'success'];
+                                if($inspection->report_generated_at) $statusLog[] = ['label' => 'Report Generated', 'time' => $inspection->report_generated_at, 'icon' => 'fa-file-alt', 'color' => 'primary'];
+                            @endphp
+                            @if(count($statusLog) > 0)
+                                @foreach($statusLog as $entry)
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="text-{{ $entry['color'] }} me-2"><i class="fas {{ $entry['icon'] }}"></i></div>
+                                        <div>
+                                            <small class="text-muted d-block">{{ $entry['label'] }}</small>
+                                            <small>{{ $entry['time']->format('M j, Y g:i A') }}</small>
                                         </div>
                                     </div>
-                                </button>
-                            </div>
-                        @else
-                            <!-- Green Button for completed - Now clickable to undo -->
-                            <div class="w-100">
-                                <button type="button" class="btn btn-success w-100" style="background-color: #ccffcc; border-color: #99cc99; color: #006600;" onclick="undoCompleteInspection({{ $inspection->id }})">
-                                    <div class="d-flex align-items-center justify-content-center">
-                                        <span class="fs-5 me-2">✅</span>
-                                        <div class="text-start">
-                                            <div class="fw-bold">Completed</div>
-                                            <small class="opacity-75">Click to undo completion</small>
-                                        </div>
+                                @endforeach
+                            @endif
+                        </div>
+                    </div>
+
+                    <!-- Inspection Notes -->
+                    @if($inspection->inspection_notes)
+                    <div class="form-section">
+                        <div class="form-section-header no-collapse">
+                            <h6><i class="fas fa-sticky-note"></i>Inspection Notes</h6>
+                        </div>
+                        <div class="form-section-body">
+                            <p class="mb-0 small" style="white-space: pre-wrap;">{{ $inspection->inspection_notes }}</p>
+                        </div>
+                    </div>
+                    @endif
+
+                    <!-- Quick Stats -->
+                    <div class="form-section">
+                        <div class="form-section-header no-collapse">
+                            <h6><i class="fas fa-chart-bar"></i>Summary</h6>
+                        </div>
+                        <div class="form-section-body">
+                            <div class="d-flex justify-content-around text-center">
+                                <div>
+                                    <div class="fw-bold fs-5 text-primary">{{ $inspection->items->count() }}</div>
+                                    <small class="text-muted">Items</small>
+                                </div>
+                                <div>
+                                    <div class="fw-bold fs-5 text-success">
+                                        {{ $inspection->items->where('status', 'passed')->count() }}
                                     </div>
-                                </button>
+                                    <small class="text-muted">Passed</small>
+                                </div>
+                                <div>
+                                    <div class="fw-bold fs-5 text-danger">
+                                        {{ $inspection->items->where('status', 'failed')->count() }}
+                                    </div>
+                                    <small class="text-muted">Failed</small>
+                                </div>
                             </div>
-                        @endif
+                        </div>
+                    </div>
+
+                    <!-- Related Records -->
+                    <div class="form-section">
+                        <div class="form-section-header no-collapse">
+                            <h6><i class="fas fa-link"></i>Related Records</h6>
+                        </div>
+                        <div class="form-section-body">
+                            @php
+                                $relations = [];
+                                if($inspection->workOrder) $relations[] = ['name' => 'Work Order', 'icon' => 'fa-clipboard-list', 'route' => route('work_orders.show', $inspection->workOrder), 'color' => 'primary'];
+                                if($inspection->appointment) $relations[] = ['name' => 'Appointment', 'icon' => 'fa-calendar-check', 'route' => route('appointments.show', $inspection->appointment), 'color' => 'info'];
+                                if(isset($inspection->estimate) && $inspection->estimate) $relations[] = ['name' => 'Estimate', 'icon' => 'fa-file-invoice-dollar', 'route' => route('estimates.show', $inspection->estimate), 'color' => 'success'];
+                            @endphp
+                            @if(count($relations) > 0)
+                                @foreach($relations as $rel)
+                                    <a href="{{ $rel['route'] }}" class="btn btn-outline-{{ $rel['color'] }} btn-sm w-100 mb-2 text-start">
+                                        <i class="fas {{ $rel['icon'] }} me-1"></i>{{ $rel['name'] }}
+                                    </a>
+                                @endforeach
+                            @else
+                                <p class="text-muted mb-0 small">No related records.</p>
+                            @endif
+                        </div>
                     </div>
                 </div>
-                
-                <!-- Status Note -->
-                <div class="mt-2 text-center">
+            </div>
+        </div>
+
+        <!-- === FINDINGS TAB === -->
+        <div class="tab-pane fade" id="findings" role="tabpanel">
+            <div class="row g-3">
+                <div class="col-12">
+                    @if($inspection->customer_concerns)
+                    <div class="form-section mb-3">
+                        <div class="form-section-header no-collapse">
+                            <h6><i class="fas fa-question-circle"></i>Customer Concerns</h6>
+                        </div>
+                        <div class="form-section-body">
+                            <p class="mb-0" style="white-space: pre-wrap;">{{ $inspection->customer_concerns }}</p>
+                        </div>
+                    </div>
+                    @endif
+                    @if($inspection->inspection_notes)
+                    <div class="form-section mb-3">
+                        <div class="form-section-header no-collapse">
+                            <h6><i class="fas fa-sticky-note"></i>Additional Notes</h6>
+                        </div>
+                        <div class="form-section-body">
+                            <p class="mb-0" style="white-space: pre-wrap;">{{ $inspection->inspection_notes }}</p>
+                        </div>
+                    </div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Quick Add Bar -->
+            <div class="findings-quick-add py-3 px-3 mb-3 rounded-3" style="background: linear-gradient(135deg, rgba(26,35,126,0.05) 0%, rgba(13,71,161,0.1) 100%); border: 1px solid rgba(26,35,126,0.15); position: sticky; top: 0; z-index: 10;">
+                <div class="row g-2 align-items-end">
+                    <div class="col-12 col-md-3">
+                        <label class="small fw-semibold text-muted mb-1"><i class="fas fa-tag me-1"></i>Category</label>
+                        <select id="quick-category" class="form-select form-select-sm">
+                            <option value="Engine">Engine</option>
+                            <option value="Brakes">Brakes</option>
+                            <option value="Suspension">Suspension</option>
+                            <option value="Electrical">Electrical</option>
+                            <option value="Cooling">Cooling</option>
+                            <option value="Transmission">Transmission</option>
+                            <option value="Tires">Tires</option>
+                            <option value="Aircon">Aircon</option>
+                            <option value="Steering">Steering</option>
+                            <option value="Body / Exterior">Body / Exterior</option>
+                            <option value="Safety">Safety</option>
+                            <option value="Maintenance">Maintenance</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="small fw-semibold text-muted mb-1"><i class="fas fa-search me-1"></i>Issue Title</label>
+                        <div class="position-relative">
+                            <input type="text" id="quick-issue-title" class="form-control form-control-sm" placeholder="Type to search issue library..." autocomplete="off">
+                            <div id="autosuggest-results" class="list-group position-absolute w-100 shadow-sm" style="z-index: 1000; display: none; max-height: 250px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="small fw-semibold text-muted mb-1"><i class="fas fa-exclamation-triangle me-1"></i>Severity</label>
+                        <div class="d-flex gap-1">
+                            <button type="button" class="btn btn-sm btn-outline-info severity-btn" data-value="low">Low</button>
+                            <button type="button" class="btn btn-sm btn-outline-warning severity-btn active" data-value="medium">Med</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger severity-btn" data-value="high">High</button>
+                            <button type="button" class="btn btn-sm btn-outline-dark severity-btn" data-value="critical">Crit</button>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="small fw-semibold text-muted mb-1"><i class="fas fa-clock me-1"></i>Urgency</label>
+                        <div class="d-flex gap-1">
+                            <button type="button" class="btn btn-sm btn-outline-secondary urgency-btn" data-value="routine">Rtn</button>
+                            <button type="button" class="btn btn-sm btn-outline-info urgency-btn active" data-value="soon">Soon</button>
+                            <button type="button" class="btn btn-sm btn-outline-warning urgency-btn" data-value="urgent">Urg</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger urgency-btn" data-value="immediate">Imm</button>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-1">
+                        <button id="btn-quick-add" class="btn btn-primary btn-sm w-100" style="background: linear-gradient(135deg, #1a237e, #283593);" disabled>
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-2 text-end">
                     <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        All inspection-related actions are now grouped here in the Inspection Items section
+                        <a href="#" class="text-decoration-none" data-bs-toggle="collapse" data-bs-target="#bulkQuickAddPanel">
+                            <i class="fas fa-bolt me-1"></i>Bulk Quick Add
+                        </a>
                     </small>
                 </div>
             </div>
-            
-            <div class="card-body">
-                @if($itemsByCategory && count($itemsByCategory) > 0)
-                    @foreach($itemsByCategory as $categoryName => $items)
-                        <div class="mb-4">
-                            <h6 class="text-primary mb-3">{{ $categoryName }}</h6>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover">
-                                    <thead>
+
+            <!-- Bulk Quick Add Panel -->
+            <div class="collapse mb-3" id="bulkQuickAddPanel">
+                <div class="card card-body p-3" style="background: linear-gradient(135deg, #f8f9fa, #fff); border: 1px solid #e2e8f0;">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <span class="badge bg-primary px-3 py-2" onclick="bulkQuickAddByCategory('Engine')" style="cursor: pointer;">Engine</span>
+                                <span class="badge bg-danger px-3 py-2" onclick="bulkQuickAddByCategory('Brakes')" style="cursor: pointer;">Brakes</span>
+                                <span class="badge bg-warning text-dark px-3 py-2" onclick="bulkQuickAddByCategory('Suspension')" style="cursor: pointer;">Suspension</span>
+                                <span class="badge bg-info px-3 py-2" onclick="bulkQuickAddByCategory('Electrical')" style="cursor: pointer;">Electrical</span>
+                                <span class="badge bg-secondary px-3 py-2" onclick="bulkQuickAddByCategory('Cooling')" style="cursor: pointer;">Cooling</span>
+                                <span class="badge bg-dark px-3 py-2" onclick="bulkQuickAddByCategory('Transmission')" style="cursor: pointer;">Transmission</span>
+                                <span class="badge bg-success px-3 py-2" onclick="bulkQuickAddByCategory('Tires')" style="cursor: pointer;">Tires</span>
+                                <span class="badge bg-primary px-3 py-2" onclick="bulkQuickAddByCategory('Aircon')" style="cursor: pointer;">Aircon</span>
+                                <span class="badge bg-info px-3 py-2" onclick="bulkQuickAddByCategory('Steering')" style="cursor: pointer;">Steering</span>
+                                <span class="badge bg-warning text-dark px-3 py-2" onclick="bulkQuickAddByCategory('Body / Exterior')" style="cursor: pointer;">Body</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div id="bulk-issues-container" class="d-flex flex-wrap gap-2">
+                                <span class="small text-muted">Click a category badge above to show common issues.</span>
+                            </div>
+                        </div>
+                        <div class="col-12 text-end" id="bulk-add-spinner" style="display: none;">
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>Adding findings...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Findings List -->
+            <div id="findings-list-container">
+                @forelse($inspection->inspectionFindings as $finding)
+                <div class="finding-card mb-2" data-id="{{ $finding->id }}">
+                    <div class="card border-0 shadow-sm" style="border-radius: 10px; background: #fff;">
+                        <div class="card-body p-3">
+                            <div class="d-flex flex-wrap align-items-start gap-2">
+                                <div class="flex-grow-1">
+                                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                                        <span class="badge category-badge-{{ Str::slug($finding->category) }}" style="
+                                            @switch($finding->category)
+                                                @case('Engine') background: linear-gradient(135deg, #1a237e, #283593); @break
+                                                @case('Brakes') background: linear-gradient(135deg, #c62828, #d32f2f); @break
+                                                @case('Suspension') background: linear-gradient(135deg, #e65100, #ef6c00); @break
+                                                @case('Electrical') background: linear-gradient(135deg, #00695c, #00897b); @break
+                                                @case('Cooling') background: linear-gradient(135deg, #4a148c, #6a1b9a); @break
+                                                @case('Transmission') background: linear-gradient(135deg, #37474f, #455a64); @break
+                                                @case('Tires') background: linear-gradient(135deg, #1b5e20, #2e7d32); @break
+                                                @case('Aircon') background: linear-gradient(135deg, #01579b, #0277bd); @break
+                                                @case('Steering') background: linear-gradient(135deg, #3e2723, #4e342e); @break
+                                                @case('Body / Exterior') background: linear-gradient(135deg, #827717, #9e9d24); @break
+                                                @default background: linear-gradient(135deg, #546e7a, #607d8b); @endswitch
+                                            color: #fff; padding: 3px 10px; border-radius: 12px; font-size: 11px;">
+                                            <i class="fas fa-tag me-1"></i>{{ $finding->category }}
+                                        </span>
+                                        <strong class="finding-title">{{ $finding->issue_title }}</strong>
+                                    </div>
+                                    @if($finding->detailed_notes)
+                                    <p class="text-muted small mb-2 finding-notes">{{ $finding->detailed_notes }}</p>
+                                    @endif
+                                    @if($finding->recommended_action)
+                                    <div class="mb-2">
+                                        <small class="text-muted"><i class="fas fa-wrench me-1"></i>Recommended: </small>
+                                        <span class="small finding-action">{{ $finding->recommended_action }}</span>
+                                    </div>
+                                    @endif
+                                </div>
+                                <div class="text-end" style="min-width: 120px;">
+                                    <div class="d-flex flex-wrap gap-1 justify-content-end mb-2">
+                                        <span class="badge severity-badge-{{ $finding->severity }} px-2 py-1" style="font-size: 10px;">
+                                            @switch($finding->severity)
+                                                @case('low') <i class="fas fa-chevron-down me-1"></i>Low @break
+                                                @case('medium') <i class="fas fa-minus me-1"></i>Medium @break
+                                                @case('high') <i class="fas fa-chevron-up me-1"></i>High @break
+                                                @case('critical') <i class="fas fa-exclamation me-1"></i>Critical @break
+                                            @endswitch
+                                        </span>
+                                        <span class="badge urgency-badge-{{ $finding->estimated_urgency }} px-2 py-1" style="font-size: 10px;">
+                                            @switch($finding->estimated_urgency)
+                                                @case('routine') <i class="fas fa-calendar me-1"></i>Routine @break
+                                                @case('soon') <i class="fas fa-clock me-1"></i>Soon @break
+                                                @case('urgent') <i class="fas fa-exclamation-circle me-1"></i>Urgent @break
+                                                @case('immediate') <i class="fas fa-bolt me-1"></i>Immediate @break
+                                            @endswitch
+                                        </span>
+                                    </div>
+                                    @if($finding->estimated_cost !== null)
+                                    <div class="fw-bold finding-cost" style="color: #1a237e;">
+                                        ₱{{ number_format($finding->estimated_cost, 2) }}
+                                    </div>
+                                    @endif
+                                    <div class="small text-muted mt-1">
+                                        @if($finding->technician)
+                                        <i class="fas fa-user me-1"></i>{{ $finding->technician->name }}<br>
+                                        @endif
+                                        <i class="fas fa-clock me-1"></i>{{ $finding->created_at ? $finding->created_at->diffForHumans() : '' }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2 mt-2 pt-2 border-top">
+                                <button class="btn btn-sm btn-outline-primary" onclick="editFinding({{ $finding->id }})" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="deleteFinding({{ $finding->id }})" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                <span class="badge ms-auto align-self-center finding-linked-badge" style="@if($finding->is_linked_to_estimate) background: #059669; color: #fff; @else display: none; @endif font-size: 10px;">
+                                    <i class="fas fa-link me-1"></i>In Estimate
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                @empty
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="fas fa-clipboard-list" style="font-size: 48px; color: #cfd8dc;"></i>
+                    </div>
+                    <h6 class="text-muted mb-2">No Findings Recorded Yet</h6>
+                    <p class="text-muted small mb-3">Use the quick-add bar above or the Bulk Quick Add panel to start logging findings.</p>
+                    <div class="d-flex flex-wrap justify-content-center gap-2">
+                        <span class="badge bg-primary px-3 py-2" onclick="document.getElementById('quick-category').value='Engine'; document.getElementById('quick-issue-title').focus();" style="cursor: pointer;">
+                            <i class="fas fa-bolt me-1"></i>Engine Issue
+                        </span>
+                        <span class="badge bg-danger px-3 py-2" onclick="document.getElementById('quick-category').value='Brakes'; document.getElementById('quick-issue-title').focus();" style="cursor: pointer;">
+                            <i class="fas fa-bolt me-1"></i>Brake Issue
+                        </span>
+                        <span class="badge bg-warning text-dark px-3 py-2" onclick="document.getElementById('quick-category').value='Suspension'; document.getElementById('quick-issue-title').focus();" style="cursor: pointer;">
+                            <i class="fas fa-bolt me-1"></i>Suspension Issue
+                        </span>
+                    </div>
+                </div>
+                @endforelse
+            </div>
+        </div>
+
+        <!-- Findings Add/Edit Modal -->
+        <div class="modal fade" id="findingEditModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content" style="border-radius:12px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.15);">
+                    <div class="modal-header" style="background:linear-gradient(135deg,#1a237e,#283593);color:#fff;border-radius:12px 12px 0 0;">
+                        <h5 class="modal-title"><i class="fas fa-clipboard-list me-2"></i><span id="findingModalTitle">Add Finding</span></h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <form id="findingForm">
+                            <input type="hidden" id="editFindingId" value="">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold">Category</label>
+                                    <select id="editCategory" class="form-select form-select-sm">
+                                        <option value="Engine">Engine</option>
+                                        <option value="Brakes">Brakes</option>
+                                        <option value="Suspension">Suspension</option>
+                                        <option value="Electrical">Electrical</option>
+                                        <option value="Cooling">Cooling</option>
+                                        <option value="Transmission">Transmission</option>
+                                        <option value="Tires">Tires</option>
+                                        <option value="Aircon">Aircon</option>
+                                        <option value="Steering">Steering</option>
+                                        <option value="Body / Exterior">Body / Exterior</option>
+                                        <option value="Safety">Safety</option>
+                                        <option value="Maintenance">Maintenance</option>
+                                        <option value="Other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-semibold">Issue Title</label>
+                                    <div class="position-relative">
+                                        <input type="text" id="editIssueTitle" class="form-control form-control-sm" placeholder="e.g. Oil Leak" autocomplete="off">
+                                        <div id="modal-autosuggest-results" class="list-group position-absolute w-100 shadow-sm" style="z-index: 1050; display: none; max-height: 250px; overflow-y: auto;"></div>
+                                    </div>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label small fw-semibold">Detailed Notes</label>
+                                    <textarea id="editDetailedNotes" class="form-control form-control-sm" rows="2" placeholder="Additional observations..."></textarea>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold">Severity</label>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <button type="button" class="btn btn-outline-info btn-sm severity-btn px-3" data-value="low">Low</button>
+                                        <button type="button" class="btn btn-outline-warning btn-sm severity-btn px-3 active" data-value="medium">Medium</button>
+                                        <button type="button" class="btn btn-outline-danger btn-sm severity-btn px-3" data-value="high">High</button>
+                                        <button type="button" class="btn btn-outline-dark btn-sm severity-btn px-3" data-value="critical">Critical</button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold">Urgency</label>
+                                    <div class="d-flex gap-2 flex-wrap">
+                                        <button type="button" class="btn btn-outline-secondary btn-sm urgency-btn px-3" data-value="routine">Routine</button>
+                                        <button type="button" class="btn btn-outline-info btn-sm urgency-btn px-3 active" data-value="soon">Soon</button>
+                                        <button type="button" class="btn btn-outline-warning btn-sm urgency-btn px-3" data-value="urgent">Urgent</button>
+                                        <button type="button" class="btn btn-outline-danger btn-sm urgency-btn px-3" data-value="immediate">Immediate</button>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-semibold">Est. Cost (₱)</label>
+                                    <input type="number" id="editEstimatedCost" class="form-control form-control-sm" min="0" step="0.01" placeholder="0.00">
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label small fw-semibold">Recommended Action</label>
+                                    <textarea id="editRecommendedAction" class="form-control form-control-sm" rows="2" placeholder="Recommended repair action..."></textarea>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer border-0 pt-0 px-4 pb-4">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                        <button type="button" class="btn btn-primary" onclick="saveFindingFromModal()">
+                            <i class="fas fa-save me-1"></i>Save Finding
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- === INSPECTION ITEMS TAB === -->
+        <div class="tab-pane fade" id="items" role="tabpanel">
+            @if($inspection->items && $inspection->items->count() > 0)
+                <div class="form-section">
+                    <div class="form-section-header no-collapse">
+                        <h6><i class="fas fa-list"></i>Inspection Items ({{ $inspection->items->count() }})</h6>
+                    </div>
+                    <div class="form-section-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 40px;">#</th>
+                                        <th>Category</th>
+                                        <th>Item</th>
+                                        <th>Status</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($inspection->items as $index => $item)
                                         <tr>
-                                            <th width="60%">Item</th>
-                                            <th width="20%">Status</th>
-                                            <th width="20%">Notes</th>
+                                            <td class="text-muted">{{ $index + 1 }}</td>
+                                            <td><span class="badge bg-secondary-subtle text-secondary">{{ $item->category ?? 'General' }}</span></td>
+                                            <td class="fw-medium">{{ $item->item_name ?? $item->name ?? 'Item' }}</td>
+                                            <td>
+                                                @if($item->status == 'passed')
+                                                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Passed</span>
+                                                @elseif($item->status == 'failed')
+                                                    <span class="badge bg-danger"><i class="fas fa-times me-1"></i>Failed</span>
+                                                @elseif($item->status == 'warning')
+                                                    <span class="badge bg-warning text-dark"><i class="fas fa-exclamation me-1"></i>Warning</span>
+                                                @else
+                                                    <span class="badge bg-secondary"><i class="fas fa-clock me-1"></i>Pending</span>
+                                                @endif
+                                            </td>
+                                            <td class="small text-muted">{{ $item->notes ?? '' }}</td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($items as $item)
-                                            <tr>
-                                                <td>{{ $item->item_name }}</td>
-                                                <td>
-                                                    @php
-                                                        $statusBadge = [
-                                                            'passed' => 'success',
-                                                            'failed' => 'danger',
-                                                            'attention_needed' => 'warning',
-                                                            'not_applicable' => 'secondary'
-                                                        ][$item->status] ?? 'secondary';
-                                                    @endphp
-                                                    <span class="badge bg-{{ $statusBadge }}">
-                                                        {{ ucfirst(str_replace('_', ' ', $item->status)) }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    @if($item->notes)
-                                                        <small class="text-muted">{{ $item->notes }}</small>
-                                                    @else
-                                                        <span class="text-muted">-</span>
-                                                    @endif
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="form-section">
+                    <div class="form-section-header no-collapse">
+                        <h6><i class="fas fa-list"></i>Inspection Items</h6>
+                    </div>
+                    <div class="form-section-body text-center py-4">
+                        <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                        <p class="text-muted mb-0">No inspection items recorded yet.</p>
+                    </div>
+                </div>
+            @endif
+        </div>
+
+        <!-- === PHOTOS TAB === -->
+        <div class="tab-pane fade" id="photos" role="tabpanel">
+            @php
+                $photos = is_array($inspection->photos) ? $inspection->photos : (json_decode($inspection->photos ?? '[]', true) ?? []);
+            @endphp
+            @if(count($photos) > 0)
+                <div class="row g-3">
+                    @foreach($photos as $photo)
+                        <div class="col-md-4 col-lg-3">
+                            <div class="form-section">
+                                <div class="form-section-body p-2">
+                                    <img src="{{ $photo['url'] ?? $photo }}" alt="Inspection photo"
+                                         class="img-fluid rounded" style="width:100%;height:180px;object-fit:cover;cursor:pointer;"
+                                         onclick="window.open(this.src, '_blank')">
+                                    @if(isset($photo['caption']))
+                                        <p class="small text-muted mt-1 mb-0 px-1">{{ $photo['caption'] }}</p>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     @endforeach
-                @else
-                    <div class="text-center py-4">
-                        <i class="fas fa-info-circle me-2"></i>No inspection items recorded yet.
-                        
-                        <!-- Add New Finding Form for Empty State -->
-                        <div class="mt-3" id="addFindingFormEmpty" style="display: none;">
-                            <div class="demo-form">
-                                <div class="row g-3 justify-content-center">
-                                    <div class="col-md-8">
-                                        <label for="item_name_empty" class="form-label">Item Name *</label>
-                                        <input type="text" class="form-control" id="item_name_empty" placeholder="What did you inspect?">
+                </div>
+            @else
+                <div class="form-section">
+                    <div class="form-section-header no-collapse">
+                        <h6><i class="fas fa-camera"></i>Photos</h6>
+                    </div>
+                    <div class="form-section-body text-center py-4">
+                        <i class="fas fa-image fa-3x text-muted mb-3"></i>
+                        <p class="text-muted mb-0">No photos attached to this inspection.</p>
+                    </div>
+                </div>
+            @endif
+        </div>
+
+        <!-- === TIMELINE TAB === -->
+        <div class="tab-pane fade" id="timeline" role="tabpanel">
+            <div class="form-section">
+                <div class="form-section-header no-collapse">
+                    <h6><i class="fas fa-history"></i>Inspection Timeline</h6>
+                </div>
+                <div class="form-section-body">
+                    @php
+                        $timelineEntries = [];
+                        if($inspection->created_at) $timelineEntries[] = ['event' => 'Inspection Created', 'time' => $inspection->created_at, 'icon' => 'fa-plus-circle', 'color' => 'primary'];
+                        if($inspection->inspection_started_at) $timelineEntries[] = ['event' => 'Inspection Started', 'time' => $inspection->inspection_started_at, 'icon' => 'fa-play', 'color' => 'info'];
+                        if($inspection->inspection_completed_at) $timelineEntries[] = ['event' => 'Inspection Completed', 'time' => $inspection->inspection_completed_at, 'icon' => 'fa-check-circle', 'color' => 'success'];
+                        if($inspection->report_generated_at) $timelineEntries[] = ['event' => 'Report Generated', 'time' => $inspection->report_generated_at, 'icon' => 'fa-file-alt', 'color' => 'primary'];
+                    @endphp
+                    @if(count($timelineEntries) > 0)
+                        <div class="timeline-vertical">
+                            @foreach($timelineEntries as $entry)
+                                <div class="d-flex mb-3">
+                                    <div class="me-3 text-{{ $entry['color'] }}" style="font-size: 1.2rem;">
+                                        <i class="fas {{ $entry['icon'] }}"></i>
                                     </div>
-                                    
-                                    <div class="col-md-4">
-                                        <label for="status_empty" class="form-label">Status *</label>
-                                        <select class="form-select" id="status_empty">
-                                            <option value="">Select Status</option>
-                                            <option value="passed">Passed</option>
-                                            <option value="failed">Failed</option>
-                                            <option value="attention_needed">Attention Needed</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="col-12">
-                                        <div class="d-flex justify-content-center gap-2">
-                                            <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('addFindingFormEmpty').style.display='none'">
-                                                Cancel
-                                            </button>
-                                            <button type="button" class="btn btn-primary" onclick="addDemoFinding()">
-                                                <i class="fas fa-plus me-1"></i> Add First Finding
-                                            </button>
-                                        </div>
+                                    <div>
+                                        <strong>{{ $entry['event'] }}</strong>
+                                        <br><small class="text-muted">{{ $entry['time']->format('M j, Y g:i A') }}</small>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-                @endif
-                
-                <!-- Add New Finding Form (Initially Hidden) - For when items exist -->
-                <div class="mt-4 p-3 border rounded" id="addFindingForm" style="display: none;">
-                    <h6 class="mb-3">Add New Finding</h6>
-                    <div class="demo-form">
-                        <div class="row g-3">
-                            <div class="col-md-5">
-                                <label for="item_name" class="form-label">Item Name *</label>
-                                <input type="text" class="form-control" id="item_name" placeholder="e.g., Brake Pads, Oil Filter, Tire Tread">
-                            </div>
-                            
-                            <div class="col-md-3">
-                                <label for="status" class="form-label">Status *</label>
-                                <select class="form-select" id="status">
-                                    <option value="">Select Status</option>
-                                    <option value="passed">Passed</option>
-                                    <option value="failed">Failed</option>
-                                    <option value="attention_needed">Attention Needed</option>
-                                    <option value="not_applicable">Not Applicable</option>
-                                </select>
-                            </div>
-                            
-                            <div class="col-md-4">
-                                <label for="category" class="form-label">Category</label>
-                                <input type="text" class="form-control" id="category" placeholder="e.g., Brakes, Engine, Electrical">
-                            </div>
-                            
-                            <div class="col-12">
-                                <label for="notes" class="form-label">Notes</label>
-                                <textarea class="form-control" id="notes" rows="2" placeholder="Additional notes about this finding..."></textarea>
-                            </div>
-                            
-                            <div class="col-12">
-                                <div class="d-flex justify-content-end gap-2">
-                                    <button type="button" class="btn btn-outline-secondary" onclick="document.getElementById('addFindingForm').style.display='none'">
-                                        Cancel
-                                    </button>
-                                    <button type="button" class="btn btn-primary" onclick="addDemoFinding()">
-                                        <i class="fas fa-plus me-1"></i> Add Finding
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Add Finding Button (Bottom of Card) -->
-                <div class="text-center mt-3">
-                    <button type="button" class="btn btn-primary" onclick="showAddFindingForm()">
-                        <i class="fas fa-plus me-1"></i> Add New Finding
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Right Column - Stats & Actions -->
-    <div class="col-md-4">
-        <!-- Inspection Statistics -->
-        <div class="card mb-4">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">
-                    <i class="fas fa-chart-bar me-2"></i>Inspection Statistics
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row text-center">
-                    <div class="col-6 mb-3">
-                        <div class="p-3 border rounded">
-                            <h3 class="mb-0 text-primary">{{ $itemStats['total'] ?? 0 }}</h3>
-                            <small class="text-muted">Total Items</small>
-                        </div>
-                    </div>
-                    <div class="col-6 mb-3">
-                        <div class="p-3 border rounded">
-                            <h3 class="mb-0 text-success">{{ $itemStats['passed'] ?? 0 }}</h3>
-                            <small class="text-muted">Passed</small>
-                        </div>
-                    </div>
-                    <div class="col-6 mb-3">
-                        <div class="p-3 border rounded">
-                            <h3 class="mb-0 text-danger">{{ $itemStats['failed'] ?? 0 }}</h3>
-                            <small class="text-muted">Failed</small>
-                        </div>
-                    </div>
-                    <div class="col-6 mb-3">
-                        <div class="p-3 border rounded">
-                            <h3 class="mb-0 text-warning">{{ $itemStats['attention_needed'] ?? 0 }}</h3>
-                            <small class="text-muted">Needs Attention</small>
-                        </div>
-                    </div>
-                </div>
-                
-                @if($itemStats['pass_rate'] !== null)
-                    <div class="mt-3">
-                        <h6 class="text-muted mb-2">Pass Rate</h6>
-                        <div class="progress" style="height: 25px;">
-                            <div class="progress-bar 
-                                @if($itemStats['pass_rate'] >= 90) bg-success
-                                @elseif($itemStats['pass_rate'] >= 70) bg-warning
-                                @else bg-danger @endif"
-                                role="progressbar" 
-                                style="width: {{ $itemStats['pass_rate'] }}%"
-                                aria-valuenow="{{ $itemStats['pass_rate'] }}" 
-                                aria-valuemin="0" 
-                                aria-valuemax="100">
-                                {{ number_format($itemStats['pass_rate'], 1) }}%
-                            </div>
-                        </div>
-                    </div>
-                @endif
-            </div>
-        </div>
-
-        <!-- Inspection Team -->
-        <div class="card mb-4">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">
-                    <i class="fas fa-users me-2"></i>Inspection Team
-                </h5>
-            </div>
-            <div class="card-body">
-                <!-- DEBUG: Inspection team form start - PHP executing this line -->
-                <?php /* DEBUG: PHP is executing this section */ ?>
-                <form id="inspection-team-form" action="{{ route('inspections.update-team', $inspection) }}" method="POST">
-                    @csrf
-                    @method('PUT')
-                    
-                    <div class="mb-3">
-                        <h6 class="text-muted mb-2">Technician</h6>
-                        <div class="input-group">
-                            <select name="technician_id" id="technician-select" class="form-select form-select-sm">
-                                <option value="">Not assigned</option>
-                                @foreach($technicians as $technician)
-                                    <option value="{{ $technician->id }}" 
-                                        {{ $inspection->technician_id == $technician->id ? 'selected' : '' }}>
-                                        {{ $technician->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <span class="input-group-text">
-                                <i class="fas fa-user-check text-success"></i>
-                            </span>
-                        </div>
-                        <small class="text-muted">Select a technician to assign to this inspection</small>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <h6 class="text-muted mb-2">Service Advisor</h6>
-                        <div class="input-group">
-                            <select name="service_advisor_id" id="service-advisor-select" class="form-select form-select-sm">
-                                <option value="">Not assigned</option>
-                                @foreach($serviceAdvisors as $advisor)
-                                    <option value="{{ $advisor->id }}" 
-                                        {{ $inspection->service_advisor_id == $advisor->id ? 'selected' : '' }}>
-                                        {{ $advisor->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <span class="input-group-text">
-                                <i class="fas fa-user-tie text-primary"></i>
-                            </span>
-                        </div>
-                        <small class="text-muted">Select a service advisor to assign to this inspection</small>
-                    </div>
-                    
-                    <div class="mt-3">
-                        <button type="submit" class="btn btn-sm btn-primary">
-                            <i class="fas fa-save me-1"></i> Update Team
-                        </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="cancel-team-update" style="display: none;">
-                            Cancel
-                        </button>
-                    </div>
-                </form>
-                
-                <div class="mb-3">
-                    <h6 class="text-muted mb-2">Created By</h6>
-                    <p class="mb-1">
-                        @if($inspection->createdBy)
-                            <i class="fas fa-user-plus me-2 text-info"></i>
-                            {{ $inspection->createdBy->name ?? 'N/A' }}
-                        @else
-                            <span class="text-muted">System</span>
-                        @endif
-                    </p>
-                </div>
-                
-                @if($inspection->approvedBy)
-                    <div class="mb-3">
-                        <h6 class="text-muted mb-2">Approved By</h6>
-                        <p class="mb-1">
-                            <i class="fas fa-user-check me-2 text-success"></i>
-                            {{ $inspection->approvedBy->name ?? 'N/A' }}
-                        </p>
-                    </div>
-                @endif
-            </div>
-        </div>
-
-        <!-- Timeline -->
-        <div class="card mb-4">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">
-                    <i class="fas fa-history me-2"></i>Inspection Timeline
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="timeline">
-                    @if($inspection->created_at)
-                        <div class="timeline-item mb-3">
-                            <div class="timeline-marker bg-primary"></div>
-                            <div class="timeline-content">
-                                <h6 class="mb-0">Inspection Created</h6>
-                                <small class="text-muted">{{ $inspection->created_at->format('M d, Y h:i A') }}</small>
-                            </div>
-                        </div>
-                    @endif
-                    
-                    @if($inspection->inspection_start_time)
-                        <div class="timeline-item mb-3">
-                            <div class="timeline-marker bg-info"></div>
-                            <div class="timeline-content">
-                                <h6 class="mb-0">Inspection Started</h6>
-                                <small class="text-muted">{{ \Carbon\Carbon::parse($inspection->inspection_start_time)->format('M d, Y h:i A') }}</small>
-                            </div>
-                        </div>
-                    @endif
-                    
-                    @if($inspection->inspection_end_time)
-                        <div class="timeline-item mb-3">
-                            <div class="timeline-marker bg-success"></div>
-                            <div class="timeline-content">
-                                <h6 class="mb-0">Inspection Completed</h6>
-                                <small class="text-muted">{{ \Carbon\Carbon::parse($inspection->inspection_end_time)->format('M d, Y h:i A') }}</small>
-                            </div>
-                        </div>
-                    @endif
-                    
-                    @if($inspection->approved_at)
-                        <div class="timeline-item mb-3">
-                            <div class="timeline-marker bg-warning"></div>
-                            <div class="timeline-content">
-                                <h6 class="mb-0">Inspection Approved</h6>
-                                <small class="text-muted">{{ \Carbon\Carbon::parse($inspection->approved_at)->format('M d, Y h:i A') }}</small>
-                            </div>
-                        </div>
-                    @endif
-                </div>
-            </div>
-        </div>
-
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">
-                    <i class="fas fa-history me-2"></i>Previous Inspections for This Vehicle
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-sm table-hover">
-                        <thead>
-                            <tr>
-                                <th>Inspection #</th>
-                                <th>Date</th>
-                                <th>Type</th>
-                                <th>Status</th>
-                                <th>Score</th>
-                                <th>Technician</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($vehicleInspections as $prevInspection)
-                                <tr>
-                                    <td>{{ $prevInspection->inspection_number }}</td>
-                                    <td>{{ $prevInspection->created_at->format('M d, Y') }}</td>
-                                    <td>{{ ucfirst(str_replace('_', ' ', $prevInspection->inspection_type)) }}</td>
-                                    <td>
-                                        <span class="badge 
-                                            @if($prevInspection->inspection_status === 'completed') bg-success
-                                            @elseif($prevInspection->inspection_status === 'in_progress') bg-warning
-                                            @elseif($prevInspection->inspection_status === 'draft') bg-secondary
-                                            @elseif($prevInspection->inspection_status === 'cancelled') bg-danger
-                                            @else bg-info @endif">
-                                            {{ ucfirst(str_replace('_', ' ', $prevInspection->inspection_status)) }}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        @if($prevInspection->inspection_score)
-                                            <span class="badge 
-                                                @if($prevInspection->inspection_score >= 90) bg-success
-                                                @elseif($prevInspection->inspection_score >= 70) bg-warning
-                                                @else bg-danger @endif">
-                                                {{ $prevInspection->inspection_score }}%
-                                            </span>
-                                        @else
-                                            <span class="text-muted">-</span>
-                                        @endif
-                                    </td>
-                                    <td>{{ $prevInspection->technician->name ?? 'Not assigned' }}</td>
-                                    <td>
-                                        <a href="{{ route('inspections.show', $prevInspection) }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </td>
-                                </tr>
                             @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Photos Section - At the very bottom of inspection items -->
-        <div class="card mb-4">
-            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="fas fa-images me-2"></i>Inspection Photos
-                </h5>
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#uploadPhotoModal"
-                    @if(in_array($inspection->status, ['completed', 'cancelled'])) disabled @endif>
-                    <i class="fas fa-plus me-1"></i> Add Photo
-                </button>
-            </div>
-            <div class="card-body" id="photos-container">
-                @php
-                    $photos = $inspection->photos ?? [];
-                @endphp
-                
-                @if(count($photos) > 0)
-                    <div class="row">
-                        @foreach($photos as $index => $photo)
-                            <div class="col-md-4 mb-3">
-                                <div class="card">
-                                    <a href="{{ asset('storage/' . $photo['path']) }}" target="_blank">
-                                        <img src="{{ asset('storage/' . $photo['path']) }}" 
-                                             class="card-img-top" 
-                                             alt="Inspection photo {{ $index + 1 }}"
-                                             style="height: 150px; object-fit: cover;">
-                                    </a>
-                                    <div class="card-body p-2">
-                                        @if(!empty($photo['description']))
-                                            <p class="card-text small mb-1">{{ $photo['description'] }}</p>
-                                        @endif
-                                        <small class="text-muted">
-                                            <i class="fas fa-calendar-alt me-1"></i>
-                                            {{ \Carbon\Carbon::parse($photo['uploaded_at'])->format('M d, Y h:i A') }}
-                                        </small>
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="text-center py-4">
-                        <div class="mb-3">
-                            <i class="fas fa-camera fa-3x text-muted"></i>
                         </div>
-                        <h6 class="text-muted">No photos uploaded yet</h6>
-                        <p class="text-muted small">Click "Add Photo" to upload inspection photos</p>
-                        <button type="button" class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#uploadPhotoModal"
-                            @if(in_array($inspection->status, ['completed', 'cancelled'])) disabled @endif>
-                            <i class="fas fa-upload me-2"></i>Upload First Photo
-                        </button>
-                    </div>
-                @endif
+                    @else
+                        <p class="text-muted mb-0">No timeline events available.</p>
+                    @endif
+                </div>
             </div>
         </div>
     </div>
 </div>
-
-</form>
 
 @endsection
 
 @push('styles')
 <style>
-.timeline {
-    position: relative;
-    padding-left: 20px;
-}
-
-.timeline::before {
-    content: '';
-    position: absolute;
-    left: 7px;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background-color: #e9ecef;
-}
-
-.timeline-item {
-    position: relative;
-    margin-bottom: 20px;
-}
-
-.timeline-marker {
-    position: absolute;
-    left: -20px;
-    top: 0;
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    border: 2px solid #fff;
-}
-
-.timeline-content {
-    padding-left: 10px;
-}
+/* Findings System Styles */
+.findings-quick-add{border:1px solid #d0d9f0!important;position:relative;z-index:10}
+#quick-issue-title{font-size:.875rem}
+#autosuggest-results .list-group-item,
+#modal-autosuggest-results .list-group-item{padding:.35rem .75rem;cursor:pointer;border-left:3px solid transparent;font-size:.8rem}
+#autosuggest-results .list-group-item:hover,#autosuggest-results .list-group-item.active,
+#modal-autosuggest-results .list-group-item:hover,#modal-autosuggest-results .list-group-item.active{border-left-color:#1a237e;background:#f0f4ff}
+#autosuggest-results .list-group-item .category-hint,
+#modal-autosuggest-results .list-group-item .category-hint{font-size:.65rem;color:#94a3b8}
+.severity-btn.active,.urgency-btn.active{box-shadow:0 0 0 2px rgba(26,35,126,.25)}
+.btn-outline-info.active{background:#0dcaf0!important;color:#fff!important;border-color:#0dcaf0!important}
+.btn-outline-warning.active{background:#ffc107!important;color:#000!important;border-color:#ffc107!important}
+.btn-outline-danger.active{background:#dc3545!important;color:#fff!important;border-color:#dc3545!important}
+.btn-outline-dark.active{background:#212529!important;color:#fff!important;border-color:#212529!important}
+.btn-outline-secondary.active{background:#6c757d!important;color:#fff!important;border-color:#6c757d!important}
+.btn-outline-info.active{background:#0dcaf0!important;color:#fff!important;border-color:#0dcaf0!important}
+.finding-card{transition:all .15s ease}
+.finding-card .card:hover{border-color:#c8d6e5!important;box-shadow:0 2px 8px rgba(0,0,0,.06)!important}
+.finding-title{color:#1e293b;font-size:.9rem}
+.finding-notes{font-size:.82rem;color:#64748b}
+.finding-action{font-size:.82rem;color:#475569}
+.finding-cost{font-size:.95rem}
+/* Animate new findings */
+@keyframes fadeSlideDown{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:translateY(0)}}
+.finding-new{animation:fadeSlideDown .3s ease}
+/* Animate removal */
+@keyframes fadeScaleOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.95)}}
+.finding-removing{animation:fadeScaleOut .2s ease}
+/* Modify modal styling for premium look */
+#findingEditModal .modal-header{background:linear-gradient(135deg,#1a237e,#283593);color:#fff;border-radius:.375rem .375rem 0 0}
+#findingEditModal .modal-header .btn-close{filter:brightness(0) invert(1)}
+.bulk-add-btn{transition:all .1s ease;cursor:pointer}
+.bulk-add-btn:hover{transform:translateY(-1px);box-shadow:0 2px 4px rgba(0,0,0,.1)}
 </style>
 @endpush
 
 @push('scripts')
 <script>
-// Cache Busting: Force fresh page load if page is cached
-(function() {
-    // Check if this is a cached page by looking for a timestamp
-    if (!sessionStorage.getItem('pageLoaded_' + window.location.pathname)) {
-        // First load of this page in this session
-        sessionStorage.setItem('pageLoaded_' + window.location.pathname, Date.now());
-    } else {
-        // Page might be cached, force a hard refresh
-        const lastLoad = parseInt(sessionStorage.getItem('pageLoaded_' + window.location.pathname));
-        const currentTime = Date.now();
-        const timeDiff = currentTime - lastLoad;
-        
-        // If page was loaded more than 5 minutes ago, it might be stale
-        if (timeDiff > 5 * 60 * 1000) {
-            console.log('Page might be stale, forcing hard refresh...');
-            sessionStorage.setItem('pageLoaded_' + window.location.pathname, currentTime);
-            window.location.reload(true); // Force hard refresh
-        }
-    }
-    
-    // Add timestamp to all form submissions to prevent caching
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOM loaded, checking forms...');
-        const forms = document.querySelectorAll('form');
-        console.log('Total forms on page:', forms.length);
-        
-        forms.forEach((form, index) => {
-            console.log(`Form ${index + 1}:`, {
-                id: form.id,
-                action: form.action,
-                method: form.method,
-                className: form.className
-            });
-            
-            // Check if form already has cache busting field
-            if (!form.querySelector('input[name="_cache_bust"]')) {
-                const cacheBustField = document.createElement('input');
-                cacheBustField.type = 'hidden';
-                cacheBustField.name = '_cache_bust';
-                cacheBustField.value = Date.now();
-                form.appendChild(cacheBustField);
-            }
-            
-            // Add form submission logging for debugging
-            form.addEventListener('submit', function(e) {
-                console.log('Form submitting:', form.action);
-                console.log('Form method:', form.method);
-                console.log('Form data:', new FormData(form));
-            });
-        });
-        
-        // Log all button clicks for debugging
-        document.addEventListener('click', function(e) {
-            if (e.target.type === 'submit' || e.target.closest('button[type="submit"]')) {
-                console.log('Submit button clicked:', e.target);
-            }
-        });
-        
-        // Check for complete form specifically
-        const inspectionId = {{ $inspection->id }};
-        const completeForm = document.getElementById('complete-form-' + inspectionId);
-        console.log('Complete form by ID:', completeForm ? 'Found' : 'NOT FOUND');
-        
-        const completeFormByAction = document.querySelector('form[action*="/complete"]');
-        console.log('Complete form by action:', completeFormByAction ? 'Found' : 'NOT FOUND');
-    });
-})();
-
-function showAddFindingForm() {
-    // Check if there are existing items
-    const hasItems = {{ $itemsByCategory && count($itemsByCategory) > 0 ? 'true' : 'false' }};
-    
-    if (hasItems) {
-        // Show form at bottom of items list
-        document.getElementById('addFindingForm').style.display = 'block';
-        // Scroll to form
-        document.getElementById('addFindingForm').scrollIntoView({ behavior: 'smooth' });
-        // Focus on first input
-        document.getElementById('item_name').focus();
-        
-        // Initialize autocomplete for the item_name field (in case it wasn't initialized yet)
-        setTimeout(() => {
-            if ($('#item_name').length && !$('#item_name').hasClass('ui-autocomplete-input')) {
-                $('#item_name').autocomplete({
-                    source: inspectionItems,
-                    minLength: 0, // Show suggestions even when clicking/empty
-                    delay: 0,
-                    autoFocus: true,
-                    classes: {
-                        "ui-autocomplete": "inspection-autocomplete"
-                    },
-                    position: {
-                        my: "left top",
-                        at: "left bottom",
-                        collision: "flipfit"
-                    }
-                }).focus(function() {
-                    // Show suggestions when field gets focus (click)
-                    $(this).autocomplete('search', $(this).val());
-                }).on('autocompleteselect', function(event, ui) {
-                    // Close dropdown after selection
-                    $(this).autocomplete('close');
-                });
-            }
-        }, 100);
-    } else {
-        // Show form for empty state
-        document.getElementById('addFindingFormEmpty').style.display = 'block';
-        // Scroll to form
-        document.getElementById('addFindingFormEmpty').scrollIntoView({ behavior: 'smooth' });
-        // Focus on first input
-        document.getElementById('item_name_empty').focus();
-        
-        // Initialize autocomplete for the item_name_empty field (in case it wasn't initialized yet)
-        setTimeout(() => {
-            if ($('#item_name_empty').length && !$('#item_name_empty').hasClass('ui-autocomplete-input')) {
-                $('#item_name_empty').autocomplete({
-                    source: inspectionItems,
-                    minLength: 0, // Show suggestions even when clicking/empty
-                    delay: 0,
-                    autoFocus: true,
-                    classes: {
-                        "ui-autocomplete": "inspection-autocomplete"
-                    },
-                    position: {
-                        my: "left top",
-                        at: "left bottom",
-                        collision: "flipfit"
-                    }
-                }).focus(function() {
-                    // Show suggestions when field gets focus (click)
-                    $(this).autocomplete('search', $(this).val());
-                }).on('autocompleteselect', function(event, ui) {
-                    // Close dropdown after selection
-                    $(this).autocomplete('close');
-                });
-            }
-        }, 100);
-    }
-}
-
-// Function to add finding directly (creates input row in table)
-function addDemoFinding() {
-    // Debug: Check which form is visible
-    console.log('addDemoFinding called');
-    
-    // Check which form is visible (empty state or regular form)
-    const emptyFormVisible = document.getElementById('addFindingFormEmpty') && 
-                            document.getElementById('addFindingFormEmpty').style.display !== 'none';
-    const regularFormVisible = document.getElementById('addFindingForm') && 
-                               document.getElementById('addFindingForm').style.display !== 'none';
-    
-    console.log('emptyFormVisible:', emptyFormVisible);
-    console.log('regularFormVisible:', regularFormVisible);
-    
-    // Get values from the VISIBLE form
-    let itemName, status, category, notes;
-    
-    if (emptyFormVisible) {
-        // Use empty state form values
-        itemName = document.getElementById('item_name_empty') ? document.getElementById('item_name_empty').value : '';
-        status = document.getElementById('status_empty') ? document.getElementById('status_empty').value : '';
-        category = 'Uncategorized'; // Empty form doesn't have category field
-        notes = ''; // Empty form doesn't have notes field
-        console.log('Using EMPTY form values');
-    } else if (regularFormVisible) {
-        // Use regular form values
-        itemName = document.getElementById('item_name') ? document.getElementById('item_name').value : '';
-        status = document.getElementById('status') ? document.getElementById('status').value : '';
-        category = document.getElementById('category') ? document.getElementById('category').value : 'Uncategorized';
-        notes = document.getElementById('notes') ? document.getElementById('notes').value : '';
-        console.log('Using REGULAR form values');
-    } else {
-        // No form is visible, show error
-        console.log('ERROR: No form is visible!');
-        alert('Please open the add finding form first.');
-        return;
-    }
-    
-    console.log('itemName value:', itemName);
-    console.log('status value:', status);
-    console.log('category value:', category);
-    console.log('notes value:', notes);
-    
-    if (!itemName || !status) {
-        console.log('Validation failed: itemName:', itemName, 'status:', status);
-        alert('Please fill in Item Name and Status');
-        return;
-    }
-    
-    // Get CSRF token
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-    
-    // Show loading indicator
-    Swal.fire({
-        title: 'Adding Finding...',
-        text: 'Please wait while we save the inspection finding',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-    
-    // Create FormData
-    const formData = new FormData();
-    formData.append('_token', csrfToken);
-    formData.append('_method', 'POST');
-    formData.append('item_name', itemName);
-    formData.append('item_status', status);
-    formData.append('category', category);
-    formData.append('technician_notes', notes);
-    formData.append('item_type', 'check');
-    formData.append('requires_attention', status === 'attention_needed' ? '1' : '0');
-    
-    // Get inspection ID from URL
-    const inspectionId = window.location.pathname.split('/').pop();
-    
-    // Send AJAX request to add finding
-    fetch(`/inspections/${inspectionId}/items`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest'
-        },
-        body: formData
-    })
-    .then(response => {
-        console.log('Add finding response status:', response.status);
-        return response.text().then(text => {
-            console.log('Add finding response text:', text);
-            try {
-                const data = JSON.parse(text);
-                return { status: response.status, data: data, text: text };
-            } catch (e) {
-                console.log('Response is not JSON:', text);
-                return { status: response.status, data: { message: text }, text: text };
-            }
-        });
-    })
-    .then(result => {
-        console.log('Add finding result:', result);
-        
-        if (result.status === 200 || result.status === 201) {
-            // Success
-            Swal.fire({
-                title: 'Success!',
-                text: 'Inspection finding added successfully.',
-                icon: 'success',
-                confirmButtonText: 'OK'
-            }).then(() => {
-                // Hide the form
-                document.getElementById('addFindingForm').style.display = 'none';
-                if (document.getElementById('addFindingFormEmpty')) {
-                    document.getElementById('addFindingFormEmpty').style.display = 'none';
-                }
-                
-                // Clear form fields
-                if (document.getElementById('item_name')) document.getElementById('item_name').value = '';
-                if (document.getElementById('item_name_empty')) document.getElementById('item_name_empty').value = '';
-                if (document.getElementById('status')) document.getElementById('status').value = '';
-                if (document.getElementById('status_empty')) document.getElementById('status_empty').value = '';
-                if (document.getElementById('category')) document.getElementById('category').value = '';
-                if (document.getElementById('notes')) document.getElementById('notes').value = '';
-                
-                // Reload the page to show the new finding
-                window.location.reload();
-            });
-        } else {
-            // Error
-            console.error('Error details:', result);
-            let errorMessage = 'Failed to add inspection finding.';
-            
-            if (result.data && result.data.message) {
-                errorMessage = result.data.message;
-            } else if (result.text && result.text.includes('CSRF')) {
-                errorMessage = 'CSRF token mismatch. Please refresh the page and try again.';
-            } else if (result.data && result.data.errors) {
-                // Show validation errors
-                const errors = Object.values(result.data.errors).flat();
-                errorMessage = errors.join('\n');
-            }
-            
-            Swal.fire({
-                title: 'Error',
-                text: errorMessage,
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
-        }
-    })
-    .catch(error => {
-        console.error('Add finding request error:', error);
-        Swal.fire({
-            title: 'Error',
-            text: 'Network error. Please try again.',
-            icon: 'error',
-            confirmButtonText: 'OK'
-        });
-    });
-}
-
-function addFindingInput() {
-    const tableBody = document.querySelector('.inspection-items-table tbody');
-    if (!tableBody) return;
-    
-    const newRow = document.createElement('tr');
-    newRow.innerHTML = `
-        <td>
-            <input type="text" class="form-control form-control-sm" name="new_items[0][item_name]" placeholder="Item name" required>
-        </td>
-        <td>
-            <select class="form-select form-select-sm" name="new_items[0][status]" required>
-                <option value="">Select</option>
-                <option value="passed">Passed</option>
-                <option value="failed">Failed</option>
-                <option value="attention_needed">Attention Needed</option>
-            </select>
-        </td>
-        <td>
-            <input type="text" class="form-control form-control-sm" name="new_items[0][notes]" placeholder="Notes">
-            <input type="hidden" name="new_items[0][inspection_id]" value="{{ $inspection->id }}">
-        </td>
-    `;
-    
-    tableBody.appendChild(newRow);
-    newRow.querySelector('input').focus();
-}
-
-// Initialize page state on load
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Inspection page loaded');
-    
-    // Ensure view mode is visible for both sections
-    document.getElementById('concerns-view').style.display = 'block';
-    document.getElementById('notes-view').style.display = 'block';
-    
-    // Ensure edit mode is hidden
-    document.getElementById('concerns-edit').style.display = 'none';
-    document.getElementById('notes-edit').style.display = 'none';
-    
-    // Ensure edit buttons are visible
-    document.getElementById('edit-concerns-btn').style.display = 'block';
-    document.getElementById('edit-notes-btn').style.display = 'block';
-    
-    // Add event listeners to prevent automatic hiding
-    const concernsInput = document.getElementById('concerns-input');
-    const notesInput = document.getElementById('notes-input');
-    
-    if (concernsInput) {
-        concernsInput.addEventListener('blur', function(e) {
-            console.log('concerns-input blur event at', new Date().toISOString());
-            // Don't do anything on blur - let user decide when to save/cancel
-        });
-    }
-    
-    if (notesInput) {
-        notesInput.addEventListener('blur', function(e) {
-            console.log('notes-input blur event at', new Date().toISOString());
-            // Don't do anything on blur - let user decide when to save/cancel
-        });
-    }
-    
-    // Monitor for any attempts to hide our edit divs
-    const concernsEdit = document.getElementById('concerns-edit');
-    const notesEdit = document.getElementById('notes-edit');
-    
-    if (concernsEdit) {
-        const originalSetAttribute = concernsEdit.setAttribute;
-        concernsEdit.setAttribute = function(name, value) {
-            if (name === 'style' && value.includes('display: none')) {
-                console.log('Blocked attempt to hide concerns-edit via setAttribute');
-                return; // Block the hiding
-            }
-            return originalSetAttribute.apply(this, arguments);
-        };
-    }
-    
-    if (notesEdit) {
-        const originalSetAttribute = notesEdit.setAttribute;
-        notesEdit.setAttribute = function(name, value) {
-            if (name === 'style' && value.includes('display: none')) {
-                console.log('Blocked attempt to hide notes-edit via setAttribute');
-                return; // Block the hiding
-            }
-            return originalSetAttribute.apply(this, arguments);
-        };
-    }
-});
-
-// Customer Concerns Functions
-function editCustomerConcerns() {
-    console.log('editCustomerConcerns called');
-    
-    // Hide view mode, show edit mode
-    document.getElementById('concerns-view').style.display = 'none';
-    document.getElementById('concerns-edit').style.display = 'block';
-    document.getElementById('edit-concerns-btn').style.display = 'none';
-    
-    // Focus on textarea
-    document.getElementById('concerns-input').focus();
-}
-
-function cancelEditConcerns() {
-    // Get original value
-    const originalText = document.getElementById('concerns-text').textContent;
-    
-    // Reset input to original value
-    document.getElementById('concerns-input').value = originalText === 'No concerns recorded' ? '' : originalText;
-    
-    // Always show view mode, hide edit mode
-    document.getElementById('concerns-view').style.display = 'block';
-    document.getElementById('concerns-edit').style.display = 'none';
-    document.getElementById('edit-concerns-btn').style.display = 'block';
-}
-
-function saveCustomerConcerns() {
-    const concerns = document.getElementById('concerns-input').value.trim();
-    const saveBtn = document.querySelector('#concerns-edit .btn-success');
-    const originalText = saveBtn.innerHTML;
-    
-    // Show loading state
-    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
-    saveBtn.disabled = true;
-    
-    // Create form data
-    const formData = new FormData();
-    formData.append('customer_concerns', concerns);
-    formData.append('_method', 'PUT');
-    
-    fetch("{{ route('inspections.update', $inspection) }}", {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update view text
-            const displayText = concerns || 'No concerns recorded';
-            document.getElementById('concerns-text').textContent = displayText;
-            
-            // Show view mode, hide edit mode
-            document.getElementById('concerns-view').style.display = 'block';
-            document.getElementById('concerns-edit').style.display = 'none';
-            document.getElementById('edit-concerns-btn').style.display = 'block';
-            
-            // Show success message
-            showToast('Customer concerns saved successfully!', 'success');
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to save customer concerns. Please try again.');
-    })
-    .finally(() => {
-        // Restore button state
-        saveBtn.innerHTML = originalText;
-        saveBtn.disabled = false;
-    });
-}
-
-// Technician Notes Functions
-function editTechnicianNotes() {
-    console.log('editTechnicianNotes called');
-    
-    // Hide view mode, show edit mode
-    document.getElementById('notes-view').style.display = 'none';
-    document.getElementById('notes-edit').style.display = 'block';
-    document.getElementById('edit-notes-btn').style.display = 'none';
-    
-    // Focus on textarea
-    document.getElementById('notes-input').focus();
-}
-
-function cancelEditNotes() {
-    // Get original value
-    const originalText = document.getElementById('notes-text').textContent;
-    
-    // Reset input to original value
-    document.getElementById('notes-input').value = originalText === 'No notes recorded' ? '' : originalText;
-    
-    // Always show view mode, hide edit mode
-    document.getElementById('notes-view').style.display = 'block';
-    document.getElementById('notes-edit').style.display = 'none';
-    document.getElementById('edit-notes-btn').style.display = 'block';
-}
-
-function saveTechnicianNotes() {
-    const notes = document.getElementById('notes-input').value.trim();
-    const saveBtn = document.querySelector('#notes-edit .btn-success');
-    const originalText = saveBtn.innerHTML;
-    
-    // Show loading state
-    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
-    saveBtn.disabled = true;
-    
-    // Create form data
-    const formData = new FormData();
-    formData.append('technician_notes', notes);
-    formData.append('_method', 'PUT');
-    
-    fetch("{{ route('inspections.update', $inspection) }}", {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update view text
-            const displayText = notes || 'No notes recorded';
-            document.getElementById('notes-text').textContent = displayText;
-            
-            // Show view mode, hide edit mode
-            document.getElementById('notes-view').style.display = 'block';
-            document.getElementById('notes-edit').style.display = 'none';
-            document.getElementById('edit-notes-btn').style.display = 'block';
-            
-            // Show success message
-            showToast('Technician notes saved successfully!', 'success');
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to save technician notes. Please try again.');
-    })
-    .finally(() => {
-        // Restore button state
-        saveBtn.innerHTML = originalText;
-        saveBtn.disabled = false;
-    });
-}
-
-// Toast notification function
-function showToast(message, type = 'success') {
-    // Create toast container if it doesn't exist
-    let toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.id = 'toast-container';
-        toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
-        toastContainer.style.zIndex = '1050';
-        document.body.appendChild(toastContainer);
-    }
-    
-    // Create toast
-    const toastId = 'toast-' + Date.now();
-    const toast = document.createElement('div');
-    toast.id = toastId;
-    toast.className = `toast align-items-center text-bg-${type} border-0`;
-    toast.setAttribute('role', 'alert');
-    toast.setAttribute('aria-live', 'assertive');
-    toast.setAttribute('aria-atomic', 'true');
-    
-    toast.innerHTML = `
-        <div class="d-flex">
-            <div class="toast-body">
-                ${message}
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    `;
-    
-    toastContainer.appendChild(toast);
-    
-    // Initialize and show toast
-    const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
-    bsToast.show();
-    
-    // Remove toast after it's hidden
-    toast.addEventListener('hidden.bs.toast', function () {
-        toast.remove();
-    });
-}
-
-// Photo Upload Functions
-function uploadPhoto() {
-    const form = document.getElementById('photoUploadForm');
-    const formData = new FormData(form);
-    const uploadBtn = document.getElementById('uploadPhotoBtn');
-    const originalText = uploadBtn.innerHTML;
-    
-    // Show loading state
-    uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
-    uploadBtn.disabled = true;
-    
-    fetch("{{ route('inspections.upload-photo', $inspection) }}", {
-        method: 'POST',
-        body: formData,
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Show success message
-            showToast('Photo uploaded successfully!', 'success');
-            
-            // Reset form
-            form.reset();
-            document.getElementById('photoPreviewContainer').style.display = 'none';
-            
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('uploadPhotoModal'));
-            modal.hide();
-            
-            // Dynamically add the new photo to the photos section
-            addPhotoToGallery(data.photo);
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to upload photo. Please try again.');
-    })
-    .finally(() => {
-        // Restore button state
-        uploadBtn.innerHTML = originalText;
-        uploadBtn.disabled = false;
-    });
-}
-
-// Preview photo before upload
-function previewPhoto(input) {
-    const preview = document.getElementById('photoPreview');
-    const previewContainer = document.getElementById('photoPreviewContainer');
-    
-    if (input.files && input.files[0]) {
-        const reader = new FileReader();
-        
-        reader.onload = function(e) {
-            preview.src = e.target.result;
-            previewContainer.style.display = 'block';
-        }
-        
-        reader.readAsDataURL(input.files[0]);
-    } else {
-        previewContainer.style.display = 'none';
-    }
-}
-
-// Add photo to gallery dynamically
-function addPhotoToGallery(photoData) {
-    const photosContainer = document.getElementById('photos-container');
-    const emptyState = photosContainer.querySelector('.text-center');
-    const existingRow = photosContainer.querySelector('.row');
-    
-    // If empty state exists, hide it
-    if (emptyState) {
-        emptyState.style.display = 'none';
-    }
-    
-    // Create photo card HTML
-    const photoCard = `
-        <div class="col-md-4 mb-3">
-            <div class="card">
-                <a href="${photoData.path_url}" target="_blank">
-                    <img src="${photoData.path_url}" 
-                         class="card-img-top" 
-                         alt="Inspection photo"
-                         style="height: 150px; object-fit: cover;">
-                </a>
-                <div class="card-body p-2">
-                    ${photoData.description ? `<p class="card-text small mb-1">${photoData.description}</p>` : ''}
-                    <small class="text-muted">
-                        <i class="fas fa-calendar-alt me-1"></i>
-                        ${new Date(photoData.uploaded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}
-                    </small>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Add photo to container
-    if (existingRow) {
-        existingRow.insertAdjacentHTML('beforeend', photoCard);
-    } else {
-        // Create row if it doesn't exist
-        photosContainer.innerHTML = `
-            <div class="row">
-                ${photoCard}
-            </div>
-        `;
-    }
-}
-
-// AJAX function to mark inspection as complete
-function markInspectionAsComplete(inspectionId) {
-    console.log('markInspectionAsComplete called for inspection:', inspectionId);
-    
-    // Check if SweetAlert2 is available
-    if (typeof Swal === 'undefined') {
-        // Fallback to native confirm
-        if (confirm('Mark this inspection as completed?')) {
-            submitCompleteRequest(inspectionId);
-        }
-        return;
-    }
-    
-    Swal.fire({
-        title: 'Mark as Complete?',
-        text: 'Are you sure you want to mark this inspection as completed?',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Yes, mark as complete!',
-        cancelButtonText: 'Cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            submitCompleteRequest(inspectionId);
-        }
-    });
-}
-
-// AJAX function to undo completion
-function undoCompleteInspection(inspectionId) {
-    console.log('undoCompleteInspection called for inspection:', inspectionId);
-    
-    // Check if SweetAlert2 is available
-    if (typeof Swal === 'undefined') {
-        // Fallback to native confirm
-        if (confirm('Are you sure you want to mark this inspection as incomplete?\n\nThis will notify the technician that their inspection has been undone.')) {
-            submitUndoCompleteRequest(inspectionId);
-        }
-        return;
-    }
-    
-    Swal.fire({
-        title: 'Undo Completion?',
-        html: 'Are you sure you want to mark this inspection as incomplete?<br><br><small>This will notify the technician that their inspection has been undone.</small>',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Yes, undo completion!',
-        cancelButtonText: 'Cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            submitUndoCompleteRequest(inspectionId);
-        }
-    });
-}
-
-// Submit complete request via AJAX
-function submitCompleteRequest(inspectionId) {
-    console.log('Submitting complete request for inspection:', inspectionId);
-    
-    // Show loading indicator
-    Swal.fire({
-        title: 'Processing...',
-        text: 'Marking inspection as complete',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-    
-    // Create CSRF token
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-    
-    // Create FormData (Laravel expects form data, not JSON)
-    const formData = new FormData();
-    formData.append('_token', csrfToken);
-    formData.append('_method', 'POST');
-    formData.append('_cache_bust', Date.now());
-    
-    // Send AJAX request with FormData
-    fetch(`/inspections/${inspectionId}/complete`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest'
-            // Don't set Content-Type - let browser set it for FormData
-        },
-        body: formData
-    })
-    .then(response => {
-        console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
-        
-        // Try to parse JSON, but handle non-JSON responses
-        return response.text().then(text => {
-            console.log('Response text:', text);
-            try {
-                const data = JSON.parse(text);
-                return { status: response.status, data: data, text: text };
-            } catch (e) {
-                console.log('Response is not JSON:', text);
-                return { status: response.status, data: { message: text }, text: text };
-            }
-        });
-    })
-    .then(result => {
-        console.log('Complete request result:', result);
-        
-        if (result.status === 200 || result.status === 302) {
-            // Success - reload the page
-            Swal.fire({
-                title: 'Success!',
-                text: 'Inspection marked as completed.',
-                icon: 'success',
-                confirmButtonText: 'OK'
-            }).then(() => {
-                // Reload the page to show updated button
-                window.location.reload();
-            });
-        } else {
-            // Error - show detailed error message
-            console.error('Error details:', result);
-            let errorMessage = 'Failed to mark inspection as complete.';
-            
-            if (result.data && result.data.message) {
-                errorMessage = result.data.message;
-            } else if (result.text && result.text.includes('CSRF')) {
-                errorMessage = 'CSRF token mismatch. Please refresh the page and try again.';
-            }
-            
-            Swal.fire({
-                title: 'Error',
-                text: errorMessage,
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
-        }
-    })
-    .catch(error => {
-        console.error('Complete request error:', error);
-        Swal.fire({
-            title: 'Error',
-            text: 'Network error. Please try again.',
-            icon: 'error',
-            confirmButtonText: 'OK'
-        });
-    });
-}
-
-// Submit undo-complete request via AJAX
-function submitUndoCompleteRequest(inspectionId) {
-    console.log('Submitting undo-complete request for inspection:', inspectionId);
-    
-    // Show loading indicator
-    Swal.fire({
-        title: 'Processing...',
-        text: 'Undoing inspection completion',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-    
-    // Create CSRF token
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-    
-    // Create FormData (Laravel expects form data, not JSON)
-    const formData = new FormData();
-    formData.append('_token', csrfToken);
-    formData.append('_method', 'POST');
-    formData.append('_cache_bust', Date.now());
-    
-    // Send AJAX request with FormData
-    fetch(`/inspections/${inspectionId}/undo-complete`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest'
-            // Don't set Content-Type - let browser set it for FormData
-        },
-        body: formData
-    })
-    .then(response => {
-        console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
-        
-        // Try to parse JSON, but handle non-JSON responses
-        return response.text().then(text => {
-            console.log('Response text:', text);
-            try {
-                const data = JSON.parse(text);
-                return { status: response.status, data: data, text: text };
-            } catch (e) {
-                console.log('Response is not JSON:', text);
-                return { status: response.status, data: { message: text }, text: text };
-            }
-        });
-    })
-    .then(result => {
-        console.log('Undo-complete request result:', result);
-        
-        if (result.status === 200 || result.status === 302) {
-            // Success - reload the page
-            Swal.fire({
-                title: 'Success!',
-                text: 'Inspection completion undone.',
-                icon: 'success',
-                confirmButtonText: 'OK'
-            }).then(() => {
-                // Reload the page to show updated button
-                window.location.reload();
-            });
-        } else {
-            // Error - show detailed error message
-            console.error('Error details:', result);
-            let errorMessage = 'Failed to undo inspection completion.';
-            
-            if (result.data && result.data.message) {
-                errorMessage = result.data.message;
-            } else if (result.text && result.text.includes('CSRF')) {
-                errorMessage = 'CSRF token mismatch. Please refresh the page and try again.';
-            }
-            
-            Swal.fire({
-                title: 'Error',
-                text: errorMessage,
-                icon: 'error',
-                confirmButtonText: 'OK'
-            });
-        }
-    })
-    .catch(error => {
-        console.error('Undo-complete request error:', error);
-        Swal.fire({
-            title: 'Error',
-            text: 'Network error. Please try again.',
-            icon: 'error',
-            confirmButtonText: 'OK'
-        });
-    });
-}
-
-// Category Autocomplete Functionality
-document.addEventListener('DOMContentLoaded', function() {
-    const categoryInput = document.getElementById('category');
-    
-    if (categoryInput) {
-        // Create datalist element for autocomplete
-        const datalist = document.createElement('datalist');
-        datalist.id = 'category-suggestions';
-        categoryInput.setAttribute('list', 'category-suggestions');
-        document.body.appendChild(datalist);
-        
-        // Fetch categories from inventory
-        function loadCategories() {
-            fetch('{{ route("inventory.categories.api.list") }}')
-                .then(response => response.json())
-                .then(categories => {
-                    // Clear existing options
-                    datalist.innerHTML = '';
-                    
-                    // Add category options
-                    categories.forEach(category => {
-                        const option = document.createElement('option');
-                        option.value = category.name;
-                        datalist.appendChild(option);
-                    });
-                    
-                    console.log('Loaded ' + categories.length + ' inventory categories for autocomplete');
-                })
-                .catch(error => {
-                    console.error('Error loading categories:', error);
-                });
-        }
-        
-        // Load categories when input is focused
-        categoryInput.addEventListener('focus', loadCategories);
-        
-        // Also load categories on page load
-        loadCategories();
-        
-        // Add keyboard shortcut for quick category selection
-        categoryInput.addEventListener('keydown', function(e) {
-            if (e.key === 'ArrowDown' && this.value === '') {
-                // Show dropdown when arrow down is pressed on empty field
-                this.click();
-            }
-        });
-    }
-});
-
-// Save Mileage Function
-function saveMileage() {
-    const mileageInput = document.getElementById('vehicle_mileage_input');
-    const saveBtn = document.getElementById('save_mileage_btn');
-    const statusSpan = document.getElementById('mileage_save_status');
-    
-    if (!mileageInput || !saveBtn) {
-        console.error('Mileage input or save button not found');
-        return;
-    }
-    
-    const mileage = mileageInput.value.trim();
-    
-    // Validate mileage
-    if (!mileage || isNaN(mileage) || parseInt(mileage) < 0) {
-        showMileageStatus('Please enter a valid mileage (positive number)', 'error');
-        return;
-    }
-    
-    // Disable button and show loading
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
-    
-    // Get CSRF token - use the same approach as other successful AJAX calls in this file
-    const csrfToken = '{{ csrf_token() }}';
-    
-    console.log('CSRF Token:', csrfToken ? 'Found (' + csrfToken.substring(0, 10) + '...)' : 'Not found');
-    
-    if (!csrfToken) {
-        console.error('CSRF token not found');
-        showMileageStatus('Security error. Please refresh the page.', 'error');
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Save';
-        return;
-    }
-    
-    // Send AJAX request - Use FormData like other successful AJAX calls
-    const formData = new FormData();
-    formData.append('_token', csrfToken);
-    formData.append('vehicle_mileage', parseInt(mileage));
-    
-    fetch('{{ route("inspections.update-mileage", $inspection) }}', {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': csrfToken,
-            'X-Requested-With': 'XMLHttpRequest'
-            // Don't set Content-Type - let browser set it for FormData
-        },
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            showMileageStatus('Mileage saved successfully!', 'success');
-            
-            // Update the input value with the saved value (in case it was formatted)
-            if (data.vehicle_mileage !== undefined) {
-                mileageInput.value = data.vehicle_mileage;
-            }
-            
-            // Reset button after 2 seconds
-            setTimeout(() => {
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Save';
-                statusSpan.style.display = 'none';
-            }, 2000);
-        } else {
-            throw new Error(data.message || 'Failed to save mileage');
-        }
-    })
-    .catch(error => {
-        console.error('Error saving mileage:', error);
-        showMileageStatus('Error: ' + error.message, 'error');
-        
-        // Reset button
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = '<i class="fas fa-save me-1"></i> Save';
-    });
-}
-
-// Helper function to show status messages
-function showMileageStatus(message, type) {
-    const statusSpan = document.getElementById('mileage_save_status');
-    if (!statusSpan) return;
-    
-    statusSpan.textContent = message;
-    statusSpan.style.display = 'inline';
-    
-    if (type === 'success') {
-        statusSpan.className = 'ms-2 text-success';
-    } else if (type === 'error') {
-        statusSpan.className = 'ms-2 text-danger';
-    } else {
-        statusSpan.className = 'ms-2 text-info';
-    }
-    
-    // Auto-hide after 5 seconds for success messages
-    if (type === 'success') {
-        setTimeout(() => {
-            statusSpan.style.display = 'none';
-        }, 5000);
-    }
-}
-
-// Add keyboard shortcut for mileage input (Enter to save)
-document.addEventListener('DOMContentLoaded', function() {
-    const mileageInput = document.getElementById('vehicle_mileage_input');
-    if (mileageInput) {
-        mileageInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                saveMileage();
-            }
-        });
-    }
-    
-    // Initialize autocomplete for inspection item names
-    initializeInspectionItemAutocomplete();
-});
-
-// Common vehicle inspection items for autocomplete
-const inspectionItems = [
-    // Brake System
-    'Brake Pads', 'Brake Rotors', 'Brake Calipers', 'Brake Lines', 'Brake Fluid', 'Brake Master Cylinder',
-    'Brake Booster', 'Parking Brake', 'ABS System', 'Brake Drums', 'Brake Shoes',
-    
-    // Engine Components
-    'Engine Oil', 'Oil Filter', 'Air Filter', 'Fuel Filter', 'Spark Plugs', 'Ignition Coils',
-    'Timing Belt', 'Timing Chain', 'Serpentine Belt', 'Water Pump', 'Thermostat', 'Radiator',
-    'Coolant', 'Engine Mounts', 'PCV Valve', 'Fuel Injectors', 'Fuel Pump',
-    
-    // Electrical System
-    'Battery', 'Alternator', 'Starter', 'Starter Solenoid', 'Voltage Regulator', 'Fuses',
-    'Relays', 'Wiring Harness', 'Ground Connections', 'ECU/ECM', 'Sensors',
-    
-    // Suspension & Steering
-    'Shock Absorbers', 'Struts', 'Springs', 'Control Arms', 'Ball Joints', 'Tie Rods',
-    'Steering Rack', 'Power Steering Fluid', 'Steering Pump', 'Sway Bar Links', 'Bushings',
-    'Wheel Bearings', 'CV Joints', 'CV Boots',
-    
-    // Tires & Wheels
-    'Tire Tread', 'Tire Pressure', 'Tire Wear', 'Wheel Alignment', 'Wheel Balance',
-    'Tire Valves', 'Wheel Lug Nuts', 'Spare Tire', 'Tire Rotation',
-    
-    // Exhaust System
-    'Exhaust Manifold', 'Catalytic Converter', 'Muffler', 'Exhaust Pipes', 'O2 Sensors',
-    'EGR Valve', 'Exhaust Hangers', 'Heat Shields',
-    
-    // Fluid Levels
-    'Engine Oil Level', 'Transmission Fluid', 'Power Steering Fluid', 'Brake Fluid Level',
-    'Coolant Level', 'Windshield Washer Fluid', 'Differential Fluid', 'Transfer Case Fluid',
-    
-    // Lights & Signals
-    'Headlights', 'High Beams', 'Low Beams', 'Turn Signals', 'Brake Lights', 'Tail Lights',
-    'Reverse Lights', 'Fog Lights', 'License Plate Light', 'Interior Lights', 'Dashboard Lights',
-    
-    // Safety Features
-    'Airbags', 'Seatbelts', 'Child Safety Locks', 'Anti-lock Braking System', 'Traction Control',
-    'Stability Control', 'Parking Sensors', 'Backup Camera',
-    
-    // Interior Components
-    'HVAC System', 'AC Compressor', 'AC Refrigerant', 'Heater Core', 'Blower Motor',
-    'Climate Control', 'Windshield Wipers', 'Wiper Blades', 'Windshield Washer Jets',
-    'Power Windows', 'Power Locks', 'Power Mirrors', 'Seat Adjustments',
-    
-    // General Inspection
-    'Underbody Inspection', 'Frame Inspection', 'Rust Inspection', 'Leak Inspection',
-    'Noise Diagnosis', 'Vibration Check', 'Smoke Test', 'Compression Test',
-    
-    // Common Issues
-    'Oil Leak', 'Coolant Leak', 'Transmission Leak', 'Power Steering Leak', 'Brake Fluid Leak',
-    'Exhaust Leak', 'Vacuum Leak', 'Electrical Short', 'Battery Drain', 'Overheating',
-    
-    // Vehicle-Specific (by system)
-    'Transmission', 'Clutch', 'Flywheel', 'Drive Shaft', 'Differential', 'Transfer Case',
-    '4WD System', 'AWD System', 'Turbocharger', 'Supercharger', 'Intercooler'
-];
-
-// Function to initialize autocomplete for all inspection item name fields
-function initializeInspectionItemAutocomplete() {
-    // Initialize for existing fields
-    $('#item_name_empty, #item_name').autocomplete({
-        source: inspectionItems,
-        minLength: 0, // Show suggestions even when clicking/empty
-        delay: 0,
-        autoFocus: true,
-        classes: {
-            "ui-autocomplete": "inspection-autocomplete"
-        },
-        position: {
-            my: "left top",
-            at: "left bottom",
-            collision: "flipfit"
-        }
-    }).focus(function() {
-        // Show suggestions when field gets focus (click)
-        $(this).autocomplete('search', $(this).val());
-    }).on('autocompleteselect', function(event, ui) {
-        // Close dropdown after selection
-        $(this).autocomplete('close');
-    });
-    
-    // Also apply to any dynamically created fields
-    $(document).on('focus', 'input[name*="[item_name]"]', function() {
-        if (!$(this).hasClass('ui-autocomplete-input')) {
-            $(this).autocomplete({
-                source: inspectionItems,
-                minLength: 0, // Show suggestions even when clicking/empty
-                delay: 0,
-                autoFocus: true,
-                classes: {
-                    "ui-autocomplete": "inspection-autocomplete"
-                },
-                position: {
-                    my: "left top",
-                    at: "left bottom",
-                    collision: "flipfit"
-                }
-            }).focus(function() {
-                // Show suggestions when field gets focus (click)
-                $(this).autocomplete('search', $(this).val());
-            }).on('autocompleteselect', function(event, ui) {
-                // Close dropdown after selection
-                $(this).autocomplete('close');
-            });
-        }
-    });
-}
-
-// Update the addFindingInput function to initialize autocomplete for new rows
-const originalAddFindingInput = addFindingInput;
-addFindingInput = function() {
-    const tableBody = document.querySelector('.inspection-items-table tbody');
-    if (!tableBody) return;
-    
-    const newRow = document.createElement('tr');
-    newRow.innerHTML = `
-        <td>
-            <input type="text" class="form-control form-control-sm inspection-item-input" name="new_items[0][item_name]" placeholder="Item name" required>
-        </td>
-        <td>
-            <select class="form-select form-select-sm" name="new_items[0][status]" required>
-                <option value="">Select</option>
-                <option value="passed">Passed</option>
-                <option value="failed">Failed</option>
-                <option value="attention_needed">Attention Needed</option>
-            </select>
-        </td>
-        <td>
-            <input type="text" class="form-control form-control-sm" name="new_items[0][notes]" placeholder="Notes">
-            <input type="hidden" name="new_items[0][inspection_id]" value="{{ $inspection->id }}">
-        </td>
-        <td>
-            <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFindingInput(this)">
-                <i class="fas fa-times"></i>
-            </button>
-        </td>
-    `;
-    
-    tableBody.appendChild(newRow);
-    
-    // Initialize autocomplete for the new input field
-    setTimeout(() => {
-        const newInput = newRow.querySelector('.inspection-item-input');
-        if (newInput) {
-            $(newInput).autocomplete({
-                source: inspectionItems,
-                minLength: 0, // Show suggestions even when clicking/empty
-                delay: 0,
-                autoFocus: true,
-                classes: {
-                    "ui-autocomplete": "inspection-autocomplete"
-                },
-                position: {
-                    my: "left top",
-                    at: "left bottom",
-                    collision: "flipfit"
-                }
-            }).focus(function() {
-                // Show suggestions when field gets focus (click)
-                $(this).autocomplete('search', $(this).val());
-            }).on('autocompleteselect', function(event, ui) {
-                // Close dropdown after selection
-                $(this).autocomplete('close');
-            });
-        }
-    }, 10);
+// ====================== ISSUE LIBRARY ======================
+const issueLibrary = {
+    'Engine':[
+        {title:'Engine Oil Leak',action:'Inspect and repair oil leak source',avgCost:150,severity:'medium',urgency:'urgent'},
+        {title:'Engine Misfire',action:'Diagnose and repair misfire',avgCost:200,severity:'high',urgency:'urgent'},
+        {title:'Engine Overheating',action:'Check cooling system, thermostat, water pump',avgCost:300,severity:'critical',urgency:'immediate'},
+        {title:'Timing Belt/Chain Noise',action:'Inspect and replace timing belt/chain',avgCost:500,severity:'medium',urgency:'soon'},
+        {title:'Check Engine Light On',action:'Run diagnostic scan',avgCost:85,severity:'medium',urgency:'urgent'},
+        {title:'Rough Idle',action:'Clean throttle body, check spark plugs',avgCost:120,severity:'low',urgency:'soon'},
+        {title:'Knocking Noise',action:'Inspect internal engine components',avgCost:250,severity:'high',urgency:'urgent'},
+        {title:'Low Compression',action:'Perform compression test',avgCost:150,severity:'high',urgency:'soon'},
+        {title:'Valve Cover Gasket Leak',action:'Replace valve cover gasket',avgCost:180,severity:'medium',urgency:'routine'},
+        {title:'Oil Sludge Build-up',action:'Perform engine flush',avgCost:100,severity:'low',urgency:'routine'}
+    ],
+    'Brakes':[
+        {title:'Brake Pads Worn',action:'Replace brake pads',avgCost:180,severity:'high',urgency:'urgent'},
+        {title:'Brake Rotors Warped',action:'Resurface or replace rotors',avgCost:300,severity:'high',urgency:'urgent'},
+        {title:'Brake Fluid Low',action:'Check for leaks, top up fluid',avgCost:50,severity:'medium',urgency:'soon'},
+        {title:'Brake Noise (Squealing)',action:'Inspect pads, shims, lubricate',avgCost:100,severity:'low',urgency:'routine'},
+        {title:'Brake Pedal Soft/Spongy',action:'Bleed brake system',avgCost:80,severity:'critical',urgency:'immediate'},
+        {title:'Parking Brake Issues',action:'Adjust parking brake cable',avgCost:90,severity:'low',urgency:'routine'},
+        {title:'ABS Light On',action:'Diagnose ABS system',avgCost:120,severity:'medium',urgency:'soon'},
+        {title:'Brake Line Leak',action:'Replace brake line',avgCost:250,severity:'critical',urgency:'immediate'},
+        {title:'Master Cylinder Failure',action:'Replace master cylinder',avgCost:350,severity:'critical',urgency:'immediate'},
+        {title:'Calipers Sticking',action:'Rebuild or replace caliper',avgCost:280,severity:'high',urgency:'urgent'}
+    ],
+    'Suspension':[
+        {title:'Suspension Noise (Clunking)',action:'Inspect bushings, struts, links',avgCost:150,severity:'medium',urgency:'soon'},
+        {title:'Shock Absorber Leaking',action:'Replace shock absorber',avgCost:350,severity:'medium',urgency:'soon'},
+        {title:'Tie Rod Loose',action:'Replace tie rod end',avgCost:180,severity:'high',urgency:'urgent'},
+        {title:'Ball Joint Worn',action:'Replace ball joint',avgCost:250,severity:'high',urgency:'urgent'},
+        {title:'Control Arm Bushing Worn',action:'Replace control arm bushing',avgCost:200,severity:'medium',urgency:'soon'},
+        {title:'Sway Bar Link Broken',action:'Replace sway bar link',avgCost:120,severity:'medium',urgency:'soon'},
+        {title:'Vehicle Pulling to One Side',action:'Check alignment, suspension components',avgCost:100,severity:'medium',urgency:'soon'},
+        {title:'Uneven Tire Wear',action:'Check alignment, rotate tires',avgCost:80,severity:'low',urgency:'routine'},
+        {title:'Strut Mount Noise',action:'Replace strut mount',avgCost:200,severity:'medium',urgency:'routine'},
+        {title:'Lowering Springs Sagged',action:'Replace springs',avgCost:400,severity:'medium',urgency:'soon'}
+    ],
+    'Electrical':[
+        {title:'Battery Weak/Dead',action:'Test battery, replace if needed',avgCost:150,severity:'medium',urgency:'urgent'},
+        {title:'Alternator Not Charging',action:'Test and replace alternator',avgCost:400,severity:'high',urgency:'urgent'},
+        {title:'Starter Not Engaging',action:'Test and replace starter',avgCost:350,severity:'high',urgency:'urgent'},
+        {title:'Headlight Not Working',action:'Replace bulb/assembly',avgCost:80,severity:'low',urgency:'routine'},
+        {title:'Turn Signal Malfunction',action:'Diagnose and repair signal circuit',avgCost:100,severity:'low',urgency:'routine'},
+        {title:'Power Window Not Working',action:'Check switch, motor, regulator',avgCost:200,severity:'low',urgency:'routine'},
+        {title:'Wiring Harness Damage',action:'Repair wiring harness',avgCost:250,severity:'medium',urgency:'soon'},
+        {title:'Fuse Blown Repeatedly',action:'Trace short circuit',avgCost:120,severity:'medium',urgency:'soon'},
+        {title:'Central Locking Not Working',action:'Diagnose door lock system',avgCost:150,severity:'low',urgency:'routine'},
+        {title:'Battery Corrosion',action:'Clean terminals, replace clamps',avgCost:40,severity:'low',urgency:'routine'}
+    ],
+    'Cooling':[
+        {title:'Coolant Leak',action:'Pressure test, repair leak source',avgCost:200,severity:'high',urgency:'urgent'},
+        {title:'Radiator Clogged/Damaged',action:'Flush or replace radiator',avgCost:350,severity:'high',urgency:'urgent'},
+        {title:'Thermostat Stuck',action:'Replace thermostat',avgCost:150,severity:'medium',urgency:'soon'},
+        {title:'Coolant Fan Not Working',action:'Replace fan motor/module',avgCost:250,severity:'high',urgency:'urgent'},
+        {title:'Water Pump Leaking',action:'Replace water pump',avgCost:400,severity:'high',urgency:'urgent'},
+        {title:'Heater Not Working',action:'Check heater core, coolant level',avgCost:180,severity:'low',urgency:'routine'},
+        {title:'Coolant Contaminated',action:'Flush cooling system',avgCost:100,severity:'medium',urgency:'routine'},
+        {title:'Hose Cracked/Bulging',action:'Replace radiator hose',avgCost:80,severity:'medium',urgency:'soon'},
+        {title:'Reservoir Tank Leaking',action:'Replace coolant reservoir',avgCost:60,severity:'low',urgency:'routine'},
+        {title:'Thermal Switch Malfunction',action:'Replace thermal switch',avgCost:120,severity:'medium',urgency:'soon'}
+    ],
+    'Transmission':[
+        {title:'Transmission Fluid Leak',action:'Inspect and repair leak',avgCost:250,severity:'medium',urgency:'soon'},
+        {title:'Transmission Slipping',action:'Diagnose transmission',avgCost:300,severity:'high',urgency:'urgent'},
+        {title:'Hard Shifting',action:'Check fluid, adjust linkage',avgCost:150,severity:'medium',urgency:'soon'},
+        {title:'Transmission Noises',action:'Inspect transmission internals',avgCost:200,severity:'medium',urgency:'soon'},
+        {title:'Clutch Slipping',action:'Replace clutch kit',avgCost:600,severity:'high',urgency:'urgent'},
+        {title:'Clutch Pedal Hard',action:'Inspect clutch cable/hydraulics',avgCost:150,severity:'medium',urgency:'routine'},
+        {title:'Transmission Mount Worn',action:'Replace transmission mount',avgCost:180,severity:'low',urgency:'routine'},
+        {title:'CV Axle Boot Torn',action:'Replace CV axle/boot',avgCost:250,severity:'medium',urgency:'soon'},
+        {title:'Differential Noise',action:'Check differential fluid',avgCost:100,severity:'low',urgency:'routine'},
+        {title:'Gear Grinding',action:'Check synchros, fluid',avgCost:200,severity:'high',urgency:'urgent'}
+    ],
+    'Tires':[
+        {title:'Tire Pressure Low',action:'Inflate to proper pressure',avgCost:0,severity:'low',urgency:'routine'},
+        {title:'Tread Depth Below Safe',action:'Replace tires',avgCost:400,severity:'high',urgency:'urgent'},
+        {title:'Tire Sidewall Damage',action:'Replace damaged tire',avgCost:150,severity:'high',urgency:'urgent'},
+        {title:'Tire Puncture/Cut',action:'Repair puncture',avgCost:30,severity:'medium',urgency:'routine'},
+        {title:'Tire Cupping Wear',action:'Alignment check, replace tire',avgCost:150,severity:'medium',urgency:'soon'},
+        {title:'Valve Stem Leaking',action:'Replace valve stem',avgCost:15,severity:'low',urgency:'routine'},
+        {title:'TPMS Light On',action:'Diagnose TPMS system',avgCost:60,severity:'low',urgency:'routine'},
+        {title:'Wheel Bearing Noise',action:'Replace wheel bearing',avgCost:300,severity:'medium',urgency:'soon'},
+        {title:'Wheel Balance Off',action:'Balance wheels',avgCost:60,severity:'low',urgency:'routine'},
+        {title:'Spare Tire Missing',action:'Replace spare tire',avgCost:100,severity:'low',urgency:'routine'}
+    ],
+    'Aircon':[
+        {title:'A/C Not Cooling',action:'Check refrigerant level, recharge',avgCost:150,severity:'medium',urgency:'urgent'},
+        {title:'A/C Weak Airflow',action:'Replace cabin filter, check blower',avgCost:80,severity:'low',urgency:'routine'},
+        {title:'Strange Odors from A/C',action:'Clean evaporator, replace filter',avgCost:100,severity:'low',urgency:'routine'},
+        {title:'A/C Compressor Noisy',action:'Replace compressor',avgCost:600,severity:'medium',urgency:'soon'},
+        {title:'Refrigerant Leak',action:'UV dye test, repair leak',avgCost:250,severity:'medium',urgency:'soon'},
+        {title:'Condenser Damaged',action:'Replace condenser',avgCost:400,severity:'medium',urgency:'soon'},
+        {title:'Blower Motor Not Working',action:'Replace blower motor',avgCost:300,severity:'low',urgency:'routine'},
+        {title:'Blend Door Issue',action:'Repair blend door actuator',avgCost:200,severity:'low',urgency:'routine'},
+        {title:'Expansion Valve Stuck',action:'Replace expansion valve',avgCost:250,severity:'medium',urgency:'soon'},
+        {title:'A/C Clutch Not Engaging',action:'Check relay, clutch coil',avgCost:150,severity:'medium',urgency:'soon'}
+    ],
+    'Steering':[
+        {title:'Steering Wheel Vibration',action:'Check balance, suspension',avgCost:100,severity:'medium',urgency:'routine'},
+        {title:'Power Steering Fluid Leak',action:'Repair leak, replace hose/pump',avgCost:300,severity:'medium',urgency:'soon'},
+        {title:'Steering Rack Worn',action:'Replace steering rack',avgCost:500,severity:'high',urgency:'urgent'},
+        {title:'Steering Wheel Off-Center',action:'Align steering wheel',avgCost:80,severity:'low',urgency:'routine'},
+        {title:'Power Steering Pump Noisy',action:'Replace pump, flush fluid',avgCost:350,severity:'medium',urgency:'soon'},
+        {title:'Steering Column Play',action:'Inspect steering column',avgCost:200,severity:'high',urgency:'urgent'},
+        {title:'Steering Fluid Dark/Contaminated',action:'Flush power steering system',avgCost:100,severity:'low',urgency:'routine'},
+        {title:'Steering Wheel Hard to Turn',action:'Check power steering, belt, fluid',avgCost:120,severity:'high',urgency:'urgent'},
+        {title:'Knocking when Turning',action:'Check CV joints, tie rods',avgCost:150,severity:'medium',urgency:'soon'},
+        {title:'Poor Return-to-Center',action:'Check alignment, steering gear',avgCost:100,severity:'low',urgency:'routine'}
+    ],
+    'Body / Exterior':[
+        {title:'Door Hinge Squeaking',action:'Lubricate hinges',avgCost:30,severity:'low',urgency:'routine'},
+        {title:'Trunk/Hood Latch Issue',action:'Adjust or replace latch',avgCost:80,severity:'low',urgency:'routine'},
+        {title:'Window Seal Deteriorated',action:'Replace weatherstrip',avgCost:100,severity:'low',urgency:'routine'},
+        {title:'Body Scratch / Dent',action:'Touch up paint / dent repair',avgCost:150,severity:'low',urgency:'routine'},
+        {title:'Rust / Corrosion',action:'Rust treatment and panel repair',avgCost:300,severity:'medium',urgency:'soon'},
+        {title:'Wiper Blades Worn',action:'Replace wiper blades',avgCost:30,severity:'low',urgency:'routine'},
+        {title:'Side Mirror Damaged',action:'Replace side mirror',avgCost:150,severity:'low',urgency:'routine'},
+        {title:'Tail Light Cracked',action:'Replace tail light assembly',avgCost:120,severity:'low',urgency:'routine'},
+        {title:'Exhaust Leak',action:'Repair exhaust system',avgCost:200,severity:'medium',urgency:'soon'},
+        {title:'Catalytic Converter Issue',action:'Diagnose and replace cat',avgCost:500,severity:'medium',urgency:'soon'}
+    ]
 };
 
-// Add CSS for autocomplete dropdown
-const style = document.createElement('style');
-style.textContent = `
-    /* Main autocomplete dropdown container */
-    .inspection-autocomplete {
-        max-height: 300px;
-        overflow-y: auto;
-        overflow-x: hidden;
-        z-index: 9999 !important;
-        font-size: 0.875rem;
-        border: 1px solid #dee2e6 !important;
-        border-radius: 0.375rem !important;
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-        background-color: white !important;
-        padding: 0 !important;
-        margin-top: 2px !important;
-        width: auto !important;
-        min-width: 300px !important;
-    }
-    
-    /* Ensure dropdown doesn't exceed viewport */
-    .ui-autocomplete {
-        max-width: 100% !important;
-    }
-    
-    /* Individual menu items */
-    .ui-autocomplete .ui-menu-item {
-        padding: 10px 15px;
-        cursor: pointer;
-        border-bottom: 1px solid #f8f9fa;
-        margin: 0 !important;
-        white-space: normal !important;
-        line-height: 1.4;
-    }
-    
-    /* Remove last item border */
-    .ui-autocomplete .ui-menu-item:last-child {
-        border-bottom: none;
-    }
-    
-    /* Hover state */
-    .ui-autocomplete .ui-menu-item:hover {
-        background-color: #f8f9fa !important;
-        color: #212529 !important;
-    }
-    
-    /* Selected/active state (keyboard navigation) */
-    .ui-autocomplete .ui-state-active,
-    .ui-autocomplete .ui-state-focus {
-        background-color: #0d6efd !important;
-        color: white !important;
-        border: none !important;
-        margin: 0 !important;
-    }
-    
-    /* Make sure dropdown appears above everything */
-    .ui-front {
-        z-index: 9999 !important;
-    }
-    
-    /* Input field styling when autocomplete is active */
-    .ui-autocomplete-input {
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%236c757d" class="bi bi-chevron-down" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z"/></svg>') !important;
-        background-repeat: no-repeat !important;
-        background-position: right 10px center !important;
-        background-size: 16px 16px !important;
-        padding-right: 35px !important;
-    }
-    
-    /* Loading state (if we add loading indicator later) */
-    .ui-autocomplete-loading {
-        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="%230d6efd" class="bi bi-arrow-clockwise" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>') !important;
-        background-repeat: no-repeat !important;
-        background-position: right 10px center !important;
-        background-size: 16px 16px !important;
-    }
-    
-    /* Scrollbar styling */
-    .inspection-autocomplete::-webkit-scrollbar {
-        width: 8px;
-    }
-    
-    .inspection-autocomplete::-webkit-scrollbar-track {
-        background: #f8f9fa;
-        border-radius: 4px;
-    }
-    
-    .inspection-autocomplete::-webkit-scrollbar-thumb {
-        background: #adb5bd;
-        border-radius: 4px;
-    }
-    
-    .inspection-autocomplete::-webkit-scrollbar-thumb:hover {
-        background: #6c757d;
-    }
-    
-    /* For Firefox */
-    .inspection-autocomplete {
-        scrollbar-width: thin;
-        scrollbar-color: #adb5bd #f8f9fa;
-    }
-    
-    /* Ensure dropdown doesn't get cut off by parent containers */
-    .ui-autocomplete.ui-menu {
-        position: absolute !important;
-        display: block !important;
-    }
-`;
-document.head.appendChild(style);
+// ====================== CONFIG ======================
+const severityMap = {low:'info',medium:'warning',high:'danger',critical:'dark'};
+const urgencyMap = {routine:'secondary',soon:'info',urgent:'warning',immediate:'danger'};
+const inspectionId = {{ $inspection->id }};
+const csrfToken = '{{ csrf_token() }}';
 
-// Inspection Team Form Handling
-$(document).ready(function() {
-    console.log('DEBUG: Inspection team JavaScript loaded!');
-    console.log('DEBUG: jQuery version:', $.fn.jquery);
-    console.log('DEBUG: Total forms on page:', $('form').length);
-    
-    // List all forms
-    $('form').each(function(i) {
-        console.log('DEBUG: Form', i, 'ID:', $(this).attr('id') || '(no id)', 'Action:', $(this).attr('action'));
+// ====================== INIT ======================
+document.addEventListener('DOMContentLoaded', function() {
+    // Severity button toggles
+    document.querySelectorAll('.severity-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var parent = this.closest('.d-flex');
+            parent.querySelectorAll('.severity-btn').forEach(function(b) { b.classList.remove('active'); });
+            this.classList.add('active');
+        });
     });
-    
-    console.log('DEBUG: Looking for form with ID inspection-team-form');
-    
-    const teamForm = $('#inspection-team-form');
-    console.log('DEBUG: Form found?', teamForm.length);
-    if (teamForm.length > 0) {
-        console.log('DEBUG: Form HTML:', teamForm.get(0).outerHTML.substring(0, 200));
-    }
-    
-    const cancelBtn = $('#cancel-team-update');
-    console.log('DEBUG: Cancel button found?', cancelBtn.length);
-    
-    // Handle form submission via AJAX
-    teamForm.on('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = $(this).serialize();
-        const submitBtn = $(this).find('button[type="submit"]');
-        const originalBtnText = submitBtn.html();
-        
-        // Debug: log form data
-        console.log('Form data being sent:', formData);
-        console.log('Technician select value:', $('#technician-select').val());
-        console.log('Service advisor select value:', $('#service-advisor-select').val());
-        
-        // Show loading state
-        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i> Updating...');
-        
-        $.ajax({
-            url: $(this).attr('action'),
-            method: 'PUT',
-            data: formData,
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                console.log('Update team response:', response);
-                if (response.success) {
-                    // Build success message with details
-                    let message = 'The inspection team has been updated.';
-                    if (response.data.technician) {
-                        message += `<br>Technician: ${response.data.technician.name}`;
-                    } else {
-                        message += `<br>Technician: Not assigned`;
-                    }
-                    if (response.data.service_advisor) {
-                        message += `<br>Service Advisor: ${response.data.service_advisor.name}`;
-                    } else {
-                        message += `<br>Service Advisor: Not assigned`;
-                    }
-                    
-                    // Show success message
-                    showToast('success', 'Team updated successfully!', message);
-                    
-                    // Update UI with new team members
-                    if (response.data.technician) {
-                        $('#technician-select').val(response.data.technician.id);
-                    } else {
-                        $('#technician-select').val('');
-                    }
-                    
-                    if (response.data.service_advisor) {
-                        $('#service-advisor-select').val(response.data.service_advisor.id);
-                    } else {
-                        $('#service-advisor-select').val('');
-                    }
-                    
-                    // Hide cancel button since changes are saved
-                    $('#cancel-team-update').hide();
-                } else {
-                    showToast('error', 'Update failed', response.message || 'Failed to update team.');
-                }
-            },
-            error: function(xhr) {
-                let errorMessage = 'An error occurred while updating the team.';
-                
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMessage = xhr.responseJSON.message;
-                } else if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
-                    // Validation errors
-                    const errors = Object.values(xhr.responseJSON.errors).flat();
-                    errorMessage = errors.join('<br>');
-                }
-                
-                showToast('error', 'Update failed', errorMessage);
-            },
-            complete: function() {
-                // Restore button state
-                submitBtn.prop('disabled', false).html(originalBtnText);
+
+    // Urgency button toggles
+    document.querySelectorAll('.urgency-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var parent = this.closest('.d-flex');
+            parent.querySelectorAll('.urgency-btn').forEach(function(b) { b.classList.remove('active'); });
+            this.classList.add('active');
+        });
+    });
+
+    // Issue title input with autosuggest
+    var issueInput = document.getElementById('quick-issue-title');
+    if (issueInput) {
+        issueInput.addEventListener('input', function() { showAutosuggest(this); });
+        issueInput.addEventListener('keydown', function(e) { handleAutosuggestKey(e, this); });
+        issueInput.addEventListener('blur', function() {
+            setTimeout(function() {
+                document.getElementById('autosuggest-results').style.display = 'none';
+            }, 150);
+        });
+        issueInput.addEventListener('focus', function() {
+            var cat = document.getElementById('quick-category').value;
+            console.log('FOCUS - cat:', cat, 'val:', this.value, 'lib:', issueLibrary[cat] ? 'YES' : 'NO');
+            if (cat && cat !== '' && issueLibrary[cat]) {
+                showAutosuggestForCategory(this, cat);
+            } else if (this.value.length >= 1) {
+                showAutosuggest(this);
             }
         });
+    }
+
+    // Enable add button when title has text
+    issueInput && issueInput.addEventListener('input', function() {
+        document.getElementById('btn-quick-add').disabled = this.value.trim().length === 0;
     });
-    
-    // Show cancel button when dropdowns change
-    $('#technician-select, #service-advisor-select').on('change', function() {
-        const technicianVal = $('#technician-select').val();
-        const advisorVal = $('#service-advisor-select').val();
-        const originalTechnician = '{{ $inspection->technician_id }}';
-        const originalAdvisor = '{{ $inspection->service_advisor_id }}';
-        
-        // Show cancel button if values changed
-        if (technicianVal != originalTechnician || advisorVal != originalAdvisor) {
-            cancelBtn.show();
-        } else {
-            cancelBtn.hide();
-        }
+
+    // Quick add button
+    document.getElementById('btn-quick-add').addEventListener('click', function() {
+        var title = document.getElementById('quick-issue-title').value.trim();
+        if (!title) return;
+        addFinding(
+            document.getElementById('quick-category').value,
+            title,
+            getSelectedSeverity(),
+            getSelectedUrgency()
+        );
     });
-    
-    // Cancel button - reset to original values
-    cancelBtn.on('click', function() {
-        $('#technician-select').val('{{ $inspection->technician_id }}');
-        $('#service-advisor-select').val('{{ $inspection->service_advisor_id }}');
-        $(this).hide();
-    });
-    
-    // Toast notification function
-    function showToast(type, title, message) {
-        // Remove any existing toasts
-        $('.toast').remove();
-        
-        const toastId = 'toast-' + Date.now();
-        const toastHtml = `
-            <div id="${toastId}" class="toast align-items-center text-bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <strong>${title}</strong><br>
-                        ${message}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-                </div>
-            </div>
-        `;
-        
-        // Add toast to container
-        $('#toast-container').append(toastHtml);
-        
-        // Initialize and show toast
-        const toastElement = document.getElementById(toastId);
-        const toast = new bootstrap.Toast(toastElement, {
-            autohide: true,
-            delay: 5000
-        });
-        toast.show();
-        
-        // Remove toast from DOM after it hides
-        toastElement.addEventListener('hidden.bs.toast', function() {
-            $(this).remove();
+});
+
+function getSelectedSeverity() {
+    var active = document.querySelector('.severity-btn.active');
+    return active ? active.dataset.value : 'medium';
+}
+
+function getSelectedUrgency() {
+    var active = document.querySelector('.urgency-btn.active');
+    return active ? active.dataset.value : 'soon';
+}
+
+// ====================== AUTO-SUGGEST ======================
+function showAutosuggest(input) {
+    var dd = document.getElementById('autosuggest-results');
+    var val = input.value.toLowerCase().trim();
+    if (val.length < 1) { dd.style.display = 'none'; return; }
+
+    dd.innerHTML = '';
+    var results = [];
+
+    for (var cat in issueLibrary) {
+        issueLibrary[cat].forEach(function(issue) {
+            if (issue.title.toLowerCase().includes(val) || (issue.action && issue.action.toLowerCase().includes(val))) {
+                results.push({category: cat, issue: issue});
+            }
         });
     }
-    
-    // Create toast container if it doesn't exist
-    if ($('#toast-container').length === 0) {
-        $('body').append('<div id="toast-container" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 99999;"></div>');
+
+    // Also search category names
+    if (results.length < 3) {
+        for (var catName in issueLibrary) {
+            if (catName.toLowerCase().includes(val)) {
+                issueLibrary[catName].forEach(function(iss) {
+                    var found = results.some(function(r) { return r.issue.title === iss.title; });
+                    if (!found) results.push({category: catName, issue: iss});
+                });
+            }
+        }
+    }
+
+    if (results.length === 0) {
+        dd.style.display = 'none';
+        return;
+    }
+
+    // Show top 8 results
+    results.slice(0, 8).forEach(function(r) {
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'list-group-item list-group-item-action';
+        item.innerHTML = '<strong>' + r.issue.title + '</strong> <span class="category-hint">[' + r.category + ']</span>'
+            + '<br><small class="text-muted">' + r.issue.action + ' — ₱' + r.issue.avgCost + '</small>';
+        item.addEventListener('click', function() {
+            selectIssue(r, input);
+        });
+        dd.appendChild(item);
+    });
+
+    dd.style.display = 'block';
+}
+
+function handleAutosuggestKey(e, input) {
+    var dd = document.getElementById('autosuggest-results');
+    if (!dd || dd.style.display === 'none') return;
+    var items = dd.querySelectorAll('.list-group-item');
+    var active = dd.querySelector('.active');
+    var idx = Array.from(items).indexOf(active);
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        var next = (idx + 1) % items.length;
+        if (active) active.classList.remove('active');
+        items[next].classList.add('active');
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        var prev = (idx - 1 + items.length) % items.length;
+        if (active) active.classList.remove('active');
+        items[prev].classList.add('active');
+    } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (active) active.click();
+    } else if (e.key === 'Escape') {
+        dd.style.display = 'none';
+    }
+}
+
+function selectIssue(result, input) {
+    input.value = result.issue.title;
+    document.getElementById('quick-category').value = result.category;
+    // Set severity
+    document.querySelectorAll('.severity-btn').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.value === (result.issue.severity || 'medium'));
+    });
+    // Set urgency
+    document.querySelectorAll('.urgency-btn').forEach(function(b) {
+        b.classList.toggle('active', b.dataset.value === (result.issue.urgency || 'soon'));
+    });
+    document.getElementById('autosuggest-results').style.display = 'none';
+    document.getElementById('btn-quick-add').disabled = false;
+    // Trigger add
+    addFinding(result.category, result.issue.title, result.issue.severity || 'medium', result.issue.urgency || 'soon');
+}
+
+// ====================== ADD FINDING (AJAX) ======================
+function addFinding(category, title, severity, urgency, skipFocus) {
+    var btn = document.getElementById('btn-quick-add');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+    fetch('/inspections/' + inspectionId + '/findings', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','X-CSRF-TOKEN':csrfToken,'Accept':'application/json'},
+        body: JSON.stringify({
+            category: category,
+            issue_title: title,
+            severity: severity || 'medium',
+            estimated_urgency: urgency || 'soon',
+            detailed_notes: '',
+            recommended_action: '',
+            estimated_cost: null
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            appendFindingCard(data.finding);
+            updateStats();
+            document.getElementById('quick-issue-title').value = '';
+            if (!skipFocus) {
+                document.getElementById('quick-issue-title').focus();
+            }
+        }
+    })
+    .catch(function(err) { console.error('Add finding error:', err); })
+    .finally(function() {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-plus"></i>';
+    });
+}
+
+function appendFindingCard(finding) {
+    // Remove empty state
+    var emptyEl = document.querySelector('#findings-list-container .text-center.py-5');
+    if (emptyEl) emptyEl.remove();
+
+    var costStr = finding.estimated_cost !== null && finding.estimated_cost !== undefined
+        ? '₱' + parseFloat(finding.estimated_cost).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})
+        : '';
+
+    var cardHtml = '<div class="finding-card mb-2 finding-new" data-id="' + finding.id + '">'
+        + '<div class="card border-0 shadow-sm" style="border-radius:10px;background:#fff;">'
+        + '<div class="card-body p-3">'
+        + '<div class="d-flex flex-wrap align-items-start gap-2">'
+        + '<div class="flex-grow-1">'
+        + '<div class="d-flex flex-wrap align-items-center gap-2 mb-2">'
+        + '<span class="badge" style="background:linear-gradient(135deg,#1a237e,#283593);color:#fff;padding:3px 10px;border-radius:12px;font-size:11px;"><i class="fas fa-tag me-1"></i>' + finding.category + '</span>'
+        + '<strong class="finding-title">' + escapeHtml(finding.issue_title) + '</strong>'
+        + '</div>'
+        + '</div>'
+        + '<div class="text-end" style="min-width:120px;">'
+        + '<div class="d-flex flex-wrap gap-1 justify-content-end mb-2">'
+        + '<span class="badge px-2 py-1" style="font-size:10px;background:' + (finding.severity === 'low' ? '#0dcaf0' : finding.severity === 'medium' ? '#ffc107' : finding.severity === 'high' ? '#dc3545' : '#212529') + ';color:' + (finding.severity === 'medium' ? '#000' : '#fff') + ';"><i class="fas ' + (finding.severity === 'low' ? 'fa-chevron-down' : finding.severity === 'medium' ? 'fa-minus' : finding.severity === 'high' ? 'fa-chevron-up' : 'fa-exclamation') + ' me-1"></i>' + ucfirst(finding.severity) + '</span>'
+        + '<span class="badge px-2 py-1" style="font-size:10px;background:' + (finding.estimated_urgency === 'routine' ? '#6c757d' : finding.estimated_urgency === 'soon' ? '#0dcaf0' : finding.estimated_urgency === 'urgent' ? '#ffc107' : '#dc3545') + ';color:' + (finding.estimated_urgency === 'routine' || finding.estimated_urgency === 'soon' ? '#fff' : '#000') + ';"><i class="fas ' + (finding.estimated_urgency === 'routine' ? 'fa-calendar' : finding.estimated_urgency === 'soon' ? 'fa-clock' : finding.estimated_urgency === 'urgent' ? 'fa-exclamation-circle' : 'fa-bolt') + ' me-1"></i>' + ucfirst(finding.estimated_urgency) + '</span>'
+        + (costStr ? '<span class="fw-bold finding-cost" style="color:#1a237e;">' + costStr + '</span>' : '')
+        + '</div>'
+        + '</div>'
+        + '</div>'
+        + '<div class="d-flex gap-2 mt-2 pt-2 border-top">'
+        + '<button class="btn btn-sm btn-outline-primary" onclick="editFinding(' + finding.id + ')"><i class="fas fa-edit"></i></button>'
+        + '<button class="btn btn-sm btn-outline-danger" onclick="deleteFinding(' + finding.id + ')"><i class="fas fa-trash"></i></button>'
+        + '</div>'
+        + '</div>'
+        + '</div>'
+        + '</div>';
+
+    var container = document.getElementById('findings-list-container');
+    container.insertAdjacentHTML('beforeend', cardHtml);
+}
+
+// ====================== DELETE FINDING (AJAX) ======================
+function deleteFinding(id) {
+    if (!confirm('Remove this finding?')) return;
+    var el = document.querySelector('.finding-card[data-id="' + id + '"]');
+    if (el) el.classList.add('finding-removing');
+
+    fetch('/inspections/findings/' + id, {
+        method: 'DELETE',
+        headers: {'X-CSRF-TOKEN':csrfToken,'Accept':'application/json'}
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            if (el) setTimeout(function() { el.remove(); }, 200);
+            updateStats();
+            // Show empty state if no more
+            if (document.querySelectorAll('.finding-card').length === 0) {
+                var container = document.getElementById('findings-list-container');
+                container.innerHTML = '<div class="text-center py-5">'
+                    + '<div class="mb-3"><i class="fas fa-clipboard-list" style="font-size:48px;color:#cfd8dc;"></i></div>'
+                    + '<h6 class="text-muted mb-2">No Findings Recorded Yet</h6>'
+                    + '<p class="text-muted small mb-0">Use the quick-add bar above to start logging findings.</p>'
+                    + '</div>';
+            }
+        }
+    })
+    .catch(function(err) {
+        console.error('Delete error:', err);
+        if (el) el.classList.remove('finding-removing');
+    });
+}
+
+// ====================== BULK QUICK ADD ======================
+function bulkQuickAddByCategory(category) {
+    var issues = issueLibrary[category];
+    if (!issues) return;
+
+    var container = document.getElementById('bulk-issues-container');
+    container.innerHTML = '';
+
+    issues.forEach(function(issue) {
+        var badge = document.createElement('span');
+        badge.className = 'badge bulk-add-btn px-3 py-2 me-1 mb-1';
+        badge.style.cssText = 'background:#f0f4ff;color:#1a237e;border:1px solid #d0d9f0;font-size:11px;cursor:pointer;';
+        badge.textContent = issue.title.length > 25 ? issue.title.substring(0, 22) + '...' : issue.title;
+        badge.title = issue.title + ' — ' + issue.action + ' (₱' + issue.avgCost + ')';
+        badge.addEventListener('click', function() {
+            addFinding(category, issue.title, issue.severity || 'medium', issue.urgency || 'soon', true);
+            this.style.background = '#059669';
+            this.style.color = '#fff';
+            this.style.borderColor = '#059669';
+            setTimeout(function() {
+                if (badge.parentNode) badge.remove();
+            }, 1000);
+        });
+        container.appendChild(badge);
+    });
+}
+
+// ====================== UTILITIES ======================
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function ucfirst(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+function updateStats() {
+    // Update findings count in tab badge if present
+    var count = document.querySelectorAll('.finding-card').length;
+    var badge = document.querySelector('[href="#findings"] .badge');
+    if (badge) badge.textContent = count;
+}
+
+// ====================== EDIT FINDING (Modal) ======================
+function editFinding(id) {
+    var card = document.querySelector('.finding-card[data-id="' + id + '"]');
+    if (!card) return;
+
+    var title = card.querySelector('.finding-title');
+    var category = card.querySelector('.badge[style*="background"]');
+    var severityBadge = card.querySelector('.badge[style*="background"] + .d-flex .badge');
+    var cost = card.querySelector('.finding-cost');
+
+    // For a proper edit, we'll redirect to a simpler modal-based approach
+    // Since we don't have a modal yet, open the page with the finding highlighted
+    var categoryText = category ? category.textContent.replace('tag', '').trim() : '';
+    var titleText = title ? title.textContent.trim() : '';
+
+    openEditModal(id, categoryText, titleText);
+}
+
+function openEditModal(id, category, title) {
+    document.getElementById('findingModalTitle').textContent = 'Edit Finding';
+    document.getElementById('editFindingId').value = id;
+    document.getElementById('editCategory').value = category || 'Engine';
+    document.getElementById('editIssueTitle').value = title || '';
+    document.getElementById('editDetailedNotes').value = '';
+    document.getElementById('editEstimatedCost').value = '';
+    document.getElementById('editRecommendedAction').value = '';
+    document.querySelectorAll('.severity-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelector('.severity-btn[data-value="medium"]').classList.add('active');
+    document.querySelectorAll('.urgency-btn').forEach(function(b) { b.classList.remove('active'); });
+    document.querySelector('.urgency-btn[data-value="soon"]').classList.add('active');
+
+    try {
+        var data = window._findingsData && window._findingsData[id];
+        if (data) {
+            document.getElementById('editDetailedNotes').value = data.detailed_notes || '';
+            document.getElementById('editEstimatedCost').value = data.estimated_cost || '';
+            document.getElementById('editRecommendedAction').value = data.recommended_action || '';
+            if (data.severity) {
+                document.querySelectorAll('.severity-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.value === data.severity); });
+            }
+            if (data.estimated_urgency) {
+                document.querySelectorAll('.urgency-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.value === data.estimated_urgency); });
+            }
+        }
+    } catch(e) {}
+
+    var modal = new bootstrap.Modal(document.getElementById('findingEditModal'));
+    modal.show();
+}
+
+function saveFindingFromModal() {
+    var id = document.getElementById('editFindingId').value;
+    var isNew = !id || id === '';
+
+    var data = {
+        category: document.getElementById('editCategory').value,
+        issue_title: document.getElementById('editIssueTitle').value,
+        detailed_notes: document.getElementById('editDetailedNotes').value,
+        severity: getSelectedSeverity(),
+        recommended_action: document.getElementById('editRecommendedAction').value,
+        estimated_urgency: getSelectedUrgency(),
+        estimated_cost: document.getElementById('editEstimatedCost').value || null
+    };
+
+    if (!data.issue_title.trim()) {
+        alert('Please enter an issue title.');
+        return;
+    }
+
+    if (isNew) {
+        // Add new finding
+        fetch('/inspections/' + inspectionId + '/findings', {
+            method: 'POST',
+            headers: {'Content-Type':'application/json','X-CSRF-TOKEN':csrfToken,'Accept':'application/json'},
+            body: JSON.stringify(data)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(resp) {
+            if (resp.success) {
+                appendFindingCard(resp.finding);
+                updateStats();
+                var modal = bootstrap.Modal.getInstance(document.getElementById('findingEditModal'));
+                if (modal) modal.hide();
+            }
+        })
+        .catch(function(err) { console.error('Save error:', err); });
+    } else {
+        // Update existing finding
+        fetch('/inspections/findings/' + id, {
+            method: 'PUT',
+            headers: {'Content-Type':'application/json','X-CSRF-TOKEN':csrfToken,'Accept':'application/json'},
+            body: JSON.stringify(data)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(resp) {
+            if (resp.success) {
+                // Refresh the card by removing and re-adding
+                var oldCard = document.querySelector('.finding-card[data-id="' + id + '"]');
+                if (oldCard) oldCard.remove();
+                appendFindingCard(resp.finding);
+                updateStats();
+                var modal = bootstrap.Modal.getInstance(document.getElementById('findingEditModal'));
+                if (modal) modal.hide();
+            }
+        })
+        .catch(function(err) { console.error('Update error:', err); });
+    }
+}
+
+// ====================== INITIALIZE BULK CATEGORY BADGES ======================
+// Already initialized in DOMContentLoaded, additional UI handlers:
+document.addEventListener('DOMContentLoaded', function() {
+    // Keyboard shortcut: Ctrl+Enter to quick add
+    document.getElementById('quick-issue-title').addEventListener('keydown', function(e) {
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('btn-quick-add').click();
+        }
+    });
+
+    // Category change clears input and hides suggestions
+    document.getElementById('quick-category').addEventListener('change', function() {
+        var input = document.getElementById('quick-issue-title');
+        input.placeholder = 'Type to search ' + this.value + ' issues...';
+        input.value = '';
+        document.getElementById('btn-quick-add').disabled = true;
+        document.getElementById('autosuggest-results').style.display = 'none';
+    });
+
+    // Trigger initial placeholder
+    document.getElementById('quick-category').dispatchEvent(new Event('change'));
+
+    // Trigger initial placeholder (moved before global function def)
+    document.getElementById('quick-category').dispatchEvent(new Event('change'));
+});
+
+// ===== GLOBAL: CATEGORY-FILTERED SUGGESTIONS ON FOCUS (must be global — called from other DOMContentLoaded blocks & inline) =====
+function showAutosuggestForCategory(input, category) {
+    console.log('showAutosuggestForCategory called with:', category);
+    var dd = document.getElementById('autosuggest-results');
+    if (!dd) { console.log('ERROR: autosuggest-results not found'); return; }
+    var issues = issueLibrary[category];
+    console.log('issues found:', issues ? issues.length : 0);
+    if (!issues || issues.length === 0) { dd.style.display = 'none'; return; }
+
+    dd.innerHTML = '';
+    issues.slice(0, 8).forEach(function(issue) {
+        var item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'list-group-item list-group-item-action';
+        item.innerHTML = '<strong>' + issue.title + '</strong> <span class="category-hint">[' + category + ']</span>'
+            + '<br><small class="text-muted">' + issue.action + ' — ₱' + issue.avgCost + '</small>';
+        item.addEventListener('click', function() {
+            selectIssue({category: category, issue: issue}, input);
+        });
+        dd.appendChild(item);
+    });
+    dd.style.display = 'block';
+}
+
+// ===== MODAL AUTO-SUGGEST (runs on DOMContentLoaded) =====
+document.addEventListener('DOMContentLoaded', function() {
+    var modalTitle = document.getElementById('editIssueTitle');
+    var modalCat = document.getElementById('editCategory');
+    if (modalTitle && modalCat) {
+        modalTitle.addEventListener('focus', function() {
+            var cat = modalCat.value;
+            if (this.value === '' && cat && issueLibrary[cat]) {
+                var dd = document.getElementById('modal-autosuggest-results');
+                if (!dd) return;
+                var issues = issueLibrary[cat];
+                dd.innerHTML = '';
+                issues.slice(0, 8).forEach(function(issue) {
+                    var item = document.createElement('button');
+                    item.type = 'button';
+                    item.className = 'list-group-item list-group-item-action';
+                    item.innerHTML = '<strong>' + issue.title + '</strong> <span class="category-hint">[' + cat + ']</span>'
+                        + '<br><small class="text-muted">' + issue.action + ' — ₱' + issue.avgCost + '</small>';
+                    item.addEventListener('click', function() {
+                        modalTitle.value = issue.title;
+                        dd.style.display = 'none';
+                    });
+                    dd.appendChild(item);
+                });
+                dd.style.display = 'block';
+            }
+        });
+        // Hide on blur
+        modalTitle.addEventListener('blur', function() {
+            setTimeout(function() {
+                var dd = document.getElementById('modal-autosuggest-results');
+                if (dd) dd.style.display = 'none';
+            }, 200);
+        });
     }
 });
 </script>
 @endpush
-
-<!-- Photo Upload Modal -->
-<div class="modal fade" id="uploadPhotoModal" tabindex="-1" aria-labelledby="uploadPhotoModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="uploadPhotoModalLabel">
-                    <i class="fas fa-camera me-2"></i>Upload Inspection Photo
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="photoUploadForm" enctype="multipart/form-data">
-                    @csrf
-                    
-                    <!-- Photo Preview -->
-                    <div id="photoPreviewContainer" class="mb-3 text-center" style="display: none;">
-                        <img id="photoPreview" src="#" alt="Photo preview" class="img-fluid rounded" style="max-height: 200px;">
-                    </div>
-                    
-                    <!-- Photo Upload -->
-                    <div class="mb-3">
-                        <label for="photo" class="form-label">Select Photo</label>
-                        <input type="file" class="form-control" id="photo" name="photo" accept="image/*" required onchange="previewPhoto(this)">
-                        <div class="form-text">
-                            Supported formats: JPEG, PNG, GIF. Max size: 5MB.
-                        </div>
-                    </div>
-                    
-                    <!-- Description -->
-                    <div class="mb-3">
-                        <label for="photoDescription" class="form-label">Description (Optional)</label>
-                        <textarea class="form-control" id="photoDescription" name="description" rows="2" placeholder="Enter photo description..."></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="uploadPhotoBtn" onclick="uploadPhoto()">
-                    <i class="fas fa-upload me-2"></i>Upload Photo
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
