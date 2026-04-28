@@ -4,7 +4,7 @@
 
 @push('styles')
 <style>
-.fixit-prsnl-dash{ background:#f4f6fa; min-height:100vh; padding-top:0.5rem; padding-bottom:2rem; }
+.fixit-prsnl-dash{ background:#f4f6fa; min-height:100vh; padding-top:0.5rem; padding-bottom:2rem; } /* light bg — dark mode handled in redesign-styles */
 .fixit-prsnl-dash .page-title{ color:#1a2332; font-size:1.15rem; }
 .fixit-prsnl-dash .accent-icon{ color:#4361ee; }
 .fixit-prsnl-dash .status-dot{ display:inline-block; width:6px;height:6px;border-radius:50%;background:#4361ee;vertical-align:middle; }

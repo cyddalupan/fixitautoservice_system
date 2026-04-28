@@ -2070,4 +2070,326 @@ html *::after {
 [data-theme="dark"] .notification-time {
     color: var(--dark-text-secondary);
 }
-</style>
+
+/* ===== THEME TOKENS — page-level CSS variables ===== */
+[data-theme="dark"] {
+    --bg-page: #1a1d23;
+    --bg-card: #22262e;
+    --bg-surface: #282c35;
+    --bg-elevated: #2f333d;
+    --bg-input: #2a2e37;
+    --text-primary: #e8eaed;
+    --text-secondary: #c4c7cc;
+    --text-muted: #9aa0a8;
+    --border-color: #383c45;
+    --border-light: #31353f;
+}
+
+/* ===== SMOOTH THEME TRANSITION ===== */
+body, body * {
+    transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Allow elements that explicitly opt out */
+body.no-transition, .no-transition, .no-transition * {
+    transition: none !important;
+}
+
+/* ===== GLOBAL BOOTSTRAP TABLE DARK MODE OVERRIDES ===== */
+[data-theme="dark"] .table {
+    --bs-table-bg: var(--bg-surface);
+    --bs-table-color: var(--text-primary);
+    --bs-table-striped-bg: #2d313a;
+    --bs-table-striped-color: var(--text-primary);
+    --bs-table-hover-bg: #373b46;
+    --bs-table-hover-color: #ffffff;
+    --bs-table-active-bg: var(--bg-elevated);
+    --bs-table-active-color: #ffffff;
+    --bs-border-color: var(--border-color);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .table thead th {
+    background-color: #2a2d36;
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--border-color);
+    font-weight: 600;
+}
+
+[data-theme="dark"] .table thead.thead-light th,
+[data-theme="dark"] .table thead.thead-light {
+    background-color: #2a2d36;
+    color: var(--text-primary);
+}
+
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(odd) {
+    background-color: var(--bs-table-striped-bg);
+    color: var(--bs-table-striped-color);
+}
+
+[data-theme="dark"] .table-striped tbody tr:nth-of-type(even) {
+    background-color: var(--bs-table-bg);
+    color: var(--bs-table-color);
+}
+
+[data-theme="dark"] .table-hover tbody tr:hover {
+    background-color: var(--bs-table-hover-bg) !important;
+    color: var(--bs-table-hover-color) !important;
+}
+
+[data-theme="dark"] .table tbody tr {
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .table td,
+[data-theme="dark"] .table th {
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .table-bordered {
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .table-bordered td,
+[data-theme="dark"] .table-bordered th {
+    border-color: var(--border-color);
+}
+
+/* ===== TABLE WRAPPER & CARD-BODY IN DARK MODE ===== */
+[data-theme="dark"] .card {
+    background-color: var(--bg-card);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .card-body {
+    background-color: var(--bg-card);
+}
+
+[data-theme="dark"] .card-header {
+    background-color: #282c35;
+    border-bottom-color: var(--border-color);
+}
+
+[data-theme="dark"] .card-footer {
+    background-color: #282c35;
+    border-top-color: var(--border-color);
+}
+
+/* ===== INVENTORY & PERSONNEL DASHBOARD DARK MODE ===== */
+[data-theme="dark"] .fixit-inv-dash,
+[data-theme="dark"] .fixit-prsnl-dash {
+    background: var(--bg-page) !important;
+}
+
+/* ===== CUSTOMERS PAGE — DARK CRM STYLE ===== */
+[data-theme="dark"] .sticky-header {
+    background: var(--bg-page) !important;
+}
+
+[data-theme="dark"] .stat-item {
+    background: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .stat-item .stat-label {
+    color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .stat-item .stat-number {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .customer-result-card {
+    background: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .customer-result-card:hover {
+    background: var(--bg-surface) !important;
+    border-color: var(--border-light) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+[data-theme="dark"] .customer-result-card .customer-name {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .customer-result-card .customer-detail {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .customer-result-card .customer-meta {
+    color: var(--text-muted) !important;
+}
+
+/* Customers search areas & filters */
+[data-theme="dark"] .search-section,
+[data-theme="dark"] .filter-section,
+[data-theme="dark"] .customers-filter {
+    background: var(--bg-surface) !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .search-section input,
+[data-theme="dark"] .filter-section input,
+[data-theme="dark"] .customers-filter input,
+[data-theme="dark"] .filter-section select,
+[data-theme="dark"] .customers-filter select {
+    background-color: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .search-section input::placeholder,
+[data-theme="dark"] .customers-filter input::placeholder {
+    color: var(--text-muted) !important;
+}
+
+/* Customers result rows */
+[data-theme="dark"] .customer-result-row {
+    background: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .customer-result-row:hover {
+    background: var(--bg-surface) !important;
+}
+
+/* ===== EXPENSES, VEHICLES, QUOTATIONS DASHBOARDS ===== */
+[data-theme="dark"] .main-content,
+[data-theme="dark"] .content-wrapper,
+[data-theme="dark"] .page-content,
+[data-theme="dark"] .dashboard-wrapper,
+[data-theme="dark"] .container-fluid {
+    background-color: var(--bg-page);
+}
+
+/* ===== GENERIC TEXT CONTRAST FIXES ===== */
+[data-theme="dark"] .text-muted {
+    color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .text-secondary {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] small,
+[data-theme="dark"] .small {
+    color: var(--text-secondary);
+}
+
+/* ===== GENERIC COMPONENT FIXES ===== */
+[data-theme="dark"] .bg-white {
+    background-color: var(--bg-card) !important;
+}
+
+[data-theme="dark"] .bg-light {
+    background-color: var(--bg-surface) !important;
+}
+
+[data-theme="dark"] .border-light {
+    border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select {
+    background-color: var(--bg-input) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+[data-theme="dark"] .form-control::placeholder {
+    color: var(--text-muted) !important;
+}
+
+[data-theme="dark"] .input-group-text {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-secondary) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Sections / wrappers */
+[data-theme="dark"] section,
+[data-theme="dark"] .section-wrapper,
+[data-theme="dark"] .dashboard-section {
+    background-color: var(--bg-page);
+}
+
+/* ===== INLINE-STYLE SAFETY NET ===== */
+/* Catch remaining white-background elements that use inline styles */
+[data-theme="dark"] [style*="background: #fff"],
+[data-theme="dark"] [style*="background:#fff"],
+[data-theme="dark"] [style*="background-color: #fff"],
+[data-theme="dark"] [style*="background-color:#fff"],
+[data-theme="dark"] [style*="background:white"],
+[data-theme="dark"] [style*="background: white"] {
+    background: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Keep colored buttons intact (green, red, etc.) but fix white default filter buttons */
+[data-theme="dark"] a.btn[style*="background: #fff"]:not([style*="#059669"]),
+[data-theme="dark"] button[style*="background: #fff"]:not([style*="#059669"]),
+[data-theme="dark"] [style*="background: #fff"][style*="border-radius: 50px"] {
+    background: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Filter buttons in expenses/vehicles — ensure white bg filter state uses dark surface */
+[data-theme="dark"] .btn-sm[style*="#e2e8f0"] {
+    background: var(--bg-surface) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Wrapper and container backgrounds */
+[data-theme="dark"] .container,
+[data-theme="dark"] .container-fluid,
+[data-theme="dark"] .row,
+[data-theme="dark"] .col,
+[data-theme="dark"] [class*="col-"] {
+    background-color: transparent;
+}
+
+/* Make sure inline-action button icons and dropdowns are also themed */
+[data-theme="dark"] .dropdown-menu {
+    background: var(--bg-card) !important;
+    border-color: var(--border-color) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important;
+}
+[data-theme="dark"] .dropdown-item {
+    color: var(--text-primary) !important;
+}
+[data-theme="dark"] .dropdown-item:hover {
+    background: var(--bg-surface) !important;
+}
+
+/* Action buttons for expenses, vehicles table rows */
+[data-theme="dark"] .btn[style*="e2e8f0"] {
+    background: var(--bg-surface) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Table action buttons */
+[data-theme="dark"] td[style*="vertical-align"] .btn[style*="e2e8f0"],
+[data-theme="dark"] td[style*="vertical-align"] button[style*="e2e8f0"] {
+    background: var(--bg-surface) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Dropdown action icons */
+[data-theme="dark"] [style*="color: #64748b"] {
+    color: var(--text-muted) !important;
+}
+
+/* Print preview / page header */
+[data-theme="dark"] .page-header-right .btn[style*="#fff"],
+[data-theme="dark"] .d-print-none .btn[style*="#fff"] {
+    background: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border-color) !important;
+}
+

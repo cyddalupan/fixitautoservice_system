@@ -29,12 +29,123 @@ class HrPayrollController extends Controller
         $pendingLeaveRequests = LeaveRequest::where('status', 'pending')->count();
         $pendingTimeApprovals = TimeAttendance::pendingApproval()->count();
 
+        // ══ EMPLOYEES FOR TEAM TAB ══
+        $employees = User::with('employeeHrDetails')
+            ->whereIn('role', ['technician', 'admin', 'office_staff', 'manager', 'service_advisor', 'accounting'])
+            ->orderBy('name')
+            ->get();
+
+        // ══ TODAY'S ATTENDANCE ══
+        $today = now()->format('Y-m-d');
+        $todayAttendance = TimeAttendance::with('employee')
+            ->whereDate('work_date', $today)
+            ->get();
+        $presentToday = $todayAttendance->where('status', 'present')->count();
+        $lateToday = $todayAttendance->where('status', 'late')->count();
+        $absentToday = $todayAttendance->where('status', 'absent')->count();
+        $leaveToday = LeaveRequest::where('status', 'approved')
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->count();
+        $onLeaveToday = $leaveToday;
+
+        // ══ MONTHLY CALENDAR (current month) ══
+        $year = date('Y');
+        $month = date('m');
+        $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+        $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+        
+        $calendarAttendance = TimeAttendance::with('employee')
+            ->whereBetween('work_date', [$startDate, $endDate])
+            ->get();
+        
+        $attendanceByDate = [];
+        foreach ($calendarAttendance as $record) {
+            $dateKey = $record->work_date->format('Y-m-d');
+            if (!isset($attendanceByDate[$dateKey])) {
+                $attendanceByDate[$dateKey] = [
+                    'present' => [], 'absent' => [], 'late' => [], 'on_leave' => [],
+                    'total_present' => 0, 'total_absent' => 0, 'total_late' => 0, 'total_on_leave' => 0
+                ];
+            }
+            $attendanceByDate[$dateKey][$record->status][] = [
+                'id' => $record->employee->id ?? 0,
+                'name' => $record->employee->name ?? 'Unknown',
+                'clock_in' => $record->clock_in ? Carbon::parse($record->clock_in)->format('h:i A') : null,
+                'clock_out' => $record->clock_out ? Carbon::parse($record->clock_out)->format('h:i A') : null,
+            ];
+            $attendanceByDate[$dateKey]['total_' . $record->status]++;
+        }
+        
+        $calendar = [];
+        $currentDate = $startDate->copy();
+        while ($currentDate->lte($endDate)) {
+            $dateKey = $currentDate->format('Y-m-d');
+            $dayData = $attendanceByDate[$dateKey] ?? [
+                'present' => [], 'absent' => [], 'late' => [], 'on_leave' => [],
+                'total_present' => 0, 'total_absent' => 0, 'total_late' => 0, 'total_on_leave' => 0
+            ];
+            $calendar[] = [
+                'date' => $currentDate->copy(),
+                'date_key' => $dateKey,
+                'day' => $currentDate->day,
+                'day_of_week' => $currentDate->format('D'),
+                'is_weekend' => $currentDate->isWeekend(),
+                'is_today' => $currentDate->isToday(),
+                'attendance' => $dayData,
+                'has_data' => $dayData['total_present'] > 0 || $dayData['total_absent'] > 0 || $dayData['total_late'] > 0 || $dayData['total_on_leave'] > 0
+            ];
+            $currentDate->addDay();
+        }
+
+        // ══ PHILIPPINE HOLIDAYS 2026 ══
+        $holidays = [
+            ['date' => '2026-01-01', 'name' => 'New Year\'s Day', 'type' => 'regular'],
+            ['date' => '2026-02-17', 'name' => 'EDSA People Power Revolution', 'type' => 'special'],
+            ['date' => '2026-04-01', 'name' => 'Maundy Thursday', 'type' => 'regular'],
+            ['date' => '2026-04-02', 'name' => 'Good Friday', 'type' => 'regular'],
+            ['date' => '2026-04-03', 'name' => 'Black Saturday', 'type' => 'special'],
+            ['date' => '2026-04-09', 'name' => 'Araw ng Kagitingan', 'type' => 'regular'],
+            ['date' => '2026-05-01', 'name' => 'Labor Day', 'type' => 'regular'],
+            ['date' => '2026-06-12', 'name' => 'Independence Day', 'type' => 'regular'],
+            ['date' => '2026-08-21', 'name' => 'Ninoy Aquino Day', 'type' => 'special'],
+            ['date' => '2026-08-31', 'name' => 'National Heroes Day', 'type' => 'regular'],
+            ['date' => '2026-11-01', 'name' => 'All Saints\' Day', 'type' => 'special'],
+            ['date' => '2026-11-02', 'name' => 'All Souls\' Day', 'type' => 'special'],
+            ['date' => '2026-11-30', 'name' => 'Bonifacio Day', 'type' => 'regular'],
+            ['date' => '2026-12-08', 'name' => 'Immaculate Conception', 'type' => 'regular'],
+            ['date' => '2026-12-24', 'name' => 'Christmas Eve', 'type' => 'special'],
+            ['date' => '2026-12-25', 'name' => 'Christmas Day', 'type' => 'regular'],
+            ['date' => '2026-12-30', 'name' => 'Rizal Day', 'type' => 'regular'],
+            ['date' => '2026-12-31', 'name' => 'New Year\'s Eve', 'type' => 'special'],
+        ];
+
+        // ══ LEAVE REQUESTS ══
+        $leaveRequests = LeaveRequest::with('employee')->latest()->get();
+
+        // ══ PAYROLL DATA ══
+        $payrollPeriods = PayrollPeriod::latest()->get();
+        $currentPayroll = PayrollPeriod::where('status', 'processing')->orWhere('status', 'draft')->first();
+        $totalPayrollAmount = PayrollPeriod::whereIn('status', ['processing', 'draft'])->sum('total_net');
+
+        // ══ SETTINGS ══
+        $deductionSettings = DeductionSetting::where('is_active', true)->get();
+
+        // ══ ATTENDANCE STATS ══
+        $totalEmployees = $employees->count();
+        $pendingRequests = $pendingLeaveRequests + $pendingTimeApprovals;
+
         return view('hr-payroll.dashboard', compact(
-            'stats', 
-            'recentPayrolls', 
-            'upcomingPayrolls',
-            'pendingLeaveRequests',
-            'pendingTimeApprovals'
+            'stats', 'recentPayrolls', 'upcomingPayrolls',
+            'pendingLeaveRequests', 'pendingTimeApprovals',
+            'employees',
+            'presentToday', 'lateToday', 'absentToday', 'onLeaveToday',
+            'calendar', 'year', 'month',
+            'holidays',
+            'leaveRequests',
+            'payrollPeriods', 'currentPayroll', 'totalPayrollAmount',
+            'deductionSettings',
+            'totalEmployees', 'pendingRequests'
         ));
     }
 
