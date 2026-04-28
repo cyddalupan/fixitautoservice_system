@@ -264,20 +264,11 @@
                 flex-wrap: nowrap !important; /* Prevent sidebar from wrapping below content */
             }
 
-            /* Sidebar stays sticky below top navbar */
-            .sidebar {
-                position: sticky !important;
-                top: 56px !important;
-                height: calc(100vh - 56px) !important;
-                overflow-y: auto !important;
-                z-index: 1000 !important;
-                background-color: #2c3e50 !important;
-                flex: 0 0 250px; /* Fixed width - no !important so JS can override inline */
-            }
-
-            /* Contain the resize handle — sticky so sidebar stays put, relative to serve as absolute anchor for resize handle */
+            /* Desktop: sidebar is sticky via unqualified .sidebar rule below.
+               Nothing to override here — media query doesn't contain .sidebar
+               to avoid conflicting with the fallback rule. */
             #sidebar {
-                position: sticky !important;
+                /* All sidebar sizing/sticky is handled by the unqualified rule */
             }
 
             /* Main content fills remaining space */
@@ -294,31 +285,24 @@
         /* @media (min-width: 992px) removed — conflicts with JS resize inline style */
         /* Let the @media (min-width: 768px) rule handle all desktop widths */
 
-        .sidebar .nav-link {
-            color: rgba(255, 255, 255, 0.8) !important;
-            border-left: 3px solid transparent !important;
-        }
 
-        .sidebar .nav-link:hover,
-        .sidebar .nav-link.active {
-            color: #ffffff !important;
-            background-color: rgba(255, 255, 255, 0.1) !important;
-            border-left: 3px solid #3498db !important;
-        }
 
-        .container-fluid > .row {
-            /* Remove forced minimum height - let content determine height naturally */
-            min-height: auto;
-        }
-
+        /* ============================================================
+           SIDEBAR — desktop fallback rule
+           position: sticky so it follows the page when scrolling AND
+           creates a positioning context for the absolute handle child.
+           No !important on flex so JS resize can set inline style.
+           ============================================================ */
         .sidebar {
-            background-color: #2c3e50 !important; /* Consistent sidebar color */
+            background-color: #2c3e50 !important;
             color: white;
             padding: 0;
             position: sticky !important;
             top: 56px !important;
+            height: calc(100vh - 56px) !important;
+            overflow-y: auto !important;
             z-index: 1020 !important;
-            flex: 0 0 250px; /* Allows JS resize to override with inline style */
+            flex: 0 0 250px;
         }
 
         .sidebar .nav-link {
@@ -326,6 +310,13 @@
             padding: 12px 20px;
             border-left: 3px solid transparent !important;
             transition: all 0.3s;
+        }
+
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: #ffffff !important;
+            background-color: rgba(255, 255, 255, 0.1) !important;
+            border-left: 3px solid #3498db !important;
         }
 
         .sidebar .nav-link:hover {
