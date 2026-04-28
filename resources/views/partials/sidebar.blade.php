@@ -95,7 +95,8 @@
                 $isServiceManagementRoute = request()->routeIs([
                     'appointments.*', 'quotations.*', 'estimates.*', 'work-orders.*',
                     'invoices.*', 'payments.*', 'inspections.*',
-                    'service-records.*', 'archives.*'
+                    'service-records.*', 'archives.*',
+                    'service-items.*', 'services.*'
                 ]);
                 $shouldExpand = $isServiceManagementRoute;
             @endphp
@@ -172,6 +173,14 @@
                         </a>
                     </li>
 
+                    {{-- Services --}}
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('service-items.*') || request()->routeIs('services.*') ? 'active' : '' }}" href="{{ route('service-items.index') }}" style="border-left-color:#8b5cf6 !important;" data-tooltip="Services">
+                            <i class="fas fa-tools fa-fw"></i>
+                            <span>Services</span>
+                        </a>
+                    </li>
+
                     {{-- Archive --}}
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('archives.*') ? 'active' : '' }}" href="{{ route('archives.index') }}" style="border-left-color:#6b7280 !important;" data-tooltip="Archive">
@@ -207,12 +216,7 @@
                 <span>Inventory</span>
             </a>
         </li>
-        <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs('service-items.*') || request()->routeIs('services.*') ? 'active' : '' }}" href="{{ route('service-items.index') }}" data-tooltip="Services">
-                <i class="fas fa-tools fa-fw"></i>
-                <span>Services</span>
-            </a>
-        </li>
+
         <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('personnel.*') ? 'active' : '' }}" href="{{ route('personnel.index') }}" data-tooltip="Personnel">
                 <i class="fas fa-users fa-fw"></i>

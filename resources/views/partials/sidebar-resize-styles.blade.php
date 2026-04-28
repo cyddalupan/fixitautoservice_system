@@ -144,8 +144,53 @@
     display: none !important;
 }
 
+/* In collapsed mode, the Bootstrap collapse must remain visible */
+#sidebar.sidebar-collapsed #serviceManagementCollapse.collapse {
+    display: block !important;
+    visibility: visible !important;
+    height: auto !important;
+}
+
 #sidebar.sidebar-collapsed .nav-sub {
+    /* Show nav-sub items in collapsed mode but with icons only */
+    display: block !important;
+    padding-left: 0 !important;
+    list-style: none !important;
+}
+
+/* In collapsed mode, sub-items show only icons with tooltips */
+#sidebar.sidebar-collapsed .nav-sub .nav-link span:not(.sidebar-badge):not(.sidebar-badge-danger) {
     display: none !important;
+}
+
+#sidebar.sidebar-collapsed .nav-sub .nav-link .sidebar-badge,
+#sidebar.sidebar-collapsed .nav-sub .nav-link .sidebar-badge-danger {
+    display: none !important;
+}
+
+#sidebar.sidebar-collapsed .nav-sub .nav-link {
+    justify-content: center !important;
+    padding: 0.55rem 0 !important;
+}
+
+/* Also hide the section label text but keep spacing */
+#sidebar.sidebar-collapsed .sidebar-section-label {
+    display: block !important;
+    text-align: center !important;
+    padding: 0.5rem 0 0.25rem !important;
+    font-size: 0.45rem !important;
+    letter-spacing: 0.1em !important;
+    color: rgba(255,255,255,0.25) !important;
+    overflow: visible !important;
+}
+
+#sidebar.sidebar-collapsed .sidebar-section-label::before {
+    content: '' !important;
+    display: block !important;
+    width: 50% !important;
+    height: 1px !important;
+    background: rgba(255,255,255,0.06) !important;
+    margin: 4px auto !important;
 }
 
 #sidebar.sidebar-collapsed .nav-link {

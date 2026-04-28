@@ -260,7 +260,7 @@
             /* Use flexbox for proper sidebar layout */
             .container-fluid > .row {
                 display: flex !important;
-                min-height: calc(100vh - 56px) !important;
+                min-height: auto !important;
             }
 
             /* Sidebar stays sticky below top navbar */
@@ -285,7 +285,7 @@
                 padding: 20px !important;
                 background-color: #f5f7fa !important;
                 overflow-y: auto !important;
-                min-height: calc(100vh - 56px) !important;
+                min-height: auto !important;
             }
         }
 
