@@ -190,6 +190,49 @@ body.page-customers {
     letter-spacing: 0.3px;
 }
 
+/* ============================================================
+   STAT CARD GRADIENT (light mode — used by vehicles, expenses)
+   ============================================================ */
+.stat-card-gradient {
+    border-radius: 12px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.stat-card-gradient:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    transform: translateY(-1px);
+}
+
+.stat-card-gradient h3,
+.stat-card-gradient h4,
+.stat-card-gradient .mb-0 {
+    font-weight: 700;
+    margin: 0;
+    color: #0f172a;
+}
+
+.stat-card-gradient p,
+.stat-card-gradient .mb-1 {
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #64748b;
+}
+
+.stat-card-gradient .stat-icon {
+    opacity: 0.15 !important;
+}
+
+/* Gradient card variants */
+.stat-gradient-blue { background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%) !important; border-color: #bfdbfe !important; }
+.stat-gradient-green { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important; border-color: #bbf7d0 !important; }
+.stat-gradient-orange { background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%) !important; border-color: #fed7aa !important; }
+.stat-gradient-purple { background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%) !important; border-color: #e9d5ff !important; }
+.stat-gradient-teal { background: linear-gradient(135deg, #f0fdfa 0%, #ccfbf1 100%) !important; border-color: #99f6e4 !important; }
+.stat-gradient-amber { background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%) !important; border-color: #fde68a !important; }
+
 /* Background helpers for stat card icons */
 .bg-primary-light { background: #dbeafe; color: #2563eb; }
 .bg-success-light { background: #d1fae5; color: #16a34a; }
@@ -924,6 +967,68 @@ html *::after {
 [data-theme="dark"] .stat-card.bg-danger { background: linear-gradient(135deg, #7a2136 0%, #7a2525 100%) !important; }
 [data-theme="dark"] .stat-card.bg-info { background: linear-gradient(135deg, #005a7a 0%, #003a7a 100%) !important; }
 [data-theme="dark"] .stat-card.bg-secondary { background: linear-gradient(135deg, #4a4a5a 0%, #3a3a4a 100%) !important; }
+
+/* stat-card body background */
+[data-theme="dark"] .stat-card-body {
+    background: transparent;
+}
+
+/* ============================================================
+   STAT CARD GRADIENT (used by vehicles, expenses etc.)
+   ============================================================ */
+[data-theme="dark"] .stat-card-gradient {
+    background: var(--dark-card) !important;
+    border: 1px solid var(--dark-border) !important;
+}
+
+[data-theme="dark"] .stat-card-gradient h3,
+[data-theme="dark"] .stat-card-gradient h4,
+[data-theme="dark"] .stat-card-gradient .mb-0 {
+    color: var(--dark-text) !important;
+}
+
+[data-theme="dark"] .stat-card-gradient p,
+[data-theme="dark"] .stat-card-gradient .mb-1 {
+    color: var(--dark-text-secondary) !important;
+}
+
+[data-theme="dark"] .stat-card-gradient .stat-icon {
+    opacity: 0.15 !important;
+}
+
+/* Specific gradient variants in dark mode */
+[data-theme="dark"] .stat-gradient-blue { background: linear-gradient(135deg, #1a2a4a 0%, #4a2560 100%) !important; border-color: transparent !important; }
+[data-theme="dark"] .stat-gradient-green { background: linear-gradient(135deg, #0a4a2a 0%, #0a5a4e 100%) !important; border-color: transparent !important; }
+[data-theme="dark"] .stat-gradient-orange { background: linear-gradient(135deg, #5a3a0a 0%, #7a4a0e 100%) !important; border-color: transparent !important; }
+[data-theme="dark"] .stat-gradient-purple { background: linear-gradient(135deg, #2a1a4a 0%, #4a2560 100%) !important; border-color: transparent !important; }
+[data-theme="dark"] .stat-gradient-teal { background: linear-gradient(135deg, #0a4a4a 0%, #004a5a 100%) !important; border-color: transparent !important; }
+[data-theme="dark"] .stat-gradient-amber { background: linear-gradient(135deg, #5a3a0a 0%, #6a5a00 100%) !important; border-color: transparent !important; }
+
+/* ============================================================
+   GLOBAL WHITE BACKGROUND KILLER
+   Catch-all for inline bg-white, bg-light, bg="#fff", style="background: #fff", etc.
+   ============================================================ */
+[data-theme="dark"] [style*="background:#fff"],
+[data-theme="dark"] [style*="background: #fff"],
+[data-theme="dark"] [style*="background-color:#fff"],
+[data-theme="dark"] [style*="background-color: #fff"],
+[data-theme="dark"] [style*="background:white"],
+[data-theme="dark"] [style*="background: white"],
+[data-theme="dark"] [style*="background-color:white"],
+[data-theme="dark"] [style*="background-color: white"] {
+    background: var(--dark-card) !important;
+}
+
+[data-theme="dark"] .card[style*="background: #fff"],
+[data-theme="dark"] .card[style*="background:#fff"] {
+    background: var(--dark-card) !important;
+}
+
+/* Catch inline bg-white utility inline style */
+[data-theme="dark"] [style*="bg-white"],
+[data-theme="dark"] [style*="bg-white;"] {
+    background: var(--dark-card) !important;
+}
 
 /* ============================================================
    FILTER BAR & SEARCH
