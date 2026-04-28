@@ -24,6 +24,7 @@
     z-index: 150 !important;
     background: transparent !important;
     transition: background 0.15s ease !important;
+    touch-action: none !important; /* Prevent scroll interference on touch devices */
 }
 
 .sidebar-resize-handle:hover,

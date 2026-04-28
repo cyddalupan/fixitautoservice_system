@@ -1,0 +1,40 @@
+<?php
+
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\AppointmentController;
+use App\Http\Controllers\WorkOrderController;
+use App\Http\Controllers\EstimateController;
+use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\VehicleInspectionController;
+use App\Http\Controllers\VehicleController;
+use App\Http\Controllers\InventoryController;
+use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\ServiceItemController;
+use App\Http\Controllers\NewAppointmentController;
+use App\Http\Controllers\PartsRequestController;
+use App\Http\Controllers\NewRepairOrderController;
+use App\Http\Controllers\NewEstimateController;
+use App\Http\Controllers\NewJobOrderController;
+use App\Http\Controllers\NewInvoiceController;
+use App\Http\Controllers\QualityControlController;
+use App\Http\Controllers\QualityCheckController;
+use App\Http\Controllers\WorkOrderQualityController;
+use App\Http\Controllers\ArchiveController;
+use App\Http\Controllers\QuotationController;
+use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\ServiceRecordController;
+use App\Http\Controllers\PersonnelController;
+use App\Http\Controllers\HrPayrollController;
+use App\Http\Controllers\VehicleHistoryController;
+use App\Http\Controllers\TestPartsProcurementController;
+use App\Http\Controllers\CustomerPortalController;
+use App\Http\Controllers\TechnicianController;
+use Illuminate\Support\Facades\Route;
+
+// Debug route - test authentication
+Route::get('/debug-auth', function() {
+    try {
+        // Test basic Laravel
+        $test1 = 'Laravel is working';

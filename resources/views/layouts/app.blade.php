@@ -19,6 +19,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     {{-- Modern Redesign Styles --}}
     @include('partials.redesign-styles')
+    {{-- Resizable Sidebar Styles --}}
+    @include('partials.sidebar-resize-styles')
     <!-- SweetAlert2 CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <style>
@@ -246,6 +248,11 @@
             .container-fluid {
                 padding-top: 0 !important;
             }
+
+            /* Contain the resize handle on mobile too */
+            #sidebar {
+                position: relative;
+            }
         }
 
         /* Desktop sidebar pattern */
@@ -262,10 +269,14 @@
                 top: 56px !important;
                 height: calc(100vh - 56px) !important;
                 overflow-y: auto !important;
-                overflow-x: hidden !important;
                 z-index: 1000 !important;
                 background-color: #2c3e50 !important;
                 flex: 0 0 250px; /* Fixed width - no !important so JS can override inline */
+            }
+
+            /* Contain the resize handle (position: absolute) */
+            #sidebar {
+                position: relative;
             }
 
             /* Main content fills remaining space */
@@ -278,12 +289,8 @@
             }
         }
 
-        /* Adjust for larger screens */
-        @media (min-width: 992px) {
-            .sidebar {
-                flex: 0 0 200px; /* Slightly narrower on larger screens */
-            }
-        }
+        /* @media (min-width: 992px) removed — conflicts with JS resize inline style */
+        /* Let the @media (min-width: 768px) rule handle all desktop widths */
 
         .sidebar .nav-link {
             color: rgba(255, 255, 255, 0.8) !important;
@@ -306,8 +313,7 @@
             background-color: #2c3e50 !important; /* Consistent sidebar color */
             color: white;
             padding: 0;
-            /* Remove fixed height to prevent flex stretching */
-            /* min-height: calc(100vh - 56px) !important; */
+            position: relative; /* Contain the resize handle */
             position: sticky !important;
             top: 56px !important;
             z-index: 1020 !important;

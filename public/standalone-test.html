@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="TEST_CSRF_TOKEN_12345">
+    <title>Standalone Test Page</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center mb-4">🚨 STANDALONE TEST PAGE 🚨</h1>
+        
+        <!-- TEST 1: Simple Button -->
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Test 1: Simple Button</h5>
+            </div>
+            <div class="card-body">
+                <button id="test-button-1" class="btn btn-success">
+                    <i class="fas fa-check me-1"></i> Click Me!
+                </button>
+                <div id="test-result-1" class="mt-2 text-success" style="display: none;">
+                    ✅ Button clicked successfully!
+                </div>
+            </div>
+        </div>
+        
+        <!-- TEST 2: Form Submission -->
+        <div class="card mb-3">
+            <div class="card-header bg-warning">
+                <h5 class="mb-0">Test 2: Form Submission</h5>
+            </div>
+            <div class="card-body">
+                <form id="test-form">
+                    <div class="mb-3">
+                        <label for="test-input" class="form-label">Test Input</label>
+                        <input type="text" class="form-control" id="test-input" placeholder="Type something...">
+                    </div>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-paper-plane me-1"></i> Submit Form
+                    </button>
+                </form>
+                <div id="test-result-2" class="mt-2 text-warning" style="display: none;">
+                    ✅ Form submitted successfully!
+                </div>
+            </div>
+        </div>
+        
+        <!-- TEST 3: AJAX Request -->
+        <div class="card mb-3">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Test 3: AJAX Request</h5>
+            </div>
+            <div class="card-body">
+                <button id="test-ajax" class="btn btn-info">
+                    <i class="fas fa-sync me-1"></i> Test AJAX
+                </button>
+                <div id="test-result-3" class="mt-2 text-info" style="display: none;">
+                    ✅ AJAX request successful!
+                </div>
+            </div>
+        </div>
+        
+        <!-- DEBUG INFO -->
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Debug Information</h5>
+            </div>
+            <div class="card-body">
+                <div id="debug-info">
+                    <p>Loading debug information...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- SIMPLE JAVASCRIPT -->
+    <script>
+    console.log("🚨 STANDALONE TEST: JavaScript loaded!");
+    
+    // Debug info
+    $(document).ready(function() {
+        console.log("✅ STANDALONE TEST: Document ready!");
+        
+        // Collect debug info
+        var debugInfo = `
+            <p><strong>jQuery Version:</strong> ${$.fn.jquery}</p>
+            <p><strong>Browser:</strong> ${navigator.userAgent}</p>
+            <p><strong>JavaScript Enabled:</strong> ✅ Yes</p>
+            <p><strong>Console Available:</strong> ${typeof console !== 'undefined' ? '✅ Yes' : '❌ No'}</p>
+            <p><strong>jQuery Available:</strong> ${typeof jQuery !== 'undefined' ? '✅ Yes' : '❌ No'}</p>
+            <p><strong>Bootstrap Loaded:</strong> ${typeof bootstrap !== 'undefined' ? '✅ Yes' : '❌ No'}</p>
+        `;
+        
+        $('#debug-info').html(debugInfo);
+        
+        // Test 1: Simple button
+        $('#test-button-1').click(function() {
+            console.log("✅ Test 1: Button clicked!");
+            $('#test-result-1').show();
+            alert("✅ Test 1: Button works!");
+        });
+        
+        // Test 2: Form submission
+        $('#test-form').submit(function(e) {
+            e.preventDefault();
+            console.log("✅ Test 2: Form submitted!");
+            $('#test-result-2').show();
+            alert("✅ Test 2: Form works!");
+        });
+        
+        // Test 3: AJAX request
+        $('#test-ajax').click(function() {
+            console.log("✅ Test 3: AJAX button clicked!");
+            
+            // Simple AJAX request
+            $.ajax({
+                url: '/api/test',  // This will probably 404, but that's okay
+                type: 'GET',
+                success: function(response) {
+                    console.log("✅ Test 3: AJAX success!");
+                    $('#test-result-3').show();
+                    alert("✅ Test 3: AJAX works!");
+                },
+                error: function(xhr, status, error) {
+                    console.log("⚠️ Test 3: AJAX error (expected):", error);
+                    $('#test-result-3').show();
+                    alert("✅ Test 3: AJAX attempted (404 error is expected)!");
+                }
+            });
+        });
+        
+        console.log("✅ All event handlers registered!");
+    });
+    </script>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
