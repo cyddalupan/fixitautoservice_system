@@ -18,11 +18,11 @@
     position: absolute !important;
     top: 0 !important;
     right: 0 !important;
-    width: 8px !important;
+    width: 10px !important;
     height: 100% !important;
     cursor: col-resize !important;
     z-index: 150 !important;
-    background: transparent !important;
+    background: rgba(148, 163, 184, 0.08) !important;
     transition: background 0.15s ease !important;
     touch-action: none !important; /* Prevent scroll interference on touch devices */
 }
@@ -33,27 +33,25 @@
     background: rgba(59, 130, 246, 0.25) !important;
 }
 
-/* Vertical indicator line */
+/* Vertical indicator line — subtle full-height accent */
 .sidebar-resize-handle::after {
     content: '' !important;
     position: absolute !important;
-    top: 50% !important;
+    top: 0 !important;
     left: 50% !important;
-    transform: translate(-50%, -50%) !important;
+    transform: translateX(-50%) !important;
     width: 2px !important;
-    height: 32px !important;
-    background: rgba(148, 163, 184, 0.3) !important;
-    border-radius: 2px !important;
+    height: 100% !important;
+    background: rgba(148, 163, 184, 0.12) !important;
     transition: all 0.2s ease !important;
 }
 
 .sidebar-resize-handle:hover::after,
 .sidebar-resize-handle.dragging::after {
-    height: 48px !important;
-    background: rgba(59, 130, 246, 0.7) !important;
+    background: rgba(59, 130, 246, 0.5) !important;
 }
 
-/* Dot grip indicator */
+/* Dot grip indicator — always faintly visible */
 .sidebar-resize-handle .handle-dots {
     position: absolute !important;
     top: 50% !important;
@@ -62,7 +60,7 @@
     display: flex !important;
     flex-direction: column !important;
     gap: 3px !important;
-    opacity: 0 !important;
+    opacity: 0.6 !important;
     transition: opacity 0.2s ease !important;
     pointer-events: none !important;
 }
@@ -76,7 +74,7 @@
     display: block !important;
     width: 3px !important;
     height: 3px !important;
-    background: rgba(148, 163, 184, 0.6) !important;
+    background: rgba(148, 163, 184, 0.5) !important;
     border-radius: 50% !important;
 }
 
