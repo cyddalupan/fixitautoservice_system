@@ -4,7 +4,7 @@
 
 @push('styles')
 <style>
-.fixit-inv-dash{ background:#f4f6fa; min-height:100vh; padding-top:0.5rem; padding-bottom:2rem; }
+.fixit-inv-dash{ background:#f4f6fa; min-height:100vh; padding-top:0.5rem; padding-bottom:2rem; } /* light bg — dark mode handled in redesign-styles */
 .fixit-inv-dash .page-title{ color:#1a2332; font-size:1.15rem; }
 .fixit-inv-dash .inv-stat-card{ border-radius:10px; border:0; box-shadow:0 1px 2px rgba(0,0,0,.04); transition:box-shadow .2s,transform .15s; overflow:hidden; }
 .fixit-inv-dash .inv-stat-card:hover{ box-shadow:0 3px 8px rgba(0,0,0,.06); transform:translateY(-1px); }
