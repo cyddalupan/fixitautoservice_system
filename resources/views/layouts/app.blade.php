@@ -275,9 +275,9 @@
                 flex: 0 0 250px; /* Fixed width - no !important so JS can override inline */
             }
 
-            /* Contain the resize handle (position: absolute) */
+            /* Contain the resize handle — sticky so sidebar stays put, relative to serve as absolute anchor for resize handle */
             #sidebar {
-                position: relative;
+                position: sticky !important;
             }
 
             /* Main content fills remaining space */
@@ -315,11 +315,10 @@
             background-color: #2c3e50 !important; /* Consistent sidebar color */
             color: white;
             padding: 0;
-            position: relative; /* Contain the resize handle */
             position: sticky !important;
             top: 56px !important;
             z-index: 1020 !important;
-            background-attachment: local;
+            flex: 0 0 250px; /* Allows JS resize to override with inline style */
         }
 
         .sidebar .nav-link {
