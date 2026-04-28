@@ -16,13 +16,14 @@
     const MAX_W = 420;
     const DEFAULT_W = 250;
 
+    var outer = document.getElementById('sidebarOuter');
     var sidebar = document.getElementById('sidebar');
     var handle = document.getElementById('sidebarResizeHandle');
     var collapseBtn = document.getElementById('sidebarCollapseBtn');
     var mobileToggle = document.getElementById('sidebarToggle');
     var mobileOverlay = document.getElementById('sidebarOverlay');
 
-    if (!sidebar) return;
+    if (!outer || !sidebar) return;
 
     // ============================================================
     //  RESTORE WIDTH & COLLAPSED STATE
@@ -33,17 +34,19 @@
 
         var w = parseInt(localStorage.getItem(KEY), 10);
         if (w && w >= MIN_W && w <= MAX_W) {
-            sidebar.style.flex = '0 0 ' + w + 'px';
+            outer.style.flex = '0 0 ' + w + 'px';
         } else {
-            sidebar.style.flex = '0 0 ' + DEFAULT_W + 'px';
+            outer.style.flex = '0 0 ' + DEFAULT_W + 'px';
         }
 
         if (localStorage.getItem(COLLAPSED_KEY) === 'true') {
+            outer.classList.add('sidebar-collapsed');
             sidebar.classList.add('sidebar-collapsed');
             if (collapseBtn) {
                 collapseBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
             }
         } else {
+            outer.classList.remove('sidebar-collapsed');
             sidebar.classList.remove('sidebar-collapsed');
             if (collapseBtn) {
                 collapseBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
@@ -52,7 +55,7 @@
     }
 
     function saveWidth() {
-        localStorage.setItem(KEY, sidebar.offsetWidth);
+        localStorage.setItem(KEY, outer.offsetWidth);
     }
 
     // ============================================================
@@ -65,11 +68,11 @@
 
         function onDown(e) {
             if (window.innerWidth < 768) return;
-            if (sidebar.classList.contains('sidebar-collapsed')) return;
+            if (outer.classList.contains('sidebar-collapsed')) return;
             e.preventDefault();
             isResizing = true;
             startX = e.clientX || (e.touches && e.touches[0].clientX);
-            startW = sidebar.offsetWidth;
+            startW = outer.offsetWidth;
             handle.classList.add('dragging');
             document.body.style.cursor = 'col-resize';
             document.body.style.userSelect = 'none';
@@ -80,7 +83,7 @@
             var cx = e.clientX || (e.touches && e.touches[0].clientX);
             if (!cx) return;
             var newW = Math.min(Math.max(startW + (cx - startX), MIN_W), MAX_W);
-            sidebar.style.flex = '0 0 ' + newW + 'px';
+            outer.style.flex = '0 0 ' + newW + 'px';
         }
 
         function onUp() {
@@ -107,23 +110,25 @@
     if (collapseBtn) {
         collapseBtn.addEventListener('click', function(e) {
             e.stopPropagation();
-            var isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+            var isCollapsed = outer.classList.contains('sidebar-collapsed');
 
             if (isCollapsed) {
                 // Expand
+                outer.classList.remove('sidebar-collapsed');
                 sidebar.classList.remove('sidebar-collapsed');
                 localStorage.setItem(COLLAPSED_KEY, 'false');
                 // Restore width
                 var saved = parseInt(localStorage.getItem(KEY), 10);
                 var w = (saved && saved >= MIN_W) ? saved : DEFAULT_W;
-                sidebar.style.flex = '0 0 ' + w + 'px';
+                outer.style.flex = '0 0 ' + w + 'px';
                 collapseBtn.innerHTML = '<i class="fas fa-chevron-left"></i>';
             } else {
                 // Collapse
                 saveWidth(); // save current expanded width
+                outer.classList.add('sidebar-collapsed');
                 sidebar.classList.add('sidebar-collapsed');
                 localStorage.setItem(COLLAPSED_KEY, 'true');
-                sidebar.style.flex = '0 0 55px';
+                outer.style.flex = '0 0 55px';
                 collapseBtn.innerHTML = '<i class="fas fa-chevron-right"></i>';
             }
         });
@@ -178,7 +183,7 @@
 
     window.addEventListener('resize', function() {
         if (window.innerWidth < 768) {
-            sidebar.style.flex = '';
+            outer.style.flex = '';
         } else {
             restore();
         }
@@ -189,7 +194,7 @@
     // ============================================================
 
     restore();
-    console.log('[Sidebar] Resize initialized');
+    console.log('[Sidebar] Resize initialized (outer container)');
 })();
 </script>
 @endpush
