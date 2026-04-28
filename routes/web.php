@@ -11,6 +11,7 @@ use App\Http\Controllers\VehicleInspectionController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\FormSyncController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -24,6 +25,12 @@ Route::get('/quotation-form', function () {
 
 Route::post('/quotation-submit', [\App\Http\Controllers\QuotationController::class, 'storePublic'])->name('quotation.submit');
 
+
+// Public vehicle data sync endpoint (no auth required — for form sync)
+Route::get('/vehicle-data/sync', [FormSyncController::class, 'syncToForm'])->name('vehicle-data.sync');
+
+// Public vehicle data serving endpoint (no auth required)
+Route::get('/vehicle-data/json', [FormSyncController::class, 'serveVehicleData'])->name('vehicle-data.json');
 // Authentication Routes
 Route::get('/login', function () {
     return view('auth.login');
@@ -78,6 +85,51 @@ Route::post('/logout', function () {
 Route::get('/customer-form/{token}', [CustomerController::class, 'showForm'])->name('customers.form.show');
 Route::post('/customer-form/{token}/submit', [CustomerController::class, 'submitForm'])->name('customers.form.submit');
 
+// Public Vehicle Autocomplete API Routes (for quotation form & customer form)
+Route::get('/api/vehicle-brands', function() {
+    $term = request('term', '');
+    $brands = \App\Models\Vehicle::where('make', 'LIKE', '%' . $term . '%')
+        ->distinct()
+        ->orderBy('make')
+        ->pluck('make')
+        ->take(20)
+        ->toArray();
+    
+    return response()->json($brands);
+})->name('api.vehicle-brands');
+
+Route::get('/api/vehicle-models', function() {
+    $term = request('term', '');
+    $brand = request('brand', '');
+    
+    $query = \App\Models\Vehicle::where('model', 'LIKE', '%' . $term . '%');
+    
+    if ($brand) {
+        $query->where('make', $brand);
+    }
+    
+    $models = $query->distinct()
+        ->orderBy('model')
+        ->pluck('model')
+        ->take(20)
+        ->toArray();
+    
+    return response()->json($models);
+})->name('api.vehicle-models');
+
+Route::get('/api/vehicle-colors', function() {
+    $term = request('term', '');
+    $colors = \App\Models\Vehicle::whereNotNull('color')
+        ->where('color', 'LIKE', '%' . $term . '%')
+        ->distinct()
+        ->orderBy('color')
+        ->pluck('color')
+        ->take(15)
+        ->toArray();
+    
+    return response()->json($colors);
+})->name('api.vehicle-colors');
+
 // Protected Routes (with auto-login middleware)
 Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->group(function () {
     // Dashboard Routes
@@ -127,50 +179,6 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::get('/api/customer-vehicles', [\App\Http\Controllers\CustomerController::class, 'apiCustomerVehicles'])->name('api.customer-vehicles');
     Route::get('/api/customer-latest-quotation/{customer}', [\App\Http\Controllers\CustomerController::class, 'apiLatestQuotation'])->name('api.customer-latest-quotation');
     
-    // Vehicle autocomplete API routes
-    Route::get('/api/vehicle-brands', function() {
-        $term = request('term', '');
-        $brands = \App\Models\Vehicle::where('make', 'LIKE', '%' . $term . '%')
-            ->distinct()
-            ->orderBy('make')
-            ->pluck('make')
-            ->take(20)
-            ->toArray();
-        
-        return response()->json($brands);
-    })->name('api.vehicle-brands');
-    
-    Route::get('/api/vehicle-models', function() {
-        $term = request('term', '');
-        $brand = request('brand', '');
-        
-        $query = \App\Models\Vehicle::where('model', 'LIKE', '%' . $term . '%');
-        
-        if ($brand) {
-            $query->where('make', $brand);
-        }
-        
-        $models = $query->distinct()
-            ->orderBy('model')
-            ->pluck('model')
-            ->take(20)
-            ->toArray();
-        
-        return response()->json($models);
-    })->name('api.vehicle-models');
-    
-    Route::get('/api/vehicle-colors', function() {
-        $term = request('term', '');
-        $colors = \App\Models\Vehicle::whereNotNull('color')
-            ->where('color', 'LIKE', '%' . $term . '%')
-            ->distinct()
-            ->orderBy('color')
-            ->pluck('color')
-            ->take(15)
-            ->toArray();
-        
-        return response()->json($colors);
-    })->name('api.vehicle-colors');
     // Customer resource routes
     Route::resource('customers', CustomerController::class);
     Route::post('/customers/{customer}/notes', [CustomerController::class, 'addNote'])->name('customers.notes.store');

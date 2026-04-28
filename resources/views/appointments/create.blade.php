@@ -451,7 +451,7 @@ $(document).ready(function() {
         var customerId = parseInt($(this).val());
         if (!customerId) return;
         
-        $.get('{{ route("api.customer-latest-quotation", "") }}/' + customerId, function(data) {
+        $.get('{{ route("api.customer-latest-quotation", ["customer" => "__CUSTOMER_ID__"]) }}'.replace('__CUSTOMER_ID__', customerId), function(data) {
             if (data && data.service_description) {
                 var descField = $('#description');
                 if (!descField.val() || descField.val().trim() === '') {

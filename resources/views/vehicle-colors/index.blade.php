@@ -9,11 +9,16 @@
             <h1 class="h3 mb-0"><i class="fas fa-palette me-2"></i>Vehicle Colors</h1>
             <p class="text-muted mb-0">Manage all vehicle colors in the system</p>
         </div>
+        <button type="button" class="btn btn-success me-2" onclick="syncVehicleData()" title="Sync all brands, models, and colors to the public quotation/customer forms">
+            <i class="fas fa-sync"></i> Sync to Form
+        </button>
         <a href="{{ route('vehicle-colors.create') }}" class="btn btn-primary">
             <i class="fas fa-plus me-1"></i> Add Color
         </a>
     </div>
 </div>
+
+<div id="syncResult" class="d-none"></div>
 
 @if(session('success'))
     <div class="alert alert-success alert-dismissible fade show">{{ session('success') }}
@@ -82,4 +87,46 @@
         </div>
     </div>
 </div>
+@push('scripts')
+<script>
+function syncVehicleData() {
+    const btn = event.currentTarget;
+    const resultDiv = document.getElementById('syncResult');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing...';
+    resultDiv.className = 'd-none';
+
+    fetch('{{ route('vehicle-data.sync') }}')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                resultDiv.className = 'alert alert-success alert-dismissible fade show mt-3';
+                resultDiv.role = 'alert';
+                resultDiv.innerHTML = '<strong>✓ Synced!</strong> ' + data.message +
+                    '<br><small>Brands: ' + data.data.counts.brands +
+                    ' | Models: ' + data.data.counts.models +
+                    ' | Colors: ' + data.data.counts.colors +
+                    ' | Synced at: ' + new Date(data.data.synced_at).toLocaleString() + '</small>' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+            } else {
+                resultDiv.className = 'alert alert-danger alert-dismissible fade show mt-3';
+                resultDiv.role = 'alert';
+                resultDiv.innerHTML = '✗ Sync failed: ' + data.message +
+                    '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+            }
+        })
+        .catch(err => {
+            resultDiv.className = 'alert alert-danger alert-dismissible fade show mt-3';
+            resultDiv.role = 'alert';
+            resultDiv.innerHTML = '✗ Network error: ' + err.message +
+                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync"></i> Sync to Form';
+        });
+}
+</script>
+@endpush
 @endsection
