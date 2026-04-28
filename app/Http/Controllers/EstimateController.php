@@ -286,12 +286,9 @@ class EstimateController extends Controller
     {
         $estimate->load(['customer', 'vehicle', 'items', 'user', 'serviceAdvisor', 'workOrder']);
 
-        // Mark as viewed if sent and not yet viewed
-        if ($estimate->status === 'sent' && !$estimate->viewed_at) {
-            $estimate->update([
-                'status' => 'viewed',
-                'viewed_at' => now(),
-            ]);
+        // Mark as viewed if not yet viewed (keep existing status)
+        if ($estimate->viewed_at === null) {
+            $estimate->update(['viewed_at' => now()]);
         }
 
         return view('estimates.show', compact('estimate'));
@@ -302,6 +299,11 @@ class EstimateController extends Controller
      */
     public function edit(Estimate $estimate)
     {
+        // Mark as viewed if not yet viewed
+        if ($estimate->viewed_at === null) {
+            $estimate->update(['viewed_at' => now()]);
+        }
+        
         $estimate->load(['customer', 'vehicle', 'items']);
         $customers = Customer::orderBy('first_name')->get();
         $advisors = User::whereIn('role', ['admin', 'staff', 'service_advisor'])->get();

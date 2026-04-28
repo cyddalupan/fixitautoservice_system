@@ -295,6 +295,11 @@ class VehicleInspectionController extends Controller
      */
     public function show(VehicleInspection $inspection)
     {
+        // Mark as viewed if not yet viewed
+        if ($inspection->viewed_at === null) {
+            $inspection->update(['viewed_at' => now()]);
+        }
+        
         $inspection->load([
             'customer',
             'vehicle',
@@ -356,6 +361,11 @@ class VehicleInspectionController extends Controller
      */
     public function edit(VehicleInspection $inspection)
     {
+        // Mark as viewed if not yet viewed
+        if ($inspection->viewed_at === null) {
+            $inspection->update(['viewed_at' => now()]);
+        }
+        
         $inspection->load(['customer', 'vehicle', 'items', 'technicians']);
         
         $customers = Customer::where('is_active', true)->orderBy('first_name')->get();

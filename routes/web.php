@@ -91,20 +91,20 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
             'vehicles' => \App\Models\Vehicle::count(),
             // Appointments: only 'scheduled' (upcoming) — matches default tab
             'appointments_total' => \App\Models\Appointment::where('appointment_status', 'scheduled')->count(),
-            'appointments_new' => \App\Models\Appointment::where('appointment_status', 'scheduled')->count(),
+            'appointments_new' => \App\Models\Appointment::where('appointment_status', 'scheduled')->whereNull('viewed_at')->count(),
             'quotations_total' => \App\Models\Quotation::count(),
             'quotations_new' => \App\Models\Quotation::where('status', 'pending')->count(),
             // Inspections: exclude completed & those with work orders — matches index page default
             'inspections_total' => \App\Models\VehicleInspection::whereNotIn('inspection_status', ['completed'])
                                         ->whereNull('work_order_id')->count(),
-            'inspections_new' => \App\Models\VehicleInspection::where('inspection_status', 'draft')->count(),
+            'inspections_new' => \App\Models\VehicleInspection::whereNotIn('inspection_status', ['completed'])->whereNull('work_order_id')->whereNull('viewed_at')->count(),
             'estimates_total' => \App\Models\Estimate::count(),
             'estimates_new' => \App\Models\Estimate::whereNull('viewed_at')->count(),
             'work_orders_total' => \App\Models\WorkOrder::count(),
-            'work_orders_active' => \App\Models\WorkOrder::whereIn('work_order_status', ['pending', 'repairing', 'in_progress'])->count(),
+            'work_orders_active' => \App\Models\WorkOrder::whereIn('work_order_status', ['pending', 'repairing', 'in_progress'])->whereNull('viewed_at')->count(),
             // Service Records: count workflows (matches Service Records page listings)
             'service_records_total' => count(app(\App\Services\ServiceRecordService::class)->getWorkflows()),
-            'service_records_recent' => count(app(\App\Services\ServiceRecordService::class)->getWorkflows()),
+            'service_records_recent' => \App\Models\ServiceRecord::whereNull('viewed_at')->count(),
             'invoices_total' => \App\Models\Invoice::count(),
             'invoices_new' => \App\Models\Invoice::whereNull('viewed_at')->count(),
             'invoices_pending' => \App\Models\Invoice::whereIn('status', ['draft', 'sent', 'partial', 'overdue'])->count(),

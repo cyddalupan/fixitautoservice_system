@@ -222,6 +222,11 @@ class AppointmentController extends Controller
      */
     public function show(Appointment $appointment)
     {
+        // Mark as viewed if not yet viewed
+        if ($appointment->viewed_at === null) {
+            $appointment->update(['viewed_at' => now()]);
+        }
+        
         // Load relationships with error handling for serviceProgress
         $appointment->load(['customer', 'technician', 'advisor', 'workOrder']);
         
@@ -264,6 +269,11 @@ class AppointmentController extends Controller
      */
     public function edit(Appointment $appointment)
     {
+        // Mark as viewed if not yet viewed
+        if ($appointment->viewed_at === null) {
+            $appointment->update(['viewed_at' => now()]);
+        }
+        
         $appointment->load(['customer', 'technicians']);
         
         $customers = Customer::where('is_active', true)->orderBy('first_name')->get();

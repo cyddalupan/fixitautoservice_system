@@ -306,6 +306,11 @@ class WorkOrderController extends Controller
      */
     public function show(WorkOrder $workOrder)
     {
+        // Mark as viewed if not yet viewed
+        if ($workOrder->viewed_at === null) {
+            $workOrder->update(['viewed_at' => now()]);
+        }
+        
         $workOrder->load([
             'customer', 
             'vehicle', 
@@ -344,6 +349,11 @@ class WorkOrderController extends Controller
      */
     public function edit(WorkOrder $workOrder)
     {
+        // Mark as viewed if not yet viewed
+        if ($workOrder->viewed_at === null) {
+            $workOrder->update(['viewed_at' => now()]);
+        }
+        
         $workOrder->load(['customer', 'vehicle', 'items', 'tasks']);
         
         $customers = Customer::where('is_active', true)->orderBy('first_name')->get();
