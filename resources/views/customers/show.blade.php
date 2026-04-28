@@ -1,153 +1,118 @@
 @extends('layouts.app')
 
 @section('title', $customer->first_name . ' ' . $customer->last_name . ' - Fix-It Auto Services')
-
-@section('styles')
-<style>
-    .profile-picture-container:hover .btn {
-        opacity: 1;
-    }
-    
-    .profile-picture-container .btn {
-        opacity: 0.8;
-        transition: opacity 0.3s ease;
-    }
-    
-    .customer-avatar {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 120px;
-        height: 120px;
-        font-size: 48px;
-        background-color: #007bff;
-        color: white;
-        border-radius: 50%;
-    }
-</style>
-@endsection
+@section('body-class', 'page-customers')
 
 @section('content')
-<div class="page-header">
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <h1 class="h3 mb-0">
-                <i class="fas fa-user me-2"></i>{{ $customer->first_name }} {{ $customer->last_name }}
-            </h1>
-            <p class="text-muted mb-0">Customer Profile</p>
-        </div>
-        <div>
-            <div class="btn-group">
-                <a href="{{ route('customers.edit', $customer) }}" class="btn btn-primary">
-                    <i class="fas fa-edit me-1"></i> Edit
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-module-header">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="module-icon">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div>
+                    <h1 class="h4 mb-1" style="font-weight: 700;">{{ $customer->first_name }} {{ $customer->last_name }}</h1>
+                    <ol class="breadcrumb m-0 p-0" style="background: none; font-size: 0.8rem;">
+                        <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('customers.index') }}">Customers</a></li>
+                        <li class="breadcrumb-item active">{{ $customer->first_name }} {{ $customer->last_name }}</li>
+                    </ol>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('customers.edit', $customer) }}" class="btn-filter-primary">
+                    <i class="fas fa-edit me-1"></i> Edit Customer
                 </a>
-                <a href="{{ route('customers.index') }}" class="btn btn-secondary">
+                <a href="{{ route('customers.index') }}" class="btn-filter-outline">
                     <i class="fas fa-arrow-left me-1"></i> Back
                 </a>
             </div>
         </div>
     </div>
-</div>
 
-<div class="row">
-    <!-- Customer Information -->
-    <div class="col-md-4">
-        <div class="card mb-4">
-            <div class="card-header">
-                <h6 class="m-0 font-weight-bold text-primary">Customer Information</h6>
-            </div>
-            <div class="card-body">
-                <div class="text-center mb-4">
-                    <!-- Profile Picture Upload Section -->
-                    <div class="profile-picture-container position-relative mx-auto mb-3" style="width: 120px; height: 120px;">
+    <div class="row g-4">
+        <!-- Left Column: Profile & Quick Actions -->
+        <div class="col-lg-4">
+            <!-- Profile Card -->
+            <div class="main-card">
+                <div class="profile-card-header">
+                    <div class="profile-avatar-wrapper">
                         @if($customer->hasProfilePicture)
                             <img src="{{ $customer->avatar }}" 
                                  alt="{{ $customer->first_name }} {{ $customer->last_name }}"
-                                 class="rounded-circle img-fluid border"
-                                 style="width: 120px; height: 120px; object-fit: cover;"
+                                 class="profile-avatar"
                                  id="profile-picture-img">
                         @else
-                            <div class="customer-avatar rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
-                                 style="width: 120px; height: 120px; font-size: 48px; background-color: #007bff; color: white;"
-                                 id="profile-picture-initials">
+                            <div class="profile-avatar profile-avatar-initials" id="profile-picture-initials">
                                 {{ $customer->avatar }}
                             </div>
                         @endif
-                        
-                        <!-- Upload Button (like Facebook) -->
                         <button type="button" 
-                                class="btn btn-primary btn-sm rounded-circle position-absolute"
-                                style="bottom: 5px; right: 5px; width: 36px; height: 36px;"
+                                class="profile-avatar-upload-btn"
                                 data-bs-toggle="modal" 
                                 data-bs-target="#profilePictureModal"
                                 title="Update profile picture">
                             <i class="fas fa-camera"></i>
                         </button>
                     </div>
-                    
-                    <h5 class="mb-1">{{ $customer->first_name }} {{ $customer->last_name }}</h5>
-                    <p class="text-muted mb-2">
-                        <span class="badge bg-{{ $customer->is_active ? 'success' : 'danger' }}">
-                            {{ $customer->is_active ? 'Active' : 'Inactive' }}
-                        </span>
-                        <span class="badge bg-info ms-1">{{ ucfirst($customer->customer_type) }}</span>
+                    <h5 class="mb-1 fw-bold">{{ $customer->first_name }} {{ $customer->last_name }}</h5>
+                    <div class="d-flex flex-wrap justify-content-center gap-1 mb-0">
+                        <span class="badge-custom badge-success">{{ $customer->is_active ? 'Active' : 'Inactive' }}</span>
+                        <span class="badge-custom badge-primary">{{ ucfirst($customer->customer_type) }}</span>
                         @if($customer->segment)
-                            <span class="badge bg-secondary ms-1">{{ ucfirst($customer->segment) }}</span>
+                            <span class="badge-custom badge-secondary">{{ ucfirst($customer->segment) }}</span>
                         @endif
-                    </p>
+                    </div>
                 </div>
-                
-                <div class="customer-details">
-                    <div class="mb-3">
-                        <small class="text-muted d-block">Contact Information</small>
+                <div class="main-card-body px-3 pb-3">
+                    <!-- Contact Info -->
+                    <div class="customer-details-section">
+                        <div class="detail-label">Contact Information</div>
                         @if($customer->email)
-                            <div class="d-flex align-items-center mb-1">
-                                <i class="fas fa-envelope text-muted me-2" style="width: 20px;"></i>
+                            <div class="detail-row">
+                                <i class="fas fa-envelope detail-icon"></i>
                                 <a href="mailto:{{ $customer->email }}">{{ $customer->email }}</a>
                             </div>
                         @endif
                         @if($customer->phone)
-                            <div class="d-flex align-items-center mb-1">
-                                <i class="fas fa-phone text-muted me-2" style="width: 20px;"></i>
+                            <div class="detail-row">
+                                <i class="fas fa-phone detail-icon"></i>
                                 <a href="tel:{{ $customer->phone }}">{{ $customer->phone }}</a>
                             </div>
                         @endif
                         @if($customer->preferred_contact_method)
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-comment text-muted me-2" style="width: 20px;"></i>
+                            <div class="detail-row">
+                                <i class="fas fa-comment detail-icon"></i>
                                 <small>Prefers {{ ucfirst($customer->preferred_contact_method) }}</small>
                             </div>
                         @endif
                     </div>
-                    
+
+                    <!-- Address -->
                     @if($customer->address || $customer->city || $customer->state || $customer->zip_code)
-                    <div class="mb-3">
-                        <small class="text-muted d-block">Address</small>
-                        <div class="d-flex align-items-start mb-1">
-                            <i class="fas fa-map-marker-alt text-muted me-2 mt-1" style="width: 20px;"></i>
+                    <div class="customer-details-section">
+                        <div class="detail-label">Address</div>
+                        <div class="detail-row">
+                            <i class="fas fa-map-marker-alt detail-icon detail-icon-start"></i>
                             <div>
-                                @if($customer->address)
-                                    <div>{{ $customer->address }}</div>
-                                @endif
+                                @if($customer->address)<div>{{ $customer->address }}</div>@endif
                                 @if($customer->city || $customer->state || $customer->zip_code)
-                                    <div>
-                                        {{ $customer->city }}{{ $customer->city && $customer->state ? ', ' : '' }}
-                                        {{ $customer->state }} {{ $customer->zip_code }}
-                                    </div>
+                                    <div>{{ $customer->city }}{{ $customer->city && $customer->state ? ', ' : '' }}{{ $customer->state }} {{ $customer->zip_code }}</div>
                                 @endif
-                                @if($customer->country)
-                                    <div>{{ $customer->country }}</div>
-                                @endif
+                                @if($customer->country)<div>{{ $customer->country }}</div>@endif
                             </div>
                         </div>
                     </div>
                     @endif
-                    
+
+                    <!-- Company -->
                     @if($customer->company_name)
-                    <div class="mb-3">
-                        <small class="text-muted d-block">Company</small>
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-building text-muted me-2" style="width: 20px;"></i>
+                    <div class="customer-details-section">
+                        <div class="detail-label">Company</div>
+                        <div class="detail-row">
+                            <i class="fas fa-building detail-icon"></i>
                             <div>
                                 <strong>{{ $customer->company_name }}</strong>
                                 @if($customer->tax_id)
@@ -157,330 +122,382 @@
                         </div>
                     </div>
                     @endif
-                    
-                    <div class="mb-3">
-                        <small class="text-muted d-block">Customer Since</small>
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-calendar text-muted me-2" style="width: 20px;"></i>
-                            <div>{{ $customer->created_at->format('F j, Y') }}</div>
+
+                    <!-- Customer Since & Loyalty -->
+                    <div class="customer-details-section">
+                        <div class="detail-label">Membership</div>
+                        <div class="detail-row">
+                            <i class="fas fa-calendar detail-icon"></i>
+                            <span>Customer since {{ $customer->created_at->format('F j, Y') }}</span>
                         </div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <small class="text-muted d-block">Loyalty Points</small>
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-star text-warning me-2" style="width: 20px;"></i>
+                        <div class="detail-row">
+                            <i class="fas fa-star detail-icon" style="color: #f59e0b;"></i>
                             <div>
                                 <strong>{{ number_format($customer->loyalty_points) }} points</strong>
                                 @if($customer->loyalty_points >= 1000)
-                                    <span class="badge bg-success ms-2">Gold Member</span>
+                                    <span class="badge-custom badge-gold ms-2">Gold Member</span>
                                 @elseif($customer->loyalty_points >= 500)
-                                    <span class="badge bg-primary ms-2">Silver Member</span>
+                                    <span class="badge-custom badge-silver ms-2">Silver Member</span>
                                 @else
-                                    <span class="badge bg-secondary ms-2">Bronze Member</span>
+                                    <span class="badge-custom badge-secondary ms-2">Bronze Member</span>
                                 @endif
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Quick Actions -->
-        <div class="card">
-            <div class="card-header">
-                <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
-            </div>
-            <div class="card-body">
-                <div class="d-grid gap-2">
-                    <!-- 1. Schedule Appointment -->
-                    <a href="{{ route('appointments.create') }}?customer_id={{ $customer->id }}" class="btn btn-outline-warning">
-                        <i class="fas fa-calendar-plus me-2"></i> Schedule Appointment
-                    </a>
-                    
-                    <!-- 2. Create Repair Order -->
-                    <a href="{{ route('inspections.create') }}?customer_id={{ $customer->id }}" class="btn btn-outline-primary">
-                        <i class="fas fa-tools me-2"></i> Create Repair Order
-                    </a>
-                    
-                    <!-- 3. Create Estimate -->
-                    <a href="{{ route('estimates.create') }}?customer_id={{ $customer->id }}" class="btn btn-outline-info">
-                        <i class="fas fa-file-invoice-dollar me-2"></i> Create Estimate
-                    </a>
-                    
-                    <!-- 4. Create Work Order -->
-                    <a href="{{ route('work-orders.create') }}?customer_id={{ $customer->id }}" class="btn btn-outline-danger">
-                        <i class="fas fa-wrench me-2"></i> Create Work Order
-                    </a>
+
+            <!-- Quick Actions -->
+            <div class="main-card mt-4">
+                <div class="main-card-header">
+                    <i class="fas fa-bolt me-2" style="color: var(--module-active);"></i> Quick Actions
+                </div>
+                <div class="main-card-body px-3 pb-3">
+                    <div class="quick-actions-grid">
+                        <a href="{{ route('appointments.create') }}?customer_id={{ $customer->id }}" class="quick-action-btn" style="border-left-color: #f59e0b;">
+                            <i class="fas fa-calendar-plus" style="color: #f59e0b;"></i>
+                            <span>Appointment</span>
+                        </a>
+                        <a href="{{ route('inspections.create') }}?customer_id={{ $customer->id }}" class="quick-action-btn" style="border-left-color: var(--module-active);">
+                            <i class="fas fa-tools" style="color: var(--module-active);"></i>
+                            <span>Repair Order</span>
+                        </a>
+                        <a href="{{ route('estimates.create') }}?customer_id={{ $customer->id }}" class="quick-action-btn" style="border-left-color: #0ea5e9;">
+                            <i class="fas fa-file-invoice-dollar" style="color: #0ea5e9;"></i>
+                            <span>Estimate</span>
+                        </a>
+                        <a href="{{ route('work-orders.create') }}?customer_id={{ $customer->id }}" class="quick-action-btn" style="border-left-color: #ef4444;">
+                            <i class="fas fa-wrench" style="color: #ef4444;"></i>
+                            <span>Work Order</span>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <!-- Main Content -->
-    <div class="col-md-8">
-        <!-- Customer Notes -->
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="m-0 font-weight-bold text-primary">Customer Notes</h6>
-                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addNoteModal">
-                    <i class="fas fa-plus me-1"></i> Add Note
-                </button>
-            </div>
-            <div class="card-body">
-                @if($customer->notes)
-                    <div class="mb-3">
-                        <p class="mb-0">{{ $customer->notes }}</p>
-                    </div>
-                @else
-                    <p class="text-muted mb-0">No notes available for this customer.</p>
-                @endif
-                
-                <!-- Recent Notes -->
-                @if($customer->customerNotes && $customer->customerNotes->count() > 0)
-                    <hr>
-                    <h6 class="mb-3">Recent Notes</h6>
-                    @foreach($customer->customerNotes->take(5) as $note)
-                        <div class="card mb-2">
-                            <div class="card-body p-3">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <small class="text-muted">{{ $note->created_at->format('M j, Y g:i A') }}</small>
-                                    <small class="text-muted">{{ $note->note_type ?? 'General' }}</small>
-                                </div>
-                                <p class="mb-0">{{ $note->content }}</p>
-                            </div>
-                        </div>
-                    @endforeach
-                @endif
-            </div>
-        </div>
-        
-        <!-- Recent Vehicles -->
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="m-0 font-weight-bold text-primary">Vehicles</h6>
-                <a href="{{ route('vehicles.create') }}?customer_id={{ $customer->id }}" class="btn btn-sm btn-primary">
-                    <i class="fas fa-plus me-1"></i> Add Vehicle
-                </a>
-            </div>
-            <div class="card-body">
-                @if($customer->vehicles && $customer->vehicles->count() > 0)
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Brand/Model</th>
-                                    <th>Year</th>
-                                    <th>License Plate</th>
-                                    <th>VIN</th>
-                                    <th>Engine No.</th>
-                                    <th>Last Service</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($customer->vehicles->take(5) as $vehicle)
-                                    <tr>
-                                        <td>
-                                            <div class="d-flex align-items-center">
-                                                <i class="fas fa-car text-primary me-2"></i>
-                                                <div>
-                                                    <strong>{{ $vehicle->make }} {{ $vehicle->model }}</strong>
-                                                    <div class="text-muted small">{{ $vehicle->trim ?? '' }}</div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td>{{ $vehicle->year }}</td>
-                                        <td>
-                                            <span class="badge bg-light text-dark">{{ $vehicle->license_plate ?? 'N/A' }}</span>
-                                        </td>
-                                        <td>
-                                            <small class="text-muted">{{ $vehicle->vin ? substr($vehicle->vin, 0, 8) . '...' : 'N/A' }}</small>
-                                        </td>
-                                        <td>
-                                            <small class="text-muted">{{ $vehicle->engine_no ?? 'N/A' }}</small>
-                                        </td>
-                                        <td>
-                                            @if($vehicle->last_service_date)
-                                                <small>{{ $vehicle->last_service_date->format('M j, Y') }}</small>
-                                            @else
-                                                <small class="text-muted">Never</small>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <a href="{{ route('vehicles.show', $vehicle) }}" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                    @if($customer->vehicles->count() > 5)
-                        <div class="text-center">
-                            <a href="{{ route('customers.vehicles', $customer) }}" class="btn btn-sm btn-outline-secondary">
-                                View All {{ $customer->vehicles->count() }} Vehicles
-                            </a>
-                        </div>
-                    @endif
-                @else
-                    <p class="text-muted mb-0">No vehicles registered for this customer.</p>
-                    <a href="{{ route('vehicles.create') }}?customer_id={{ $customer->id }}" class="btn btn-sm btn-primary mt-2">
-                        <i class="fas fa-plus me-1"></i> Add Vehicle
-                    </a>
-                @endif
-            </div>
-        </div>
-        
-        <!-- Recent Service History -->
-        <!-- Lead Source: Quotation History -->
-        <div class="card mb-4">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-file-invoice-dollar"></i> Lead Source: Quotation Form</h6>
-                @if($customer->quotations && $customer->quotations->count() > 1)
-                    <span class="badge bg-info">{{ $customer->quotations->count() }} quotations</span>
-                @endif
-            </div>
-            <div class="card-body">
-                @if($customer->quotations && $customer->quotations->count() > 0)
-                    <div class="table-responsive">
-                        <table class="table table-hover table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Concern</th>
-                                    <th>Budget</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($customer->quotations as $quotation)
-                                    @php
-                                        $statusLabels = [
-                                            'new_lead' => 'New Lead',
-                                            'contacted' => 'Contacted',
-                                            'converted_to_customer' => 'Converted to Customer',
-                                            'appointment_booked' => 'Appointment Booked',
-                                            'won' => 'Won',
-                                            'lost' => 'Lost',
-                                            'archived' => 'Archived',
-                                        ];
-                                        $statusColors = [
-                                            'new_lead' => 'warning',
-                                            'contacted' => 'info',
-                                            'converted_to_customer' => 'success',
-                                            'appointment_booked' => 'primary',
-                                            'won' => 'success',
-                                            'lost' => 'danger',
-                                            'archived' => 'secondary',
-                                        ];
-                                    @endphp
-                                    <tr>
-                                        <td class="text-nowrap">{{ $quotation->created_at->format('M j, Y') }}</td>
-                                        <td>
-                                            <div style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $quotation->service_description }}">
-                                                {{ Str::limit($quotation->service_description, 60) }}
-                                            </div>
-                                        </td>
-                                        <td>
-                                            @if($quotation->budget_min || $quotation->budget_max)
-                                                @if($quotation->budget_min && $quotation->budget_max)
-                                                    ₱{{ number_format($quotation->budget_min) }} - ₱{{ number_format($quotation->budget_max) }}
-                                                @elseif($quotation->budget_min)
-                                                    ₱{{ number_format($quotation->budget_min) }}+ min
-                                                @else
-                                                    up to ₱{{ number_format($quotation->budget_max) }}
-                                                @endif
-                                            @else
-                                                <span class="text-muted">—</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-{{ $statusColors[$quotation->status] ?? 'secondary' }}">
-                                                {{ $statusLabels[$quotation->status] ?? ucfirst($quotation->status) }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <a href="{{ route('quotations.show', $quotation->id) }}" class="btn btn-sm btn-outline-primary" title="View Quotation #{{ $quotation->id }}">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                    @if($customer->quotations->count() > 5)
-                        <div class="text-center mt-2">
-                            <a href="{{ route('quotations.index', ['customer_id' => $customer->id]) }}" class="btn btn-sm btn-outline-secondary">
-                                View All {{ $customer->quotations->count() }} Quotations
-                            </a>
-                        </div>
-                    @endif
-                @else
-                    <div class="text-center text-muted py-3">
-                        <i class="fas fa-inbox fa-2x mb-2"></i>
-                        <p class="mb-0">No quotation history for this customer.</p>
-                    </div>
-                @endif
-            </div>
-        </div>
 
-        <div class="card">
-            <div class="card-header">
-                <h6 class="m-0 font-weight-bold text-primary">Recent Service History</h6>
-            </div>
-            <div class="card-body">
-                @if($customer->serviceRecords && $customer->serviceRecords->count() > 0)
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Service Type</th>
-                                    <th>Vehicle</th>
-                                    <th>Amount</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($customer->serviceRecords->take(5) as $record)
-                                    <tr>
-                                        <td>{{ $record->service_date->format('M j, Y') }}</td>
-                                        <td>{{ $record->service_type }}</td>
-                                        <td>
-                                            <small>{{ $record->vehicle->make ?? 'N/A' }} {{ $record->vehicle->model ?? '' }}</small>
-                                        </td>
-                                        <td>${{ number_format($record->total_amount, 2) }}</td>
-                                        <td>
-                                            <span class="badge bg-{{ $record->status == 'completed' ? 'success' : ($record->status == 'in_progress' ? 'warning' : 'secondary') }}">
-                                                {{ ucfirst($record->status) }}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <a href="#" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+        <!-- Right Column: Tabs with Vehicles, Services, Notes, Quotations -->
+        <div class="col-lg-8">
+            <!-- Tab Navigation -->
+            <div class="main-card mb-4">
+                <div class="tabs-nav-wrapper">
+                    <ul class="tabs-nav" id="customerTabs" role="tablist">
+                        <li class="tab-item active" role="presentation">
+                            <button class="tab-link" id="vehicles-tab" data-bs-toggle="tab" data-bs-target="#vehicles" type="button" role="tab" aria-selected="true">
+                                <i class="fas fa-car me-1"></i> Vehicles
+                                @if($customer->vehicles && $customer->vehicles->count() > 0)
+                                    <span class="badge-tab">{{ $customer->vehicles->count() }}</span>
+                                @endif
+                            </button>
+                        </li>
+                        <li class="tab-item" role="presentation">
+                            <button class="tab-link" id="services-tab" data-bs-toggle="tab" data-bs-target="#services" type="button" role="tab" aria-selected="false">
+                                <i class="fas fa-wrench me-1"></i> Service History
+                                @if($customer->serviceRecords && $customer->serviceRecords->count() > 0)
+                                    <span class="badge-tab">{{ $customer->serviceRecords->count() }}</span>
+                                @endif
+                            </button>
+                        </li>
+                        <li class="tab-item" role="presentation">
+                            <button class="tab-link" id="quotations-tab" data-bs-toggle="tab" data-bs-target="#quotations" type="button" role="tab" aria-selected="false">
+                                <i class="fas fa-file-invoice-dollar me-1"></i> Quotations
+                                @if($customer->quotations && $customer->quotations->count() > 0)
+                                    <span class="badge-tab">{{ $customer->quotations->count() }}</span>
+                                @endif
+                            </button>
+                        </li>
+                        <li class="tab-item" role="presentation">
+                            <button class="tab-link" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes" type="button" role="tab" aria-selected="false">
+                                <i class="fas fa-sticky-note me-1"></i> Notes
+                                @if($customer->notes && $customer->notes->count() > 0)
+                                    <span class="badge-tab">{{ $customer->notes->count() }}</span>
+                                @endif
+                            </button>
+                        </li>
+                    </ul>
+                    <div class="tabs-nav-extra">
+                        <button type="button" class="btn-filter-outline btn-sm" data-bs-toggle="modal" data-bs-target="#addNoteModal">
+                            <i class="fas fa-plus me-1"></i> Add Note
+                        </button>
                     </div>
-                    @if($customer->serviceRecords->count() > 5)
-                        <div class="text-center">
-                            <a href="{{ route('customers.service-history', $customer) }}" class="btn btn-sm btn-outline-secondary">
-                                View All {{ $customer->serviceRecords->count() }} Services
-                            </a>
-                        </div>
-                    @endif
-                @else
-                    <p class="text-muted mb-0">No service history available for this customer.</p>
-                @endif
+                </div>
+
+                <!-- Tab Content -->
+                <div class="tab-content p-0">
+                    <!-- Vehicles Tab -->
+                    <div class="tab-pane fade show active" id="vehicles" role="tabpanel">
+                        @if($customer->vehicles && $customer->vehicles->count() > 0)
+                            <div class="table-responsive">
+                                <table class="table-fixit">
+                                    <thead>
+                                        <tr>
+                                            <th>Vehicle</th>
+                                            <th>License Plate</th>
+                                            <th>VIN / Engine</th>
+                                            <th>Last Service</th>
+                                            <th class="text-end" style="width: 60px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($customer->vehicles->take(5) as $vehicle)
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center gap-2">
+                                                        <div style="width: 34px; height: 34px; background: var(--module-active-light); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--module-active); font-size: 0.9rem;">
+                                                            <i class="fas fa-car"></i>
+                                                        </div>
+                                                        <div>
+                                                            <div class="fw-semibold" style="font-size: 0.88rem;">{{ $vehicle->make }} {{ $vehicle->model }}</div>
+                                                            <small class="text-muted">{{ $vehicle->year }} {{ $vehicle->trim ? '/ '.$vehicle->trim : '' }}</small>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <code style="font-size: 0.75rem; background: #f1f5f9; padding: 2px 8px; border-radius: 4px; color: #334155;">{{ $vehicle->license_plate ?? 'N/A' }}</code>
+                                                </td>
+                                                <td>
+                                                    <div style="font-size: 0.78rem; line-height: 1.5;">
+                                                        <div>VIN: <span class="text-muted">{{ $vehicle->vin ? substr($vehicle->vin, 0, 8).'...' : 'N/A' }}</span></div>
+                                                        <div>Engine: <span class="text-muted">{{ $vehicle->engine_no ?? 'N/A' }}</span></div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    @if($vehicle->last_service_date)
+                                                        <span style="font-size: 0.8rem;">{{ $vehicle->last_service_date->format('M j, Y') }}</span>
+                                                    @else
+                                                        <span class="text-muted" style="font-size: 0.8rem;">Never</span>
+                                                    @endif
+                                                </td>
+                                                <td class="text-end">
+                                                    <a href="{{ route('vehicles.show', $vehicle) }}" class="btn btn-sm btn-outline-secondary" style="border-radius: 6px; padding: 0.25rem 0.5rem;">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            @if($customer->vehicles->count() > 5)
+                                <div class="text-center py-3 border-top">
+                                    <a href="{{ route('customers.vehicles', $customer) }}" class="btn-filter-outline btn-sm">
+                                        View All {{ $customer->vehicles->count() }} Vehicles
+                                        <i class="fas fa-arrow-right ms-1"></i>
+                                    </a>
+                                </div>
+                            @endif
+                        @else
+                            <div class="empty-state-module py-4">
+                                <div class="empty-state-icon">
+                                    <i class="fas fa-car-side"></i>
+                                </div>
+                                <h5>No Vehicles</h5>
+                                <p>No vehicles registered for this customer.</p>
+                                <a href="{{ route('vehicles.create') }}?customer_id={{ $customer->id }}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-plus me-1"></i> Add Vehicle
+                                </a>
+                            </div>
+                        @endif
+                    </div>
+
+                    <!-- Service History Tab -->
+                    <div class="tab-pane fade" id="services" role="tabpanel">
+                        @if($customer->serviceRecords && $customer->serviceRecords->count() > 0)
+                            <div class="table-responsive">
+                                <table class="table-fixit">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Service Type</th>
+                                            <th>Vehicle</th>
+                                            <th class="text-end">Amount</th>
+                                            <th>Status</th>
+                                            <th class="text-end" style="width: 60px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($customer->serviceRecords->take(5) as $record)
+                                            <tr>
+                                                <td><span style="font-size: 0.85rem;">{{ $record->service_date->format('M j, Y') }}</span></td>
+                                                <td><span style="font-size: 0.85rem; font-weight: 500;">{{ $record->service_type }}</span></td>
+                                                <td><small class="text-muted">{{ $record->vehicle->make ?? 'N/A' }} {{ $record->vehicle->model ?? '' }}</small></td>
+                                                <td class="text-end"><span style="font-weight: 600;">${{ number_format($record->total_amount, 2) }}</span></td>
+                                                <td>
+                                                    @php
+                                                        $svcColors = ['completed' => 'bg-success', 'in_progress' => 'bg-warning text-dark', 'pending' => 'bg-secondary'];
+                                                        $svcColor = $svcColors[$record->status] ?? 'bg-secondary';
+                                                    @endphp
+                                                    <span class="status-badge {{ $svcColor }}">{{ ucfirst($record->status) }}</span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <a href="#" class="btn btn-sm btn-outline-secondary" style="border-radius: 6px; padding: 0.25rem 0.5rem;">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            @if($customer->serviceRecords->count() > 5)
+                                <div class="text-center py-3 border-top">
+                                    <a href="{{ route('customers.service-history', $customer) }}" class="btn-filter-outline btn-sm">
+                                        View All {{ $customer->serviceRecords->count() }} Services
+                                        <i class="fas fa-arrow-right ms-1"></i>
+                                    </a>
+                                </div>
+                            @endif
+                        @else
+                            <div class="empty-state-module py-4">
+                                <div class="empty-state-icon">
+                                    <i class="fas fa-tools"></i>
+                                </div>
+                                <h5>No Service History</h5>
+                                <p>No service records available for this customer.</p>
+                            </div>
+                        @endif
+                    </div>
+
+                    <!-- Quotations Tab -->
+                    <div class="tab-pane fade" id="quotations" role="tabpanel">
+                        @php
+                            $statusLabels = [
+                                'new_lead' => 'New Lead',
+                                'contacted' => 'Contacted',
+                                'converted_to_customer' => 'Converted to Customer',
+                                'appointment_booked' => 'Appointment Booked',
+                                'won' => 'Won',
+                                'lost' => 'Lost',
+                                'archived' => 'Archived',
+                            ];
+                            $statusBadges = [
+                                'new_lead' => 'badge-warning',
+                                'contacted' => 'badge-info',
+                                'converted_to_customer' => 'badge-success',
+                                'appointment_booked' => 'badge-primary',
+                                'won' => 'badge-success',
+                                'lost' => 'badge-danger',
+                                'archived' => 'badge-secondary',
+                            ];
+                        @endphp
+                        @if($customer->quotations && $customer->quotations->count() > 0)
+                            <div class="table-responsive">
+                                <table class="table-fixit">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Concern</th>
+                                            <th>Budget</th>
+                                            <th>Status</th>
+                                            <th class="text-end" style="width: 60px;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($customer->quotations as $quotation)
+                                            <tr>
+                                                <td><span style="font-size: 0.85rem;">{{ $quotation->created_at->format('M j, Y') }}</span></td>
+                                                <td>
+                                                    <div style="max-width: 220px; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $quotation->service_description }}">
+                                                        {{ Str::limit($quotation->service_description, 50) }}
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    @if($quotation->budget_min || $quotation->budget_max)
+                                                        <span style="font-size: 0.85rem; font-weight: 500;">
+                                                            @if($quotation->budget_min && $quotation->budget_max)
+                                                                ₱{{ number_format($quotation->budget_min) }} – ₱{{ number_format($quotation->budget_max) }}
+                                                            @elseif($quotation->budget_min)
+                                                                ₱{{ number_format($quotation->budget_min) }}+
+                                                            @else
+                                                                up to ₱{{ number_format($quotation->budget_max) }}
+                                                            @endif
+                                                        </span>
+                                                    @else
+                                                        <span class="text-muted" style="font-size: 0.82rem;">—</span>
+                                                    @endif
+                                                </td>
+                                                <td>
+                                                    <span class="status-badge {{ $statusBadges[$quotation->status] ?? 'badge-secondary' }}">
+                                                        {{ $statusLabels[$quotation->status] ?? ucfirst($quotation->status) }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <a href="{{ route('quotations.show', $quotation->id) }}" class="btn btn-sm btn-outline-secondary" style="border-radius: 6px; padding: 0.25rem 0.5rem;" title="View Quotation #{{ $quotation->id }}">
+                                                        <i class="fas fa-eye"></i>
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                            @if($customer->quotations->count() > 5)
+                                <div class="text-center py-3 border-top">
+                                    <a href="{{ route('quotations.index', ['customer_id' => $customer->id]) }}" class="btn-filter-outline btn-sm">
+                                        View All {{ $customer->quotations->count() }} Quotations
+                                        <i class="fas fa-arrow-right ms-1"></i>
+                                    </a>
+                                </div>
+                            @endif
+                        @else
+                            <div class="empty-state-module py-4">
+                                <div class="empty-state-icon">
+                                    <i class="fas fa-file-invoice"></i>
+                                </div>
+                                <h5>No Quotations</h5>
+                                <p>No quotation history for this customer.</p>
+                            </div>
+                        @endif
+                    </div>
+
+                    <!-- Notes Tab -->
+                    <div class="tab-pane fade" id="notes" role="tabpanel">
+                        @if($customer->notes && $customer->notes->count() > 0)
+                            <div class="px-3 py-3">
+                                @foreach($customer->notes->take(10) as $note)
+                                    <div class="note-card">
+                                        <div class="note-card-header">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <span class="badge-custom badge-note-type">{{ $note->note_type ?? 'General' }}</span>
+                                                <small class="text-muted">{{ $note->created_at->format('M j, Y g:i A') }}</small>
+                                            </div>
+                                        </div>
+                                        <div class="note-card-body">
+                                            {{ $note->content }}
+                                        </div>
+                                    </div>
+                                @endforeach
+                            </div>
+                            @if($customer->notes->count() > 5)
+                                <div class="text-center py-3 border-top">
+                                    <span class="text-muted" style="font-size: 0.85rem;">
+                                        Showing {{ min(10, $customer->notes->count()) }} of {{ $customer->notes->count() }} notes
+                                    </span>
+                                </div>
+                            @endif
+                        @else
+                            <div class="empty-state-module py-4">
+                                <div class="empty-state-icon">
+                                    <i class="fas fa-sticky-note"></i>
+                                </div>
+                                <h5>No Notes</h5>
+                                <p>No notes added for this customer yet.</p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
             </div>
+
+            <!-- Customer Notes Section (if global notes exist) -->
+            @if($customer->notes)
+            <div class="main-card mb-4">
+                <div class="main-card-header">
+                    <i class="fas fa-info-circle me-2" style="color: var(--module-active);"></i> Customer Notes
+                </div>
+                <div class="main-card-body px-3 py-3">
+                    <p class="mb-0" style="font-size: 0.9rem; color: #334155;">{{ $customer->notes }}</p>
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 </div>
@@ -492,7 +509,9 @@
             <form method="POST" action="{{ route('customers.notes.store', $customer) }}">
                 @csrf
                 <div class="modal-header">
-                    <h5 class="modal-title" id="addNoteModalLabel">Add Customer Note</h5>
+                    <h5 class="modal-title" id="addNoteModalLabel">
+                        <i class="fas fa-plus-circle me-2" style="color: var(--module-active);"></i> Add Customer Note
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -525,7 +544,9 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="profilePictureModalLabel">Update Profile Picture</h5>
+                <h5 class="modal-title" id="profilePictureModalLabel">
+                    <i class="fas fa-camera me-2" style="color: var(--module-active);"></i> Update Profile Picture
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -560,41 +581,19 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
     $(document).ready(function() {
-        console.log('=== CUSTOMER PROFILE PAGE LOADED ===');
-        console.log('Testing upload functionality...');
-        
-        // Check basic requirements
-        if (typeof jQuery === 'undefined') {
-            console.error('CRITICAL ERROR: jQuery is not loaded!');
-            alert('ERROR: jQuery is not loaded. Page functionality will be broken.');
-            return;
-        }
-        
-        console.log('✓ jQuery loaded, version:', $.fn.jquery);
-        
-        // Check if Bootstrap is loaded
-        if (typeof bootstrap === 'undefined') {
-            console.error('WARNING: Bootstrap is not loaded');
-        } else {
-            console.log('✓ Bootstrap loaded');
-        }
-        
         // Initialize tooltips
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
-        console.log('✓ Tooltips initialized');
 
         // Image preview functionality
         $('#profile_picture').change(function() {
-            console.log('File input changed');
             const file = this.files[0];
             if (file) {
-                console.log('File selected:', file.name, '(', file.size, 'bytes,', file.type, ')');
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     $('#imagePreview').attr('src', e.target.result).removeClass('d-none');
@@ -602,69 +601,24 @@
                 reader.readAsDataURL(file);
             }
         });
-        console.log('✓ Image preview handler attached');
 
-        // CRITICAL TEST: Check if upload button exists and is clickable
-        const uploadButton = $('#uploadProfilePictureBtn');
-        console.log('Upload button check:');
-        console.log('  - Selector: #uploadProfilePictureBtn');
-        console.log('  - Found:', uploadButton.length, 'element(s)');
-        console.log('  - HTML:', uploadButton.length > 0 ? uploadButton[0].outerHTML : 'NOT FOUND');
-        
-        if (uploadButton.length === 0) {
-            console.error('ERROR: Upload button not found! The button might have a different ID or might not exist in the DOM.');
-            alert('ERROR: Upload button not found. Please check the page HTML.');
-            return;
-        }
-        
-        console.log('✓ Upload button found in DOM');
-        
-        // Remove ANY existing click handlers first (clean slate)
-        uploadButton.off('click');
-        
-        uploadButton.on("click", function(e) {
-        console.log('Please click the "Upload Picture" button to test if click events work.');
-            e.preventDefault(); // Prevent default form submission
+        // Upload profile picture
+        $('#uploadProfilePictureBtn').click(function(e) {
+            e.preventDefault();
             
-            console.log('=== UPLOAD BUTTON CLICKED ===');
-            console.log('Button clicked event fired');
-            
-            // Check if file is selected
             const fileInput = $('#profile_picture')[0];
-            console.log('File input element:', fileInput);
-            console.log('File input files:', fileInput.files);
-            console.log('File input value:', fileInput.value);
-            
             if (!fileInput.files || fileInput.files.length === 0) {
-                console.log('ERROR: No file selected');
                 showToast('error', 'Please select a picture to upload.');
                 return;
             }
             
-            console.log('File selected:', fileInput.files[0].name, fileInput.files[0].size, 'bytes');
-            
-            // Disable button to prevent multiple clicks
             const $btn = $(this);
             $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...');
             
             const formData = new FormData($('#profilePictureForm')[0]);
-            const customerId = {{ $customer->id }};
-            const uploadUrl = '{{ route("customers.upload-profile-picture", $customer) }}';
-            const csrfToken = $('meta[name="csrf-token"]').attr('content');
-            
-            console.log('=== UPLOAD DETAILS ===');
-            console.log('Upload URL:', uploadUrl);
-            console.log('CSRF Token:', csrfToken ? 'Found' : 'NOT FOUND');
-            console.log('Customer ID:', customerId);
-            console.log('Form data entries:');
-            for (let pair of formData.entries()) {
-                console.log(pair[0] + ': ' + (pair[0] === 'profile_picture' ? '[FILE]' : pair[1]));
-            }
-            
-            console.log('=== STARTING AJAX REQUEST ===');
             
             $.ajax({
-                url: uploadUrl,
+                url: '{{ route("customers.upload-profile-picture", $customer) }}',
                 type: 'POST',
                 data: formData,
                 processData: false,
@@ -672,77 +626,38 @@
                 headers: {
                     'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
                 },
-                success: function(response, status, xhr) {
-                    console.log('=== AJAX SUCCESS RESPONSE ===');
-                    console.log('Response status:', xhr.status);
-                    console.log('Response data:', response);
-                    
+                success: function(response) {
                     if (response.success) {
-                        console.log('Upload successful!');
-                        // Update profile picture on page
                         if ($('#profile-picture-img').length) {
                             $('#profile-picture-img').attr('src', response.profile_picture_url + '?' + new Date().getTime());
                         } else {
-                            // Replace initials with image
                             $('#profile-picture-initials').replaceWith(
                                 '<img src="' + response.profile_picture_url + '" ' +
                                 'alt="{{ $customer->first_name }} {{ $customer->last_name }}" ' +
-                                'class="rounded-circle img-fluid border" ' +
-                                'style="width: 120px; height: 120px; object-fit: cover;" ' +
-                                'id="profile-picture-img">'
+                                'class="profile-avatar" id="profile-picture-img">'
                             );
                         }
-                        
-                        // Show success message
                         showToast('success', 'Profile picture updated successfully!');
-                        
-                        // Close modal
                         $('#profilePictureModal').modal('hide');
                         $('#profilePictureForm')[0].reset();
                         $('#imagePreview').addClass('d-none').attr('src', '#');
                     } else {
-                        console.log('Upload returned success:false');
                         showToast('error', response.message || 'Upload failed');
                     }
-                    
-                    // Re-enable button
                     $btn.prop('disabled', false).html('Upload Picture');
                 },
-                error: function(xhr, status, error) {
-                    console.log('=== AJAX ERROR ===');
-                    console.log('Status:', status);
-                    console.log('Error:', error);
-                    console.log('XHR object:', xhr);
-                    console.log('Response text:', xhr.responseText);
-                    console.log('Response JSON:', xhr.responseJSON);
-                    console.log('Status code:', xhr.status);
-                    console.log('Status text:', xhr.statusText);
-                    
+                error: function(xhr) {
                     let errorMessage = 'An error occurred. Please try again.';
                     if (xhr.responseJSON && xhr.responseJSON.errors) {
                         errorMessage = Object.values(xhr.responseJSON.errors).join('<br>');
                     } else if (xhr.responseJSON && xhr.responseJSON.message) {
                         errorMessage = xhr.responseJSON.message;
-                    } else if (xhr.status === 0) {
-                        errorMessage = 'Network error or CORS issue. Check if you are logged in.';
-                    } else if (xhr.status === 401) {
-                        errorMessage = 'You need to be logged in to upload pictures.';
-                    } else if (xhr.status === 403) {
-                        errorMessage = 'You do not have permission to upload pictures.';
-                    } else if (xhr.status === 404) {
-                        errorMessage = 'Upload endpoint not found.';
                     } else if (xhr.status === 413) {
                         errorMessage = 'File too large. Maximum size is 2MB.';
                     } else if (xhr.status === 422) {
-                        errorMessage = 'Validation error. Please check the file format and size.';
-                    } else if (xhr.status === 500) {
-                        errorMessage = 'Server error. Please try again later.';
+                        errorMessage = 'Validation error. Please check file format and size.';
                     }
-                    
-                    console.log('Displaying error:', errorMessage);
                     showToast('error', errorMessage);
-                    
-                    // Re-enable button
                     $btn.prop('disabled', false).html('Upload Picture');
                 }
             });
@@ -762,21 +677,12 @@
                 },
                 success: function(response) {
                     if (response.success) {
-                        // Replace image with initials
                         const initials = '{{ strtoupper(substr($customer->first_name, 0, 1) . substr($customer->last_name, 0, 1)) }}';
                         $('#profile-picture-img').replaceWith(
-                            '<div class="customer-avatar rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" ' +
-                            'style="width: 120px; height: 120px; font-size: 48px; background-color: #007bff; color: white;" ' +
-                            'id="profile-picture-initials">' + initials + '</div>'
+                            '<div class="profile-avatar profile-avatar-initials" id="profile-picture-initials">' + initials + '</div>'
                         );
-                        
-                        // Hide remove button
                         $('#removeProfilePictureBtn').remove();
-                        
-                        // Show success message
                         showToast('success', 'Profile picture removed successfully!');
-                        
-                        // Close modal
                         $('#profilePictureModal').modal('hide');
                     }
                 },
@@ -799,43 +705,22 @@
                 </div>
             `;
             
-            const toastContainer = $('#toast-container');
+            let toastContainer = $('#toast-container');
             if (toastContainer.length === 0) {
                 $('body').append('<div id="toast-container" class="toast-container position-fixed top-0 end-0 p-3"></div>');
+                toastContainer = $('#toast-container');
             }
             
-            $('#toast-container').append(toastHtml);
-            const toastElement = $('#toast-container .toast:last-child');
+            toastContainer.append(toastHtml);
+            const toastElement = toastContainer.find('.toast:last-child');
             const toast = new bootstrap.Toast(toastElement[0]);
             toast.show();
             
-            // Remove toast after it hides
             toastElement.on('hidden.bs.toast', function () {
                 $(this).remove();
             });
         }
-        
-        // SIMPLE TEST: Check if button is clickable
-        console.log('=== SIMPLE UPLOAD BUTTON TEST ===');
-        const testBtn = $('#uploadProfilePictureBtn');
-        console.log('Button found:', testBtn.length > 0);
-        
-        if (testBtn.length > 0) {
-            console.log('Button HTML:', testBtn[0].outerHTML);
-            
-            // Remove any existing handlers and add simple test
-            testBtn.off('click.test').on('click.test', function(e) {
-                console.log('TEST: Button clicked!');
-                alert('TEST SUCCESS: Button is clickable!');
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                return false;
-            });
-            
-            console.log('Test handler added. Click the upload button to test.');
-        } else {
-            console.error('ERROR: Button not found!');
-        }
     });
 </script>
-@endsection
+@endpush
+<!-- END customers/show.blade.php -->

@@ -1,104 +1,313 @@
 @extends('layouts.app')
 
 @section('title', 'Edit Customer - Fix-It Auto Services')
+@section('body-class', 'page-customers')
 
 @section('content')
-<div class="page-header">
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <h1 class="h3 mb-0">
-                <i class="fas fa-user-edit me-2"></i>Edit Customer
-            </h1>
-            <p class="text-muted mb-0">Update customer profile</p>
-        </div>
-        <div>
-            <a href="{{ route('customers.index') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left me-1"></i> Back to Customers
-            </a>
+<div class="container-fluid">
+    <!-- Page Header -->
+    <div class="page-module-header">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="module-icon">
+                    <i class="fas fa-user-edit"></i>
+                </div>
+                <div>
+                    <h1 class="h4 mb-1" style="font-weight: 700;">Edit Customer</h1>
+                    <ol class="breadcrumb m-0 p-0" style="background: none; font-size: 0.8rem;">
+                        <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('customers.index') }}">Customers</a></li>
+                        <li class="breadcrumb-item"><a href="{{ route('customers.show', $customer) }}">{{ $customer->first_name }} {{ $customer->last_name }}</a></li>
+                        <li class="breadcrumb-item active">Edit</li>
+                    </ol>
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('customers.show', $customer) }}" class="btn-filter-outline">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </a>
+                <a href="{{ route('customers.index') }}" class="btn-filter-outline">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Customers
+                </a>
+            </div>
         </div>
     </div>
-</div>
 
-<div class="row">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-body">
-                <form method="POST" action="{{ route('customers.update', $customer) }}">
-                    @csrf
-                    @method('PUT')
-                    
-                    <div class="row">
-                        <!-- Required Information -->
-                        <div class="col-md-6">
-                            <h5 class="mb-3 border-bottom pb-2">Required Information</h5>
-                            
-                            <div class="form-group mb-3">
-                                <label for="full_name" class="form-label">Full Name *</label>
-                                <input type="text" class="form-control @error('full_name') is-invalid @enderror" 
-                                       id="full_name" name="full_name" value="{{ old('full_name', $customer->first_name . ' ' . $customer->last_name) }}" required>
-                                @error('full_name')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="main-card">
+                <div class="main-card-header">
+                    <i class="fas fa-edit me-2" style="color: var(--module-active);"></i> Edit Customer Profile
+                </div>
+                <div class="main-card-body p-4">
+                    <form method="POST" action="{{ route('customers.update', $customer) }}">
+                        @csrf
+                        @method('PUT')
+                        
+                        <!-- Name Row -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
+                                <div class="input-group-fixit">
+                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                    <input type="text" class="form-control @error('first_name') is-invalid @enderror" 
+                                           id="first_name" name="first_name" 
+                                           value="{{ old('first_name', $customer->first_name) }}" required>
+                                </div>
+                                @error('first_name')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
                                 @enderror
                             </div>
-                            
-                            <div class="form-group mb-3">
-                                <label for="phone" class="form-label">Mobile Number *</label>
-                                <input type="tel" class="form-control @error('phone') is-invalid @enderror" 
-                                       id="phone" name="phone" value="{{ old('phone', $customer->phone) }}" required>
-                                @error('phone')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror>
-                            </div>
-                            </div>
-                        
-                        <!-- Optional Information -->
-                        <div class="col-md-6">
-                            <h5 class="mb-3 border-bottom pb-2">Optional Information</h5>
-                            
-                            </div>
-                            
-                            <div class="form-group mb-3">
-                                <label for="facebook_profile" class="form-label">Facebook Profile / Messenger</label>
-                                <input type="text" class="form-control @error('facebook_profile') is-invalid @enderror" 
-                                       id="facebook_profile" name="facebook_profile" value="{{ old('facebook_profile', $customer->facebook_profile) }}">
-                                @error('facebook_profile')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror>
-                                <small class="form-text text-muted">Facebook profile URL or Messenger username</small>
-                            </div>
-                            
-                            <div class="form-group mb-3">
-                                <label for="email" class="form-label">Email Address</label>
-                                <input type="email" class="form-control @error('email') is-invalid @enderror" 
-                                       id="email" name="email" value="{{ old('email', $customer->email) }}">
-                                @error('email')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror>
-                            </div>
-                            
-                            <div class="form-group mb-3">
-                                <label for="address" class="form-label">Address</label>
-                                <input type="text" class="form-control @error('address') is-invalid @enderror" 
-                                       id="address" name="address" value="{{ old('address', $customer->address) }}">
-                                @error('address')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror>
+                            <div class="col-md-6">
+                                <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
+                                <div class="input-group-fixit">
+                                    <span class="input-group-text"><i class="fas fa-user"></i></span>
+                                    <input type="text" class="form-control @error('last_name') is-invalid @enderror" 
+                                           id="last_name" name="last_name" 
+                                           value="{{ old('last_name', $customer->last_name) }}" required>
+                                </div>
+                                @error('last_name')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
                             </div>
                         </div>
+
+                        <!-- Contact Row -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label for="phone" class="form-label">Mobile Number <span class="text-danger">*</span></label>
+                                <div class="input-group-fixit">
+                                    <span class="input-group-text"><i class="fas fa-phone"></i></span>
+                                    <input type="tel" class="form-control @error('phone') is-invalid @enderror" 
+                                           id="phone" name="phone" 
+                                           value="{{ old('phone', $customer->phone) }}" required>
+                                </div>
+                                <div class="form-text">Auto-formatted as you type</div>
+                                @error('phone')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">Email Address</label>
+                                <div class="input-group-fixit">
+                                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                    <input type="email" class="form-control @error('email') is-invalid @enderror" 
+                                           id="email" name="email" 
+                                           value="{{ old('email', $customer->email) }}">
+                                </div>
+                                @error('email')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <!-- Social & Address -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label for="facebook_profile" class="form-label">Facebook Profile / Messenger</label>
+                                <div class="input-group-fixit">
+                                    <span class="input-group-text"><i class="fab fa-facebook-messenger"></i></span>
+                                    <input type="text" class="form-control @error('facebook_profile') is-invalid @enderror" 
+                                           id="facebook_profile" name="facebook_profile" 
+                                           value="{{ old('facebook_profile', $customer->facebook_profile) }}">
+                                </div>
+                                <div class="form-text">Facebook profile URL or Messenger username</div>
+                                @error('facebook_profile')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label for="address" class="form-label">Address</label>
+                                <div class="input-group-fixit">
+                                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
+                                    <input type="text" class="form-control @error('address') is-invalid @enderror" 
+                                           id="address" name="address" 
+                                           value="{{ old('address', $customer->address) }}">
+                                </div>
+                                @error('address')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <!-- Additional Info -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label for="city" class="form-label">City</label>
+                                <div class="input-group-fixit">
+                                    <span class="input-group-text"><i class="fas fa-city"></i></span>
+                                    <input type="text" class="form-control @error('city') is-invalid @enderror" 
+                                           id="city" name="city" 
+                                           value="{{ old('city', $customer->city) }}">
+                                </div>
+                                @error('city')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-4">
+                                <label for="state" class="form-label">State / Province</label>
+                                <div class="input-group-fixit">
+                                    <span class="input-group-text"><i class="fas fa-map"></i></span>
+                                    <input type="text" class="form-control @error('state') is-invalid @enderror" 
+                                           id="state" name="state" 
+                                           value="{{ old('state', $customer->state) }}">
+                                </div>
+                                @error('state')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-4">
+                                <label for="zip_code" class="form-label">Zip Code</label>
+                                <div class="input-group-fixit">
+                                    <span class="input-group-text"><i class="fas fa-mailbox"></i></span>
+                                    <input type="text" class="form-control @error('zip_code') is-invalid @enderror" 
+                                           id="zip_code" name="zip_code" 
+                                           value="{{ old('zip_code', $customer->zip_code) }}">
+                                </div>
+                                @error('zip_code')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <!-- Status & Type -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-4">
+                                <label for="customer_type" class="form-label">Customer Type</label>
+                                <select class="form-select @error('customer_type') is-invalid @enderror" 
+                                        id="customer_type" name="customer_type">
+                                    <option value="individual" {{ $customer->customer_type == 'individual' ? 'selected' : '' }}>Individual</option>
+                                    <option value="business" {{ $customer->customer_type == 'business' ? 'selected' : '' }}>Business</option>
+                                </select>
+                                @error('customer_type')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-4">
+                                <label for="segment" class="form-label">Segment</label>
+                                <select class="form-select @error('segment') is-invalid @enderror" 
+                                        id="segment" name="segment">
+                                    <option value="">Select Segment</option>
+                                    <option value="standard" {{ $customer->segment == 'standard' ? 'selected' : '' }}>Standard</option>
+                                    <option value="premium" {{ $customer->segment == 'premium' ? 'selected' : '' }}>Premium</option>
+                                    <option value="vip" {{ $customer->segment == 'vip' ? 'selected' : '' }}>VIP</option>
+                                    <option value="fleet" {{ $customer->segment == 'fleet' ? 'selected' : '' }}>Fleet</option>
+                                </select>
+                                @error('segment')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-4">
+                                <label for="is_active" class="form-label">Status</label>
+                                <select class="form-select @error('is_active') is-invalid @enderror" 
+                                        id="is_active" name="is_active">
+                                    <option value="1" {{ $customer->is_active ? 'selected' : '' }}>Active</option>
+                                    <option value="0" {{ !$customer->is_active ? 'selected' : '' }}>Inactive</option>
+                                </select>
+                                @error('is_active')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <!-- Preferred Contact -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label for="preferred_contact_method" class="form-label">Preferred Contact Method</label>
+                                <select class="form-select" id="preferred_contact_method" name="preferred_contact_method">
+                                    <option value="">Select</option>
+                                    <option value="phone" {{ $customer->preferred_contact_method == 'phone' ? 'selected' : '' }}>Phone Call</option>
+                                    <option value="sms" {{ $customer->preferred_contact_method == 'sms' ? 'selected' : '' }}>SMS / Text</option>
+                                    <option value="email" {{ $customer->preferred_contact_method == 'email' ? 'selected' : '' }}>Email</option>
+                                    <option value="facebook" {{ $customer->preferred_contact_method == 'facebook' ? 'selected' : '' }}>Facebook Messenger</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="mb-4">
+                            <label for="notes" class="form-label">Notes (Internal)</label>
+                            <textarea class="form-control @error('notes') is-invalid @enderror" 
+                                      id="notes" name="notes" rows="3"
+                                      placeholder="Any additional notes about this customer">{{ old('notes', $customer->notes) }}</textarea>
+                            @error('notes')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Submit -->
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <small class="text-muted"><span class="text-danger">*</span> Required fields</small>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="{{ route('customers.show', $customer) }}" class="btn btn-outline-secondary px-4">
+                                    <i class="fas fa-times me-1"></i> Cancel
+                                </a>
+                                <button type="submit" class="btn btn-primary px-4">
+                                    <i class="fas fa-save me-1"></i> Update Customer
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div class="col-lg-4">
+            <div class="main-card">
+                <div class="main-card-header">
+                    <i class="fas fa-info-circle me-2" style="color: var(--module-active);"></i> Quick Info
+                </div>
+                <div class="main-card-body px-3 py-3">
+                    <div class="customer-details-section">
+                        <div class="detail-label">Customer ID</div>
+                        <div class="detail-row">
+                            <i class="fas fa-hashtag detail-icon"></i>
+                            <code>#{{ $customer->id }}</code>
+                        </div>
                     </div>
-                    
-                    <hr>
-                    
-                    <!-- Submit Buttons -->
-                    <div class="d-flex justify-content-between">
-                        <a href="{{ route('customers.show', $customer) }}" class="btn btn-secondary">
-                            <i class="fas fa-times me-1"></i> Cancel
+                    <div class="customer-details-section">
+                        <div class="detail-label">Member Since</div>
+                        <div class="detail-row">
+                            <i class="fas fa-calendar detail-icon"></i>
+                            <span>{{ $customer->created_at->format('F j, Y') }}</span>
+                        </div>
+                    </div>
+                    <div class="customer-details-section">
+                        <div class="detail-label">Last Updated</div>
+                        <div class="detail-row">
+                            <i class="fas fa-clock detail-icon"></i>
+                            <span>{{ $customer->updated_at->diffForHumans() }}</span>
+                        </div>
+                    </div>
+                    <div class="customer-details-section">
+                        <div class="detail-label">Loyalty Points</div>
+                        <div class="detail-row">
+                            <i class="fas fa-star detail-icon" style="color: #f59e0b;"></i>
+                            <strong>{{ number_format($customer->loyalty_points) }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="main-card mt-4">
+                <div class="main-card-header">
+                    <i class="fas fa-external-link-alt me-2" style="color: var(--module-active);"></i> Quick Links
+                </div>
+                <div class="main-card-body px-3 py-3">
+                    <div class="d-grid gap-2">
+                        <a href="{{ route('customers.show', $customer) }}" class="btn btn-outline-primary btn-sm text-start">
+                            <i class="fas fa-eye me-2"></i> View Customer Profile
                         </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-1"></i> Update Customer
-                        </button>
+                        <a href="{{ route('customers.index') }}" class="btn btn-outline-secondary btn-sm text-start">
+                            <i class="fas fa-users me-2"></i> All Customers
+                        </a>
                     </div>
-                </form>
+                </div>
             </div>
         </div>
     </div>
@@ -130,7 +339,7 @@
             
             // Show loading state
             submitButton.prop('disabled', true);
-            submitButton.html('<i class="fas fa-spinner fa-spin me-1"></i> Saving...');
+            submitButton.html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Saving...');
             
             // Submit form via AJAX
             $.ajax({
@@ -148,7 +357,7 @@
                         Swal.fire({
                             icon: 'success',
                             title: 'Success!',
-                            text: response.message,
+                            text: response.message || 'Customer updated successfully',
                             showConfirmButton: true,
                             confirmButtonText: 'View Customer',
                             confirmButtonColor: '#3085d6',
@@ -162,10 +371,10 @@
                         }).then((result) => {
                             if (result.isConfirmed) {
                                 // Redirect to customer profile
-                                window.location.href = response.redirect_url;
+                                window.location.href = response.redirect_url || '{{ route("customers.show", $customer) }}';
                             } else {
                                 // Auto-redirect after timer
-                                window.location.href = response.redirect_url;
+                                window.location.href = response.redirect_url || '{{ route("customers.show", $customer) }}';
                             }
                         });
                     }
@@ -181,7 +390,8 @@
                         var errorMessages = '';
                         
                         $.each(errors, function(field, messages) {
-                            errorMessages += '<strong>' + field + ':</strong> ' + messages.join(', ') + '<br>';
+                            var fieldLabel = field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                            errorMessages += '<strong>' + fieldLabel + ':</strong> ' + messages.join(', ') + '<br>';
                         });
                         
                         // Show error notification
@@ -189,6 +399,14 @@
                             icon: 'error',
                             title: 'Validation Error',
                             html: errorMessages,
+                            confirmButtonText: 'OK',
+                            confirmButtonColor: '#d33'
+                        });
+                    } else if (xhr.status === 500) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Server Error',
+                            text: 'Internal server error. Please try again later.',
                             confirmButtonText: 'OK',
                             confirmButtonColor: '#d33'
                         });
