@@ -39,6 +39,7 @@ class ServiceRecord extends Model
         'next_service_odometer',
         'customer_feedback',
         'customer_rating',
+        'viewed_at',
     ];
 
     protected $casts = [
@@ -57,6 +58,7 @@ class ServiceRecord extends Model
         'inspection_results' => 'array',
         'photos' => 'array',
         'parts_used' => 'array',
+        'viewed_at' => 'datetime',
     ];
 
     public function vehicle()

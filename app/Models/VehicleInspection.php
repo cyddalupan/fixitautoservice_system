@@ -63,6 +63,7 @@ class VehicleInspection extends Model
         'updated_by',
         'approved_by',
         'categories',
+        'viewed_at',
     ];
 
     protected $casts = [
@@ -88,6 +89,7 @@ class VehicleInspection extends Model
         'categories' => 'array',
         'findings' => 'array',
         'customer_approved_at' => 'datetime',
+        'viewed_at' => 'datetime',
     ];
 
     /**

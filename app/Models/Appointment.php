@@ -67,6 +67,7 @@ class Appointment extends Model
         'booking_source',
         'booking_ip',
         'booking_referrer',
+        'viewed_at',
     ];
 
     /**
@@ -94,6 +95,7 @@ class Appointment extends Model
         'follow_up_sent_at' => 'datetime',
         'last_no_show_at' => 'datetime',
         'waitlist_converted_at' => 'datetime',
+        'viewed_at' => 'datetime',
     ];
 
     /**

@@ -167,9 +167,6 @@
                             <i class="fas fa-history fa-fw"></i>
                             <span>Service Records</span>
                             <span class="sidebar-badge" id="s-service-records">{{ $sidebarCounts['service_records_total'] }}</span>
-                            @if($sidebarCounts['service_records_recent'] > 0)
-                                <span class="sidebar-badge-danger" id="s-service-records-recent">{{ $sidebarCounts['service_records_recent'] }}</span>
-                            @endif
                         </a>
                     </li>
 
@@ -298,7 +295,7 @@
                     's-inspections-new': { key: 'inspections_new', parent: 's-inspections' },
                     's-estimates-new': { key: 'estimates_new', parent: 's-estimates' },
                     's-work-orders-active': { key: 'work_orders_active', parent: 's-work-orders' },
-                    's-service-records-recent': { key: 'service_records_recent', parent: 's-service-records' },
+
                     's-invoices-new': { key: 'invoices_new', parent: 's-invoices' },
                 };
                 for (var did in dangerMapping) {

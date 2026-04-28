@@ -36,6 +36,7 @@ class Invoice extends Model
         'notes',
         'terms',
         'status',
+        'viewed_at',
     ];
 
     /**
@@ -56,6 +57,7 @@ class Invoice extends Model
         'balance_due' => 'decimal:2',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'viewed_at' => 'datetime',
     ];
 
     /**
