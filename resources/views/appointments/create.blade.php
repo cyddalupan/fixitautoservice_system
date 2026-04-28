@@ -406,6 +406,15 @@ $(document).ready(function() {
                 fillVehicleDescription(matched);
             }
         }
+        
+        // ===== QUOTATION AUTO-FILL =====
+        @if($quotationData && $quotationData->service_description)
+        // Auto-fill service description from latest quotation
+        var qDesc = $('#description').val();
+        if (!qDesc || qDesc.trim() === '') {
+            $('#description').val('{{ addslashes($quotationData->service_description) }}');
+        }
+        @endif
     }
     
     // ===== VEHICLE PILL HANDLER =====
@@ -435,6 +444,21 @@ $(document).ready(function() {
                 // Don't clear immediately - let them choose from suggestions
             }
         }
+    });
+
+    // ===== QUOTATION AUTO-FILL ON CUSTOMER CHANGE =====
+    $(document).on('change', '#customer_id', function() {
+        var customerId = parseInt($(this).val());
+        if (!customerId) return;
+        
+        $.get('{{ route("api.customer-latest-quotation", "") }}/' + customerId, function(data) {
+            if (data && data.service_description) {
+                var descField = $('#description');
+                if (!descField.val() || descField.val().trim() === '') {
+                    descField.val(data.service_description);
+                }
+            }
+        });
     });
 });
 </script>

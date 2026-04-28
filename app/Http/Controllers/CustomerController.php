@@ -206,6 +206,8 @@ class CustomerController extends Controller
             $query->orderBy('service_date', 'desc')->limit(10);
         }, 'notes' => function($query) {
             $query->orderBy('created_at', 'desc')->limit(10);
+        }, 'quotations' => function($query) {
+            $query->orderBy('created_at', 'desc');
         }]);
 
         // Calculate customer statistics
@@ -1235,6 +1237,36 @@ class CustomerController extends Controller
         if (!empty($filters['new_customers'])) {
             $query->where('created_at', '>=', now()->subDays(30));
         }
+    }
+
+    /**
+     * Get the latest quotation for a customer (for auto-fill).
+     */
+    public function apiLatestQuotation($customerId)
+    {
+        $customer = Customer::find($customerId);
+        if (!$customer) {
+            return response()->json(null);
+        }
+
+        $quotation = $customer->quotations()->latest()->first();
+        if (!$quotation) {
+            return response()->json(null);
+        }
+
+        return response()->json([
+            'id' => $quotation->id,
+            'service_description' => $quotation->service_description,
+            'vehicle_make' => $quotation->vehicle_make,
+            'vehicle_model' => $quotation->vehicle_model,
+            'vehicle_year' => $quotation->vehicle_year,
+            'license_plate' => $quotation->license_plate,
+            'service_type' => $quotation->service_type,
+            'budget_min' => $quotation->budget_min,
+            'budget_max' => $quotation->budget_max,
+            'status' => $quotation->status,
+            'created_at' => $quotation->created_at->format('M j, Y'),
+        ]);
     }
 
     /**

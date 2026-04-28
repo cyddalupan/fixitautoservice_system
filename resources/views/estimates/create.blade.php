@@ -217,7 +217,7 @@ body{background:var(--ebg)}
                         </div>
                         <div class="col-md-4"><label style="font-size:.8rem;font-weight:600;margin-bottom:4px">Mileage (km)</label><input type="number" name="mileage" class="form-control form-control-sm" id="estMileage" min="0" value="{{ $selectedVehicle->odometer ?? '' }}"></div>
                         <div class="col-md-4"><label style="font-size:.8rem;font-weight:600;margin-bottom:4px">Service Advisor</label><select name="service_advisor_id" class="form-select form-select-sm"><option value="">-- Select --</option>@foreach($advisors ?? [] as $advisor)<option value="{{ $advisor->id }}">{{ $advisor->name }}</option>@endforeach</select></div>
-                        <div class="col-12"><label style="font-size:.8rem;font-weight:600;margin-bottom:4px">Customer Notes</label><textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Customer concerns..."></textarea></div>
+                        <div class="col-12"><label style="font-size:.8rem;font-weight:600;margin-bottom:4px">Customer Notes</label><textarea name="notes" class="form-control form-control-sm" rows="2" placeholder="Customer concerns...">{{ old('notes', $quotationData->service_description ?? '') }}</textarea></div>
                         <div class="col-12"><label style="font-size:.8rem;font-weight:600;margin-bottom:4px">Internal Notes <span class="text-muted">(staff)</span></label><textarea name="internal_notes" class="form-control form-control-sm" rows="2" placeholder="Internal notes..."></textarea></div>
                     </div>
                 </div>
@@ -321,6 +321,22 @@ function loadCustomer(id){
     document.getElementById('sBal').innerHTML=fmt(b);
     document.getElementById('sBal').style.color=b>0?'var(--ed)':'var(--es)';
     loadInspectionFindings(id);
+    loadQuotationNotes(id);
+}
+
+function loadQuotationNotes(customerId){
+    fetch('/api/customer-latest-quotation/'+customerId)
+        .then(function(r){return r.json()})
+        .then(function(data){
+            if(data&&data.service_description){
+                var notes=document.querySelector('textarea[name="notes"]');
+                if(notes&&!notes.value.trim()){
+                    notes.value=data.service_description;
+                    notes.dispatchEvent(new Event('input'));
+                }
+            }
+        })
+        .catch(function(){});
 }
 
 // ====================== INSPECTION FINDINGS ======================

@@ -334,6 +334,100 @@
         </div>
         
         <!-- Recent Service History -->
+        <!-- Lead Source: Quotation History -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-file-invoice-dollar"></i> Lead Source: Quotation Form</h6>
+                @if($customer->quotations && $customer->quotations->count() > 1)
+                    <span class="badge bg-info">{{ $customer->quotations->count() }} quotations</span>
+                @endif
+            </div>
+            <div class="card-body">
+                @if($customer->quotations && $customer->quotations->count() > 0)
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Concern</th>
+                                    <th>Budget</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($customer->quotations as $quotation)
+                                    @php
+                                        $statusLabels = [
+                                            'new_lead' => 'New Lead',
+                                            'contacted' => 'Contacted',
+                                            'converted_to_customer' => 'Converted to Customer',
+                                            'appointment_booked' => 'Appointment Booked',
+                                            'won' => 'Won',
+                                            'lost' => 'Lost',
+                                            'archived' => 'Archived',
+                                        ];
+                                        $statusColors = [
+                                            'new_lead' => 'warning',
+                                            'contacted' => 'info',
+                                            'converted_to_customer' => 'success',
+                                            'appointment_booked' => 'primary',
+                                            'won' => 'success',
+                                            'lost' => 'danger',
+                                            'archived' => 'secondary',
+                                        ];
+                                    @endphp
+                                    <tr>
+                                        <td class="text-nowrap">{{ $quotation->created_at->format('M j, Y') }}</td>
+                                        <td>
+                                            <div style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{ $quotation->service_description }}">
+                                                {{ Str::limit($quotation->service_description, 60) }}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            @if($quotation->budget_min || $quotation->budget_max)
+                                                @if($quotation->budget_min && $quotation->budget_max)
+                                                    ₱{{ number_format($quotation->budget_min) }} - ₱{{ number_format($quotation->budget_max) }}
+                                                @elseif($quotation->budget_min)
+                                                    ₱{{ number_format($quotation->budget_min) }}+ min
+                                                @else
+                                                    up to ₱{{ number_format($quotation->budget_max) }}
+                                                @endif
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-{{ $statusColors[$quotation->status] ?? 'secondary' }}">
+                                                {{ $statusLabels[$quotation->status] ?? ucfirst($quotation->status) }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <a href="{{ route('quotations.show', $quotation->id) }}" class="btn btn-sm btn-outline-primary" title="View Quotation #{{ $quotation->id }}">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @if($customer->quotations->count() > 5)
+                        <div class="text-center mt-2">
+                            <a href="{{ route('quotations.index', ['customer_id' => $customer->id]) }}" class="btn btn-sm btn-outline-secondary">
+                                View All {{ $customer->quotations->count() }} Quotations
+                            </a>
+                        </div>
+                    @endif
+                @else
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-inbox fa-2x mb-2"></i>
+                        <p class="mb-0">No quotation history for this customer.</p>
+                    </div>
+                @endif
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-header">
                 <h6 class="m-0 font-weight-bold text-primary">Recent Service History</h6>

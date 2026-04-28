@@ -140,4 +140,20 @@ class Customer extends Model
     {
         return $this->hasMany(\App\Models\Invoice::class);
     }
+
+    /**
+     * Get the quotations for this customer.
+     */
+    public function quotations()
+    {
+        return $this->hasMany(\App\Models\Quotation::class);
+    }
+
+    /**
+     * Get the latest quotation for this customer.
+     */
+    public function latestQuotation()
+    {
+        return $this->hasOne(\App\Models\Quotation::class)->latestOfMany();
+    }
 }

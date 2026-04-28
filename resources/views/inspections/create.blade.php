@@ -223,7 +223,7 @@
                             <label for="customer_concerns" class="form-label">Customer Concerns</label>
                             <textarea class="form-control @error('customer_concerns') is-invalid @enderror"
                                       id="customer_concerns" name="customer_concerns" rows="3"
-                                      placeholder="What did the customer report? ...">{{ old('customer_concerns', $selectedAppointment->service_request ?? $selectedWorkOrder->customer_concerns ?? '') }}</textarea>
+                                      placeholder="What did the customer report? ...">{{ old('customer_concerns', $selectedAppointment->service_request ?? $selectedWorkOrder->customer_concerns ?? ($quotationData->service_description ?? '')) }}</textarea>
                             @error('customer_concerns')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
@@ -408,6 +408,21 @@ function appendNote(fieldId, text) {
 
 $(document).ready(function() {
     initTechnicianMultiSelect(".technician-select-wrapper:not([data-tech-init])");
+
+    // ===== QUOTATION AUTO-FILL ON CUSTOMER CHANGE =====
+    $(document).on('change', '#customer_id', function() {
+        var customerId = parseInt($(this).val());
+        if (!customerId) return;
+        
+        $.get('{{ route("api.customer-latest-quotation", "") }}/' + customerId, function(data) {
+            if (data && data.service_description) {
+                var concernField = $('#customer_concerns');
+                if (!concernField.val() || concernField.val().trim() === '') {
+                    concernField.val(data.service_description);
+                }
+            }
+        });
+    });
 });
 </script>
 @endsection

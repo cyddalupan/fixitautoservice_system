@@ -93,7 +93,7 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
             'appointments_total' => \App\Models\Appointment::where('appointment_status', 'scheduled')->count(),
             'appointments_new' => \App\Models\Appointment::where('appointment_status', 'scheduled')->whereNull('viewed_at')->count(),
             'quotations_total' => \App\Models\Quotation::count(),
-            'quotations_new' => \App\Models\Quotation::where('status', 'pending')->count(),
+            'quotations_new' => \App\Models\Quotation::where('status', 'new_lead')->count(),
             // Inspections: exclude completed & those with work orders — matches index page default
             'inspections_total' => \App\Models\VehicleInspection::whereNotIn('inspection_status', ['completed'])
                                         ->whereNull('work_order_id')->count(),
@@ -125,6 +125,7 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::get('/api/customers/autocomplete', [\App\Http\Controllers\CustomerController::class, 'apiAutocomplete'])->name('api.customers.autocomplete');
     Route::get('/api/customers/filter-options', [\App\Http\Controllers\CustomerController::class, 'apiFilterOptions'])->name('api.customers.filter-options');
     Route::get('/api/customer-vehicles', [\App\Http\Controllers\CustomerController::class, 'apiCustomerVehicles'])->name('api.customer-vehicles');
+    Route::get('/api/customer-latest-quotation/{customer}', [\App\Http\Controllers\CustomerController::class, 'apiLatestQuotation'])->name('api.customer-latest-quotation');
     
     // Vehicle autocomplete API routes
     Route::get('/api/vehicle-brands', function() {
@@ -227,6 +228,7 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     // Quotation Routes - SPECIFIC ROUTES FIRST!
     Route::get('/quotations/pending-count', [\App\Http\Controllers\QuotationController::class, 'pendingCount'])->name('quotations.pending-count');
     Route::patch("/quotations/{quotation}/update-status", [\App\Http\Controllers\QuotationController::class, "updateStatus"])->name("quotations.update-status");
+    Route::post('/quotations/{quotation}/convert-to-customer', [\App\Http\Controllers\QuotationController::class, 'convertToCustomer'])->name('quotations.convert-to-customer');
     Route::resource('quotations', \App\Http\Controllers\QuotationController::class);
     Route::post('/estimates/{estimate}/approve', [EstimateController::class, 'approve'])->name('estimates.approve');
     Route::post('/estimates/{estimate}/reject', [EstimateController::class, 'reject'])->name('estimates.reject');

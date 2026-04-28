@@ -102,6 +102,14 @@ class Vehicle extends Model
     }
 
     /**
+     * Get the quotations for this vehicle.
+     */
+    public function quotations()
+    {
+        return $this->hasMany(\App\Models\Quotation::class);
+    }
+
+    /**
      * Get the vehicle appointments.
      */
     public function appointments()

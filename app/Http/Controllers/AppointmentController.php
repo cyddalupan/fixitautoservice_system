@@ -112,10 +112,25 @@ class AppointmentController extends Controller
             ->limit(10)
             ->get() : collect();
         
+        // Load quotation data for auto-fill
+        $quotationData = null;
+        if ($request->filled('quotation_id')) {
+            $quotation = \App\Models\Quotation::find($request->quotation_id);
+            if ($quotation && $quotation->customer_id == ($selectedCustomer->id ?? null)) {
+                $quotationData = $quotation;
+            }
+        } elseif ($selectedCustomer) {
+            // Auto-load the latest quotation for this customer
+            $latestQuotation = $selectedCustomer->quotations()->latest()->first();
+            if ($latestQuotation) {
+                $quotationData = $latestQuotation;
+            }
+        }
+        
         // All technicians for multi-select
         $allTechnicians = $technicians;
         
-        return view('appointments.create', compact('customers', 'vehicles', 'technicians', 'advisors', 'selectedCustomer', 'selectedVehicle', 'customerVehicles', 'customerHistory', 'allTechnicians'));
+        return view('appointments.create', compact('customers', 'vehicles', 'technicians', 'advisors', 'selectedCustomer', 'selectedVehicle', 'customerVehicles', 'customerHistory', 'allTechnicians', 'quotationData'));
     }
 
     /**

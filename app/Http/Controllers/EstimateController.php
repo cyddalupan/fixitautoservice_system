@@ -107,10 +107,24 @@ class EstimateController extends Controller
             }
         }
 
+        // Load quotation data for auto-fill
+        $quotationData = null;
+        if ($request->filled('quotation_id')) {
+            $quotation = \App\Models\Quotation::find($request->quotation_id);
+            if ($quotation && $quotation->customer_id == ($selectedCustomer->id ?? null)) {
+                $quotationData = $quotation;
+            }
+        } elseif ($selectedCustomer) {
+            $latestQuotation = $selectedCustomer->quotations()->latest()->first();
+            if ($latestQuotation) {
+                $quotationData = $latestQuotation;
+            }
+        }
+
         return view('estimates.create', compact(
             'customers', 'advisors', 'lastNum', 'inventoryItems', 'inventoryItemsJson',
             'selectedCustomer', 'selectedVehicle', 'customerVehicles', 'customerHistory',
-            'inspectionFindings'
+            'inspectionFindings', 'quotationData'
         ));
     }
 
