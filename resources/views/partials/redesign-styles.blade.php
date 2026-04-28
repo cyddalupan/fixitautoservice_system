@@ -1502,6 +1502,196 @@ html *::after {
 }
 
 /* ============================================================
+   STATUS BADGE VARIANTS — keep colored distinction in dark mode
+   ============================================================ */
+[data-theme="dark"] .status-active {
+    background: rgba(22, 163, 74, 0.2);
+    color: #4ade80;
+}
+[data-theme="dark"] .status-inactive {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+[data-theme="dark"] .status-pending {
+    background: rgba(250, 204, 21, 0.2);
+    color: #fbbf24;
+}
+[data-theme="dark"] .status-suspended {
+    background: rgba(100, 116, 139, 0.2);
+    color: #94a3b8;
+}
+[data-theme="dark"] .status-lead {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+}
+
+/* ============================================================
+   HR PAYROLL — FULL DARK MODE
+   ============================================================ */
+[data-theme="dark"] .hr-wrap {
+    background: var(--dark-bg);
+}
+[data-theme="dark"] .hr-tabs {
+    background: var(--dark-card);
+    border-bottom-color: var(--dark-border);
+}
+[data-theme="dark"] .hr-tab {
+    color: var(--dark-text-secondary);
+}
+[data-theme="dark"] .hr-tab:hover {
+    color: var(--dark-accent);
+    background: rgba(67, 97, 238, 0.1);
+}
+[data-theme="dark"] .hr-tab.active {
+    color: var(--dark-accent);
+    border-bottom-color: var(--dark-accent);
+}
+[data-theme="dark"] .hr-stat {
+    background: var(--dark-card);
+    border-color: var(--dark-border);
+}
+[data-theme="dark"] .hr-stat-val {
+    color: var(--dark-text);
+}
+[data-theme="dark"] .hr-stat-label {
+    color: var(--dark-text-secondary);
+}
+[data-theme="dark"] .hr-stat-sub {
+    color: var(--dark-text-muted);
+}
+[data-theme="dark"] .hr-card {
+    background: var(--dark-card);
+    border-color: var(--dark-border);
+}
+[data-theme="dark"] .hr-card-hdr {
+    border-bottom-color: var(--dark-border);
+    color: var(--dark-text);
+}
+[data-theme="dark"] .hr-card-bd {
+    background: var(--dark-card);
+}
+[data-theme="dark"] .hr-cal-day {
+    background: var(--dark-card);
+    border-color: var(--dark-border);
+}
+[data-theme="dark"] .hr-cal-day:hover {
+    border-color: var(--dark-accent);
+    box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+}
+[data-theme="dark"] .hr-cal-day.today {
+    background: rgba(67, 97, 238, 0.15);
+    border-color: var(--dark-accent);
+}
+[data-theme="dark"] .hr-cal-day.weekend {
+    background: var(--dark-surface);
+}
+[data-theme="dark"] .hr-cal-day .day-num {
+    color: var(--dark-text);
+}
+[data-theme="dark"] .hr-cal-hdr {
+    color: var(--dark-text-secondary);
+}
+[data-theme="dark"] .hr-teammate {
+    background: var(--dark-card);
+    border-color: var(--dark-border);
+}
+[data-theme="dark"] .hr-teammate:hover {
+    border-color: var(--dark-accent);
+}
+[data-theme="dark"] .hr-teammate-name {
+    color: var(--dark-text);
+}
+[data-theme="dark"] .hr-teammate-role {
+    color: var(--dark-text-secondary);
+}
+[data-theme="dark"] .hr-table th {
+    color: var(--dark-text-secondary);
+    border-bottom-color: var(--dark-border);
+}
+[data-theme="dark"] .hr-table td {
+    color: var(--dark-text);
+    border-bottom-color: var(--dark-border);
+}
+[data-theme="dark"] .hr-filter select,
+[data-theme="dark"] .hr-filter input {
+    background: var(--dark-surface);
+    border-color: var(--dark-border);
+    color: var(--dark-text);
+}
+[data-theme="dark"] .hr-filter select:focus,
+[data-theme="dark"] .hr-filter input:focus {
+    border-color: var(--dark-accent);
+    box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+}
+[data-theme="dark"] .hr-btn-outline {
+    border-color: var(--dark-border);
+    color: var(--dark-text-secondary);
+}
+[data-theme="dark"] .hr-btn-outline:hover {
+    border-color: var(--dark-accent);
+    color: var(--dark-accent);
+    background: rgba(67, 97, 238, 0.1);
+}
+[data-theme="dark"] .hr-modal {
+    background: var(--dark-card);
+}
+[data-theme="dark"] .hr-modal-hdr {
+    border-bottom-color: var(--dark-border);
+}
+[data-theme="dark"] .hr-modal-hdr h5 {
+    color: var(--dark-text);
+}
+[data-theme="dark"] .hr-modal-hdr .close {
+    color: var(--dark-text-secondary);
+}
+[data-theme="dark"] .hr-modal-bd {
+    color: var(--dark-text);
+}
+[data-theme="dark"] .hr-settings-group h6 {
+    color: var(--dark-text);
+}
+[data-theme="dark"] .hr-settings-group label {
+    color: var(--dark-text-secondary);
+}
+[data-theme="dark"] .hr-settings-group .form-control,
+[data-theme="dark"] .hr-settings-group .form-select {
+    background: var(--dark-surface);
+    border-color: var(--dark-border);
+    color: var(--dark-text);
+}
+[data-theme="dark"] .hr-settings-group .form-control:focus,
+[data-theme="dark"] .hr-settings-group .form-select:focus {
+    border-color: var(--dark-accent);
+    box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+}
+[data-theme="dark"] .hr-badge-gray {
+    background: rgba(100, 116, 139, 0.2);
+    color: #94a3b8;
+}
+[data-theme="dark"] .hr-notif-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+}
+[data-theme="dark"] .hr-notif-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+[data-theme="dark"] .hr-notif-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+}
+[data-theme="dark"] .hr-notif-success {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+}
+[data-theme="dark"] .hr-modal-overlay {
+    background: rgba(0, 0, 0, 0.6);
+}
+[data-theme="dark"] .hr-stat-icon {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* ============================================================
    LIST GROUP
    ============================================================ */
 [data-theme="dark"] .list-group-item {
@@ -1791,6 +1981,22 @@ html *::after {
 
 [data-theme="dark"] .hr-payroll-content {
     background-color: var(--dark-card);
+}
+
+/* ============================================================
+   CUSTOMERS PAGE — status badge colors preserved in dark mode
+   ============================================================ */
+[data-theme="dark"] .customer-status-active {
+    background: rgba(22, 163, 74, 0.2);
+    color: #4ade80;
+}
+[data-theme="dark"] .customer-status-inactive {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+[data-theme="dark"] .customer-status-lead {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
 }
 
 /* ============================================================
