@@ -425,6 +425,7 @@
 @endsection
 
 @section('styles')
+@push('styles')
 <style>
 /* ── FixIt Service Records Dashboard CSS ── */
 .fixit-sr-dash{ background:#f4f6fa; min-height:100vh; padding-top:1.25rem; padding-bottom:2rem; }
@@ -439,6 +440,13 @@
 .summary-label{ font-size:.78rem;color:#6c7a8d;text-transform:uppercase;letter-spacing:.5px;font-weight:600; }
 .summary-value{ font-size:1.6rem;font-weight:700;color:#1a2332;line-height:1.2; }
 .summary-sublabel{ font-size:.7rem;color:#8b9aab; }
+/* Summary Cards — Compact Professional */
+.summary-card{ border-radius:10px; background:white; border:0; box-shadow:0 1px 2px rgba(0,0,0,.04); transition:box-shadow .2s,transform .15s; margin-bottom:0; }
+.summary-card:hover{ box-shadow:0 3px 8px rgba(0,0,0,.06); transform:translateY(-1px); }
+.summary-icon{ width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+.summary-label{ font-size:.68rem;color:#6c7a8d;text-transform:uppercase;letter-spacing:.4px;font-weight:600; }
+.summary-value{ font-size:1.25rem;font-weight:700;color:#1a2332;line-height:1.1;margin-bottom:2px; }
+.summary-sublabel{ font-size:.65rem;color:#8b9aab; }
 
 /* Filter Bar */
 .filter-bar{ background:white; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.05); position:sticky; top:0; z-index:100; }
@@ -514,3 +522,4 @@
     .chevron-icon{ font-size:.6rem; }
 }
 </style>
+@endpush

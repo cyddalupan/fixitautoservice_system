@@ -117,6 +117,7 @@
                                     <div class="form-group mb-3">
                                         <label class="form-label">Vehicle Brand</label>
                                         <input type="text" class="form-control vehicle-make" 
+                                               id="vehicle_make"
                                                name="vehicles[0][make]" value="{{ old('vehicles.0.make') }}" 
                                                placeholder="e.g., Toyota" autocomplete="off">
                                         <div class="invalid-feedback vehicle-make-error" style="display: none;"></div>
@@ -125,6 +126,7 @@
                                     <div class="form-group mb-3">
                                         <label class="form-label">Vehicle Model</label>
                                         <input type="text" class="form-control vehicle-model" 
+                                               id="vehicle_model"
                                                name="vehicles[0][model]" value="{{ old('vehicles.0.model') }}" 
                                                placeholder="e.g., Camry" autocomplete="off">
                                         <div class="invalid-feedback vehicle-model-error" style="display: none;"></div>
@@ -163,6 +165,7 @@
                                     <div class="form-group mb-3">
                                         <label class="form-label">Color</label>
                                         <input type="text" class="form-control vehicle-color" 
+                                               id="vehicle_color"
                                                name="vehicles[0][color]" value="{{ old('vehicles.0.color') }}" 
                                                placeholder="e.g., Red" autocomplete="off">
                                         <div class="invalid-feedback vehicle-color-error" style="display: none;"></div>

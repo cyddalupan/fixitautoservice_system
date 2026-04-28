@@ -179,14 +179,14 @@ class PersonnelController extends Controller
         if ($user->isTechnician()) {
             $user->load([
                 'timeLogs' => function ($query) {
-                    $query->orderBy('clock_in', 'desc')->limit(10);
+                    $query->orderBy('log_time', 'desc')->limit(10);
                 },
                 'performanceMetrics' => function ($query) {
                     $query->orderBy('created_at', 'desc')->limit(10);
                 },
-                'trainingRecords' => function ($query) {
-                    $query->with('trainingModule')->orderBy('created_at', 'desc')->limit(10);
-                },
+                // 'trainingRecords' => function ($query) {
+                //     $query->with('trainingModule')->orderBy('created_at', 'desc')->limit(10);
+                // },
             ]);
         }
 

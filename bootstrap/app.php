@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'portal.auth' => \App\Http\Middleware\PortalAuth::class,
         ]);
+
+        // Exempt quotation submission from CSRF for cross-domain form submission
+        $middleware->validateCsrfTokens(except: [
+            '/quotation-submit',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

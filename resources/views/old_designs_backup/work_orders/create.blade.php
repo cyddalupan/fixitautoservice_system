@@ -1,0 +1,417 @@
+@extends('layouts.app')
+
+@section('title', 'Create Work Order - Fix-It Auto Services')
+
+@section('content')
+<div class="page-header">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h3 mb-0">
+                <i class="fas fa-wrench me-2"></i>Create Work Order
+            </h1>
+            <p class="text-muted mb-0">Create a new service work order</p>
+        </div>
+        <div>
+            <a href="{{ route('work-orders.index') }}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Work Orders
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST" action="{{ route('work-orders.store') }}">
+                    @csrf
+                    
+                    <!-- Hidden fields for appointment/inspection -->
+                    @if($selectedAppointment)
+                        <input type="hidden" name="appointment_id" value="{{ $selectedAppointment->id }}">
+                    @endif
+                    
+                    @if($selectedInspection)
+                        <input type="hidden" name="inspection_id" value="{{ $selectedInspection->id }}">
+                    @endif
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="customer_id" class="form-label">Customer *</label>
+                                <select class="form-select @error('customer_id') is-invalid @enderror" 
+                                        id="customer_id" name="customer_id" required
+                                        {{ $selectedCustomer ? 'disabled' : '' }}>
+                                    <option value="">Select Customer</option>
+                                    @foreach($customers as $customer)
+                                        <option value="{{ $customer->id }}" 
+                                            {{ (old('customer_id', $selectedCustomer ? $selectedCustomer->id : null) == $customer->id) ? 'selected' : '' }}>
+                                            {{ $customer->first_name }} {{ $customer->last_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @if($selectedCustomer)
+                                    <input type="hidden" name="customer_id" value="{{ $selectedCustomer->id }}">
+                                @endif
+                                @error('customer_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="vehicle_id" class="form-label">Vehicle *</label>
+                                <select class="form-select @error('vehicle_id') is-invalid @enderror" 
+                                        id="vehicle_id" name="vehicle_id" required>
+                                    <option value="">Select Vehicle</option>
+                                    <!-- Vehicles will be loaded via AJAX based on customer selection -->
+                                </select>
+                                @if($selectedVehicle)
+                                    <input type="hidden" name="vehicle_id" value="{{ $selectedVehicle->id }}">
+                                @endif
+                                @error('vehicle_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="service_advisor_id" class="form-label">Service Advisor *</label>
+                                <select class="form-select @error('service_advisor_id') is-invalid @enderror" 
+                                        id="service_advisor_id" name="service_advisor_id" required>
+                                    <option value="">Select Service Advisor</option>
+                                    @foreach($advisors as $advisor)
+                                        <option value="{{ $advisor->id }}" {{ old('service_advisor_id', $selectedInspection->service_advisor_id ?? null) == $advisor->id ? 'selected' : '' }}>
+                                            {{ $advisor->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('service_advisor_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="work_order_date" class="form-label">Work Order Date *</label>
+                                <input type="date" class="form-control @error('work_order_date') is-invalid @enderror" 
+                                       id="work_order_date" name="work_order_date" value="{{ old('work_order_date', date('Y-m-d')) }}" required>
+                                @error('work_order_date')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="work_order_type" class="form-label">Work Order Type *</label>
+                                <select class="form-select @error('work_order_type') is-invalid @enderror" 
+                                        id="work_order_type" name="work_order_type" required>
+                                    <option value="">Select Type</option>
+                                    <option value="repair" {{ old('work_order_type') == 'repair' ? 'selected' : '' }}>Repair</option>
+                                    <option value="maintenance" {{ old('work_order_type') == 'maintenance' ? 'selected' : '' }}>Maintenance</option>
+                                    <option value="diagnostic" {{ old('work_order_type') == 'diagnostic' ? 'selected' : '' }}>Diagnostic</option>
+                                    <option value="inspection" {{ old('work_order_type') == 'inspection' ? 'selected' : '' }}>Inspection</option>
+                                    <option value="emergency" {{ old('work_order_type') == 'emergency' ? 'selected' : '' }}>Emergency</option>
+                                </select>
+                                @error('work_order_type')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="status" class="form-label">Status *</label>
+                                <select class="form-select @error('status') is-invalid @enderror" 
+                                        id="status" name="status" required>
+                                    <option value="pending" {{ old('status', 'pending') == 'pending' ? 'selected' : '' }}>Pending</option>
+                                    <option value="repairing" {{ old('status') == 'repairing' ? 'selected' : '' }}>Repairing</option>
+                                    <option value="waiting_parts" {{ old('status') == 'waiting_parts' ? 'selected' : '' }}>Waiting for Parts</option>
+                                    <option value="completed" {{ old('status') == 'completed' ? 'selected' : '' }}>Completed</option>
+                                    <option value="released" {{ old('status') == 'released' ? 'selected' : '' }}>Released</option>
+                                    <option value="cancelled" {{ old('status') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                                </select>
+                                @error('status')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="priority" class="form-label">Priority</label>
+                                <select class="form-select @error('priority') is-invalid @enderror" 
+                                        id="priority" name="priority">
+                                    <option value="low" {{ old('priority') == 'low' ? 'selected' : '' }}>Low</option>
+                                    <option value="normal" {{ old('priority', 'normal') == 'normal' ? 'selected' : '' }}>Normal</option>
+                                    <option value="high" {{ old('priority') == 'high' ? 'selected' : '' }}>High</option>
+                                    <option value="urgent" {{ old('priority') == 'urgent' ? 'selected' : '' }}>Urgent</option>
+                                </select>
+                                @error('priority')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            
+                            <div class="form-group mb-3">
+                                <label for="estimated_completion_date" class="form-label">Estimated Completion</label>
+                                <input type="date" class="form-control @error('estimated_completion_date') is-invalid @enderror" 
+                                       id="estimated_completion_date" name="estimated_completion_date" value="{{ old('estimated_completion_date') }}">
+                                @error('estimated_completion_date')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="form-group mb-3">
+                                <label for="customer_concerns" class="form-label">Customer Concerns *</label>
+                                <textarea class="form-control @error('customer_concerns') is-invalid @enderror" 
+                                          id="customer_concerns" name="customer_concerns" rows="3" required>{{ old('customer_concerns', $selectedInspection ? $selectedInspection->customer_concerns : '') }}</textarea>
+                                @error('customer_concerns')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror>
+                                <small class="form-text text-muted">Describe the customer's concerns or issues</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="technician_id" class="form-label">Assigned Technician</label>
+                                <select class="form-select @error('technician_id') is-invalid @enderror" 
+                                        id="technician_id" name="technician_id">
+                                    <option value="">Select Technician</option>
+                                    @foreach($technicians as $tech)
+                                        <option value="{{ $tech->id }}" {{ old('technician_id', $selectedInspection->technician_id ?? null) == $tech->id ? 'selected' : '' }}>
+                                            {{ $tech->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('technician_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="estimated_hours" class="form-label">Estimated Hours</label>
+                                <input type="number" step="0.5" class="form-control @error('estimated_hours') is-invalid @enderror" 
+                                       id="estimated_hours" name="estimated_hours" value="{{ old('estimated_hours') }}" min="0">
+                                @error('estimated_hours')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="labor_rate" class="form-label">Labor Rate (₱/hour)</label>
+                                <input type="number" step="0.01" class="form-control @error('labor_rate') is-invalid @enderror" 
+                                       id="labor_rate" name="labor_rate" value="{{ old('labor_rate', 85.00) }}" min="0">
+                                @error('labor_rate')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="form-group mb-3">
+                                <label for="estimated_total" class="form-label">Estimated Total</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">₱</span>
+                                    <input type="number" step="0.01" class="form-control @error('estimated_total') is-invalid @enderror" 
+                                           id="estimated_total" name="estimated_total" value="{{ old('estimated_total') }}" min="0" readonly>
+                                    @error('estimated_total')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror>
+                                </div>
+                                <small class="form-text text-muted">Calculated based on labor rate and estimated hours</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-flex justify-content-between">
+                        <a href="{{ route('work-orders.index') }}" class="btn btn-secondary">
+                            <i class="fas fa-times me-1"></i> Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i> Create Work Order
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+
+@push('scripts')
+<script>
+    $(document).ready(function() {
+        console.log('=== WORK ORDER CREATE PAGE LOADED ===');
+        
+        // Test basic JavaScript functionality
+        console.log('jQuery version:', $.fn.jquery);
+        console.log('Customer select exists:', $('#customer_id').length > 0);
+        console.log('Vehicle select exists:', $('#vehicle_id').length > 0);
+        
+        // Load vehicles when customer is selected
+        $('#customer_id').on('change', function() {
+            console.log('Customer change event triggered');
+            
+            var customerId = $(this).val();
+            if (!customerId) {
+                $('#vehicle_id').html('<option value="">Select Vehicle</option>');
+                return;
+            }
+            
+            console.log('Fetching vehicles for customer:', customerId);
+            $('#vehicle_id').html('<option value="">Loading vehicles...</option>');
+            
+            $.ajax({
+                url: '/customers/' + customerId + '/vehicles',
+                type: 'GET',
+                dataType: 'json',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                success: function(response) {
+                    console.log('AJAX success:', response);
+                    
+                    var vehicleSelect = $('#vehicle_id');
+                    vehicleSelect.empty();
+                    vehicleSelect.append('<option value="">Select Vehicle</option>');
+                    
+                    // Get vehicles array from response
+                    var vehicles = response.vehicles || response;
+                    
+                    if (!Array.isArray(vehicles) || vehicles.length === 0) {
+                        vehicleSelect.append('<option value="">No vehicles found</option>');
+                        console.log('No vehicles array found in response');
+                        return;
+                    }
+                    
+                    console.log('Found', vehicles.length, 'vehicles');
+                    
+                    // Add vehicles to dropdown
+                    for (var i = 0; i < vehicles.length; i++) {
+                        var vehicle = vehicles[i];
+                        var text = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
+                        if (vehicle.license_plate) {
+                            text += ' (' + vehicle.license_plate + ')';
+                        }
+                        vehicleSelect.append('<option value="' + vehicle.id + '">' + text + '</option>');
+                    }
+                    
+                    console.log('Vehicle dropdown populated');
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX error:', status, error);
+                    console.error('Response:', xhr.responseText);
+                    
+                    $('#vehicle_id').html('<option value="">Error loading vehicles</option>');
+                }
+            });
+        });
+        
+        // Trigger change event if customer is already selected (e.g., form validation error)
+        // OR if customer is pre-selected and locked (from inspection/appointment)
+        if ($('#customer_id').val()) {
+            console.log('Customer has value:', $('#customer_id').val(), 'Disabled:', $('#customer_id').prop('disabled'));
+            if ($('#customer_id').prop('disabled')) {
+                console.log('Customer is disabled (pre-selected), manually loading vehicles');
+                // Manually trigger the AJAX call since change event might not fire on disabled select
+                var customerId = $('#customer_id').val();
+                console.log('Fetching vehicles for pre-selected customer:', customerId);
+                $('#vehicle_id').html('<option value="">Loading vehicles...</option>');
+                
+                $.ajax({
+                    url: '/customers/' + customerId + '/vehicles',
+                    type: 'GET',
+                    dataType: 'json',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    success: function(response) {
+                        console.log('AJAX success for pre-selected customer:', response);
+                        
+                        var vehicleSelect = $('#vehicle_id');
+                        vehicleSelect.empty();
+                        vehicleSelect.append('<option value="">Select Vehicle</option>');
+                        
+                        // Get vehicles array from response
+                        var vehicles = response.vehicles || response;
+                        
+                        if (!Array.isArray(vehicles) || vehicles.length === 0) {
+                            vehicleSelect.append('<option value="">No vehicles found</option>');
+                            console.log('No vehicles array found in response');
+                            return;
+                        }
+                        
+                        console.log('Found', vehicles.length, 'vehicles');
+                        
+                        // Add vehicles to dropdown
+                        for (var i = 0; i < vehicles.length; i++) {
+                            var vehicle = vehicles[i];
+                            var text = vehicle.year + ' ' + vehicle.make + ' ' + vehicle.model;
+                            if (vehicle.license_plate) {
+                                text += ' (' + vehicle.license_plate + ')';
+                            }
+                            vehicleSelect.append('<option value="' + vehicle.id + '">' + text + '</option>');
+                        }
+                        
+                        // Pre-select vehicle if provided in selectedVehicle
+                        @if(isset($selectedVehicle) && $selectedVehicle)
+                            console.log('Pre-selecting vehicle:', {{ $selectedVehicle->id ?? 'null' }});
+                            $('#vehicle_id').val({{ $selectedVehicle->id ?? 'null' }});
+                            // Disable vehicle dropdown since it's pre-selected from inspection
+                            $('#vehicle_id').prop('disabled', true);
+                            console.log('Vehicle dropdown disabled (pre-selected from inspection)');
+                        @endif
+                        
+                        console.log('Vehicle dropdown populated for pre-selected customer');
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX error for pre-selected customer:', status, error);
+                        console.error('Response:', xhr.responseText);
+                        
+                        $('#vehicle_id').html('<option value="">Error loading vehicles</option>');
+                    }
+                });
+            } else {
+                // Customer is not disabled, trigger normal change event
+                $('#customer_id').trigger('change');
+            }
+        }
+        
+        // Calculate estimated total
+        function calculateTotal() {
+            var laborRate = parseFloat($('#labor_rate').val()) || 0;
+            var estimatedHours = parseFloat($('#estimated_hours').val()) || 0;
+            var estimatedTotal = laborRate * estimatedHours;
+            $('#estimated_total').val(estimatedTotal.toFixed(2));
+        }
+        
+        $('#labor_rate, #estimated_hours').on('input', calculateTotal);
+        
+        // Set minimum date to today
+        var today = new Date().toISOString().split('T')[0];
+        $('#estimated_completion_date').attr('min', today);
+        
+        // Initialize calculation
+        calculateTotal();
+    });
+</script>
+@endpush

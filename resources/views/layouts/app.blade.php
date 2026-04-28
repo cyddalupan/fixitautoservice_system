@@ -17,6 +17,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {{-- Modern Redesign Styles --}}
+    @include('partials.redesign-styles')
+    {{-- Resizable Sidebar Styles --}}
+    @include('partials.sidebar-resize-styles')
     <!-- SweetAlert2 CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
     <style>
@@ -131,6 +135,16 @@
     </style>
     <!-- Custom CSS -->
     <style>
+        /* Sidebar active border colors by module */
+        .sidebar .nav-link.active[href*="appointments"] { border-left-color: #3b82f6 !important; }
+        .sidebar .nav-link.active[href*="inspections"] { border-left-color: #0ea5e9 !important; }
+        .sidebar .nav-link.active[href*="estimates"] { border-left-color: #8b5cf6 !important; }
+        .sidebar .nav-link.active[href*="work-orders"] { border-left-color: #f97316 !important; }
+        .sidebar .nav-link.active[href*="service-records"] { border-left-color: #6366f1 !important; }
+        .sidebar .nav-link.active[href*="archives"] { border-left-color: #6b7280 !important; }
+        .sidebar .nav-link.active[href*="invoices"] { border-left-color: #10b981 !important; }
+        .sidebar .nav-link.active[href*="payments"] { border-left-color: #10b981 !important; }
+
         :root {
             --primary-color: #2c3e50;
             --secondary-color: #3498db;
@@ -234,6 +248,11 @@
             .container-fluid {
                 padding-top: 0 !important;
             }
+
+            /* Contain the resize handle on mobile too */
+            #sidebar {
+                position: relative;
+            }
         }
 
         /* Desktop sidebar pattern */
@@ -241,12 +260,11 @@
             /* Use flexbox for proper sidebar layout */
             .container-fluid > .row {
                 display: flex !important;
-                /* align-items: flex-start !important; */ /* Prevent stretching of children */
-                /* Remove min-height to prevent stretching issues */
-                /* min-height: calc(100vh - 56px) !important; */
+                min-height: auto !important;
+                flex-wrap: nowrap !important; /* Prevent sidebar from wrapping below content */
             }
 
-            /* Sidebar stays sticky */
+            /* Sidebar stays sticky below top navbar */
             .sidebar {
                 position: sticky !important;
                 top: 56px !important;
@@ -254,26 +272,27 @@
                 overflow-y: auto !important;
                 z-index: 1000 !important;
                 background-color: #2c3e50 !important;
-                flex: 0 0 250px !important; /* Fixed width */
+                flex: 0 0 250px; /* Fixed width - no !important so JS can override inline */
+            }
+
+            /* Contain the resize handle (position: absolute) */
+            #sidebar {
+                position: relative;
             }
 
             /* Main content fills remaining space */
             .main-content-area {
-                flex: 1 !important; /* Take remaining space */
+                flex: 1 1 0 !important; /* Take remaining space, allow shrink below min-content */
+                min-width: 0 !important; /* Allow content to shrink below natural min-width */
                 padding: 20px !important;
-                /* Remove min-height to prevent card-body stretching */
-                /* min-height: calc(100vh - 56px) !important; */
                 background-color: #f5f7fa !important;
                 overflow-y: auto !important;
+                min-height: auto !important;
             }
         }
 
-        /* Adjust for larger screens */
-        @media (min-width: 992px) {
-            .sidebar {
-                flex: 0 0 200px !important; /* Slightly narrower on larger screens */
-            }
-        }
+        /* @media (min-width: 992px) removed — conflicts with JS resize inline style */
+        /* Let the @media (min-width: 768px) rule handle all desktop widths */
 
         .sidebar .nav-link {
             color: rgba(255, 255, 255, 0.8) !important;
@@ -296,8 +315,7 @@
             background-color: #2c3e50 !important; /* Consistent sidebar color */
             color: white;
             padding: 0;
-            /* Remove fixed height to prevent flex stretching */
-            /* min-height: calc(100vh - 56px) !important; */
+            position: relative; /* Contain the resize handle */
             position: sticky !important;
             top: 56px !important;
             z-index: 1020 !important;
@@ -577,12 +595,360 @@
             transform: scale(1) !important;
             transition: transform 0.2s ease !important;
         }
+
+        /* ===== DARK MODE THEME ===== */
+        [data-theme="dark"] {
+            --dark-bg: #1a1d23;
+            --dark-surface: #22262e;
+            --dark-card: #2a2f38;
+            --dark-text: #e4e7eb;
+            --dark-text-secondary: #9ca3af;
+            --dark-border: #374151;
+            --dark-hover: #333842;
+            --dark-input-bg: #1f232b;
+            --dark-sidebar-bg: #16181e;
+            --dark-navbar-bg: #16181e;
+        }
+
+        [data-theme="dark"] body {
+            background-color: var(--dark-bg) !important;
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .main-content-area {
+            background-color: var(--dark-bg) !important;
+        }
+
+        [data-theme="dark"] .card {
+            background-color: var(--dark-card) !important;
+            border-color: var(--dark-border) !important;
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .card-header {
+            background-color: var(--dark-surface) !important;
+            border-color: var(--dark-border) !important;
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .card-body {
+            background-color: var(--dark-card) !important;
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .table {
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .table th {
+            color: var(--dark-text) !important;
+            border-color: var(--dark-border) !important;
+        }
+
+        [data-theme="dark"] .table td {
+            border-color: var(--dark-border) !important;
+        }
+
+        [data-theme="dark"] .table-hover tbody tr:hover {
+            background-color: var(--dark-hover) !important;
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) {
+            background-color: rgba(255,255,255,0.03) !important;
+        }
+
+        [data-theme="dark"] .page-header {
+            border-color: var(--dark-border) !important;
+        }
+
+        [data-theme="dark"] .modal-content {
+            background-color: var(--dark-card) !important;
+            border-color: var(--dark-border) !important;
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .modal-header {
+            border-color: var(--dark-border) !important;
+        }
+
+        [data-theme="dark"] .modal-footer {
+            border-color: var(--dark-border) !important;
+        }
+
+        [data-theme="dark"] .btn-close {
+            filter: invert(1) !important;
+        }
+
+        [data-theme="dark"] input,
+        [data-theme="dark"] select,
+        [data-theme="dark"] textarea {
+            background-color: var(--dark-input-bg) !important;
+            border-color: var(--dark-border) !important;
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] input:focus,
+        [data-theme="dark"] select:focus,
+        [data-theme="dark"] textarea:focus {
+            background-color: var(--dark-input-bg) !important;
+            border-color: #4f9cf7 !important;
+            color: var(--dark-text) !important;
+            box-shadow: 0 0 0 0.2rem rgba(79, 156, 247, 0.25) !important;
+        }
+
+        [data-theme="dark"] .form-control {
+            background-color: var(--dark-input-bg) !important;
+            border-color: var(--dark-border) !important;
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .form-select {
+            background-color: var(--dark-input-bg) !important;
+            border-color: var(--dark-border) !important;
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .alert {
+            background-color: var(--dark-surface) !important;
+            border-color: var(--dark-border) !important;
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .alert-success {
+            background-color: #1a3a2a !important;
+            border-color: #2d6a4f !important;
+            color: #95d5b2 !important;
+        }
+
+        [data-theme="dark"] .alert-danger {
+            background-color: #3a1a1a !important;
+            border-color: #6a2d2d !important;
+            color: #f5a5a5 !important;
+        }
+
+        [data-theme="dark"] .alert-warning {
+            background-color: #3a2e1a !important;
+            border-color: #6a5a2d !important;
+            color: #f0d58c !important;
+        }
+
+        [data-theme="dark"] .alert-info {
+            background-color: #1a2a3a !important;
+            border-color: #2d4a6a !important;
+            color: #95c5f0 !important;
+        }
+
+        [data-theme="dark"] .dropdown-menu {
+            background-color: var(--dark-card) !important;
+            border-color: var(--dark-border) !important;
+        }
+
+        [data-theme="dark"] .dropdown-item {
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .dropdown-item:hover {
+            background-color: var(--dark-hover) !important;
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .dropdown-divider {
+            border-color: var(--dark-border) !important;
+        }
+
+        [data-theme="dark"] .dropdown-header {
+            color: var(--dark-text-secondary) !important;
+        }
+
+        [data-theme="dark"] .bg-white {
+            background-color: var(--dark-card) !important;
+        }
+
+        [data-theme="dark"] .bg-light {
+            background-color: var(--dark-surface) !important;
+        }
+
+        [data-theme="dark"] .text-dark {
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .text-muted {
+            color: var(--dark-text-secondary) !important;
+        }
+
+        [data-theme="dark"] .text-gray-600 {
+            color: var(--dark-text-secondary) !important;
+        }
+
+        [data-theme="dark"] .border {
+            border-color: var(--dark-border) !important;
+        }
+
+        [data-theme="dark"] .border-top {
+            border-top-color: var(--dark-border) !important;
+        }
+
+        [data-theme="dark"] .border-bottom {
+            border-bottom-color: var(--dark-border) !important;
+        }
+
+        [data-theme="dark"] .navbar {
+            background-color: var(--dark-navbar-bg) !important;
+        }
+
+        [data-theme="dark"] .sidebar {
+            background-color: var(--dark-sidebar-bg) !important;
+        }
+
+        [data-theme="dark"] .sidebar .nav-link {
+            color: var(--dark-text-secondary) !important;
+        }
+
+        [data-theme="dark"] .sidebar .nav-link:hover,
+        [data-theme="dark"] .sidebar .nav-link.active {
+            color: var(--dark-text) !important;
+            background-color: var(--dark-hover) !important;
+        }
+
+        [data-theme="dark"] .bg-soft-* {
+            /* placeholder */
+        }
+
+        [data-theme="dark"] .nav-tabs {
+            border-color: var(--dark-border) !important;
+        }
+
+        [data-theme="dark"] .nav-tabs .nav-link {
+            color: var(--dark-text-secondary) !important;
+        }
+
+        [data-theme="dark"] .nav-tabs .nav-link.active {
+            background-color: var(--dark-card) !important;
+            border-color: var(--dark-border) !important;
+            border-bottom-color: var(--dark-card) !important;
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .nav-tabs .nav-link:hover {
+            border-color: var(--dark-border) !important;
+        }
+
+        [data-theme="dark"] .nav-link {
+            color: var(--dark-text-secondary) !important;
+        }
+
+        [data-theme="dark"] .pagination .page-link {
+            background-color: var(--dark-card) !important;
+            border-color: var(--dark-border) !important;
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .pagination .page-link:hover {
+            background-color: var(--dark-hover) !important;
+        }
+
+        [data-theme="dark"] .pagination .page-item.active .page-link {
+            background-color: #2c3e50 !important;
+            border-color: #2c3e50 !important;
+        }
+
+        [data-theme="dark"] .pagination .page-item.disabled .page-link {
+            background-color: var(--dark-surface) !important;
+            color: var(--dark-text-secondary) !important;
+        }
+
+        [data-theme="dark"] .chart-container {
+            background-color: var(--dark-card) !important;
+        }
+
+        [data-theme="dark"] .badge.bg-light {
+            background-color: var(--dark-surface) !important;
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .progress {
+            background-color: var(--dark-surface) !important;
+        }
+
+        [data-theme="dark"] .list-group-item {
+            background-color: var(--dark-card) !important;
+            border-color: var(--dark-border) !important;
+            color: var(--dark-text) !important;
+        }
+
+        [data-theme="dark"] .list-group-item:hover {
+            background-color: var(--dark-hover) !important;
+        }
+
+        /* Inventory page specifics */
+        [data-theme="dark"] .inventory-content {
+            background-color: var(--dark-card) !important;
+        }
+
+        /* HR Payroll page specifics */
+        [data-theme="dark"] .hr-payroll-content {
+            background-color: var(--dark-card) !important;
+        }
+
+        /* Sidebar resize handle */
+        [data-theme="dark"] .sidebar-resize-handle {
+            background-color: var(--dark-border) !important;
+        }
+
+        /* Stat cards - keep original gradient colors but adjust */
+        [data-theme="dark"] .stat-card.bg-primary { background: linear-gradient(135deg, #1a2a4a 0%, #4a2560 100%) !important; }
+        [data-theme="dark"] .stat-card.bg-success { background: linear-gradient(135deg, #0a5a4e 0%, #1a6a3a 100%) !important; }
+        [data-theme="dark"] .stat-card.bg-warning { background: linear-gradient(135deg, #7a4a0e 0%, #8a6a00 100%) !important; }
+        [data-theme="dark"] .stat-card.bg-danger { background: linear-gradient(135deg, #7a2136 0%, #7a2525 100%) !important; }
+        [data-theme="dark"] .stat-card.bg-info { background: linear-gradient(135deg, #005a7a 0%, #003a7a 100%) !important; }
+        [data-theme="dark"] .stat-card.bg-secondary { background: linear-gradient(135deg, #4a4a5a 0%, #3a3a4a 100%) !important; }
+
+        /* Switch button styles */
+        .theme-toggle-btn {
+            background: none !important;
+            border: 1px solid rgba(255,255,255,0.25) !important;
+            color: rgba(255,255,255,0.8) !important;
+            border-radius: 50% !important;
+            width: 36px !important;
+            height: 36px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            cursor: pointer !important;
+            font-size: 16px !important;
+            transition: all 0.3s ease !important;
+            padding: 0 !important;
+        }
+
+        .theme-toggle-btn:hover {
+            background-color: rgba(255,255,255,0.1) !important;
+            color: #ffffff !important;
+            border-color: rgba(255,255,255,0.5) !important;
+        }
+
+        [data-theme="dark"] .theme-toggle-btn {
+            border-color: rgba(255,255,255,0.15) !important;
+        }
+
+        [data-theme="dark"] .theme-toggle-btn:hover {
+            background-color: rgba(255,255,255,0.08) !important;
+        }
+
+        /* Fix for badges with colored backgrounds */
+        [data-theme="dark"] .badge:not(.bg-light):not(.bg-white) {
+            /* Keep original badge colors */
+        }
     </style>
 
     <!-- Page-specific styles -->
     @stack('styles')
 </head>
 <body>
+    <!-- jQuery (for AJAX and DOM manipulation) - MUST be BEFORE content scripts that use $() -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container-fluid">
@@ -600,8 +966,6 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <!-- Notification Bell -->
-                    <li class="nav-item dropdown">
                     <!-- Quality Control & Compliance -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="qualityDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -609,36 +973,51 @@
                             <span>Quality & Compliance</span>
                         </a>
                         <div class="dropdown-menu" aria-labelledby="qualityDropdown">
-                            <a class="dropdown-item" href="{{ route("quality-control.dashboard.index") }}">
+                            <a class="dropdown-item" href="{{ route("quality-control.work-order-quality.index") }}">
+                                <i class="fas fa-clipboard-check"></i> Work Order Quality
+                            </a>
+                            <!-- Temporarily commented out - routes not yet implemented
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-tachometer-alt"></i> Quality Dashboard
                             </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.checklists.index") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-list-check"></i> Checklists
                             </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.audits.index") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-clipboard-list"></i> Quality Audits
                             </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.ncrs.index") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-exclamation-triangle"></i> NCRs
                             </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.corrective-actions.index") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-wrench"></i> Corrective Actions
                             </a>
                             <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{{ route("compliance.dashboard") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-shield-alt"></i> Compliance Dashboard
                             </a>
-                            <a class="dropdown-item" href="{{ route("compliance.standards.index") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-book"></i> Standards
                             </a>
-                            <a class="dropdown-item" href="{{ route("compliance.documents.index") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-file-alt"></i> Documents
                             </a>
-                            <a class="dropdown-item" href="{{ route("audit.dashboard") }}">
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-search"></i> Audit Management
                             </a>
+                            -->
                         </div>
                     </li>
+                    
+                    <!-- Theme Toggle Button -->
+                    <li class="nav-item d-flex align-items-center">
+                        <button class="theme-toggle-btn" id="themeToggle" title="Toggle Dark/Light Mode">
+                            <i class="fas fa-moon" id="themeIcon"></i>
+                        </button>
+                    </li>
+
+                    <!-- Notification Bell -->
+                    <li class="nav-item dropdown">
                         <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-bell"></i>
                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationCount">
@@ -704,50 +1083,24 @@
 
                     <!-- User Profile Dropdown -->
                     <li class="nav-item dropdown">
-                    <!-- Quality Control & Compliance -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="qualityDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="fas fa-clipboard-check"></i>
-                            <span>Quality & Compliance</span>
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-circle"></i>
+                            <span>{{ Auth::user()->name ?? 'User' }}</span>
                         </a>
-                        <div class="dropdown-menu" aria-labelledby="qualityDropdown">
-                            <a class="dropdown-item" href="{{ route("quality-control.dashboard.index") }}">
-                                <i class="fas fa-tachometer-alt"></i> Quality Dashboard
+                        <div class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <a class="dropdown-item" href="#">
+                                <i class="fas fa-user me-2"></i> Profile
                             </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.checklists.index") }}">
-                                <i class="fas fa-list-check"></i> Checklists
-                            </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.audits.index") }}">
-                                <i class="fas fa-clipboard-list"></i> Quality Audits
-                            </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.ncrs.index") }}">
-                                <i class="fas fa-exclamation-triangle"></i> NCRs
-                            </a>
-                            <a class="dropdown-item" href="{{ route("quality-control.corrective-actions.index") }}">
-                                <i class="fas fa-wrench"></i> Corrective Actions
+                            <a class="dropdown-item" href="#">
+                                <i class="fas fa-cog me-2"></i> Settings
                             </a>
                             <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{{ route("compliance.dashboard") }}">
-                                <i class="fas fa-shield-alt"></i> Compliance Dashboard
-                            </a>
-                            <a class="dropdown-item" href="{{ route("compliance.standards.index") }}">
-                                <i class="fas fa-book"></i> Standards
-                            </a>
-                            <a class="dropdown-item" href="{{ route("compliance.documents.index") }}">
-                                <i class="fas fa-file-alt"></i> Documents
-                            </a>
-                            <a class="dropdown-item" href="{{ route("audit.dashboard") }}">
-                                <i class="fas fa-search"></i> Audit Management
-                            </a>
-                        </div>
-                    </li>
-                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user-circle me-1"></i>
-                            {{ auth()->user()->name ?? 'User' }}
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-user me-2"></i>Profile</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="dropdown-item">
+                                    <i class="fas fa-sign-out-alt me-2"></i> Logout
+                                </button>
+
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form method="POST" action="{{ route('logout') }}">
@@ -770,145 +1123,26 @@
     <div class="container-fluid">
         <div class="row">
             <!-- Sidebar -->
-            <div class="col-lg-2 col-md-3 sidebar d-md-block" id="sidebar">
-                <div class="pt-3">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}">
-                                <i class="fas fa-tachometer-alt"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('quotations.*') ? 'active' : '' }}" href="{{ route('quotations.index') }}">
-                                <i class="fas fa-file-signature"></i> Quotations
-                                @php
-                                    $pendingQuotationsCount = \App\Models\Quotation::where('status', 'pending')->count();
-                                @endphp
-                                @if($pendingQuotationsCount > 0)
-                                    <sup class="quotation-counter" id="quotation-counter">{{ $pendingQuotationsCount }}</sup>
-                                @endif
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}" href="{{ route('customers.index') }}">
-                                <i class="fas fa-users"></i> Customers
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('vehicles.*') ? 'active' : '' }}" href="{{ route('vehicles.index') }}">
-                                <i class="fas fa-car"></i> Vehicles
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('expenses.*') ? 'active' : '' }}" href="{{ route('expenses.index') }}">
-                                <i class="fas fa-money-bill-wave"></i> Expenses
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            @php
-                                // Check if current route is a Service Management route
-                                $isServiceManagementRoute = request()->routeIs([
-                                    'appointments.*',
-                                    'estimates.*',
-                                    'work-orders.*',
-                                    'invoices.*',
-                                    'payments.*',
-                                    'inspections.*'
-                                ]);
+            <div class="sidebar d-md-block" id="sidebar">
+                @include('partials.sidebar')
 
-                                // Check localStorage for saved state (will be handled by JavaScript)
-                                // For initial load, expand if we're on a Service Management page
-                                $shouldExpand = $isServiceManagementRoute;
-                            @endphp
-
-                            <a class="nav-link" data-bs-toggle="collapse" href="#serviceManagementCollapse" role="button"
-                               aria-expanded="{{ $shouldExpand ? 'true' : 'false' }}"
-                               aria-controls="serviceManagementCollapse"
-                               id="serviceManagementToggle">
-                                <i class="fas fa-cogs"></i> Service Management
-                                <i class="fas fa-chevron-{{ $shouldExpand ? 'up' : 'down' }} float-end mt-1"></i>
-                            </a>
-                            <div class="collapse {{ $shouldExpand ? 'show' : '' }}" id="serviceManagementCollapse">
-                                <ul class="nav flex-column ms-4">
-                                    <li class="nav-item">
-                                        <a class="nav-link {{ request()->routeIs('appointments.*') ? 'active' : '' }}" href="{{ route('appointments.index') }}">
-                                            <i class="fas fa-calendar-alt"></i> Appointments
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link {{ request()->routeIs('inspections.*') ? 'active' : '' }}" href="{{ route('inspections.index') }}">
-                                            <i class="fas fa-tools"></i> Repair Orders
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link {{ request()->routeIs('estimates.*') ? 'active' : '' }}" href="{{ route('estimates.index') }}">
-                                            <i class="fas fa-file-invoice-dollar"></i> Estimates
-                                        </a>
-                                    </li>
-
-                                    <li class="nav-item">
-                                        <a class="nav-link {{ request()->routeIs('work-orders.*') ? 'active' : '' }}" href="{{ route('work-orders.index') }}">
-                                            <i class="fas fa-clipboard-check"></i> Job Orders
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link {{ request()->routeIs('invoices.*') || request()->routeIs('payments.*') ? 'active' : '' }}" href="{{ route('invoices.index') }}">
-                                            <i class="fas fa-file-invoice-dollar"></i> Invoices & Payments
-                                            <span class="badge bg-success ms-2" style="font-size: 0.6rem;">Integrated</span>
-                                        </a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('inventory.*') ? 'active' : '' }}" href="{{ route('inventory.index') }}">
-                                <i class="fas fa-box"></i> Inventory
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('personnel.*') ? 'active' : '' }}" href="{{ route('personnel.index') }}">
-                                <i class="fas fa-users"></i> Personnel
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">
-                                <i class="fas fa-chart-bar"></i> Reports
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {{ request()->routeIs('hr-payroll.*') ? 'active' : '' }}" href="{{ route('hr-payroll.dashboard') }}">
-                                <i class="fas fa-users-cog"></i> HR Payroll
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#">
-                                <i class="fas fa-cog"></i> Settings
-                            </a>
-                        </li>
-                    </ul>
-
-                    <div class="mt-4 px-3">
-                        <small class="text-gray-600">QUICK STATS</small>
-                        <div class="mt-2">
-                            <div class="d-flex justify-content-between text-gray-700 mb-1">
-                                <small>Today's Appointments</small>
-                                <small>12</small>
-                            </div>
-                            <div class="d-flex justify-content-between text-gray-700 mb-1">
-                                <small>Pending Services</small>
-                                <small>8</small>
-                            </div>
-                            <div class="d-flex justify-content-between text-gray-700">
-                                <small>Revenue Today</small>
-                                <small>₱2,450</small>
-                            </div>
-                        </div>
-                    </div>
+                {{-- Drag resize handle --}}
+                <div class="sidebar-resize-handle" id="sidebarResizeHandle">
+                    <span class="handle-dots">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </span>
                 </div>
+
+                {{-- Collapse toggle button --}}
+                <button class="sidebar-collapse-toggle" id="sidebarCollapseBtn" title="Toggle sidebar">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
             </div>
 
             <!-- Main Content -->
-            <div class="col-lg-10 col-md-9 px-4 py-3 main-content-area">
+            <div class="px-4 py-3 main-content-area" id="mainContent">
                 @if(session('success'))
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                         {{ session('success') }}
@@ -930,14 +1164,18 @@
                     </div>
                 @endif
 
+                @if(session('info'))
+                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                        {{ session('info') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                @endif
+
+    @include('layouts.branch-indicator')
                 @yield('content')
             </div>
         </div>
     </div>
-
-    <!-- jQuery (for AJAX and DOM manipulation) - MUST BE BEFORE Bootstrap and DataTables -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
 
     <!-- SweetAlert2 (for beautiful alerts and confirmations) -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -949,6 +1187,8 @@
 
     <!-- Bootstrap JS Bundle with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    {{-- Resizable Sidebar Scripts --}}
+    @include('partials.sidebar-resize-scripts')
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -968,16 +1208,12 @@
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
 
-        // Sidebar toggle functionality for mobile
-        const sidebarToggle = document.getElementById('sidebarToggle');
-        const sidebar = document.getElementById('sidebar');
-        const sidebarOverlay = document.getElementById('sidebarOverlay');
-
-        if (sidebarToggle && sidebar) {
-            sidebarToggle.addEventListener('click', function() {
-                sidebar.classList.toggle('show');
-                sidebarOverlay.classList.toggle('show');
-            });
+        // Mobile sidebar toggle is handled in sidebar-resize-scripts.blade.php
+        // Only keep the close-on-link-click for mobile
+        (function() {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            if (!sidebar || !sidebarOverlay) return;
 
             // Close sidebar when clicking overlay
             sidebarOverlay.addEventListener('click', function() {
@@ -986,25 +1222,24 @@
             });
 
             // Close sidebar when clicking a link on mobile
-            if (window.innerWidth < 768) {
-                const sidebarLinks = sidebar.querySelectorAll('.nav-link');
-                sidebarLinks.forEach(link => {
-                    link.addEventListener('click', function() {
+            const sidebarLinks = sidebar.querySelectorAll('.nav-link');
+            sidebarLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth < 768) {
                         sidebar.classList.remove('show');
                         sidebarOverlay.classList.remove('show');
-                    });
+                    }
                 });
-            }
+            });
 
             // Handle window resize
             window.addEventListener('resize', function() {
                 if (window.innerWidth >= 768) {
-                    // On desktop, ensure sidebar is visible
                     sidebar.classList.remove('show');
                     sidebarOverlay.classList.remove('show');
                 }
             });
-        }
+        })();
 
         // Service Management Collapse State Persistence
         document.addEventListener('DOMContentLoaded', function() {
@@ -1120,6 +1355,48 @@
                 updateQuotationCounter();
             }
         });
+    </script>
+
+    <!-- Dark Mode Toggle Script -->
+    <script>
+        (function() {
+            const STORAGE_KEY = 'fixit_theme';
+            const DARK_THEME = 'dark';
+            const LIGHT_THEME = 'light';
+
+            function getTheme() {
+                return localStorage.getItem(STORAGE_KEY) || LIGHT_THEME;
+            }
+
+            function setTheme(theme) {
+                const icon = document.getElementById('themeIcon');
+                if (theme === DARK_THEME) {
+                    document.documentElement.setAttribute('data-theme', DARK_THEME);
+                    if (icon) icon.className = 'fas fa-sun';
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                    if (icon) icon.className = 'fas fa-moon';
+                }
+                localStorage.setItem(STORAGE_KEY, theme);
+            }
+
+            function toggleTheme() {
+                const current = getTheme();
+                const next = current === DARK_THEME ? LIGHT_THEME : DARK_THEME;
+                setTheme(next);
+            }
+
+            // Apply theme on page load
+            setTheme(getTheme());
+
+            // Bind toggle button
+            document.addEventListener('DOMContentLoaded', function() {
+                const btn = document.getElementById('themeToggle');
+                if (btn) {
+                    btn.addEventListener('click', toggleTheme);
+                }
+            });
+        })();
     </script>
 
     @stack('scripts')

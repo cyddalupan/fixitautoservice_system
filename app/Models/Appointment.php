@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Carbon\Carbon;
 
 class Appointment extends Model
@@ -66,6 +67,7 @@ class Appointment extends Model
         'booking_source',
         'booking_ip',
         'booking_referrer',
+        'viewed_at',
     ];
 
     /**
@@ -93,6 +95,7 @@ class Appointment extends Model
         'follow_up_sent_at' => 'datetime',
         'last_no_show_at' => 'datetime',
         'waitlist_converted_at' => 'datetime',
+        'viewed_at' => 'datetime',
     ];
 
     /**
@@ -340,5 +343,15 @@ class Appointment extends Model
     public function serviceProgress(): HasOne
     {
         return $this->hasOne(ServiceProgress::class, 'appointment_id');
+    }
+
+    /**
+     * The technicians assigned to this appointment.
+     */
+    public function technicians(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'appointment_technician')
+            ->withPivot('role')
+            ->withTimestamps();
     }
 }

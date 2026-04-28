@@ -2,249 +2,207 @@
 
 @section('title', 'Personnel Management')
 
+@push('styles')
+<style>
+.fixit-prsnl-dash{ background:#f4f6fa; min-height:100vh; padding-top:0.5rem; padding-bottom:2rem; }
+.fixit-prsnl-dash .page-title{ color:#1a2332; font-size:1.15rem; }
+.fixit-prsnl-dash .accent-icon{ color:#4361ee; }
+.fixit-prsnl-dash .status-dot{ display:inline-block; width:6px;height:6px;border-radius:50%;background:#4361ee;vertical-align:middle; }
+/* Personnel Stat Cards */
+.fixit-prsnl-dash .prsnl-stat-card{ border-radius:10px; border:0; box-shadow:0 1px 2px rgba(0,0,0,.04); transition:box-shadow .2s,transform .15s; overflow:hidden; }
+.fixit-prsnl-dash .prsnl-stat-card:hover{ box-shadow:0 3px 8px rgba(0,0,0,.06); transform:translateY(-1px); }
+.fixit-prsnl-dash .prsnl-stat-icon{ width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+.fixit-prsnl-dash .prsnl-stat-label{ font-size:.68rem;color:#6c7a8d;text-transform:uppercase;letter-spacing:.4px;font-weight:600; }
+.fixit-prsnl-dash .prsnl-stat-value{ font-size:1.2rem;font-weight:700;color:#1a2332;line-height:1.1; }
+.fixit-prsnl-dash .prsnl-card{ border-radius:10px; border:0; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.fixit-prsnl-dash .prsnl-card-header{ background:transparent; border-bottom:1px solid #f0f2f5; padding:.65rem 1rem; font-size:.82rem; font-weight:600; color:#1a2332; }
+.fixit-prsnl-dash .prsnl-avatar{ width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#4361ee,#3a0ca3);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:.85rem;flex-shrink:0; }
+</style>
+@endpush
+
 @section('content')
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="page-header">
-                <h1 class="mb-0">
-                    <i class="fas fa-users me-2"></i>Personnel Management
-                </h1>
-                <p class="text-muted">Manage all staff members including technicians, office staff, and executives</p>
-            </div>
+<div class="container-fluid px-3 px-md-4 fixit-prsnl-dash">
+    <!-- ══ PAGE HEADER ══ -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="mb-0 fw-bold page-title">
+                <i class="fas fa-users me-2 accent-icon"></i>Personnel Management
+            </h4>
+            <p class="mb-0 text-muted small"><span class="status-dot"></span> Manage all staff — technicians, office staff, executives</p>
+        </div>
+        <div>
+            <a href="{{ route('personnel.create') }}" class="btn btn-sm btn-primary">
+                <i class="fas fa-plus me-1"></i> Add Personnel
+            </a>
         </div>
     </div>
 
-    <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3 col-sm-6 mb-3">
-            <div class="stat-card bg-primary text-white p-3 rounded">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="mb-0">Total Personnel</h6>
-                        <h2 class="mb-0">{{ $stats['total'] }}</h2>
+    <!-- ══ STAT CARDS ══ -->
+    <div class="row g-3 mb-4">
+        @foreach([
+            ['label'=>'Total Personnel','value'=>$stats['total'],'icon'=>'users','color'=>'#4361ee'],
+            ['label'=>'Technicians','value'=>$stats['technicians'],'icon'=>'wrench','color'=>'#2ec4b6'],
+            ['label'=>'Office Staff','value'=>$stats['office_staff'],'icon'=>'desktop','color'=>'#f7a429'],
+            ['label'=>'Executives','value'=>$stats['executives'],'icon'=>'user-tie','color'=>'#e63946'],
+        ] as $s)
+        <div class="col-6 col-md-3">
+            <div class="card prsnl-stat-card h-100">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="prsnl-stat-label">{{ $s['label'] }}</span>
+                        <div class="prsnl-stat-icon" style="background:{{ $s['color'] }}12;">
+                            <i class="fas fa-{{ $s['icon'] }}" style="color:{{ $s['color'] }};font-size:.8rem;"></i>
+                        </div>
                     </div>
-                    <i class="fas fa-users fa-2x"></i>
+                    <div class="prsnl-stat-value">{{ $s['value'] }}</div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 col-sm-6 mb-3">
-            <div class="stat-card bg-success text-white p-3 rounded">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="mb-0">Technicians</h6>
-                        <h2 class="mb-0">{{ $stats['technicians'] }}</h2>
-                    </div>
-                    <i class="fas fa-wrench fa-2x"></i>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 col-sm-6 mb-3">
-            <div class="stat-card bg-warning text-white p-3 rounded">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="mb-0">Office Staff</h6>
-                        <h2 class="mb-0">{{ $stats['office_staff'] }}</h2>
-                    </div>
-                    <i class="fas fa-desktop fa-2x"></i>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3 col-sm-6 mb-3">
-            <div class="stat-card bg-info text-white p-3 rounded">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="mb-0">Executives</h6>
-                        <h2 class="mb-0">{{ $stats['executives'] }}</h2>
-                    </div>
-                    <i class="fas fa-user-tie fa-2x"></i>
-                </div>
-            </div>
-        </div>
+        @endforeach
     </div>
 
-    <!-- Filtering and Sorting Controls -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Filter & Sort Personnel</h5>
-                </div>
-                <div class="card-body">
-                    <form method="GET" action="{{ route('personnel.index') }}" class="row g-3">
-                        <!-- Search -->
-                        <div class="col-md-4">
-                            <label for="search" class="form-label">Search</label>
-                            <input type="text" class="form-control" id="search" name="search" 
-                                   value="{{ request('search') }}" placeholder="Search by name, email, phone...">
-                        </div>
-
-                        <!-- Role Filter -->
-                        <div class="col-md-3">
-                            <label for="role" class="form-label">Role</label>
-                            <select class="form-select" id="role" name="role">
-                                <option value="">All Roles</option>
-                                @foreach($availableRoles as $key => $label)
-                                    <option value="{{ $key }}" {{ request('role') == $key ? 'selected' : '' }}>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <!-- Status Filter -->
-                        <div class="col-md-2">
-                            <label for="status" class="form-label">Status</label>
-                            <select class="form-select" id="status" name="status">
-                                <option value="">All Status</option>
-                                <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
-                                <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
-                            </select>
-                        </div>
-
-                        <!-- Sort By -->
-                        <div class="col-md-2">
-                            <label for="sort_by" class="form-label">Sort By</label>
-                            <select class="form-select" id="sort_by" name="sort_by">
-                                <option value="name" {{ request('sort_by', 'name') == 'name' ? 'selected' : '' }}>Name</option>
-                                <option value="role" {{ request('sort_by') == 'role' ? 'selected' : '' }}>Role</option>
-                                <option value="hire_date" {{ request('sort_by') == 'hire_date' ? 'selected' : '' }}>Hire Date</option>
-                                <option value="years_experience" {{ request('sort_by') == 'years_experience' ? 'selected' : '' }}>Experience</option>
-                                <option value="created_at" {{ request('sort_by') == 'created_at' ? 'selected' : '' }}>Date Added</option>
-                            </select>
-                        </div>
-
-                        <!-- Sort Order -->
-                        <div class="col-md-1">
-                            <label for="sort_order" class="form-label">Order</label>
-                            <select class="form-select" id="sort_order" name="sort_order">
-                                <option value="asc" {{ request('sort_order', 'asc') == 'asc' ? 'selected' : '' }}>Asc</option>
-                                <option value="desc" {{ request('sort_order') == 'desc' ? 'selected' : '' }}>Desc</option>
-                            </select>
-                        </div>
-
-                        <!-- Form Actions -->
-                        <div class="col-md-12 mt-3">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-filter me-1"></i> Apply Filters
-                                    </button>
-                                    <a href="{{ route('personnel.index') }}" class="btn btn-outline-secondary ms-2">
-                                        <i class="fas fa-times me-1"></i> Clear Filters
-                                    </a>
-                                </div>
-                                <div>
-                                    <span class="text-muted">
-                                        Showing {{ $personnel->firstItem() }}-{{ $personnel->lastItem() }} of {{ $personnel->total() }} personnel
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
+    <!-- ══ FILTERS ══ -->
+    <div class="card prsnl-card mb-4">
+        <div class="prsnl-card-header">
+            <i class="fas fa-filter me-1"></i> Filter & Sort
         </div>
-    </div>
-
-    <!-- Action Buttons -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-end">
-                <a href="{{ route('personnel.create') }}" class="btn btn-primary">
-                    <i class="fas fa-plus me-1"></i> Add New Personnel
-                </a>
-            </div>
-        </div>
-    </div>
-
-    <!-- Personnel Table -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">All Personnel</h5>
+        <div class="card-body p-3">
+            <form method="GET" action="{{ route('personnel.index') }}" class="row g-3">
+                <div class="col-md-4">
+                    <label for="search" class="form-label small">Search</label>
+                    <input type="text" class="form-control form-control-sm" id="search" name="search" 
+                           value="{{ request('search') }}" placeholder="Name, email, phone...">
                 </div>
-                <div class="card-body">
-                    @if($personnel->isEmpty())
-                        <div class="text-center py-5">
-                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                            <h5>No personnel found</h5>
-                            <p class="text-muted">Add your first staff member to get started</p>
-                            <a href="{{ route('personnel.create') }}" class="btn btn-primary">
-                                <i class="fas fa-plus me-1"></i> Add Personnel
+                <div class="col-md-3">
+                    <label for="role" class="form-label small">Role</label>
+                    <select class="form-select form-select-sm" id="role" name="role">
+                        <option value="">All Roles</option>
+                        @foreach($availableRoles as $key => $label)
+                            <option value="{{ $key }}" {{ request('role') == $key ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="status" class="form-label small">Status</label>
+                    <select class="form-select form-select-sm" id="status" name="status">
+                        <option value="">All</option>
+                        <option value="active" {{ request('status') == 'active' ? 'selected' : '' }}>Active</option>
+                        <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="sort_by" class="form-label small">Sort By</label>
+                    <select class="form-select form-select-sm" id="sort_by" name="sort_by">
+                        <option value="name" {{ request('sort_by', 'name') == 'name' ? 'selected' : '' }}>Name</option>
+                        <option value="role" {{ request('sort_by') == 'role' ? 'selected' : '' }}>Role</option>
+                        <option value="hire_date" {{ request('sort_by') == 'hire_date' ? 'selected' : '' }}>Hire Date</option>
+                        <option value="years_experience" {{ request('sort_by') == 'years_experience' ? 'selected' : '' }}>Experience</option>
+                        <option value="created_at" {{ request('sort_by') == 'created_at' ? 'selected' : '' }}>Date Added</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <label for="sort_order" class="form-label small">Order</label>
+                    <select class="form-select form-select-sm" id="sort_order" name="sort_order">
+                        <option value="asc" {{ request('sort_order', 'asc') == 'asc' ? 'selected' : '' }}>Asc</option>
+                        <option value="desc" {{ request('sort_order') == 'desc' ? 'selected' : '' }}>Desc</option>
+                    </select>
+                </div>
+                <div class="col-12 mt-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                <i class="fas fa-filter me-1"></i> Apply Filters
+                            </button>
+                            <a href="{{ route('personnel.index') }}" class="btn btn-sm btn-outline-secondary ms-1">
+                                <i class="fas fa-times me-1"></i> Clear
                             </a>
                         </div>
-                    @else
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Role</th>
-                                        <th>Department</th>
-                                        <th>Email</th>
-                                        <th>Phone</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($personnel as $person)
-                                        <tr>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    <div class="customer-avatar me-3">
-                                                        {{ substr($person->name, 0, 1) }}
-                                                    </div>
-                                                    <div>
-                                                        <strong>{{ $person->name }}</strong>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-{{ $person->role_badge_color }}">
-                                                    {{ ucfirst(str_replace('_', ' ', $person->role)) }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                {{ $person->department->name ?? 'N/A' }}
-                                            </td>
-                                            <td>{{ $person->email }}</td>
-                                            <td>{{ $person->phone ?? 'N/A' }}</td>
-                                            <td>
-                                                @if($person->is_active)
-                                                    <span class="badge bg-success">Active</span>
-                                                @else
-                                                    <span class="badge bg-secondary">Inactive</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <div class="btn-group btn-group-sm" role="group">
-                                                    <a href="{{ route('personnel.show', $person) }}" class="btn btn-outline-primary" title="View">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                    <a href="{{ route('personnel.edit', $person) }}" class="btn btn-outline-warning" title="Edit">
-                                                        <i class="fas fa-edit"></i>
-                                                    </a>
-                                                    <button type="button" class="btn btn-outline-danger" title="Delete" onclick="confirmDelete({{ $person->id }})">
-                                                        <i class="fas fa-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <!-- Pagination -->
-                        <div class="d-flex justify-content-center mt-3">
-                            {{ $personnel->links() }}
-                        </div>
-                    @endif
+                        <small class="text-muted">{{ $personnel->firstItem() }}-{{ $personnel->lastItem() }} of {{ $personnel->total() }}</small>
+                    </div>
                 </div>
-            </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ══ TABLE ══ -->
+    <div class="card prsnl-card">
+        <div class="prsnl-card-header">
+            <i class="fas fa-list me-1"></i> All Personnel
+        </div>
+        <div class="card-body p-0">
+            @if($personnel->isEmpty())
+                <div class="text-center py-5">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5>No personnel found</h5>
+                    <p class="text-muted small">Add your first staff member to get started</p>
+                    <a href="{{ route('personnel.create') }}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-plus me-1"></i> Add Personnel
+                    </a>
+                </div>
+            @else
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0" style="font-size:.78rem;">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Department</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($personnel as $person)
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="prsnl-avatar me-2" style="width:28px;height:28px;font-size:.7rem;">
+                                                {{ substr($person->name, 0, 1) }}
+                                            </div>
+                                            <strong>{{ $person->name }}</strong>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ $person->role_badge_color }}" style="font-size:.65rem;font-weight:500;">
+                                            {{ ucfirst(str_replace('_', ' ', $person->role)) }}
+                                        </span>
+                                    </td>
+                                    <td>{{ $person->department->name ?? '—' }}</td>
+                                    <td>{{ $person->email }}</td>
+                                    <td>{{ $person->phone ?? '—' }}</td>
+                                    <td>
+                                        @if($person->is_active)
+                                            <span class="badge bg-success" style="font-size:.65rem;font-weight:500;">Active</span>
+                                        @else
+                                            <span class="badge bg-secondary" style="font-size:.65rem;font-weight:500;">Inactive</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ route('personnel.show', $person) }}" class="btn btn-outline-primary" title="View" style="font-size:.7rem;padding:.2rem .5rem;">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ route('personnel.edit', $person) }}" class="btn btn-outline-warning" title="Edit" style="font-size:.7rem;padding:.2rem .5rem;">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-outline-danger" title="Delete" onclick="confirmDelete({{ $person->id }})" style="font-size:.7rem;padding:.2rem .5rem;">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                @if($personnel->hasPages())
+                <div class="d-flex justify-content-center py-3">
+                    {{ $personnel->links() }}
+                </div>
+                @endif
+            @endif
         </div>
     </div>
 </div>

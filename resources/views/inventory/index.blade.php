@@ -2,105 +2,116 @@
 
 @section('title', 'Inventory Management')
 
+@push('styles')
+<style>
+.fixit-inv-dash{ background:#f4f6fa; min-height:100vh; padding-top:0.5rem; padding-bottom:2rem; }
+.fixit-inv-dash .page-title{ color:#1a2332; font-size:1.15rem; }
+.fixit-inv-dash .inv-stat-card{ border-radius:10px; border:0; box-shadow:0 1px 2px rgba(0,0,0,.04); transition:box-shadow .2s,transform .15s; overflow:hidden; }
+.fixit-inv-dash .inv-stat-card:hover{ box-shadow:0 3px 8px rgba(0,0,0,.06); transform:translateY(-1px); }
+.fixit-inv-dash .inv-stat-icon{ width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0; }
+.fixit-inv-dash .inv-stat-label{ font-size:.68rem;color:#6c7a8d;text-transform:uppercase;letter-spacing:.4px;font-weight:600; }
+.fixit-inv-dash .inv-stat-value{ font-size:1.2rem;font-weight:700;color:#1a2332;line-height:1.1; }
+.fixit-inv-dash .inv-filter-card{ border-radius:10px; border:0; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.fixit-inv-dash .inv-filter-header{ background:transparent; border-bottom:1px solid #f0f2f5; padding:.65rem 1rem; font-size:.82rem; font-weight:600; color:#1a2332; }
+.fixit-inv-dash .inv-table-card{ border-radius:10px; border:0; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+.fixit-inv-dash .inv-table-header{ background:transparent; border-bottom:1px solid #f0f2f5; padding:.65rem 1rem; font-size:.82rem; font-weight:600; color:#1a2332; }
+.fixit-inv-dash .border-left-primary{ border-left:4px solid #4361ee; }
+.fixit-inv-dash .border-left-success{ border-left:4px solid #2ec4b6; }
+.fixit-inv-dash .border-left-warning{ border-left:4px solid #f7a429; }
+.fixit-inv-dash .border-left-danger{ border-left:4px solid #e63946; }
+.fixit-inv-dash .btn-sm-inv{ font-size:.78rem;padding:.35rem .65rem;border-radius:7px; }
+@media(max-width:767px){
+    .fixit-inv-dash .inv-actions{ display:flex; flex-wrap:wrap; gap:4px; }
+}
+</style>
+@endpush
+
 @section('content')
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <h1 class="h3 mb-0">Inventory Management</h1>
-                <div>
-                    <a href="{{ route('inventory.create') }}" class="btn btn-primary">
-                        <i class="fas fa-plus"></i> Add New Item
-                    </a>
-                    <a href="{{ route('inventory.low-stock') }}" class="btn btn-warning">
-                        <i class="fas fa-exclamation-triangle"></i> Low Stock
-                    </a>
-                    <a href="{{ route('inventory.statistics') }}" class="btn btn-info">
-                        <i class="fas fa-chart-bar"></i> Statistics
-                    </a>
-                    <a href="{{ route('inventory.export') }}" class="btn btn-success">
-                        <i class="fas fa-file-export"></i> Export CSV
-                    </a>
-                </div>
-            </div>
+<div class="container-fluid px-3 px-md-4 fixit-inv-dash">
+    <!-- ── PAGE HEADER ── -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="mb-0 fw-bold page-title">
+                <i class="fas fa-box me-2 accent-icon"></i>Inventory Management
+            </h4>
+            <p class="mb-0 text-muted small"><span class="status-dot"></span> Parts, supplies, and stock tracking</p>
+        </div>
+        <div class="mt-2 mt-md-0 d-flex gap-2 inv-actions">
+            <a href="{{ route('inventory.create') }}" class="btn btn-sm btn-primary btn-sm-inv">
+                <i class="fas fa-plus"></i> Add Item
+            </a>
+            <a href="{{ route('inventory.low-stock') }}" class="btn btn-sm btn-warning btn-sm-inv">
+                <i class="fas fa-exclamation-triangle"></i> Low Stock
+            </a>
+            <a href="{{ route('inventory.statistics') }}" class="btn btn-sm btn-info btn-sm-inv">
+                <i class="fas fa-chart-bar"></i> Stats
+            </a>
+            <a href="{{ route('inventory.export') }}" class="btn btn-sm btn-success btn-sm-inv">
+                <i class="fas fa-file-export"></i> Export
+            </a>
         </div>
     </div>
 
-    <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Items</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ number_format($stats['total_items']) }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-boxes fa-2x text-gray-500"></i>
+    <!-- ══ COMPACT STAT CARDS ══ -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card inv-stat-card border-left-primary h-100">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="inv-stat-label">Total Items</span>
+                        <div class="inv-stat-icon" style="background:rgba(67,97,238,0.1);">
+                            <i class="fas fa-boxes" style="color:#4361ee;font-size:.8rem;"></i>
                         </div>
                     </div>
+                    <div class="inv-stat-value">{{ number_format($stats['total_items']) }}</div>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Total Value</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">₱{{ number_format($stats['total_value'], 2) }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-dollar-sign fa-2x text-gray-500"></i>
+        <div class="col-6 col-md-3">
+            <div class="card inv-stat-card border-left-success h-100">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="inv-stat-label">Total Value</span>
+                        <div class="inv-stat-icon" style="background:rgba(46,196,182,0.1);">
+                            <i class="fas fa-dollar-sign" style="color:#2ec4b6;font-size:.8rem;"></i>
                         </div>
                     </div>
+                    <div class="inv-stat-value">₱{{ number_format($stats['total_value'], 0) }}</div>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Low Stock Items</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ number_format($stats['low_stock']) }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-exclamation-triangle fa-2x text-gray-500"></i>
+        <div class="col-6 col-md-3">
+            <div class="card inv-stat-card border-left-warning h-100">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="inv-stat-label">Low Stock</span>
+                        <div class="inv-stat-icon" style="background:rgba(247,164,41,0.1);">
+                            <i class="fas fa-exclamation-triangle" style="color:#f7a429;font-size:.8rem;"></i>
                         </div>
                     </div>
+                    <div class="inv-stat-value">{{ number_format($stats['low_stock']) }}</div>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-danger shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                Out of Stock</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ number_format($stats['out_of_stock']) }}</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-times-circle fa-2x text-gray-500"></i>
+        <div class="col-6 col-md-3">
+            <div class="card inv-stat-card border-left-danger h-100">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="inv-stat-label">Out of Stock</span>
+                        <div class="inv-stat-icon" style="background:rgba(230,57,70,0.1);">
+                            <i class="fas fa-times-circle" style="color:#e63946;font-size:.8rem;"></i>
                         </div>
                     </div>
+                    <div class="inv-stat-value">{{ number_format($stats['out_of_stock']) }}</div>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Filters -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <h6 class="m-0 font-weight-bold text-primary">Filters</h6>
+    <div class="card inv-filter-card mb-4">
+        <div class="inv-filter-header">
+            <i class="fas fa-filter me-1"></i> Filters
         </div>
         <div class="card-body">
             <form method="GET" action="{{ route('inventory.index') }}">
@@ -234,9 +245,9 @@
     </div>
 
     <!-- Inventory Table -->
-    <div class="card">
-        <div class="card-header">
-            <h6 class="m-0 font-weight-bold text-primary">Inventory Items</h6>
+    <div class="card inv-table-card">
+        <div class="inv-table-header">
+            <i class="fas fa-list me-1"></i> Inventory Items
         </div>
         <div class="card-body">
             @if($inventory->count() > 0)

@@ -25,6 +25,15 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="card-title mb-0">Vehicle Registry</h5>
                         <div class="d-flex gap-2">
+                            <a href="{{ route('vehicle-brands.index') }}" class="btn btn-outline-secondary btn-sm" title="Vehicle Brands">
+                                <i class="fas fa-tag"></i> Brands
+                            </a>
+                            <a href="{{ route('vehicle-models.index') }}" class="btn btn-outline-secondary btn-sm" title="Vehicle Models">
+                                <i class="fas fa-car-side"></i> Models
+                            </a>
+                            <a href="{{ route('vehicle-colors.index') }}" class="btn btn-outline-secondary btn-sm" title="Vehicle Colors">
+                                <i class="fas fa-palette"></i> Colors
+                            </a>
                             <a href="{{ route('vehicles.create') }}" class="btn btn-primary">
                                 <i class="fas fa-plus me-1"></i> Add New Vehicle
                             </a>

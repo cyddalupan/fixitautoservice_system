@@ -73,6 +73,11 @@ class Customer extends Model
         return "{$this->first_name} {$this->last_name}";
     }
 
+    public function getNameAttribute()
+    {
+        return $this->full_name;
+    }
+
     public function getTotalVehiclesAttribute()
     {
         return $this->vehicles()->count();
@@ -129,5 +134,26 @@ class Customer extends Model
     public function getHasProfilePictureAttribute()
     {
         return !empty($this->profile_picture);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(\App\Models\Invoice::class);
+    }
+
+    /**
+     * Get the quotations for this customer.
+     */
+    public function quotations()
+    {
+        return $this->hasMany(\App\Models\Quotation::class);
+    }
+
+    /**
+     * Get the latest quotation for this customer.
+     */
+    public function latestQuotation()
+    {
+        return $this->hasOne(\App\Models\Quotation::class)->latestOfMany();
     }
 }

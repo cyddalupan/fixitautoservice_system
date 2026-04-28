@@ -106,6 +106,7 @@ class WorkOrder extends Model
         'attachments',
         'tags',
         'internal_notes',
+        'viewed_at',
     ];
 
     protected $casts = [
@@ -162,6 +163,7 @@ class WorkOrder extends Model
         'is_rush_order' => 'boolean',
         'is_complex_job' => 'boolean',
         'has_safety_concerns' => 'boolean',
+        'viewed_at' => 'datetime',
     ];
 
     /**
@@ -235,6 +237,11 @@ class WorkOrder extends Model
     public function tasks()
     {
         return $this->hasMany(WorkOrderTask::class);
+    }
+
+    public function vehicleInspection()
+    {
+        return $this->hasOne(VehicleInspection::class, 'work_order_id');
     }
 
     /**

@@ -11,6 +11,7 @@ use App\Http\Controllers\VehicleInspectionController;
 use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\ReportsController;
+use App\Http\Controllers\FormSyncController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -24,6 +25,12 @@ Route::get('/quotation-form', function () {
 
 Route::post('/quotation-submit', [\App\Http\Controllers\QuotationController::class, 'storePublic'])->name('quotation.submit');
 
+
+// Public vehicle data sync endpoint (no auth required — for form sync)
+Route::get('/vehicle-data/sync', [FormSyncController::class, 'syncToForm'])->name('vehicle-data.sync');
+
+// Public vehicle data serving endpoint (no auth required)
+Route::get('/vehicle-data/json', [FormSyncController::class, 'serveVehicleData'])->name('vehicle-data.json');
 // Authentication Routes
 Route::get('/login', function () {
     return view('auth.login');
@@ -78,11 +85,85 @@ Route::post('/logout', function () {
 Route::get('/customer-form/{token}', [CustomerController::class, 'showForm'])->name('customers.form.show');
 Route::post('/customer-form/{token}/submit', [CustomerController::class, 'submitForm'])->name('customers.form.submit');
 
+// Public Vehicle Autocomplete API Routes (for quotation form & customer form)
+Route::get('/api/vehicle-brands', function() {
+    $term = request('term', '');
+    $brands = \App\Models\Vehicle::where('make', 'LIKE', '%' . $term . '%')
+        ->distinct()
+        ->orderBy('make')
+        ->pluck('make')
+        ->take(20)
+        ->toArray();
+    
+    return response()->json($brands);
+})->name('api.vehicle-brands');
+
+Route::get('/api/vehicle-models', function() {
+    $term = request('term', '');
+    $brand = request('brand', '');
+    
+    $query = \App\Models\Vehicle::where('model', 'LIKE', '%' . $term . '%');
+    
+    if ($brand) {
+        $query->where('make', $brand);
+    }
+    
+    $models = $query->distinct()
+        ->orderBy('model')
+        ->pluck('model')
+        ->take(20)
+        ->toArray();
+    
+    return response()->json($models);
+})->name('api.vehicle-models');
+
+Route::get('/api/vehicle-colors', function() {
+    $term = request('term', '');
+    $colors = \App\Models\Vehicle::whereNotNull('color')
+        ->where('color', 'LIKE', '%' . $term . '%')
+        ->distinct()
+        ->orderBy('color')
+        ->pluck('color')
+        ->take(15)
+        ->toArray();
+    
+    return response()->json($colors);
+})->name('api.vehicle-colors');
+
 // Protected Routes (with auto-login middleware)
 Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->group(function () {
     // Dashboard Routes
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/analytics', [DashboardController::class, 'analytics'])->name('analytics');
+
+    // Sidebar counter refresh endpoint
+    Route::get('/sidebar-counters', function () {
+        $counts = [
+            'customers' => \App\Models\Customer::count(),
+            'vehicles' => \App\Models\Vehicle::count(),
+            // Appointments: only 'scheduled' (upcoming) — matches default tab
+            'appointments_total' => \App\Models\Appointment::where('appointment_status', 'scheduled')->count(),
+            'appointments_new' => \App\Models\Appointment::where('appointment_status', 'scheduled')->whereNull('viewed_at')->count(),
+            'quotations_total' => \App\Models\Quotation::count(),
+            'quotations_new' => \App\Models\Quotation::where('status', 'new_lead')->count(),
+            // Inspections: exclude completed & those with work orders — matches index page default
+            'inspections_total' => \App\Models\VehicleInspection::whereNotIn('inspection_status', ['completed'])
+                                        ->whereNull('work_order_id')->count(),
+            'inspections_new' => \App\Models\VehicleInspection::whereNotIn('inspection_status', ['completed'])->whereNull('work_order_id')->whereNull('viewed_at')->count(),
+            'estimates_total' => \App\Models\Estimate::count(),
+            'estimates_new' => \App\Models\Estimate::whereNull('viewed_at')->count(),
+            'work_orders_total' => \App\Models\WorkOrder::count(),
+            'work_orders_active' => \App\Models\WorkOrder::whereIn('work_order_status', ['pending', 'repairing', 'in_progress'])->whereNull('viewed_at')->count(),
+            // Service Records: count workflows (matches Service Records page listings)
+            'service_records_total' => count(app(\App\Services\ServiceRecordService::class)->getWorkflows()),
+            'service_records_recent' => \App\Models\ServiceRecord::whereNull('viewed_at')->count(),
+            'invoices_total' => \App\Models\Invoice::count(),
+            'invoices_new' => \App\Models\Invoice::whereNull('viewed_at')->count(),
+            'invoices_pending' => \App\Models\Invoice::whereIn('status', ['draft', 'sent', 'partial', 'overdue'])->count(),
+            'archives_total' => \App\Models\Archive::count(),
+        ];
+        return response()->json($counts);
+    })->name('sidebar-counters');
     // Route::get('/reports', [DashboardController::class, 'reports'])->name('dashboard.reports');
     // Route::post('/reports/generate', [DashboardController::class, 'generateReport'])->name('dashboard.reports.generate');
 
@@ -92,51 +173,12 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::post('/customers/generate-form', [CustomerController::class, 'generateForm'])->name('customers.generate-form');
     Route::get('/customers/generated-forms', [CustomerController::class, 'generatedForms'])->name('customers.generated-forms');
     Route::get('/api/customer-form/{token}/details', [CustomerController::class, 'formDetails'])->name('api.customers.form.details');
+    Route::get('/api/customers/search', [\App\Http\Controllers\CustomerController::class, 'apiSearch'])->name('api.customers.search');
+    Route::get('/api/customers/autocomplete', [\App\Http\Controllers\CustomerController::class, 'apiAutocomplete'])->name('api.customers.autocomplete');
+    Route::get('/api/customers/filter-options', [\App\Http\Controllers\CustomerController::class, 'apiFilterOptions'])->name('api.customers.filter-options');
+    Route::get('/api/customer-vehicles', [\App\Http\Controllers\CustomerController::class, 'apiCustomerVehicles'])->name('api.customer-vehicles');
+    Route::get('/api/customer-latest-quotation/{customer}', [\App\Http\Controllers\CustomerController::class, 'apiLatestQuotation'])->name('api.customer-latest-quotation');
     
-    // Vehicle autocomplete API routes
-    Route::get('/api/vehicle-brands', function() {
-        $term = request('term', '');
-        $brands = \App\Models\Vehicle::where('make', 'LIKE', '%' . $term . '%')
-            ->distinct()
-            ->orderBy('make')
-            ->pluck('make')
-            ->take(20)
-            ->toArray();
-        
-        return response()->json($brands);
-    })->name('api.vehicle-brands');
-    
-    Route::get('/api/vehicle-models', function() {
-        $term = request('term', '');
-        $brand = request('brand', '');
-        
-        $query = \App\Models\Vehicle::where('model', 'LIKE', '%' . $term . '%');
-        
-        if ($brand) {
-            $query->where('make', $brand);
-        }
-        
-        $models = $query->distinct()
-            ->orderBy('model')
-            ->pluck('model')
-            ->take(20)
-            ->toArray();
-        
-        return response()->json($models);
-    })->name('api.vehicle-models');
-    
-    Route::get('/api/vehicle-colors', function() {
-        $term = request('term', '');
-        $colors = \App\Models\Vehicle::whereNotNull('color')
-            ->where('color', 'LIKE', '%' . $term . '%')
-            ->distinct()
-            ->orderBy('color')
-            ->pluck('color')
-            ->take(15)
-            ->toArray();
-        
-        return response()->json($colors);
-    })->name('api.vehicle-colors');
     // Customer resource routes
     Route::resource('customers', CustomerController::class);
     Route::post('/customers/{customer}/notes', [CustomerController::class, 'addNote'])->name('customers.notes.store');
@@ -194,6 +236,7 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     // Quotation Routes - SPECIFIC ROUTES FIRST!
     Route::get('/quotations/pending-count', [\App\Http\Controllers\QuotationController::class, 'pendingCount'])->name('quotations.pending-count');
     Route::patch("/quotations/{quotation}/update-status", [\App\Http\Controllers\QuotationController::class, "updateStatus"])->name("quotations.update-status");
+    Route::post('/quotations/{quotation}/convert-to-customer', [\App\Http\Controllers\QuotationController::class, 'convertToCustomer'])->name('quotations.convert-to-customer');
     Route::resource('quotations', \App\Http\Controllers\QuotationController::class);
     Route::post('/estimates/{estimate}/approve', [EstimateController::class, 'approve'])->name('estimates.approve');
     Route::post('/estimates/{estimate}/reject', [EstimateController::class, 'reject'])->name('estimates.reject');
@@ -595,10 +638,60 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::get('/api/test/parts-procurement/integration', [\App\Http\Controllers\TestPartsProcurementController::class, 'testIntegration']);
     Route::get('/api/test/parts-procurement/requirements', [\App\Http\Controllers\TestPartsProcurementController::class, 'testRequirements']);
     Route::get('/api/test/parts-procurement/summary', [\App\Http\Controllers\TestPartsProcurementController::class, 'testSummary']);
+    // ════════════════════════════════════════════════
+    // MISSING ROUTE DEFINITIONS (restored 2026-04-27)
+    // The view files reference these route names but they
+    // were lost from routes/web.php during git restore.
+    // ════════════════════════════════════════════════
+
+    // Service Records
+    Route::get('/service-records', [\App\Http\Controllers\ServiceRecordController::class, 'index'])->name('service-records.index');
+
+    // Archives
+    Route::get('/archives', [\App\Http\Controllers\ArchiveController::class, 'index'])->name('archives.index');
+    Route::get('/archives/{archive}', [\App\Http\Controllers\ArchiveController::class, 'show'])->name('archives.show');
+    Route::post('/archives/{archive}/restore', [\App\Http\Controllers\ArchiveController::class, 'restore'])->name('archives.restore');
+    Route::delete('/archives/{archive}', [\App\Http\Controllers\ArchiveController::class, 'destroy'])->name('archives.destroy');
+    Route::post('/archives/batch-restore', [\App\Http\Controllers\ArchiveController::class, 'batchRestore'])->name('archives.batch-restore');
+    Route::delete('/archives/batch-delete', [\App\Http\Controllers\ArchiveController::class, 'batchDelete'])->name('archives.batch-delete');
+    Route::post('/archives/batch-by-month', [\App\Http\Controllers\ArchiveController::class, 'batchByMonth'])->name('archives.batch-by-month');
+    Route::post('/archives/batch-by-year-range', [\App\Http\Controllers\ArchiveController::class, 'batchByYearRange'])->name('archives.batch-by-year-range');
+    Route::post('/archives/batch-by-date-range', [\App\Http\Controllers\ArchiveController::class, 'batchByDateRange'])->name('archives.batch-by-date-range');
+
+    // Vehicle Brands
+    Route::get('/vehicle-brands', [\App\Http\Controllers\VehicleBrandController::class, 'index'])->name('vehicle-brands.index');
+    Route::get('/vehicle-brands/create', [\App\Http\Controllers\VehicleBrandController::class, 'create'])->name('vehicle-brands.create');
+    Route::post('/vehicle-brands', [\App\Http\Controllers\VehicleBrandController::class, 'store'])->name('vehicle-brands.store');
+    Route::get('/vehicle-brands/{vehicleBrand}/edit', [\App\Http\Controllers\VehicleBrandController::class, 'edit'])->name('vehicle-brands.edit');
+    Route::put('/vehicle-brands/{vehicleBrand}', [\App\Http\Controllers\VehicleBrandController::class, 'update'])->name('vehicle-brands.update');
+    Route::delete('/vehicle-brands/{vehicleBrand}', [\App\Http\Controllers\VehicleBrandController::class, 'destroy'])->name('vehicle-brands.destroy');
+
+    // Vehicle Models
+    Route::get('/vehicle-models', [\App\Http\Controllers\VehicleModelController::class, 'index'])->name('vehicle-models.index');
+    Route::get('/vehicle-models/create', [\App\Http\Controllers\VehicleModelController::class, 'create'])->name('vehicle-models.create');
+    Route::post('/vehicle-models', [\App\Http\Controllers\VehicleModelController::class, 'store'])->name('vehicle-models.store');
+    Route::get('/vehicle-models/{vehicleModel}/edit', [\App\Http\Controllers\VehicleModelController::class, 'edit'])->name('vehicle-models.edit');
+    Route::put('/vehicle-models/{vehicleModel}', [\App\Http\Controllers\VehicleModelController::class, 'update'])->name('vehicle-models.update');
+    Route::delete('/vehicle-models/{vehicleModel}', [\App\Http\Controllers\VehicleModelController::class, 'destroy'])->name('vehicle-models.destroy');
+
+    // Vehicle Colors
+    Route::get('/vehicle-colors', [\App\Http\Controllers\VehicleColorController::class, 'index'])->name('vehicle-colors.index');
+    Route::get('/vehicle-colors/create', [\App\Http\Controllers\VehicleColorController::class, 'create'])->name('vehicle-colors.create');
+    Route::post('/vehicle-colors', [\App\Http\Controllers\VehicleColorController::class, 'store'])->name('vehicle-colors.store');
+    Route::get('/vehicle-colors/{vehicleColor}/edit', [\App\Http\Controllers\VehicleColorController::class, 'edit'])->name('vehicle-colors.edit');
+    Route::put('/vehicle-colors/{vehicleColor}', [\App\Http\Controllers\VehicleColorController::class, 'update'])->name('vehicle-colors.update');
+    Route::delete('/vehicle-colors/{vehicleColor}', [\App\Http\Controllers\VehicleColorController::class, 'destroy'])->name('vehicle-colors.destroy');
+
+    // Payments index (redirect to invoices)
+    Route::get('/payments', function() {
+        return redirect()->route('invoices.index')->with('info', 'Payments are integrated into Invoices.');
+    })->name('payments.index');
+
+    // Service Items (service catalog)
+    Route::resource('service-items', \App\Http\Controllers\ServiceItemController::class);
 });
 
 // Public test route (outside auth)
-Route::get('/test-parts-procurement-public', [\App\Http\Controllers\TestPartsProcurementController::class, 'testPage'])->name('test.parts-procurement-public');
 
 // Pricing & Profit Management Routes
 Route::prefix('pricing')->name('pricing.')->middleware(['auth'])->group(function () {

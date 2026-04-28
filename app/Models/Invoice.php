@@ -4,13 +4,14 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Invoice extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -35,6 +36,7 @@ class Invoice extends Model
         'notes',
         'terms',
         'status',
+        'viewed_at',
     ];
 
     /**
@@ -55,6 +57,7 @@ class Invoice extends Model
         'balance_due' => 'decimal:2',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
+        'viewed_at' => 'datetime',
     ];
 
     /**

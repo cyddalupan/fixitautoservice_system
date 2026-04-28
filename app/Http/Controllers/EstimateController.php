@@ -2,421 +2,642 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Estimate;
+use App\Models\EstimateItem;
 use App\Models\Customer;
 use App\Models\Vehicle;
+use App\Models\User;
 use App\Models\Inventory;
+use App\Models\VehicleInspection;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class EstimateController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a listing of estimates.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $estimates = Estimate::with(['customer', 'vehicle'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
-        
+        $query = Estimate::with(['customer', 'vehicle', 'items'])
+            ->whereNull('deleted_at');
+
+        // Filters
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+        if ($request->filled('search')) {
+            $s = $request->search;
+            $query->where(function($q) use ($s) {
+                $q->where('estimate_number', 'like', "%{$s}%")
+                  ->orWhereHas('customer', function($cq) use ($s) {
+                      $cq->where('first_name', 'like', "%{$s}%")
+                         ->orWhere('last_name', 'like', "%{$s}%")
+                         ->orWhere('phone', 'like', "%{$s}%");
+                  });
+            });
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $estimates = $query->orderBy('created_at', 'desc')->paginate(20);
         return view('estimates.index', compact('estimates'));
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Show the form for creating a new estimate.
      */
     public function create(Request $request)
     {
-        $customers = Customer::where('is_active', true)->orderBy('last_name')->get();
-        $vehicles = Vehicle::where('is_active', true)->orderBy('make')->get();
-        $inventoryItems = Inventory::where('is_active', true)
-            ->where('quantity', '>', 0)
-            ->orderBy('name')
-            ->get();
-        
-        // Pre-fill data from appointment, inspection, or direct customer_id
-        $appointment = null;
-        $inspection = null;
-        $prefilledData = [];
-        
-        if ($request->has('appointment_id')) {
-            $appointment = \App\Models\Appointment::with(['customer', 'vehicle'])->find($request->appointment_id);
-            if ($appointment) {
-                $prefilledData = [
-                    'customer_id' => $appointment->customer_id,
-                    'vehicle_id' => $appointment->vehicle_id,
-                    'mileage' => $appointment->vehicle->current_mileage ?? null,
-                    'notes' => $appointment->service_request,
-                ];
+        $customers = Customer::orderBy('first_name')->get();
+        $advisors = User::whereIn('role', ['admin', 'staff', 'service_advisor'])->get();
+        $lastNum = Estimate::where('estimate_number', 'like', 'EST-' . now()->format('Ymd') . '-%')
+            ->count();
+        $inventoryItems = \App\Models\Inventory::with("category")->whereNull("deleted_at")->get();
+        $inventoryItemsJson = $inventoryItems->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'name' => $item->name,
+                'part_number' => $item->part_number,
+                'description' => $item->description,
+                'retail_price' => floatval($item->retail_price),
+                'quantity' => intval($item->quantity),
+                'manufacturer' => $item->manufacturer ?? '',
+            ];
+        })->values();
+
+        $selectedCustomer = null;
+        $selectedVehicle = null;
+        $customerVehicles = collect();
+        $customerHistory = collect();
+
+        if ($request->filled('customer_id')) {
+            $selectedCustomer = Customer::find($request->customer_id);
+            if ($selectedCustomer) {
+                $customerVehicles = Vehicle::where('customer_id', $selectedCustomer->id)->get();
+                $customerHistory = Estimate::where('customer_id', $selectedCustomer->id)
+                    ->whereNull('deleted_at')
+                    ->orderBy('created_at', 'desc')
+                    ->limit(5)
+                    ->get();
+                // If vehicle_id is also passed
+                if ($request->filled('vehicle_id')) {
+                    $selectedVehicle = Vehicle::find($request->vehicle_id);
+                } elseif ($customerVehicles->count() > 0) {
+                    $selectedVehicle = $customerVehicles->first();
+                }
             }
         }
-        
-        if ($request->has('inspection_id')) {
-            $inspection = \App\Models\VehicleInspection::with(['appointment.customer', 'appointment.vehicle'])->find($request->inspection_id);
-            if ($inspection && $inspection->appointment) {
-                $prefilledData = [
-                    'customer_id' => $inspection->customer_id,
-                    'vehicle_id' => $inspection->vehicle_id,
-                    'mileage' => $inspection->vehicle->current_mileage ?? null,
-                    'notes' => $inspection->customer_concerns . "\n\n" . $inspection->recommended_services,
-                ];
+
+        // Get inspection findings if a customer is selected
+        $inspectionFindings = collect();
+        if ($selectedCustomer) {
+            $latestInspection = \App\Models\VehicleInspection::where('customer_id', $selectedCustomer->id)
+                ->whereNotNull('inspection_status')
+                ->orderBy('created_at', 'desc')
+                ->first();
+            if ($latestInspection) {
+                $latestInspection->load(['inspectionFindings.technician']);
+                $inspectionFindings = $latestInspection->inspectionFindings;
             }
         }
-        
-        // Handle direct customer_id parameter (from quick actions)
-        if ($request->has('customer_id') && empty($prefilledData)) {
-            $customer = \App\Models\Customer::find($request->customer_id);
-            if ($customer) {
-                $prefilledData = [
-                    'customer_id' => $customer->id,
-                    // Try to get customer's first vehicle
-                    'vehicle_id' => $customer->vehicles()->first()?->id,
-                ];
+
+        // Load quotation data for auto-fill
+        $quotationData = null;
+        if ($request->filled('quotation_id')) {
+            $quotation = \App\Models\Quotation::find($request->quotation_id);
+            if ($quotation && $quotation->customer_id == ($selectedCustomer->id ?? null)) {
+                $quotationData = $quotation;
+            }
+        } elseif ($selectedCustomer) {
+            $latestQuotation = $selectedCustomer->quotations()->latest()->first();
+            if ($latestQuotation) {
+                $quotationData = $latestQuotation;
             }
         }
-        
-        // Handle direct vehicle_id parameter (from vehicle quick actions)
-        if ($request->has('vehicle_id') && empty($prefilledData)) {
-            $vehicle = \App\Models\Vehicle::with('customer')->find($request->vehicle_id);
-            if ($vehicle && $vehicle->customer) {
-                $prefilledData = [
-                    'customer_id' => $vehicle->customer->id,
-                    'vehicle_id' => $vehicle->id,
-                    'mileage' => $vehicle->current_mileage ?? null,
-                ];
-            }
-        }
-        
-        // Get the last estimate number for auto-generation
-        $lastEstimate = Estimate::orderBy('id', 'desc')->first();
-        $lastEstimateNumber = $lastEstimate ? intval(substr($lastEstimate->estimate_number, -4)) : 0;
-        
-        return view('estimates.create-simple', compact('customers', 'vehicles', 'inventoryItems', 'appointment', 'inspection', 'prefilledData', 'lastEstimateNumber'));
+
+        return view('estimates.create', compact(
+            'customers', 'advisors', 'lastNum', 'inventoryItems', 'inventoryItemsJson',
+            'selectedCustomer', 'selectedVehicle', 'customerVehicles', 'customerHistory',
+            'inspectionFindings', 'quotationData'
+        ));
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store a newly created estimate.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'vehicle_id' => 'required|exists:vehicles,id',
-            'estimate_number' => 'required|unique:estimates,estimate_number',
-            'estimate_date' => 'required|date',
-            'expiry_date' => 'required|date|after:estimate_date',
+            'estimate_number' => 'nullable|string|max:50|unique:estimates,estimate_number',
+            'issue_date' => 'nullable|date',
+            'expiry_date' => 'nullable|date',
+            'status' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
-            'customer_notes' => 'nullable|string',
+            'internal_notes' => 'nullable|string',
             'terms' => 'nullable|string',
-            'status' => 'required|in:draft,pending,approved,rejected,expired',
-            'appointment_id' => 'nullable|exists:appointments,id',
-            'inspection_id' => 'nullable|exists:vehicle_inspections,id',
+            'service_type' => 'nullable|array',
+            'service_type.*' => 'string|in:' . implode(',', array_keys(config('service-types.list'))),
+            'mileage' => 'nullable|numeric|min:0',
+            'service_advisor_id' => 'nullable|exists:users,id',
+            'discount_type' => 'nullable|string|max:20',
+            'discount_value' => 'nullable|numeric|min:0',
+            'deposit_required' => 'nullable|numeric|min:0',
+            'items_json' => 'nullable|json',
         ]);
 
-        // Calculate totals from items
-        $subtotal = 0;
-        $items = [];
-        
-        if ($request->has('items')) {
-            foreach ($request->items as $item) {
-                if (!empty($item['item_name']) && !empty($item['quantity']) && !empty($item['unit_price'])) {
-                    $itemTotal = $item['quantity'] * $item['unit_price'];
-                    $subtotal += $itemTotal;
-                    
+        DB::beginTransaction();
+        try {
+            // Generate estimate number if not provided
+            if (empty($validated['estimate_number'])) {
+                $count = Estimate::where('estimate_number', 'like', 'EST-' . now()->format('Ymd') . '-%')->count();
+                $validated['estimate_number'] = 'EST-' . now()->format('Ymd') . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+            }
+
+            // Compute totals from items
+            $subtotal = 0;
+            $partsTotal = 0;
+            $laborTotal = 0;
+            $discountAmount = 0;
+            $taxTotal = 0;
+            $items = [];
+
+            if ($request->filled('items_json')) {
+                $items = json_decode($request->items_json, true) ?? [];
+            } elseif ($request->has('items')) {
+                // Fallback to individual item fields
+                $raw = $request->input('items', []);
+                foreach ($raw as $idx => $item) {
                     $items[] = [
-                        'inventory_id' => $item['inventory_id'] ?? null,
-                        'item_name' => $item['item_name'],
-                        'description' => $item['description'] ?? null,
-                        'quantity' => $item['quantity'],
-                        'unit_price' => $item['unit_price'],
-                        'total_price' => $itemTotal,
+                        'description' => $item['desc'] ?? '',
+                        'category' => $item['cat'] ?? 'parts',
+                        'quantity' => floatval($item['qty'] ?? 1),
+                        'unit_price' => floatval($item['price'] ?? 0),
+                        'discount' => floatval($item['disc'] ?? 0),
+                        'tax_rate' => floatval($item['tax'] ?? 0),
+                        'sort_order' => $idx,
                     ];
                 }
             }
-        }
-        
-        // Calculate tax and total (assuming 0% tax for now)
-        $taxRate = 0;
-        $taxAmount = $subtotal * ($taxRate / 100);
-        $totalAmount = $subtotal + $taxAmount;
-        
-        // Add calculated fields to validated data
-        $validated['subtotal'] = $subtotal;
-        $validated['tax_rate'] = $taxRate;
-        $validated['tax_amount'] = $taxAmount;
-        $validated['total_amount'] = $totalAmount;
-        
-        // Use estimate_date for issue_date (they should be the same)
-        $validated['issue_date'] = $validated['estimate_date'];
-        
-        $estimate = Estimate::create($validated);
-        
-        // Link to appointment if provided
-        if ($request->has('appointment_id')) {
-            $appointment = \App\Models\Appointment::find($request->appointment_id);
-            if ($appointment) {
-                $appointment->update(['appointment_status' => 'completed']);
+
+            foreach ($items as &$item) {
+                $qty = floatval($item['quantity'] ?? 1);
+                $price = floatval($item['unit_price'] ?? 0);
+                $lineTotal = $qty * $price;
+                $discPct = floatval($item['discount'] ?? 0);
+                $taxPct = floatval($item['tax_rate'] ?? 0);
+
+                $lineDiscount = $discPct > 0 ? $lineTotal * (min($discPct, 100) / 100) : 0;
+                $afterDisc = $lineTotal - $lineDiscount;
+                $lineTax = $taxPct > 0 ? $afterDisc * ($taxPct / 100) : 0;
+                $lineSubtotal = $afterDisc + $lineTax;
+
+                $item['line_total'] = $lineTotal;
+                $item['line_discount'] = $lineDiscount;
+                $item['line_tax'] = $lineTax;
+                $item['subtotal'] = $lineSubtotal;
+
+                $subtotal += $afterDisc;
+                $discountAmount += $lineDiscount;
+                $taxTotal += $lineTax;
+
+                if (in_array($item['category'] ?? '', ['parts', 'materials'])) {
+                    $partsTotal += $lineSubtotal;
+                } else {
+                    $laborTotal += $lineSubtotal;
+                }
             }
-        }
-        
-        // Link to inspection if provided
-        if ($request->has('inspection_id')) {
-            $inspection = \App\Models\VehicleInspection::find($request->inspection_id);
-            if ($inspection) {
-                $inspection->update(['inspection_status' => 'completed']);
+            unset($item);
+
+            // Global discount
+            $discType = $request->discount_type;
+            $discVal = floatval($request->discount_value ?? 0);
+            $globalDiscount = 0;
+            if ($discType === 'percentage' && $discVal > 0) {
+                $globalDiscount = $subtotal * (min($discVal, 100) / 100);
+            } elseif ($discType === 'fixed' && $discVal > 0) {
+                $globalDiscount = min($discVal, $subtotal);
             }
-        }
-        
-        // Add items if provided
-        foreach ($items as $item) {
-            $estimate->items()->create($item);
-        }
-        
-        // Handle different save actions
-        $action = $request->input('action', 'save_draft');
-        
-        if ($action === 'save_send') {
-            // Update status to pending (sent to customer)
-            $estimate->update(['status' => 'pending']);
-            
-            // Get email from request or use customer email
-            $sendToEmail = $request->input('send_to_email', $estimate->customer->email);
-            
-            // Here you would typically send an email to the customer
-            // For now, we'll just show success message
-            
-            return redirect()->route('estimates.show', $estimate->id)
-                ->with('success', 'Estimate created and sent to ' . $sendToEmail . '!');
-        } elseif ($action === 'save_print') {
-            // Redirect to print/view page
-            return redirect()->route('estimates.show', $estimate->id)
-                ->with('success', 'Estimate saved! Click the Print button to print.');
-        } else {
-            // Default: save as draft
-            return redirect()->route('estimates.show', $estimate->id)
-                ->with('success', 'Estimate created successfully!');
+
+            $totalDiscount = $discountAmount + $globalDiscount;
+            $grandTotal = $subtotal - $globalDiscount + $taxTotal;
+            $deposit = floatval($request->deposit_required ?? 0);
+            $balance = max(0, $grandTotal - $deposit);
+            $status = $validated['status'] ?? 'draft';
+
+            // If status is pending, set sent_at
+            $sentAt = null;
+            if ($status === 'pending') {
+                $sentAt = now();
+            }
+
+            $estimate = Estimate::create([
+                'customer_id' => $validated['customer_id'],
+                'vehicle_id' => $validated['vehicle_id'],
+                'estimate_number' => $validated['estimate_number'],
+                'status' => $status,
+                'issue_date' => $validated['issue_date'] ?? now(),
+                'expiry_date' => $validated['expiry_date'] ?? now()->addDays(14),
+                'subtotal' => $subtotal,
+                'discount_type' => $discType,
+                'discount_value' => $discVal,
+                'discount_amount' => $totalDiscount,
+                'tax_total' => $taxTotal,
+                'total_amount' => $grandTotal,
+                'parts_total' => $partsTotal,
+                'labor_total' => $laborTotal,
+                'deposit_required' => $deposit,
+                'balance_remaining' => $balance,
+                'notes' => $validated['notes'] ?? null,
+                'internal_notes' => $validated['internal_notes'] ?? null,
+                'terms' => $validated['terms'] ?? null,
+                'mileage' => $validated['mileage'] ?? null,
+                'service_advisor_id' => $validated['service_advisor_id'] ?? null,
+                'sent_at' => $sentAt,
+                'user_id' => auth()->id(),
+            ]);
+
+            // Create estimate items
+            foreach ($items as $item) {
+                $estimate->items()->create([
+                    'estimate_id' => $estimate->id,
+                    'item_name' => $item['description'] ?? '',
+                    'description' => $item['description'] ?? '',
+                    'category' => $item['category'] ?? 'parts',
+                    'quantity' => $item['quantity'] ?? 1,
+                    'unit_price' => $item['unit_price'] ?? 0,
+                    'discount' => $item['discount'] ?? 0,
+                    'discount_type' => 'percentage',
+                    'tax_rate' => $item['tax_rate'] ?? 0,
+                    'subtotal' => $item['subtotal'] ?? 0,
+                    'sort_order' => $item['sort_order'] ?? 0,
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('estimates.show', $estimate)
+                ->with('success', 'Estimate #' . $estimate->estimate_number . ' created successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Estimate creation failed: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Failed to create estimate: ' . $e->getMessage());
         }
     }
 
     /**
-     * Display the specified resource.
+     * Display the specified estimate.
      */
     public function show(Estimate $estimate)
     {
-        $estimate->load(['customer', 'vehicle', 'items.inventory', 'serviceProgress']);
+        $estimate->load(['customer', 'vehicle', 'items', 'user', 'serviceAdvisor', 'workOrder']);
+
+        // Mark as viewed if not yet viewed (keep existing status)
+        if ($estimate->viewed_at === null) {
+            $estimate->update(['viewed_at' => now()]);
+        }
+
         return view('estimates.show', compact('estimate'));
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Show the form for editing the specified estimate.
      */
     public function edit(Estimate $estimate)
     {
-        $customers = Customer::where('is_active', true)->orderBy('last_name')->get();
-        $vehicles = Vehicle::where('is_active', true)->orderBy('make')->get();
-        $inventoryItems = Inventory::with('category')
-            ->where('is_active', true)
-            ->where('quantity', '>', 0)
-            ->orderBy('name')
+        // Mark as viewed if not yet viewed
+        if ($estimate->viewed_at === null) {
+            $estimate->update(['viewed_at' => now()]);
+        }
+        
+        $estimate->load(['customer', 'vehicle', 'items']);
+        $customers = Customer::orderBy('first_name')->get();
+        $advisors = User::whereIn('role', ['admin', 'staff', 'service_advisor'])->get();
+        $customerVehicles = Vehicle::where('customer_id', $estimate->customer_id)->get();
+        $lastNum = Estimate::where('estimate_number', 'like', 'EST-' . now()->format('Ymd') . '-%')->count();
+        $inventoryItems = \App\Models\Inventory::with("category")->whereNull("deleted_at")->get();
+        $customerHistory = Estimate::where('customer_id', $estimate->customer_id)
+            ->where('id', '!=', $estimate->id)
+            ->whereNull('deleted_at')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
             ->get();
-        
-        $estimate->load('items.inventory');
-        
-        return view('estimates.edit', compact('estimate', 'customers', 'vehicles', 'inventoryItems'));
+
+        $selectedCustomer = $estimate->customer;
+        $selectedVehicle = $estimate->vehicle;
+
+        return view('estimates.create', compact(
+            'estimate', 'customers', 'advisors', 'lastNum', 'inventoryItems', 'inventoryItemsJson',
+            'selectedCustomer', 'selectedVehicle', 'customerVehicles', 'customerHistory'
+        ));
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update the specified estimate.
      */
     public function update(Request $request, Estimate $estimate)
     {
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'vehicle_id' => 'required|exists:vehicles,id',
-            'issue_date' => 'required|date',
-            'expiry_date' => 'required|date|after:issue_date',
-            'mileage' => 'nullable|integer',
-            'labor_hours' => 'nullable|numeric|min:0',
-            'labor_rate' => 'nullable|numeric|min:0',
-            'subtotal' => 'required|numeric|min:0',
-            'tax_rate' => 'nullable|numeric|min:0|max:100',
-            'tax_amount' => 'nullable|numeric|min:0',
-            'discount_amount' => 'nullable|numeric|min:0',
-            'total_amount' => 'required|numeric|min:0',
+            'estimate_number' => 'nullable|string|max:50|unique:estimates,estimate_number,' . $estimate->id,
+            'issue_date' => 'nullable|date',
+            'expiry_date' => 'nullable|date',
+            'status' => 'nullable|string|max:50',
             'notes' => 'nullable|string',
-            'status' => 'required|in:draft,pending,viewed,accepted,rejected,expired,sent,approved',
+            'internal_notes' => 'nullable|string',
+            'terms' => 'nullable|string',
+            'service_type' => 'nullable|array',
+            'service_type.*' => 'string|in:' . implode(',', array_keys(config('service-types.list'))),
+            'mileage' => 'nullable|numeric|min:0',
+            'service_advisor_id' => 'nullable|exists:users,id',
+            'discount_type' => 'nullable|string|max:20',
+            'discount_value' => 'nullable|numeric|min:0',
+            'deposit_required' => 'nullable|numeric|min:0',
+            'items_json' => 'nullable|json',
         ]);
 
-        $estimate->update($validated);
-        
-        // Update items
-        if ($request->has('items')) {
-            $estimate->items()->delete();
-            foreach ($request->items as $item) {
-                // Save items that have either item_name or inventory_id
-                if ((!empty($item['item_name']) || !empty($item['inventory_id'])) && !empty($item['quantity'])) {
-                    $itemTotal = $item['quantity'] * ($item['unit_price'] ?? 0);
-                    
-                    $estimate->items()->create([
-                        'inventory_id' => $item['inventory_id'] ?? null,
-                        'item_name' => $item['item_name'] ?? 'Unknown Item',
-                        'description' => $item['description'] ?? null,
-                        'quantity' => $item['quantity'],
-                        'unit_price' => $item['unit_price'] ?? 0,
-                        'total_price' => $itemTotal,
-                    ]);
+        DB::beginTransaction();
+        try {
+            // Compute totals (same logic as store)
+            $subtotal = 0;
+            $partsTotal = 0;
+            $laborTotal = 0;
+            $discountAmount = 0;
+            $taxTotal = 0;
+            $items = [];
+
+            if ($request->filled('items_json')) {
+                $items = json_decode($request->items_json, true) ?? [];
+            } elseif ($request->has('items')) {
+                $raw = $request->input('items', []);
+                foreach ($raw as $idx => $item) {
+                    $items[] = [
+                        'description' => $item['desc'] ?? '',
+                        'category' => $item['cat'] ?? 'parts',
+                        'quantity' => floatval($item['qty'] ?? 1),
+                        'unit_price' => floatval($item['price'] ?? 0),
+                        'discount' => floatval($item['disc'] ?? 0),
+                        'tax_rate' => floatval($item['tax'] ?? 0),
+                        'sort_order' => $idx,
+                    ];
                 }
             }
+
+            foreach ($items as &$item) {
+                $qty = floatval($item['quantity'] ?? 1);
+                $price = floatval($item['unit_price'] ?? 0);
+                $lineTotal = $qty * $price;
+                $discPct = floatval($item['discount'] ?? 0);
+                $taxPct = floatval($item['tax_rate'] ?? 0);
+
+                $lineDiscount = $discPct > 0 ? $lineTotal * (min($discPct, 100) / 100) : 0;
+                $afterDisc = $lineTotal - $lineDiscount;
+                $lineTax = $taxPct > 0 ? $afterDisc * ($taxPct / 100) : 0;
+                $lineSubtotal = $afterDisc + $lineTax;
+
+                $item['line_total'] = $lineTotal;
+                $item['line_discount'] = $lineDiscount;
+                $item['line_tax'] = $lineTax;
+                $item['subtotal'] = $lineSubtotal;
+
+                $subtotal += $afterDisc;
+                $discountAmount += $lineDiscount;
+                $taxTotal += $lineTax;
+
+                if (in_array($item['category'] ?? '', ['parts', 'materials'])) {
+                    $partsTotal += $lineSubtotal;
+                } else {
+                    $laborTotal += $lineSubtotal;
+                }
+            }
+            unset($item);
+
+            $discType = $request->discount_type;
+            $discVal = floatval($request->discount_value ?? 0);
+            $globalDiscount = 0;
+            if ($discType === 'percentage' && $discVal > 0) {
+                $globalDiscount = $subtotal * (min($discVal, 100) / 100);
+            } elseif ($discType === 'fixed' && $discVal > 0) {
+                $globalDiscount = min($discVal, $subtotal);
+            }
+
+            $totalDiscount = $discountAmount + $globalDiscount;
+            $grandTotal = $subtotal - $globalDiscount + $taxTotal;
+            $deposit = floatval($request->deposit_required ?? 0);
+            $balance = max(0, $grandTotal - $deposit);
+
+            $estimate->update([
+                'customer_id' => $validated['customer_id'],
+                'vehicle_id' => $validated['vehicle_id'],
+                'estimate_number' => $validated['estimate_number'] ?? $estimate->estimate_number,
+                'issue_date' => $validated['issue_date'] ?? $estimate->issue_date,
+                'expiry_date' => $validated['expiry_date'] ?? $estimate->expiry_date,
+                'subtotal' => $subtotal,
+                'discount_type' => $discType,
+                'discount_value' => $discVal,
+                'discount_amount' => $totalDiscount,
+                'tax_total' => $taxTotal,
+                'total_amount' => $grandTotal,
+                'parts_total' => $partsTotal,
+                'labor_total' => $laborTotal,
+                'deposit_required' => $deposit,
+                'balance_remaining' => $balance,
+                'notes' => $validated['notes'] ?? null,
+                'internal_notes' => $validated['internal_notes'] ?? null,
+                'terms' => $validated['terms'] ?? null,
+                'mileage' => $validated['mileage'] ?? null,
+                'service_advisor_id' => $validated['service_advisor_id'] ?? null,
+            ]);
+
+            // Update status if provided and it's a transition
+            if ($request->filled('status')) {
+                $estimate->update(['status' => $request->status]);
+            }
+
+            // Delete old items and recreate
+            $estimate->items()->delete();
+            foreach ($items as $item) {
+                $estimate->items()->create([
+                    'estimate_id' => $estimate->id,
+                    'item_name' => $item['description'] ?? '',
+                    'description' => $item['description'] ?? '',
+                    'category' => $item['category'] ?? 'parts',
+                    'quantity' => $item['quantity'] ?? 1,
+                    'unit_price' => $item['unit_price'] ?? 0,
+                    'discount' => $item['discount'] ?? 0,
+                    'discount_type' => 'percentage',
+                    'tax_rate' => $item['tax_rate'] ?? 0,
+                    'subtotal' => $item['subtotal'] ?? 0,
+                    'sort_order' => $item['sort_order'] ?? 0,
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('estimates.show', $estimate)
+                ->with('success', 'Estimate #' . $estimate->estimate_number . ' updated successfully.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Estimate update failed: ' . $e->getMessage());
+            return back()->withInput()->with('error', 'Failed to update estimate: ' . $e->getMessage());
         }
-        
-        return redirect()->route('estimates.show', $estimate->id)
-            ->with('success', 'Estimate updated successfully!');
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Remove the specified estimate (soft delete).
      */
     public function destroy(Estimate $estimate)
     {
         $estimate->delete();
-        
         return redirect()->route('estimates.index')
-            ->with('success', 'Estimate deleted successfully!');
+            ->with('success', 'Estimate #' . $estimate->estimate_number . ' archived.');
     }
 
     /**
-     * Approve an estimate
+     * Send estimate to customer.
      */
-    public function approve(Estimate $estimate)
+    public function sendEstimate(Estimate $estimate)
     {
-        $estimate->update(['status' => 'approved']);
-        
-        return redirect()->route('estimates.show', $estimate->id)
-            ->with('success', 'Estimate approved! You can now create a work order from this estimate.');
+        if ($estimate->status === 'draft') {
+            $estimate->update([
+                'status' => 'sent',
+                'sent_at' => now(),
+            ]);
+
+            // TODO: Send email/SMS notification to customer
+            // Mail::to($estimate->customer->email)->send(new EstimateMail($estimate));
+
+            return redirect()->route('estimates.show', $estimate)
+                ->with('success', 'Estimate #' . $estimate->estimate_number . ' sent to customer.');
+        }
+
+        return back()->with('error', 'Estimate must be in Draft status to send.');
     }
 
     /**
-     * Reject an estimate
+     * Approve estimate.
      */
-    public function reject(Estimate $estimate)
+    public function approve(Request $request, Estimate $estimate)
     {
-        $estimate->update(['status' => 'rejected']);
-        
-        return redirect()->route('estimates.show', $estimate->id)
-            ->with('success', 'Estimate rejected.');
+        if (in_array($estimate->status, ['sent', 'viewed'])) {
+            $estimate->update([
+                'status' => 'approved',
+                'approved_at' => now(),
+                'approved_by' => auth()->id(),
+            ]);
+
+            return redirect()->route('estimates.show', $estimate)
+                ->with('success', 'Estimate #' . $estimate->estimate_number . ' approved.');
+        }
+
+        return back()->with('error', 'Estimate cannot be approved from current status.');
     }
 
     /**
-     * Update estimate status
+     * Reject estimate.
      */
-    public function updateStatus(Request $request, Estimate $estimate)
+    public function reject(Request $request, Estimate $estimate)
     {
-        $request->validate([
-            'status' => 'required|in:draft,pending,approved,rejected,expired'
-        ]);
-        
-        $estimate->update(['status' => $request->status]);
-        
-        return redirect()->route('estimates.show', $estimate->id)
-            ->with('success', 'Estimate status updated to ' . $request->status);
+        if (in_array($estimate->status, ['sent', 'viewed'])) {
+            $estimate->update([
+                'status' => 'rejected',
+                'rejected_at' => now(),
+                'rejection_reason' => $request->input('reason'),
+            ]);
+
+            return redirect()->route('estimates.show', $estimate)
+                ->with('success', 'Estimate #' . $estimate->estimate_number . ' rejected.');
+        }
+
+        return back()->with('error', 'Estimate cannot be rejected from current status.');
     }
 
     /**
-     * Convert estimate to work order
+     * Duplicate an estimate.
+     */
+    public function duplicate(Estimate $estimate)
+    {
+        $estimate->load('items');
+        DB::beginTransaction();
+        try {
+            $count = Estimate::where('estimate_number', 'like', 'EST-' . now()->format('Ymd') . '-%')->count();
+            $newNum = 'EST-' . now()->format('Ymd') . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+
+            $newEstimate = $estimate->replicate();
+            $newEstimate->estimate_number = $newNum;
+            $newEstimate->status = 'draft';
+            $newEstimate->sent_at = null;
+            $newEstimate->viewed_at = null;
+            $newEstimate->approved_at = null;
+            $newEstimate->rejected_at = null;
+            $newEstimate->approved_by = null;
+            $newEstimate->save();
+
+            foreach ($estimate->items as $item) {
+                $newItem = $item->replicate();
+                $newItem->estimate_id = $newEstimate->id;
+                $newItem->save();
+            }
+
+            DB::commit();
+            return redirect()->route('estimates.show', $newEstimate)
+                ->with('success', 'Estimate duplicated as #' . $newNum);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Failed to duplicate estimate.');
+        }
+    }
+
+    /**
+     * Convert approved estimate to work order.
      */
     public function convertToWorkOrder(Estimate $estimate)
     {
         if ($estimate->status !== 'approved') {
-            return redirect()->route('estimates.show', $estimate->id)
-                ->with('error', 'Only approved estimates can be converted to work orders.');
+            return back()->with('error', 'Only approved estimates can be converted.');
         }
-        
-        // This would typically create a work order
-        // For now, we'll just redirect to work orders with a message
-        return redirect()->route('work-orders.create')
-            ->with('success', 'Estimate ready for work order creation. Please fill in the work order details.')
-            ->with('estimate_id', $estimate->id);
+
+        DB::beginTransaction();
+        try {
+            $wo = \App\Models\WorkOrder::create([
+                'customer_id' => $estimate->customer_id,
+                'vehicle_id' => $estimate->vehicle_id,
+                'estimate_id' => $estimate->id,
+                'status' => 'pending',
+                'notes' => 'Converted from Estimate #' . $estimate->estimate_number,
+                'user_id' => auth()->id(),
+            ]);
+
+            $estimate->update(['status' => 'converted']);
+
+            DB::commit();
+            return redirect()->route('work-orders.show', $wo)
+                ->with('success', 'Estimate converted to Work Order #' . $wo->id);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Conversion failed: ' . $e->getMessage());
+        }
     }
 
     /**
-     * Print estimate
+     * Get vehicles for a customer (AJAX).
      */
-    public function print(Estimate $estimate)
+    public function customerVehicles(Request $request)
     {
-        $estimate->load(['customer', 'vehicle', 'items.inventory']);
-        return view('estimates.print', compact('estimate'));
-    }
-
-    /**
-     * Send estimate to customer
-     */
-    public function send(Estimate $estimate)
-    {
-        $estimate->update(['status' => 'pending']);
-        
-        // Here you would typically send an email to the customer
-        // For now, we'll just update the status
-        
-        return redirect()->route('estimates.show', $estimate->id)
-            ->with('success', 'Estimate sent to customer!');
-    }
-    
-    /**
-     * Display statistics for estimates.
-     */
-    public function statistics()
-    {
-        // Get overall statistics
-        $totalEstimates = Estimate::count();
-        $totalValue = Estimate::sum('total_amount') ?? 0;
-        $avgValue = $totalEstimates > 0 ? $totalValue / $totalEstimates : 0;
-        
-        // Get status breakdown
-        $statusBreakdown = Estimate::selectRaw('status, COUNT(*) as count')
-            ->groupBy('status')
-            ->get()
-            ->pluck('count', 'status')
-            ->toArray();
-        
-        // Get monthly statistics (last 6 months)
-        $monthlyStats = Estimate::selectRaw('
-                DATE_FORMAT(created_at, "%Y-%m") as month,
-                COUNT(*) as count,
-                SUM(total_amount) as total
-            ')
-            ->where('created_at', '>=', now()->subMonths(6))
-            ->groupBy('month')
-            ->orderBy('month')
-            ->get();
-        
-        // Get top customers by estimate count
-        $topCustomers = Estimate::with('customer')
-            ->selectRaw('customer_id, COUNT(*) as estimate_count, SUM(total_amount) as total_value')
-            ->groupBy('customer_id')
-            ->orderBy('estimate_count', 'desc')
-            ->limit(10)
-            ->get();
-        
-        // Get estimates by technician (if assigned)
-        // Note: Estimates don't have technician_id, so this is commented out for now
-        // $technicianStats = Estimate::with('technician')
-        //     ->selectRaw('technician_id, COUNT(*) as estimate_count, SUM(total_amount) as total_value')
-        //     ->whereNotNull('technician_id')
-        //     ->groupBy('technician_id')
-        //     ->orderBy('estimate_count', 'desc')
-        //     ->limit(10)
-        //     ->get();
-        
-        $technicianStats = collect(); // Empty collection for now
-        
-        return view('estimates.statistics', compact(
-            'totalEstimates',
-            'totalValue',
-            'avgValue',
-            'statusBreakdown',
-            'monthlyStats',
-            'topCustomers',
-            'technicianStats'
-        ));
+        $customerId = $request->input('customer_id');
+        $vehicles = Vehicle::where('customer_id', $customerId)->get();
+        return response()->json($vehicles);
     }
 }

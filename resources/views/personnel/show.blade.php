@@ -278,8 +278,8 @@
                     </div>
                 </div>
 
-                <!-- Training Records -->
-                <div class="card mb-4">
+                <!-- Training Records (Temporarily Disabled - Table technician_training_records doesn't exist) -->
+                {{-- <div class="card mb-4">
                     <div class="card-header bg-primary text-white">
                         <h5 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Training Records</h5>
                     </div>
@@ -329,7 +329,7 @@
                             <p class="text-muted mb-0">No training records.</p>
                         @endif
                     </div>
-                </div>
+                </div> --}}
             @else
                 <!-- Non-Technician Details -->
                 <div class="card mb-4">

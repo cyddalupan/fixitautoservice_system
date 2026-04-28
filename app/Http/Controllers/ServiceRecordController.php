@@ -105,6 +105,7 @@ class ServiceRecordController extends Controller
         $customers = Customer::orderBy('last_name')->get();
         $vehicles = Vehicle::orderBy('make')->get();
         $technicians = User::whereHas('workOrders')->orWhere('role', 'technician')->orderBy('name')->get();
+        $technicians = User::where(function($q) { $q->whereHas('workOrders')->orWhere('role', 'technician'); })->orderBy('name')->get();
 
         // Empty collections for compatibility
         $appointments = collect([]);

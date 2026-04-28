@@ -123,7 +123,37 @@ class VehicleController extends Controller
         ]);
 
         try {
+            // First, ensure the brand exists in our vehicle_brands table
+            $brandName = trim($validated['make']);
+            $modelName = trim($validated['model']);
+            
+            // Find or create the brand
+            $brand = \App\Models\VehicleBrand::firstOrCreate(
+                ['name' => $brandName],
+                ['is_active' => true]
+            );
+            
+            // Find or create the model for this brand
+            $vehicleModel = \App\Models\VehicleModel::firstOrCreate(
+                [
+                    'vehicle_brand_id' => $brand->id,
+                    'name' => $modelName
+                ],
+                [
+                    'year_start' => $validated['year'],
+                    'year_end' => $validated['year'],
+                    'vehicle_type' => $vehicleType,
+                    'is_active' => true
+                ]
+            );
+            
+            // Increment popularity scores
+            $brand->incrementPopularity();
+            $vehicleModel->incrementPopularity();
+            
+            // Create the vehicle
             $vehicle = \App\Models\Vehicle::create($vehicleData);
+            
         } catch (\Exception $e) {
             // Check if it's a duplicate entry error
             if (str_contains($e->getMessage(), 'Duplicate entry') && str_contains($e->getMessage(), 'vehicles_vin_unique')) {
@@ -158,7 +188,8 @@ class VehicleController extends Controller
      */
     public function edit(Vehicle $vehicle)
     {
-        return view('vehicles.edit', compact('vehicle'));
+        $customers = \App\Models\Customer::orderBy('first_name')->get();
+        return view('vehicles.edit', compact('vehicle', 'customers'));
     }
 
     /**
@@ -179,7 +210,7 @@ class VehicleController extends Controller
                 function ($attribute, $value, $fail) use ($vehicle) {
                     // Check if VIN is provided and not empty
                     if (!empty($value)) {
-                        // Check if VIN already exists in database for OTHER vehicles
+                        // Check if VIN already exists in database (excluding current vehicle)
                         $existingVehicle = \App\Models\Vehicle::where('vin', $value)
                             ->where('id', '!=', $vehicle->id)
                             ->first();
@@ -192,39 +223,68 @@ class VehicleController extends Controller
             'color' => 'nullable|string|max:30',
             'vehicle_type' => 'nullable|string|max:50|in:car,truck,suv,van,motorcycle,commercial',
             'photo' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
+            'is_active' => 'boolean',
         ]);
 
-        // Handle photo upload if new photo provided
+        // Handle photo upload
         if ($request->hasFile('photo')) {
             $photo = $request->file('photo');
             $photoName = time() . '_' . $photo->getClientOriginalName();
             $photoPath = $photo->storeAs('vehicle_photos', $photoName, 'public');
             
-            // Update photo fields
+            // Delete old photo if exists
+            if ($vehicle->photo_path) {
+                \Storage::disk('public')->delete($vehicle->photo_path);
+            }
+            
             $validated['photo'] = $photoName;
             $validated['photo_path'] = $photoPath;
-        } else {
-            // Keep existing photo if no new photo uploaded
-            unset($validated['photo']);
         }
 
         // Handle vehicle_type: if not provided or empty, use default 'car'
-        $vehicleType = isset($validated['vehicle_type']) && !empty($validated['vehicle_type']) 
-            ? $validated['vehicle_type'] 
-            : 'car';
-        
-        $validated['vehicle_type'] = $vehicleType;
+        if (isset($validated['vehicle_type']) && !empty($validated['vehicle_type'])) {
+            $vehicleType = $validated['vehicle_type'];
+        } else {
+            $vehicleType = 'car';
+            $validated['vehicle_type'] = $vehicleType;
+        }
 
         try {
+            // Update the vehicle
             $vehicle->update($validated);
             
-            return redirect()->route('vehicles.show', $vehicle)
-                ->with('success', 'Vehicle updated successfully!');
+            // Also update the brand/model in our reference tables
+            $brandName = trim($validated['make']);
+            $modelName = trim($validated['model']);
+            
+            // Find or create the brand
+            $brand = \App\Models\VehicleBrand::firstOrCreate(
+                ['name' => $brandName],
+                ['is_active' => true]
+            );
+            
+            // Find or create the model for this brand
+            $vehicleModel = \App\Models\VehicleModel::firstOrCreate(
+                [
+                    'vehicle_brand_id' => $brand->id,
+                    'name' => $modelName
+                ],
+                [
+                    'year_start' => $validated['year'],
+                    'year_end' => $validated['year'],
+                    'vehicle_type' => $vehicleType,
+                    'is_active' => true
+                ]
+            );
+            
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Error updating vehicle: ' . $e->getMessage());
+                ->withErrors(['error' => 'An error occurred while updating the vehicle. Please try again.']);
         }
+
+        return redirect()->route('vehicles.show', $vehicle)
+            ->with('success', 'Vehicle updated successfully!');
     }
 
     /**
@@ -232,6 +292,13 @@ class VehicleController extends Controller
      */
     public function destroy(Vehicle $vehicle)
     {
-        //
+        try {
+            $vehicle->delete();
+            return redirect()->route('vehicles.index')
+                ->with('success', 'Vehicle deleted successfully!');
+        } catch (\Exception $e) {
+            return redirect()->route('vehicles.index')
+                ->with('error', 'An error occurred while deleting the vehicle. Please try again.');
+        }
     }
 }

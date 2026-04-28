@@ -170,6 +170,11 @@ class InvoiceController extends Controller
      */
     public function show(Invoice $invoice)
     {
+        // Mark as viewed if not yet viewed
+        if ($invoice->viewed_at === null) {
+            $invoice->update(['viewed_at' => now()]);
+        }
+        
         $invoice->load(['customer', 'workOrder', 'items', 'payments', 'serviceProgress']);
         return view('invoices.show', compact('invoice'));
     }
@@ -179,6 +184,11 @@ class InvoiceController extends Controller
      */
     public function edit(Invoice $invoice)
     {
+        // Mark as viewed if not yet viewed
+        if ($invoice->viewed_at === null) {
+            $invoice->update(['viewed_at' => now()]);
+        }
+        
         $customers = Customer::where('is_active', true)->orderBy('first_name')->get();
         $workOrders = WorkOrder::where('work_order_status', 'completed')
             ->orderBy('created_at', 'desc')
@@ -245,10 +255,14 @@ class InvoiceController extends Controller
             $invoice->workOrder->update(['invoice_status' => null]);
         }
         
-        $invoice->delete();
-        
-        return redirect()->route('invoices.index')
-            ->with('success', 'Invoice deleted successfully!');
+        try {
+            \App\Services\ArchiveService::archive($invoice, 'invoice');
+            return redirect()->route('invoices.index')
+                ->with('success', 'Invoice moved to archive.');
+        } catch (\Exception $e) {
+            return redirect()->back()
+                ->with('error', 'Failed to archive invoice: ' . $e->getMessage());
+        }
     }
 
     /**
