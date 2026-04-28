@@ -264,11 +264,9 @@
                 flex-wrap: nowrap !important; /* Prevent sidebar from wrapping below content */
             }
 
-            /* Desktop: sidebar is sticky via unqualified .sidebar rule below.
-               Nothing to override here — media query doesn't contain .sidebar
-               to avoid conflicting with the fallback rule. */
+            /* Desktop: sidebar fills outer container width */
             #sidebar {
-                /* All sidebar sizing/sticky is handled by the unqualified rule */
+                width: 100% !important;
             }
 
             /* Main content fills remaining space */
@@ -288,10 +286,23 @@
 
 
         /* ============================================================
-           SIDEBAR — desktop fallback rule
-           position: sticky so it follows the page when scrolling AND
-           creates a positioning context for the absolute handle child.
-           No !important on flex so JS resize can set inline style.
+           SIDEBAR OUTER — positioned anchor for the resize handle
+           This wraps the sticky sidebar + the absolute resize handle.
+           position: relative creates a reliable containing block for
+           the absolute handle child (avoids sticky+overflow quirks).
+           flex: 0 0 ... controls width; JS resize updates this via outer.
+           ============================================================ */
+        .sidebar-outer {
+            position: relative !important;
+            flex: 0 0 250px;
+            display: flex !important;
+        }
+
+        /* ============================================================
+           SIDEBAR — nested inside .sidebar-outer
+           position: sticky so it follows the page when scrolling.
+           width: 100% fills the .sidebar-outer container.
+           No flex here — .sidebar-outer controls sizing.
            ============================================================ */
         .sidebar {
             background-color: #2c3e50 !important;
@@ -302,7 +313,7 @@
             height: calc(100vh - 56px) !important;
             overflow-y: auto !important;
             z-index: 1020 !important;
-            flex: 0 0 250px;
+            width: 100% !important;
         }
 
         .sidebar .nav-link {
@@ -780,9 +791,12 @@
 
     <div class="container-fluid">
         <div class="row">
-            <!-- Sidebar -->
-            <div class="sidebar d-md-block" id="sidebar">
-                @include('partials.sidebar')
+            <!-- Sidebar Outer (positioned anchor for resize handle) -->
+            <div class="sidebar-outer d-md-block" id="sidebarOuter">
+                <!-- Sidebar -->
+                <div class="sidebar" id="sidebar">
+                    @include('partials.sidebar')
+                </div>
 
                 {{-- Drag resize handle --}}
                 <div class="sidebar-resize-handle" id="sidebarResizeHandle">

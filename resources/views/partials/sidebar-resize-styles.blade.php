@@ -109,17 +109,16 @@
    ============================================================ */
 
 /* When sidebar is collapsed to a narrow icon bar */
-#sidebar.sidebar-collapsed {
+.sidebar-outer.sidebar-collapsed {
     flex: 0 0 55px !important;
-    width: 55px !important;
 }
 
-#sidebar.sidebar-collapsed .nav-link span:not(.sidebar-badge):not(.sidebar-badge-danger) {
+.sidebar-outer.sidebar-collapsed #sidebar .nav-link span:not(.sidebar-badge):not(.sidebar-badge-danger) {
     display: none !important;
 }
 
-#sidebar.sidebar-collapsed .sidebar-badge,
-#sidebar.sidebar-collapsed .sidebar-badge-danger {
+.sidebar-outer.sidebar-collapsed #sidebar .sidebar-badge,
+.sidebar-outer.sidebar-collapsed #sidebar .sidebar-badge-danger {
     position: absolute !important;
     top: 2px !important;
     right: 4px !important;
@@ -130,26 +129,26 @@
     line-height: 1 !important;
 }
 
-#sidebar.sidebar-collapsed .sidebar-section-label {
+.sidebar-outer.sidebar-collapsed #sidebar .sidebar-section-label {
     display: none !important;
 }
 
-#sidebar.sidebar-collapsed .quick-stats {
+.sidebar-outer.sidebar-collapsed #sidebar .quick-stats {
     display: none !important;
 }
 
-#sidebar.sidebar-collapsed .nav-chevron {
+.sidebar-outer.sidebar-collapsed #sidebar .nav-chevron {
     display: none !important;
 }
 
 /* In collapsed mode, the Bootstrap collapse must remain visible */
-#sidebar.sidebar-collapsed #serviceManagementCollapse.collapse {
+.sidebar-outer.sidebar-collapsed #sidebar #serviceManagementCollapse.collapse {
     display: block !important;
     visibility: visible !important;
     height: auto !important;
 }
 
-#sidebar.sidebar-collapsed .nav-sub {
+.sidebar-outer.sidebar-collapsed #sidebar .nav-sub {
     /* Show nav-sub items in collapsed mode but with icons only */
     display: block !important;
     padding-left: 0 !important;
@@ -157,22 +156,22 @@
 }
 
 /* In collapsed mode, sub-items show only icons with tooltips */
-#sidebar.sidebar-collapsed .nav-sub .nav-link span:not(.sidebar-badge):not(.sidebar-badge-danger) {
+.sidebar-outer.sidebar-collapsed #sidebar .nav-sub .nav-link span:not(.sidebar-badge):not(.sidebar-badge-danger) {
     display: none !important;
 }
 
-#sidebar.sidebar-collapsed .nav-sub .nav-link .sidebar-badge,
-#sidebar.sidebar-collapsed .nav-sub .nav-link .sidebar-badge-danger {
+.sidebar-outer.sidebar-collapsed #sidebar .nav-sub .nav-link .sidebar-badge,
+.sidebar-outer.sidebar-collapsed #sidebar .nav-sub .nav-link .sidebar-badge-danger {
     display: none !important;
 }
 
-#sidebar.sidebar-collapsed .nav-sub .nav-link {
+.sidebar-outer.sidebar-collapsed #sidebar .nav-sub .nav-link {
     justify-content: center !important;
     padding: 0.55rem 0 !important;
 }
 
 /* Also hide the section label text but keep spacing */
-#sidebar.sidebar-collapsed .sidebar-section-label {
+.sidebar-outer.sidebar-collapsed #sidebar .sidebar-section-label {
     display: block !important;
     text-align: center !important;
     padding: 0.5rem 0 0.25rem !important;
@@ -182,7 +181,7 @@
     overflow: visible !important;
 }
 
-#sidebar.sidebar-collapsed .sidebar-section-label::before {
+.sidebar-outer.sidebar-collapsed #sidebar .sidebar-section-label::before {
     content: '' !important;
     display: block !important;
     width: 50% !important;
@@ -191,22 +190,22 @@
     margin: 4px auto !important;
 }
 
-#sidebar.sidebar-collapsed .nav-link {
+.sidebar-outer.sidebar-collapsed #sidebar .nav-link {
     justify-content: center !important;
     padding: 0.75rem 0 !important;
 }
 
-#sidebar.sidebar-collapsed .nav-link i {
+.sidebar-outer.sidebar-collapsed #sidebar .nav-link i {
     margin: 0 !important;
     font-size: 1.15rem !important;
 }
 
 /* Show tooltips on hover when collapsed */
-#sidebar.sidebar-collapsed .nav-link {
+.sidebar-outer.sidebar-collapsed #sidebar .nav-link {
     position: relative !important;
 }
 
-#sidebar.sidebar-collapsed .nav-link:hover::after {
+.sidebar-outer.sidebar-collapsed #sidebar .nav-link:hover::after {
     content: attr(data-tooltip) !important;
     position: absolute !important;
     left: 100% !important;
