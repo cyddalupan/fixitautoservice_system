@@ -20,7 +20,7 @@
     right: 0 !important;
     width: 18px !important;
     height: 100% !important;
-    cursor: col-resize !important;
+    cursor: ew-resize !important;
     z-index: 1030 !important;
     background: rgba(148, 163, 184, 0.12) !important;
     transition: background 0.15s ease !important;
