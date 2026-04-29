@@ -247,6 +247,13 @@
             /* Container should not have extra padding */
             .container-fluid {
                 padding-top: 0 !important;
+                padding-left: 0 !important;
+                padding-right: 0 !important;
+            }
+
+            .container-fluid > .row {
+                margin-left: 0 !important;
+                margin-right: 0 !important;
             }
 
             /* Contain the resize handle on mobile too */
@@ -296,6 +303,7 @@
             position: relative !important;
             flex: 0 0 250px;
             display: flex !important;
+            padding-left: 0 !important;
         }
 
         /* ============================================================
@@ -312,6 +320,7 @@
             top: 56px !important;
             height: calc(100vh - 56px) !important;
             overflow-y: auto !important;
+            overflow-x: hidden !important;
             z-index: 1020 !important;
             width: 100% !important;
         }
