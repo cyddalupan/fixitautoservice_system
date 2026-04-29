@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\User;
 use App\Models\Appointment;
+use App\Models\Estimate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -231,6 +232,44 @@ class WorkOrderController extends Controller
             'items.*.is_insurance' => 'boolean',
             'items.*.notes' => 'nullable|string|max:500',
         ]);
+        
+        // Check for duplicate vehicle in active transactions
+        if ($request->filled('vehicle_id')) {
+            $vehicleId = $request->integer('vehicle_id');
+            
+            $existingAppointment = Appointment::where('vehicle_id', $vehicleId)
+                ->where('appointment_status', 'scheduled')
+                ->whereNull('deleted_at')
+                ->first();
+            
+            if ($existingAppointment) {
+                return back()->withErrors([
+                    'vehicle_id' => 'This vehicle already has an active Appointment (' . $existingAppointment->appointment_number . ').'
+                ])->withInput();
+            }
+            
+            // Exclude current work order if editing
+            $existingWorkOrder = WorkOrder::where('vehicle_id', $vehicleId)
+                ->whereIn('work_order_status', ['pending', 'repairing', 'waiting_parts'])
+                ->whereNull('deleted_at');
+            
+            if ($existingWorkOrder->exists()) {
+                return back()->withErrors([
+                    'vehicle_id' => 'This vehicle already has an active Work Order (' . $existingWorkOrder->first()->work_order_number . ').'
+                ])->withInput();
+            }
+            
+            $existingEstimate = Estimate::where('vehicle_id', $vehicleId)
+                ->whereIn('status', ['draft', 'pending', 'sent'])
+                ->whereNull('deleted_at')
+                ->first();
+            
+            if ($existingEstimate) {
+                return back()->withErrors([
+                    'vehicle_id' => 'This vehicle already has an active Estimate (' . ($existingEstimate->estimate_number ?? '#' . $existingEstimate->id) . ').'
+                ])->withInput();
+            }
+        }
         
         // Generate work order number
         $validated['work_order_number'] = WorkOrder::generateWorkOrderNumber();

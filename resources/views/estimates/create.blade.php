@@ -454,6 +454,28 @@ function updateVeh(){
     document.getElementById('sYr').textContent=o.dataset.year||'--';
     document.getElementById('sPlt').textContent=o.dataset.plate||'--';
     if(o.dataset.miles) document.getElementById('estMileage').value=o.dataset.miles;
+    checkVehicleTransactions(o.value);
+}
+
+function checkVehicleTransactions(vehicleId){
+    if(!vehicleId)return;
+    var existing=document.querySelector('.vehicle-transaction-error');
+    if(existing)existing.remove();
+    var xhr=new XMLHttpRequest();
+    xhr.open('GET','/api/vehicle-transactions/'+vehicleId,true);
+    xhr.onload=function(){
+        if(xhr.status===200){
+            var data=JSON.parse(xhr.responseText);
+            if(data.has_active_transaction){
+                var tx=data.transactions[0];
+                var err=document.createElement('div');
+                err.className='vehicle-transaction-error alert alert-danger alert-dismissible fade show mt-2';
+                err.innerHTML='<i class="fas fa-exclamation-triangle"></i> This vehicle already has an active '+tx.type+' ('+tx.number+'). <a href="'+tx.url+'" class="alert-link" target="_blank">View '+tx.type+'</a><button type="button" class="btn-close" data-bs-dismiss="alert"></button>';
+                document.getElementById('vehicle_id').closest('.col-md-6').after(err);
+            }
+        }
+    };
+    xhr.send();
 }
 function addItem(d){
     d=d||{};var i=++idx;

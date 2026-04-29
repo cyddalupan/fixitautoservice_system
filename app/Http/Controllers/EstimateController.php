@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Appointment;
+use App\Models\Customer;
 use App\Models\Estimate;
 use App\Models\EstimateItem;
-use App\Models\Customer;
-use App\Models\Vehicle;
 use App\Models\User;
+use App\Models\Vehicle;
+use App\Models\WorkOrder;
 use App\Models\Inventory;
 use App\Models\VehicleInspection;
 use Illuminate\Http\Request;
@@ -232,6 +234,44 @@ class EstimateController extends Controller
             $balance = max(0, $grandTotal - $deposit);
             $status = $validated['status'] ?? 'draft';
 
+            // Check for duplicate vehicle in active transactions
+            $vehicleId = $validated['vehicle_id'];
+            
+            $existingAppointment = Appointment::where('vehicle_id', $vehicleId)
+                ->where('appointment_status', 'scheduled')
+                ->whereNull('deleted_at')
+                ->first();
+            
+            if ($existingAppointment) {
+                DB::rollBack();
+                return back()->withErrors([
+                    'vehicle_id' => 'This vehicle already has an active Appointment (' . $existingAppointment->appointment_number . ').'
+                ])->withInput();
+            }
+            
+            $existingWorkOrder = WorkOrder::where('vehicle_id', $vehicleId)
+                ->whereIn('work_order_status', ['pending', 'repairing', 'waiting_parts'])
+                ->whereNull('deleted_at')
+                ->first();
+            
+            if ($existingWorkOrder) {
+                DB::rollBack();
+                return back()->withErrors([
+                    'vehicle_id' => 'This vehicle already has an active Work Order (' . ($existingWorkOrder->work_order_number ?? '#' . $existingWorkOrder->id) . ').'
+                ])->withInput();
+            }
+            
+            $existingEstimate = Estimate::where('vehicle_id', $vehicleId)
+                ->whereIn('status', ['draft', 'pending', 'sent'])
+                ->whereNull('deleted_at');
+            
+            if ($existingEstimate->exists()) {
+                DB::rollBack();
+                return back()->withErrors([
+                    'vehicle_id' => 'This vehicle already has an active Estimate (' . ($existingEstimate->first()->estimate_number ?? '#' . $existingEstimate->first()->id) . ').'
+                ])->withInput();
+            }
+            
             // If status is pending, set sent_at
             $sentAt = null;
             if ($status === 'pending') {

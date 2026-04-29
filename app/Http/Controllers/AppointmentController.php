@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\Customer;
-use App\Models\Vehicle;
+use App\Models\Estimate;
 use App\Models\User;
+use App\Models\Vehicle;
+use App\Models\WorkOrder;
 use App\Services\ServiceRecordService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -185,9 +187,47 @@ class AppointmentController extends Controller
             ? ($serviceTypeMapping[$selectedServiceTypes[0]] ?? 'regular_service')
             : 'regular_service';
         
+        // Check for duplicate vehicle in active transactions
+        if ($request->filled('vehicle_id')) {
+            $vehicleId = $request->integer('vehicle_id');
+            $existingAppointment = Appointment::where('vehicle_id', $vehicleId)
+                ->where('appointment_status', 'scheduled')
+                ->whereNull('deleted_at')
+                ->first();
+            
+            if ($existingAppointment) {
+                return back()->withErrors([
+                    'vehicle_id' => 'This vehicle already has an active Appointment (' . $existingAppointment->appointment_number . ').'
+                ])->withInput();
+            }
+            
+            $existingWorkOrder = WorkOrder::where('vehicle_id', $vehicleId)
+                ->whereIn('work_order_status', ['pending', 'repairing', 'waiting_parts'])
+                ->whereNull('deleted_at')
+                ->first();
+            
+            if ($existingWorkOrder) {
+                return back()->withErrors([
+                    'vehicle_id' => 'This vehicle already has an active Work Order (' . ($existingWorkOrder->work_order_number ?? '#' . $existingWorkOrder->id) . ').'
+                ])->withInput();
+            }
+            
+            $existingEstimate = Estimate::where('vehicle_id', $vehicleId)
+                ->whereIn('status', ['draft', 'pending', 'sent'])
+                ->whereNull('deleted_at')
+                ->first();
+            
+            if ($existingEstimate) {
+                return back()->withErrors([
+                    'vehicle_id' => 'This vehicle already has an active Estimate (' . ($existingEstimate->estimate_number ?? '#' . $existingEstimate->id) . ').'
+                ])->withInput();
+            }
+        }
+        
         // Map form fields to database fields
         $appointmentData = [
             'customer_id' => $validated['customer_id'],
+            'vehicle_id' => $request->filled('vehicle_id') ? $request->integer('vehicle_id') : null,
             'vehicle_description' => $validated['vehicle_description'],
             'appointment_date' => $validated['appointment_date'],
             'appointment_time' => $validated['appointment_time'],

@@ -335,6 +335,26 @@ function fillVehicleDescription(vehicle) {
     $('#vehicle_description').val(desc);
     $('#vehicle_id').val(vehicle.id);
     $('#vehicle-suggestions').hide();
+    checkVehicleTransactions(vehicle.id);
+}
+
+function checkVehicleTransactions(vehicleId) {
+    if (!vehicleId) return;
+    // Remove any existing error first
+    $('.vehicle-transaction-error').remove();
+    
+    $.get('/api/vehicle-transactions/' + vehicleId, function(data) {
+        if (data.has_active_transaction) {
+            var tx = data.transactions[0];
+            var errMsg = '<div class="vehicle-transaction-error alert alert-danger alert-dismissible fade show mt-2">' +
+                '<i class="fas fa-exclamation-triangle"></i> ' +
+                'This vehicle already has an active ' + tx.type + ' (' + tx.number + '). ' +
+                '<a href="' + tx.url + '" class="alert-link" target="_blank">View ' + tx.type + '</a>' +
+                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+                '</div>';
+            $('#vehicle_description').closest('.form-group').after(errMsg);
+        }
+    });
 }
 
 $(document).ready(function() {
@@ -479,6 +499,7 @@ $(document).ready(function() {
             }
             $('#vehicle_description').val(desc);
         }
+        checkVehicleTransactions(vehId);
     });
     
     // Also handle manual typing clearing the vehicle_id link

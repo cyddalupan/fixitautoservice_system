@@ -131,6 +131,62 @@ Route::get('/api/vehicle-colors', function() {
 
 // Protected Routes (with auto-login middleware)
 Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->group(function () {
+    // Check if a vehicle has active transactions (appointment, work order, estimate)
+    Route::get('/api/vehicle-transactions/{vehicle}', function (\App\Models\Vehicle $vehicle) {
+        $activeAppointment = \App\Models\Appointment::where('vehicle_id', $vehicle->id)
+            ->where('appointment_status', 'scheduled')
+            ->whereNull('deleted_at')
+            ->first();
+        
+        $activeWorkOrder = \App\Models\WorkOrder::where('vehicle_id', $vehicle->id)
+            ->whereIn('work_order_status', ['pending', 'repairing', 'waiting_parts'])
+            ->whereNull('deleted_at')
+            ->first();
+        
+        $activeEstimate = \App\Models\Estimate::where('vehicle_id', $vehicle->id)
+            ->whereIn('status', ['draft', 'pending', 'sent'])
+            ->whereNull('deleted_at')
+            ->first();
+        
+        $transactions = [];
+        
+        if ($activeAppointment) {
+            $transactions[] = [
+                'type' => 'Appointment',
+                'number' => $activeAppointment->appointment_number ?? '#' . $activeAppointment->id,
+                'id' => $activeAppointment->id,
+                'url' => route('appointments.edit', $activeAppointment->id),
+            ];
+        }
+        
+        if ($activeWorkOrder) {
+            $transactions[] = [
+                'type' => 'Work Order',
+                'number' => $activeWorkOrder->work_order_number ?? '#' . $activeWorkOrder->id,
+                'id' => $activeWorkOrder->id,
+                'url' => route('work-orders.edit', $activeWorkOrder->id),
+            ];
+        }
+        
+        if ($activeEstimate) {
+            $transactions[] = [
+                'type' => 'Estimate',
+                'number' => $activeEstimate->estimate_number ?? '#' . $activeEstimate->id,
+                'id' => $activeEstimate->id,
+                'url' => route('estimates.edit', $activeEstimate->id),
+            ];
+        }
+        
+        return response()->json([
+            'has_active_transaction' => count($transactions) > 0,
+            'transactions' => $transactions,
+            'message' => count($transactions) > 0
+                ? 'This vehicle already has an active ' . $transactions[0]['type'] . ' (' . $transactions[0]['number'] . ').'
+                : null,
+        ]);
+    })->name('api.vehicle-transactions');
+    
+
     // Dashboard Routes
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/analytics', [DashboardController::class, 'analytics'])->name('analytics');

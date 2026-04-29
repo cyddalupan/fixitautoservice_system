@@ -350,6 +350,32 @@ $(document).ready(function() {
         }
     }
     
+    // ===== VEHICLE TRANSACTION CHECK =====
+    function checkVehicleTransactions(vehicleId) {
+        if (!vehicleId) return;
+        $('.vehicle-transaction-error').remove();
+        
+        $.get('/api/vehicle-transactions/' + vehicleId, function(data) {
+            if (data.has_active_transaction) {
+                var tx = data.transactions[0];
+                var errMsg = '<div class="vehicle-transaction-error alert alert-danger alert-dismissible fade show mt-2">' +
+                    '<i class="fas fa-exclamation-triangle"></i> ' +
+                    'This vehicle already has an active ' + tx.type + ' (' + tx.number + '). ' +
+                    '<a href="' + tx.url + '" class="alert-link" target="_blank">View ' + tx.type + '</a>' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+                    '</div>';
+                $('#vehicle_id').closest('.form-group').after(errMsg);
+            }
+        });
+    }
+    
+    $('#vehicle_id').on('change', function() {
+        checkVehicleTransactions($(this).val());
+    });
+    
+    // Check on page load too
+    checkVehicleTransactions($('#vehicle_id').val());
+    
     initTechnicianMultiSelect(".technician-select-wrapper:not([data-tech-init])");
     
     // ===== PREVENT DUPLICATE TECHNICIAN =====
