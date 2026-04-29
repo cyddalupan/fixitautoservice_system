@@ -144,6 +144,22 @@ body.page-customers {
     margin-bottom: 1.25rem;
 }
 
+/* ============================================================
+   STATS ROW — used by inspections, estimates, work-orders
+   Single horizontal row of stat cards
+   ============================================================ */
+.stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.stats-row .stat-card {
+    flex: 1 1 180px;
+    min-width: 160px;
+}
+
 .stat-card {
     border-radius: 10px;
     overflow: hidden;
