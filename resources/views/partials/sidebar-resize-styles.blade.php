@@ -41,6 +41,7 @@
     border-radius: 2px !important;
     transition: all 0.15s ease !important;
     z-index: 1100;
+    cursor: ew-resize;
 }
 
 .sidebar-resize-handle:hover,
