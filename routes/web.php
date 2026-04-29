@@ -119,11 +119,9 @@ Route::get('/api/vehicle-models', function() {
 
 Route::get('/api/vehicle-colors', function() {
     $term = request('term', '');
-    $colors = \App\Models\Vehicle::whereNotNull('color')
-        ->where('color', 'LIKE', '%' . $term . '%')
-        ->distinct()
-        ->orderBy('color')
-        ->pluck('color')
+    $colors = \App\Models\VehicleColor::where('name', 'LIKE', '%' . $term . '%')
+        ->orderBy('name')
+        ->pluck('name')
         ->take(15)
         ->toArray();
     
