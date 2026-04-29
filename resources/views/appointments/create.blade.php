@@ -514,6 +514,22 @@ $(document).ready(function() {
             }
         }
     });
+    
+    // Check vehicle transactions on blur (when user types and leaves field)
+    $vehInput.on('blur.checkVehicle', function() {
+        var val = $(this).val().toLowerCase().trim();
+        if (!val) return;
+        
+        // Try to match typed text to a known vehicle
+        var matched = customerVehiclesData.find(function(v) {
+            var label = (v.year + ' ' + v.make + ' ' + v.model + (v.license_plate ? ' - ' + v.license_plate : '')).toLowerCase();
+            return label === val || v.license_plate && val.indexOf(v.license_plate.toLowerCase()) >= 0;
+        });
+        
+        if (matched) {
+            checkVehicleTransactions(matched.id);
+        }
+    });
 
     // ===== QUOTATION AUTO-FILL ON CUSTOMER CHANGE =====
     $(document).on('change', '#customer_id', function() {

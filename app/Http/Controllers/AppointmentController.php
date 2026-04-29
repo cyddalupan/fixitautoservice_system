@@ -188,8 +188,20 @@ class AppointmentController extends Controller
             : 'regular_service';
         
         // Check for duplicate vehicle in active transactions
-        if ($request->filled('vehicle_id')) {
-            $vehicleId = $request->integer('vehicle_id');
+        $vehicleId = $request->filled('vehicle_id') ? $request->integer('vehicle_id') : null;
+        
+        // If no vehicle_id, try to match by vehicle_description text
+        if (!$vehicleId && $request->filled('vehicle_description')) {
+            $vehicleDesc = $request->input('vehicle_description');
+            $vehicle = Vehicle::whereRaw("CONCAT(year, ' ', make, ' ', model, IFNULL(CONCAT(' - ', license_plate), '')) = ?", [$vehicleDesc])
+                ->orWhere('license_plate', $vehicleDesc)
+                ->first();
+            if ($vehicle) {
+                $vehicleId = $vehicle->id;
+            }
+        }
+        
+        if ($vehicleId) {
             $existingAppointment = Appointment::where('vehicle_id', $vehicleId)
                 ->where('appointment_status', 'scheduled')
                 ->whereNull('deleted_at')
@@ -197,7 +209,7 @@ class AppointmentController extends Controller
             
             if ($existingAppointment) {
                 return back()->withErrors([
-                    'vehicle_id' => 'This vehicle already has an active Appointment (' . $existingAppointment->appointment_number . ').'
+                    'vehicle_description' => 'This vehicle already has an active Appointment (' . $existingAppointment->appointment_number . ').'
                 ])->withInput();
             }
             
@@ -208,7 +220,7 @@ class AppointmentController extends Controller
             
             if ($existingWorkOrder) {
                 return back()->withErrors([
-                    'vehicle_id' => 'This vehicle already has an active Work Order (' . ($existingWorkOrder->work_order_number ?? '#' . $existingWorkOrder->id) . ').'
+                    'vehicle_description' => 'This vehicle already has an active Work Order (' . ($existingWorkOrder->work_order_number ?? '#' . $existingWorkOrder->id) . ').'
                 ])->withInput();
             }
             
@@ -219,7 +231,7 @@ class AppointmentController extends Controller
             
             if ($existingEstimate) {
                 return back()->withErrors([
-                    'vehicle_id' => 'This vehicle already has an active Estimate (' . ($existingEstimate->estimate_number ?? '#' . $existingEstimate->id) . ').'
+                    'vehicle_description' => 'This vehicle already has an active Estimate (' . ($existingEstimate->estimate_number ?? '#' . $existingEstimate->id) . ').'
                 ])->withInput();
             }
         }
