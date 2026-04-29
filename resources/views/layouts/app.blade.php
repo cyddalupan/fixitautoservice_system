@@ -796,6 +796,11 @@
                 <!-- Sidebar -->
                 <div class="sidebar" id="sidebar">
                     @include('partials.sidebar')
+
+                    {{-- Collapse toggle button (nested inside .sidebar) --}}
+                    <button class="sidebar-collapse-toggle" id="sidebarCollapseBtn" title="Toggle sidebar">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
                 </div>
 
                 {{-- Drag resize handle --}}
@@ -806,11 +811,6 @@
                         <span></span>
                     </span>
                 </div>
-
-                {{-- Collapse toggle button --}}
-                <button class="sidebar-collapse-toggle" id="sidebarCollapseBtn" title="Toggle sidebar">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
             </div>
 
             <!-- Main Content -->
