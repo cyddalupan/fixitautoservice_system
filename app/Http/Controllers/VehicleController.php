@@ -147,6 +147,15 @@ class VehicleController extends Controller
                 ]
             );
             
+            // Find or create the color in our reference table
+            if (!empty($validated['color'])) {
+                $colorName = trim($validated['color']);
+                $color = \App\Models\VehicleColor::firstOrCreate(
+                    ['name' => $colorName],
+                    ['is_active' => true]
+                );
+            }
+            
             // Increment popularity scores
             $brand->incrementPopularity();
             $vehicleModel->incrementPopularity();
@@ -276,6 +285,15 @@ class VehicleController extends Controller
                     'is_active' => true
                 ]
             );
+            
+            // Find or create the color in our reference table
+            if (!empty($validated['color'])) {
+                $colorName = trim($validated['color']);
+                $color = \App\Models\VehicleColor::firstOrCreate(
+                    ['name' => $colorName],
+                    ['is_active' => true]
+                );
+            }
             
         } catch (\Exception $e) {
             return redirect()->back()
