@@ -350,7 +350,7 @@
     </div>
 </div>
 
-<script><script>
+<script>
 // Vehicle autocomplete data - all customer vehicles
 var customerVehiclesData = {!! json_encode($customerVehicles->map(function($v) {
     return [

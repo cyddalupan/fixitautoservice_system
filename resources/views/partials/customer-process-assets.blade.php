@@ -1120,7 +1120,7 @@ function initCustomerHistory() {
     if (!customerId) return;
     
     // Load history via AJAX
-    $.get('/api/customer-history', {
+    $.get('/customer-history', {
         customer_id: customerId,
         type: historyType,
         limit: 10
