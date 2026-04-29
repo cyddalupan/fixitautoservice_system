@@ -88,10 +88,9 @@ Route::post('/customer-form/{token}/submit', [CustomerController::class, 'submit
 // Public Vehicle Autocomplete API Routes (for quotation form & customer form)
 Route::get('/api/vehicle-brands', function() {
     $term = request('term', '');
-    $brands = \App\Models\Vehicle::where('make', 'LIKE', '%' . $term . '%')
-        ->distinct()
-        ->orderBy('make')
-        ->pluck('make')
+    $brands = \App\Models\VehicleBrand::where('name', 'LIKE', '%' . $term . '%')
+        ->orderBy('name')
+        ->pluck('name')
         ->take(20)
         ->toArray();
     
@@ -102,15 +101,17 @@ Route::get('/api/vehicle-models', function() {
     $term = request('term', '');
     $brand = request('brand', '');
     
-    $query = \App\Models\Vehicle::where('model', 'LIKE', '%' . $term . '%');
+    $query = \App\Models\VehicleModel::where('name', 'LIKE', '%' . $term . '%');
     
     if ($brand) {
-        $query->where('make', $brand);
+        $brandModel = \App\Models\VehicleBrand::where('name', $brand)->first();
+        if ($brandModel) {
+            $query->where('vehicle_brand_id', $brandModel->id);
+        }
     }
     
-    $models = $query->distinct()
-        ->orderBy('model')
-        ->pluck('model')
+    $models = $query->orderBy('name')
+        ->pluck('name')
         ->take(20)
         ->toArray();
     
