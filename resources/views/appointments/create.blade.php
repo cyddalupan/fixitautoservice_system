@@ -340,6 +340,54 @@ function fillVehicleDescription(vehicle) {
 $(document).ready(function() {
     initTechnicianMultiSelect(".technician-select-wrapper:not([data-tech-init])");
     
+    // ===== PREVENT DUPLICATE TECHNICIAN =====
+    // When primary technician is selected, hide them from the
+    // "Additional Technicians" multi-select dropdown
+    var $techWrapper = $('.technician-select-wrapper');
+    var $techOptions = $techWrapper.find('.tech-option');
+    
+    function syncPrimaryTechExclusion() {
+        var primaryId = String($('#assigned_to').val() || '');
+        
+        // Remove primary tech from additional list if present
+        $techWrapper.find('.technician-tag[data-id="' + primaryId + '"] .remove-tech-btn').each(function() {
+            $(this).trigger('click');
+        });
+        
+        // Store & immediately apply exclusion
+        $techWrapper.data('exclude-primary', primaryId);
+        applyExclusions();
+    }
+    
+    function applyExclusions() {
+        var excludePrimary = $techWrapper.data('exclude-primary') || '';
+        var q = $techWrapper.find('.search-input').val().toLowerCase().trim();
+        
+        $techOptions.each(function() {
+            var techId = String($(this).data('id'));
+            var isSelected = $(this).hasClass('selected');
+            
+            if (isSelected) { $(this).hide(); return; }
+            if (techId === excludePrimary) { $(this).hide(); return; }
+            
+            var name = $(this).data('name').toLowerCase();
+            $(this).toggle(!q || name.indexOf(q) !== -1);
+        });
+    }
+    
+    // Replace the search handler with our extended version
+    $techWrapper.off('input', '.search-input')
+        .on('input.search-tech', '.search-input', applyExclusions);
+    
+    // Re-apply exclusions whenever the dropdown opens (rebuild may have reset visibility)
+    $techWrapper.find('.tech-add-btn').on('click', function() {
+        setTimeout(applyExclusions, 50);
+    });
+    
+    // Run on load and when primary tech changes
+    $('#assigned_to').on('change', syncPrimaryTechExclusion);
+    syncPrimaryTechExclusion();
+    
     // ===== VEHICLE AUTOSUGGEST =====
     var $vehInput = $('#vehicle_description');
     var $suggestions = $('#vehicle-suggestions');

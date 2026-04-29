@@ -351,6 +351,47 @@ $(document).ready(function() {
     }
     
     initTechnicianMultiSelect(".technician-select-wrapper:not([data-tech-init])");
+    
+    // ===== PREVENT DUPLICATE TECHNICIAN =====
+    var $techWrapper = $('.technician-select-wrapper');
+    var $techOptions = $techWrapper.find('.tech-option');
+    
+    function syncPrimaryTechExclusion() {
+        var primaryId = String($('#assigned_technician_id').val() || '');
+        
+        $techWrapper.find('.technician-tag[data-id="' + primaryId + '"] .remove-tech-btn').each(function() {
+            $(this).trigger('click');
+        });
+        
+        $techWrapper.data('exclude-primary', primaryId);
+        applyExclusions();
+    }
+    
+    function applyExclusions() {
+        var excludePrimary = $techWrapper.data('exclude-primary') || '';
+        var q = $techWrapper.find('.search-input').val().toLowerCase().trim();
+        
+        $techOptions.each(function() {
+            var techId = String($(this).data('id'));
+            var isSelected = $(this).hasClass('selected');
+            
+            if (isSelected) { $(this).hide(); return; }
+            if (techId === excludePrimary) { $(this).hide(); return; }
+            
+            var name = $(this).data('name').toLowerCase();
+            $(this).toggle(!q || name.indexOf(q) !== -1);
+        });
+    }
+    
+    $techWrapper.off('input', '.search-input')
+        .on('input.search-tech', '.search-input', applyExclusions);
+    
+    $techWrapper.find('.tech-add-btn').on('click', function() {
+        setTimeout(applyExclusions, 50);
+    });
+    
+    $('#assigned_technician_id').on('change', syncPrimaryTechExclusion);
+    syncPrimaryTechExclusion();
 });
 </script>
 @endpush
