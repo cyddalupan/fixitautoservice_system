@@ -33,13 +33,14 @@
     content: '' !important;
     position: absolute !important;
     top: 50% !important;
-    left: 50% !important;
+    left: 95% !important;
     transform: translate(-50%, -50%) !important;
     width: 3px !important;
-    height: 60% !important;
+    height: 100% !important;
     background: rgba(148, 163, 184, 0.15) !important;
     border-radius: 2px !important;
     transition: all 0.15s ease !important;
+    z-index: 1100;
 }
 
 .sidebar-resize-handle:hover,
