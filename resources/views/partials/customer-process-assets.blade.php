@@ -767,36 +767,68 @@ function initAutoSave() {
             if (minAgo < 120) { // Only restore if less than 2 hours old
                 // Restore text inputs, textareas, selects
                 for (var key in data.fields) {
+                    if (!data.fields.hasOwnProperty(key)) continue;
+                    var val = data.fields[key];
+                    
+                    // Handle checkbox/service-type arrays
+                    if (Array.isArray(val)) {
+                        $form.find('input[type="checkbox"][name="' + key + '"]').each(function() {
+                            $(this).prop('checked', val.indexOf($(this).val()) !== -1);
+                        });
+                        // Trigger the service card UI update
+                        $form.find('input[type="checkbox"][name="' + key + '"]').each(function() {
+                            $(this).closest('.service-card').toggleClass('selected', $(this).is(':checked'));
+                        });
+                        continue;
+                    }
+                    
                     var $field = $form.find('[name="' + key + '"]');
                     if ($field.length && !$field.is(':hidden, :disabled')) {
                         if ($field.is('select')) {
-                            $field.val(data.fields[key]);
+                            $field.val(val);
+                            // Trigger change so dependent logic (primary tech exclusion) fires
+                            $field.trigger('change');
                         } else if ($field.is('textarea') || $field.is('input:not([type=hidden])')) {
-                            // Only restore if current value is empty
                             if (!$field.val() || $field.val() === $field.data('default')) {
-                                $field.val(data.fields[key]);
+                                $field.val(val);
                             }
                         }
                     }
                 }
                 
-                if (minAgo > 0) {
+                if (minAgo > 3) {
                     showAutoSaveToast('Restored draft from ' + minAgo + ' min ago');
+                }
+                
+                // Restore technician multi-select tags from saved data
+                // Use a timeout to let technician-selector init first
+                if (data.technicianIds && data.technicianIds.length) {
+                    setTimeout(function() {
+                        restoreTechnicianTags(data.technicianIds, data.technicianRoles);
+                    }, 500);
                 }
             } else {
                 localStorage.removeItem('draft_' + pageKey);
             }
-        } catch(e) {}
+        } catch(e) { console.log('Auto-save restore error:', e); }
     }
     
     // Save draft on input change (debounced)
     var saveTimer;
-    $form.on('input change', 'input:not([type=hidden]), select, textarea', function() {
+    var saveTrigger = function() {
         clearTimeout(saveTimer);
         saveTimer = setTimeout(function() {
             saveDraft(pageKey, $form);
         }, 2000);
+    };
+    
+    $form.on('input change', 'input:not([type=hidden]), select, textarea', function() {
+        saveTrigger();
     });
+    
+    // Also save when technician tags are added/removed (hidden fields)
+    $(document).on('click', '.tech-option', saveTrigger);
+    $(document).on('click', '.remove-tech', saveTrigger);
     
     // Clear draft on successful form submit
     $form.on('submit', function() {
@@ -822,19 +854,93 @@ function initAutoSave() {
 
 function saveDraft(pageKey, $form) {
     var fields = {};
-    $form.find('[name]').each(function() {
+    
+    // Collect regular non-hidden non-checkbox fields
+    $form.find('input:not([type=hidden]):not([type=checkbox]), select, textarea').each(function() {
         var $el = $(this);
-        if (!$el.is(':hidden, :disabled')) {
-            fields[$el.attr('name')] = $el.val();
+        var name = $el.attr('name');
+        if (name && !$el.is(':disabled')) {
+            fields[name] = $el.val();
+        }
+    });
+    
+    // Collect checkbox arrays (service type, etc.)
+    var checkboxGroups = {};
+    $form.find('input[type="checkbox"]').each(function() {
+        var name = $(this).attr('name');
+        if (name && $(this).is(':checked')) {
+            if (!checkboxGroups[name]) checkboxGroups[name] = [];
+            checkboxGroups[name].push($(this).val());
+        }
+    });
+    for (var grp in checkboxGroups) {
+        if (checkboxGroups.hasOwnProperty(grp)) {
+            fields[grp] = checkboxGroups[grp];
+        }
+    }
+    
+    // Collect technician multi-select data (from hidden fields)
+    var techIds = [];
+    var techRoles = {};
+    $form.find('input[name^="technicians"][type="hidden"]').each(function() {
+        var id = $(this).val();
+        if (id && techIds.indexOf(id) === -1) {
+            techIds.push(id);
+        }
+    });
+    
+    // Also check the tags on the page for role info
+    $('.technician-tag').each(function() {
+        var id = String($(this).data('id'));
+        if (id) {
+            var roleEl = $(this).find('.tag-role');
+            if (roleEl.length) {
+                techRoles[id] = roleEl.text().replace(/[()]/g, '').trim();
+            }
         }
     });
     
     try {
-        localStorage.setItem('draft_' + pageKey, JSON.stringify({
+        var draft = {
             fields: fields,
             savedAt: Date.now()
-        }));
+        };
+        if (techIds.length) {
+            draft.technicianIds = techIds;
+            draft.technicianRoles = techRoles;
+        }
+        localStorage.setItem('draft_' + pageKey, JSON.stringify(draft));
     } catch(e) {}
+}
+
+function restoreTechnicianTags(techIds, techRoles) {
+    techRoles = techRoles || {};
+    var $wrapper = $('.technician-select-wrapper');
+    if (!$wrapper.length) return;
+    
+    var existingIds = [];
+    $wrapper.find('input[type="hidden"]').each(function() {
+        existingIds.push($(this).val());
+    });
+    
+    techIds.forEach(function(id) {
+        if (existingIds.indexOf(id) !== -1) return;
+        
+        var $option = $wrapper.find('.tech-option[data-id="' + id + '"]');
+        if (!$option.length) return;
+        
+        // Trigger click on the option to add it (simulates user selecting it)
+        $option.trigger('click');
+        
+        // Set role if saved
+        var role = techRoles[id];
+        if (role) {
+            var $roleEl = $wrapper.find('.technician-tag[data-id="' + id + '"] .tag-role');
+            if ($roleEl.length) {
+                $roleEl.text('(' + role + ')');
+            }
+        }
+    });
 }
 
 function showAutoSaveToast(msg) {
