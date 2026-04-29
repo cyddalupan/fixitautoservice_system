@@ -6,6 +6,16 @@
 <div class="container-fluid py-3">
     @include('partials.customer-process-assets')
     @include('partials.customer-summary-card')
+
+    @if(session("error") || (session("errors") && session("errors")->has("vehicle_description")))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Duplicate Vehicle Detected</strong>
+        <p class="mb-0 mt-1">{{ session("errors")->first("vehicle_description") ?? session("error") }}</p>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    @endif
+
     
     <div class="auto-save-toast" style="display:none;"><i class="fas fa-check-circle"></i> <span></span></div>
     
@@ -303,10 +313,44 @@
                 </button>
             </div>
         </div>
-    </form>
+        </form>
 </div>
 
-<script>
+<!-- Duplicate Vehicle Transaction Modal -->
+<div class="modal fade" id="vehicleTransactionModal" tabindex="-1" aria-labelledby="vehicleTransactionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="vehicleTransactionModalLabel">
+                    <i class="fas fa-exclamation-triangle me-2"></i>Duplicate Vehicle Detected
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <i class="fas fa-car" style="font-size: 3rem; color: #dc3545;"></i>
+                    <i class="fas fa-ban" style="font-size: 2rem; color: #dc3545; margin-left: -10px;"></i>
+                </div>
+                <h5 class="mb-2">This vehicle cannot be used for a new appointment.</h5>
+                <p class="text-muted mb-0">
+                    It already has an active <strong class="transaction-type">Appointment</strong>
+                    (<strong class="transaction-number">APTXXXXXX</strong>).
+                </p>
+                <p class="text-muted">Please complete the existing transaction first before creating a new one.</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <a href="#" class="transaction-link btn btn-danger" target="_blank">
+                    <i class="fas fa-external-link-alt me-1"></i> View Active Transaction
+                </a>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script><script>
 // Vehicle autocomplete data - all customer vehicles
 var customerVehiclesData = {!! json_encode($customerVehicles->map(function($v) {
     return [
@@ -338,24 +382,59 @@ function fillVehicleDescription(vehicle) {
     checkVehicleTransactions(vehicle.id);
 }
 
+// Track whether vehicle has an active transaction
+var vehicleHasActiveTransaction = false;
+
 function checkVehicleTransactions(vehicleId) {
     if (!vehicleId) return;
+    // Reset flag
+    vehicleHasActiveTransaction = false;
     // Remove any existing error first
     $('.vehicle-transaction-error').remove();
+    $('#vehicleTransactionModal').modal('hide');
     
     $.get('/api/vehicle-transactions/' + vehicleId, function(data) {
         if (data.has_active_transaction) {
+            vehicleHasActiveTransaction = true;
             var tx = data.transactions[0];
-            var errMsg = '<div class="vehicle-transaction-error alert alert-danger alert-dismissible fade show mt-2">' +
-                '<i class="fas fa-exclamation-triangle"></i> ' +
-                'This vehicle already has an active ' + tx.type + ' (' + tx.number + '). ' +
-                '<a href="' + tx.url + '" class="alert-link" target="_blank">View ' + tx.type + '</a>' +
+            // Show error alert below vehicle field
+            var errMsg = '<div class="vehicle-transaction-error alert alert-danger alert-dismissible fade show mt-2" role="alert">' +
+                '<i class="fas fa-exclamation-triangle me-2"></i>' +
+                '<strong>Duplicate Vehicle Detected</strong>' +
+                '<p class="mb-0 mt-1">This vehicle already has an active <strong>' + tx.type + ' (' + tx.number + ').</strong></p>' +
+                '<div class="mt-2">' +
+                '<a href="' + tx.url + '" class="btn btn-sm btn-outline-danger" target="_blank">' +
+                '<i class="fas fa-external-link-alt me-1"></i> View ' + tx.type + '</a>' +
+                '</div>' +
                 '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
                 '</div>';
             $('#vehicle_description').closest('.form-group').after(errMsg);
+            
+            // Also show a professional modal
+            $('#vehicleTransactionModal .transaction-type').text(tx.type);
+            $('#vehicleTransactionModal .transaction-number').text(tx.number);
+            $('#vehicleTransactionModal .transaction-link').attr('href', tx.url);
+            $('#vehicleTransactionModal').modal('show');
         }
+    }).fail(function() {
+        // Fallback: if AJAX fails, show server-side error will catch it
+        console.warn('Vehicle transaction check failed');
     });
 }
+
+// Intercept form submission if duplicate vehicle
+$(document).ready(function() {
+    $('form').on('submit', function(e) {
+        if (vehicleHasActiveTransaction) {
+            e.preventDefault();
+            // Scroll to the error
+            $('html, body').animate({
+                scrollTop: $('.vehicle-transaction-error').first().offset().top - 100
+            }, 500);
+            return false;
+        }
+    });
+});
 
 $(document).ready(function() {
     initTechnicianMultiSelect(".technician-select-wrapper:not([data-tech-init])");
