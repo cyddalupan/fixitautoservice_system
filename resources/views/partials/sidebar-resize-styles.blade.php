@@ -292,6 +292,13 @@
 }
 
 /* Fix: Restore Bootstrap collapse visibility over Tailwind v4's `.collapse { visibility: collapse }` */
+/* Tailwind v4 defines `.collapse { visibility: collapse }` which breaks Bootstrap's
+   collapse class. This override restores Bootstrap's intended behavior for all
+   navbar and sidebar collapse elements. */
+.navbar-collapse.collapse,
+.navbar-collapse.collapsing {
+    visibility: visible;
+}
 #serviceManagementCollapse.collapse,
 #serviceManagementCollapse.collapsing {
     visibility: visible;
