@@ -266,6 +266,99 @@ body.dark-mode .ui-state-focus {
     color: #e4e6eb;
 }
 
+/* ── Additional Dark Mode Overrides ── */
+body.dark-mode .vhcl-input {
+    background: #22252b;
+    border-color: #3a3d45;
+    color: #e4e6eb;
+}
+body.dark-mode .vhcl-input::placeholder {
+    color: #6b7280;
+}
+body.dark-mode .vhcl-input:focus {
+    background: #22252b;
+    border-color: var(--vhcl-primary);
+}
+body.dark-mode .input-group-fixit .input-group-text {
+    background: #2a2d35;
+    border-color: #3a3d45;
+    color: #9ca3af;
+}
+body.dark-mode .form-text {
+    color: #6b7280 !important;
+}
+body.dark-mode .invalid-feedback {
+    color: #f87171;
+}
+body.dark-mode .customer-search-result {
+    border-bottom-color: #3a3d45;
+}
+body.dark-mode .customer-search-result:hover {
+    background: #2a2a2a;
+}
+body.dark-mode .customer-search-result .csr-name {
+    color: #e4e6eb;
+}
+body.dark-mode .customer-search-result .csr-meta {
+    color: #6b7280;
+}
+body.dark-mode .customer-search-result .csr-phone {
+    color: #6b7280;
+}
+body.dark-mode #customerSearchResults {
+    background: #2a2d35 !important;
+    border-color: #3a3d45 !important;
+}
+body.dark-mode #selectedCustomerInfo .vsc-detail {
+    color: #9ca3af;
+}
+body.dark-mode .btn-filter-outline {
+    color: #d1d5db;
+    border-color: #4b5563;
+}
+body.dark-mode .btn-filter-outline:hover {
+    background: #374151;
+    color: #fff;
+}
+body.dark-mode .vin-tooltip {
+    color: #6b7280;
+}
+body.dark-mode .main-card {
+    background: #2a2d35;
+    border-color: #3a3d45;
+}
+body.dark-mode .main-card-header {
+    color: #e4e6eb;
+    border-bottom-color: #3a3d45;
+}
+body.dark-mode .main-card-body {
+    color: #d1d5db;
+}
+body.dark-mode .main-card-body .btn-outline-primary {
+    color: #60a5fa;
+    border-color: #60a5fa;
+}
+body.dark-mode .main-card-body .btn-outline-secondary {
+    color: #9ca3af;
+    border-color: #4b5563;
+}
+body.dark-mode .page-module-header h1 {
+    color: #e4e6eb;
+}
+body.dark-mode .page-module-header .breadcrumb {
+    color: #9ca3af;
+}
+body.dark-mode .page-module-header .breadcrumb .breadcrumb-item.active {
+    color: #d1d5db;
+}
+body.dark-mode .page-module-header .breadcrumb .breadcrumb-item + .breadcrumb-item::before {
+    color: #6b7280;
+}
+body.dark-mode select.vhcl-input option {
+    background: #2a2d35;
+    color: #e4e6eb;
+}
+
 /* ── Responsive ── */
 @media (max-width: 767.98px) {
     .vhcl-form-wrap { padding-top: 0; }
