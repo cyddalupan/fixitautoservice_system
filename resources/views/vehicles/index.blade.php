@@ -139,7 +139,10 @@
                     </thead>
                     <tbody>
                         @forelse($vehicles as $vehicle)
-                            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+                            <tr onclick="window.location.href='{{ route('vehicles.show', $vehicle) }}'"
+                                style="border-bottom: 1px solid #f1f5f9; transition: background 0.15s; cursor: pointer;"
+                                onmouseover="this.style.background='#f8fafc'"
+                                onmouseout="this.style.background='transparent'">
                                 <td style="padding: 0.75rem; vertical-align: middle;">
                                     <span style="font-weight: 600; font-size: 0.85rem; color: #0f172a;">{{ $vehicle->license_plate ?? '—' }}</span>
                                 </td>
@@ -189,7 +192,8 @@
                                     <div class="dropdown">
                                         <button class="btn btn-sm" type="button" data-bs-toggle="dropdown" 
                                                 style="border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; padding: 0.25rem 0.5rem;"
-                                                aria-expanded="false">
+                                                aria-expanded="false"
+                                                onclick="event.stopPropagation();">
                                             <i class="fas fa-ellipsis-v" style="color: #64748b; font-size: 0.8rem;"></i>
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-end" style="border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 0.4rem;">
