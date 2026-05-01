@@ -180,38 +180,35 @@
         // Determine initial state: saved 'expanded' OR first visit on a Service Management page
         var shouldExpand = savedSub === 'expanded' || (savedSub === null && isServicePage);
 
+        // Create Bootstrap Collapse instance (handles animation and show/hide state)
+        var bsCollapse = new bootstrap.Collapse(submenu, {
+            toggle: false  // don't auto-toggle on init
+        });
+
+        // Set initial state via Bootstrap API (preserves animation for subsequent toggles)
         if (shouldExpand) {
             submenu.classList.add('show');
             if (toggle) toggle.setAttribute('aria-expanded', 'true');
         } else {
-            // Default (no saved state on non-service page) or 'collapsed'
             submenu.classList.remove('show');
             if (toggle) toggle.setAttribute('aria-expanded', 'false');
         }
 
-        // Toggle click handler — replaces Bootstrap's data-bs-toggle
+        // Toggle click handler — uses Bootstrap Collapse API for smooth animation
         if (toggle) {
-            toggle.removeAttribute('data-bs-toggle'); // safety: no duplicate listeners
             toggle.addEventListener('click', function(e) {
                 e.preventDefault();
-                var isExpanded = submenu.classList.contains('show');
-                if (isExpanded) {
-                    submenu.classList.remove('show');
-                    toggle.setAttribute('aria-expanded', 'false');
-                    localStorage.setItem(SUBMENU_KEY, 'collapsed');
-                } else {
-                    submenu.classList.add('show');
-                    toggle.setAttribute('aria-expanded', 'true');
-                    localStorage.setItem(SUBMENU_KEY, 'expanded');
-                }
+                bsCollapse.toggle();
             });
         }
 
-        // Still listen for Bootstrap collapse events if they happen (e.g. from other code)
+        // Persist state on collapse events
         submenu.addEventListener('shown.bs.collapse', function() {
+            if (toggle) toggle.setAttribute('aria-expanded', 'true');
             localStorage.setItem(SUBMENU_KEY, 'expanded');
         });
         submenu.addEventListener('hidden.bs.collapse', function() {
+            if (toggle) toggle.setAttribute('aria-expanded', 'false');
             localStorage.setItem(SUBMENU_KEY, 'collapsed');
         });
     }
