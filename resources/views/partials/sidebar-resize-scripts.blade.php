@@ -164,13 +164,28 @@
         var savedSub = localStorage.getItem(SUBMENU_KEY);
         var toggle = document.getElementById('serviceManagementToggle');
 
-        // Determine initial state from localStorage.
-        // Server no longer renders 'show' class — controlled entirely via JS.
-        if (savedSub === 'expanded') {
+        // Check if current page is a Service Management page (matches PHP $isServiceManagementRoute)
+        var isServicePage = window.location.pathname.includes('/appointments') ||
+                            window.location.pathname.includes('/estimates') ||
+                            window.location.pathname.includes('/work-orders') ||
+                            window.location.pathname.includes('/invoices') ||
+                            window.location.pathname.includes('/payments') ||
+                            window.location.pathname.includes('/inspections') ||
+                            window.location.pathname.includes('/service-records') ||
+                            window.location.pathname.includes('/archives') ||
+                            window.location.pathname.includes('/service-items') ||
+                            window.location.pathname.includes('/services') ||
+                            window.location.pathname.includes('/quotations');
+
+        // Determine initial state: saved 'expanded' OR first visit on a Service Management page
+        var shouldExpand = savedSub === 'expanded' || (savedSub === null && isServicePage);
+
+        if (shouldExpand) {
             submenu.classList.add('show');
             if (toggle) toggle.setAttribute('aria-expanded', 'true');
         } else {
-            // Default (no saved state, or 'collapsed') — keep collapsed
+            // Default (no saved state on non-service page) or 'collapsed'
+            submenu.classList.remove('show');
             if (toggle) toggle.setAttribute('aria-expanded', 'false');
         }
 
