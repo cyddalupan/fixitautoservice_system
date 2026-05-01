@@ -134,7 +134,7 @@
                             <th style="padding: 0.75rem; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Year</th>
                             <th style="padding: 0.75rem; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Last Service</th>
                             <th style="padding: 0.75rem; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Status</th>
-                            <th style="padding: 0.75rem; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; width: 100px;">Actions</th>
+                            <th style="padding: 0.75rem; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; width: 80px; text-align: right;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -188,30 +188,35 @@
                                         <span style="display: inline-block; padding: 0.25rem 0.6rem; border-radius: 50px; font-size: 0.7rem; font-weight: 500; background: #f1f5f9; color: #475569;">Inactive</span>
                                     @endif
                                 </td>
-                                <td style="padding: 0.75rem; vertical-align: middle;">
+                                <td style="padding: 0.75rem; vertical-align: middle; text-align: right;">
                                     <div class="dropdown">
                                         <button class="btn btn-sm" type="button" data-bs-toggle="dropdown" 
-                                                style="border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; padding: 0.25rem 0.5rem;"
+                                                style="border: none; border-radius: 8px; background: transparent; padding: 0.4rem 0.5rem; transition: all 0.15s;"
                                                 aria-expanded="false"
-                                                onclick="event.stopPropagation();">
-                                            <i class="fas fa-ellipsis-v" style="color: #64748b; font-size: 0.8rem;"></i>
+                                                onclick="event.stopPropagation();"
+                                                onmouseover="this.style.background='#f1f5f9'"
+                                                onmouseout="this.style.background='transparent'">
+                                            <i class="fas fa-ellipsis-v" style="color: #94a3b8; font-size: 1rem;"></i>
                                         </button>
-                                        <ul class="dropdown-menu dropdown-menu-end" style="border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 0.4rem;">
+                                        <ul class="dropdown-menu dropdown-menu-end" style="border: none; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); padding: 0.4rem; min-width: 180px;">
                                             <li>
-                                                <a href="{{ route('vehicles.show', $vehicle) }}" class="dropdown-item" style="font-size: 0.85rem; padding: 0.5rem 1rem; border-radius: 6px;">
-                                                    <i class="fas fa-eye me-2" style="color: #64748b; width: 16px;"></i> View
+                                                <a href="{{ route('vehicles.show', $vehicle) }}" class="dropdown-item" style="font-size: 0.85rem; padding: 0.5rem 0.75rem; border-radius: 6px; display: flex; align-items: center; gap: 8px;">
+                                                    <i class="fas fa-eye" style="color: #0f172a; width: 16px; text-align: center;"></i>
+                                                    <span>View Details</span>
                                                 </a>
                                             </li>
                                             <li>
-                                                <a href="{{ route('vehicles.edit', $vehicle) }}" class="dropdown-item" style="font-size: 0.85rem; padding: 0.5rem 1rem; border-radius: 6px;">
-                                                    <i class="fas fa-edit me-2" style="color: #64748b; width: 16px;"></i> Edit
+                                                <a href="{{ route('vehicles.edit', $vehicle) }}" class="dropdown-item" style="font-size: 0.85rem; padding: 0.5rem 0.75rem; border-radius: 6px; display: flex; align-items: center; gap: 8px;">
+                                                    <i class="fas fa-pen-to-square" style="color: #0f172a; width: 16px; text-align: center;"></i>
+                                                    <span>Edit Vehicle</span>
                                                 </a>
                                             </li>
                                             @if($vehicle->customer)
                                                 <li><hr class="dropdown-divider" style="margin: 0.25rem 0;"></li>
                                                 <li>
-                                                    <a href="{{ route('customers.show', $vehicle->customer) }}" class="dropdown-item" style="font-size: 0.85rem; padding: 0.5rem 1rem; border-radius: 6px;">
-                                                        <i class="fas fa-user me-2" style="color: #64748b; width: 16px;"></i> View Customer
+                                                    <a href="{{ route('customers.show', $vehicle->customer) }}" class="dropdown-item" style="font-size: 0.85rem; padding: 0.5rem 0.75rem; border-radius: 6px; display: flex; align-items: center; gap: 8px;">
+                                                        <i class="fas fa-user" style="color: #2563eb; width: 16px; text-align: center;"></i>
+                                                        <span>View Customer</span>
                                                     </a>
                                                 </li>
                                             @endif
