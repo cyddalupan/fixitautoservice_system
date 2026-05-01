@@ -101,7 +101,7 @@
                 $shouldExpand = $isServiceManagementRoute;
             @endphp
 
-            <a class="nav-link section-toggle" data-bs-toggle="collapse" href="#serviceManagementCollapse" role="button"
+            <a class="nav-link section-toggle" href="#serviceManagementCollapse" role="button"
                aria-expanded="{{ $shouldExpand ? 'true' : 'false' }}"
                aria-controls="serviceManagementCollapse"
                id="serviceManagementToggle"
@@ -111,7 +111,7 @@
                 <i class="fas fa-chevron-{{ $shouldExpand ? 'up' : 'down' }} nav-chevron sidebar-chevron"></i>
             </a>
 
-            <div class="collapse {{ $shouldExpand ? 'show' : '' }}" id="serviceManagementCollapse">
+            <div class="collapse" id="serviceManagementCollapse">
                 <ul class="nav flex-column nav-sub">
                     {{-- Appointments --}}
                     <li class="nav-item">

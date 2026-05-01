@@ -164,11 +164,35 @@
         var savedSub = localStorage.getItem(SUBMENU_KEY);
         var toggle = document.getElementById('serviceManagementToggle');
 
+        // Determine initial state from localStorage.
+        // Server no longer renders 'show' class — controlled entirely via JS.
         if (savedSub === 'expanded') {
             submenu.classList.add('show');
             if (toggle) toggle.setAttribute('aria-expanded', 'true');
+        } else {
+            // Default (no saved state, or 'collapsed') — keep collapsed
+            if (toggle) toggle.setAttribute('aria-expanded', 'false');
         }
 
+        // Toggle click handler — replaces Bootstrap's data-bs-toggle
+        if (toggle) {
+            toggle.removeAttribute('data-bs-toggle'); // safety: no duplicate listeners
+            toggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                var isExpanded = submenu.classList.contains('show');
+                if (isExpanded) {
+                    submenu.classList.remove('show');
+                    toggle.setAttribute('aria-expanded', 'false');
+                    localStorage.setItem(SUBMENU_KEY, 'collapsed');
+                } else {
+                    submenu.classList.add('show');
+                    toggle.setAttribute('aria-expanded', 'true');
+                    localStorage.setItem(SUBMENU_KEY, 'expanded');
+                }
+            });
+        }
+
+        // Still listen for Bootstrap collapse events if they happen (e.g. from other code)
         submenu.addEventListener('shown.bs.collapse', function() {
             localStorage.setItem(SUBMENU_KEY, 'expanded');
         });

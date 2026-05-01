@@ -926,71 +926,42 @@
         })();
 
         // Service Management Collapse State Persistence
+        // Note: The initial state is now handled in sidebar-resize-scripts.blade.php
+        // (runs at script-load time to prevent flash). This block only handles
+        // persistence listeners and chevron updates for any external triggers.
         document.addEventListener('DOMContentLoaded', function() {
             const serviceManagementToggle = document.getElementById('serviceManagementToggle');
             const serviceManagementCollapse = document.getElementById('serviceManagementCollapse');
             const chevronIcon = serviceManagementToggle ? serviceManagementToggle.querySelector('.fa-chevron-down, .fa-chevron-up') : null;
 
-            if (serviceManagementToggle && serviceManagementCollapse) {
-                // Check if we're on a Service Management page
-                const isServiceManagementPage = window.location.pathname.includes('/appointments') ||
-                                               window.location.pathname.includes('/estimates') ||
-                                               window.location.pathname.includes('/work-orders') ||
-                                               window.location.pathname.includes('/invoices') ||
-                                               window.location.pathname.includes('/payments') ||
-                                               window.location.pathname.includes('/inspections');
-
-                // Check localStorage for saved state
-                const savedState = localStorage.getItem('serviceManagementCollapseState');
-
-                // Determine initial state: saved state OR if we're on a Service Management page
-                const shouldBeExpanded = savedState === 'expanded' || (savedState === null && isServiceManagementPage);
-
-                // Set initial state
-                if (shouldBeExpanded && !serviceManagementCollapse.classList.contains('show')) {
-                    serviceManagementCollapse.classList.add('show');
-                    serviceManagementToggle.setAttribute('aria-expanded', 'true');
-                    if (chevronIcon) {
-                        chevronIcon.classList.remove('fa-chevron-down');
-                        chevronIcon.classList.add('fa-chevron-up');
-                    }
+            function updateChevron() {
+                if (!chevronIcon) return;
+                const isExpanded = serviceManagementCollapse && serviceManagementCollapse.classList.contains('show');
+                if (isExpanded) {
+                    chevronIcon.classList.remove('fa-chevron-down');
+                    chevronIcon.classList.add('fa-chevron-up');
+                } else {
+                    chevronIcon.classList.remove('fa-chevron-up');
+                    chevronIcon.classList.add('fa-chevron-down');
                 }
+            }
 
+            if (serviceManagementToggle && serviceManagementCollapse) {
                 // Listen for collapse events
                 serviceManagementCollapse.addEventListener('show.bs.collapse', function() {
                     localStorage.setItem('serviceManagementCollapseState', 'expanded');
                     serviceManagementToggle.setAttribute('aria-expanded', 'true');
-                    if (chevronIcon) {
-                        chevronIcon.classList.remove('fa-chevron-down');
-                        chevronIcon.classList.add('fa-chevron-up');
-                    }
+                    updateChevron();
                 });
 
                 serviceManagementCollapse.addEventListener('hide.bs.collapse', function() {
                     localStorage.setItem('serviceManagementCollapseState', 'collapsed');
                     serviceManagementToggle.setAttribute('aria-expanded', 'false');
-                    if (chevronIcon) {
-                        chevronIcon.classList.remove('fa-chevron-up');
-                        chevronIcon.classList.add('fa-chevron-down');
-                    }
+                    updateChevron();
                 });
 
-                // Also update state when clicking the toggle directly (for better UX)
-                serviceManagementToggle.addEventListener('click', function() {
-                    // The Bootstrap collapse event will handle the state, but we need to update chevron
-                    setTimeout(() => {
-                        const isExpanded = serviceManagementCollapse.classList.contains('show');
-                        if (chevronIcon) {
-                            if (isExpanded) {
-                                chevronIcon.classList.remove('fa-chevron-down');
-                                chevronIcon.classList.add('fa-chevron-up');
-                            } else {
-                                chevronIcon.classList.remove('fa-chevron-up');
-                                chevronIcon.classList.add('fa-chevron-down');
-                            }
-                        }
-                    }, 50); // Small delay to ensure Bootstrap has updated the classes
-                });
+                // Initial chevron sync (in case sidebar-resize-scripts didn't run first)
+                updateChevron();
             }
         });
         
