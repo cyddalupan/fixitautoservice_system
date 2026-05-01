@@ -290,4 +290,14 @@
         display: none !important;
     }
 }
+
+/* Fix: Tailwind v4's `.collapse` utility sets `visibility: collapse` which
+   conflicts with Bootstrap's `.collapse` class used for collapsible elements.
+   Override it so Bootstrap collapse elements have proper visibility. */
+#serviceManagementCollapse.collapse.show {
+    visibility: visible !important;
+}
+#serviceManagementCollapse.collapse {
+    visibility: visible;
+}
 </style>
