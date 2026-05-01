@@ -188,40 +188,30 @@
                                         <span style="display: inline-block; padding: 0.25rem 0.6rem; border-radius: 50px; font-size: 0.7rem; font-weight: 500; background: #f1f5f9; color: #475569;">Inactive</span>
                                     @endif
                                 </td>
-                                <td style="padding: 0.75rem; vertical-align: middle; text-align: right;">
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm" type="button" data-bs-toggle="dropdown" 
-                                                style="border: none; border-radius: 8px; background: transparent; padding: 0.4rem 0.5rem; transition: all 0.15s;"
-                                                aria-expanded="false"
-                                                onclick="event.stopPropagation();"
-                                                onmouseover="this.style.background='#f1f5f9'"
-                                                onmouseout="this.style.background='transparent'">
-                                            <i class="fas fa-ellipsis-v" style="color: #94a3b8; font-size: 1rem;"></i>
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end" style="border: none; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); padding: 0.4rem; min-width: 180px;">
-                                            <li>
-                                                <a href="{{ route('vehicles.show', $vehicle) }}" class="dropdown-item" style="font-size: 0.85rem; padding: 0.5rem 0.75rem; border-radius: 6px; display: flex; align-items: center; gap: 8px;">
-                                                    <i class="fas fa-eye" style="color: #0f172a; width: 16px; text-align: center;"></i>
-                                                    <span>View Details</span>
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <a href="{{ route('vehicles.edit', $vehicle) }}" class="dropdown-item" style="font-size: 0.85rem; padding: 0.5rem 0.75rem; border-radius: 6px; display: flex; align-items: center; gap: 8px;">
-                                                    <i class="fas fa-pen-to-square" style="color: #0f172a; width: 16px; text-align: center;"></i>
-                                                    <span>Edit Vehicle</span>
-                                                </a>
-                                            </li>
-                                            @if($vehicle->customer)
-                                                <li><hr class="dropdown-divider" style="margin: 0.25rem 0;"></li>
-                                                <li>
-                                                    <a href="{{ route('customers.show', $vehicle->customer) }}" class="dropdown-item" style="font-size: 0.85rem; padding: 0.5rem 0.75rem; border-radius: 6px; display: flex; align-items: center; gap: 8px;">
-                                                        <i class="fas fa-user" style="color: #2563eb; width: 16px; text-align: center;"></i>
-                                                        <span>View Customer</span>
-                                                    </a>
-                                                </li>
-                                            @endif
-                                        </ul>
-                                    </div>
+                                <td style="padding: 0.75rem; vertical-align: middle; text-align: right; white-space: nowrap;">
+                                    <a href="{{ route('vehicles.show', $vehicle) }}" onclick="event.stopPropagation();"
+                                       style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; color: #64748b; text-decoration: none; transition: all 0.15s;"
+                                       onmouseover="this.style.background='#f1f5f9'; this.style.color='#0f172a'"
+                                       onmouseout="this.style.background='transparent'; this.style.color='#64748b'"
+                                       title="View Details">
+                                        <i class="fas fa-eye" style="font-size: 1rem;"></i>
+                                    </a>
+                                    <a href="{{ route('vehicles.edit', $vehicle) }}" onclick="event.stopPropagation();"
+                                       style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; color: #64748b; text-decoration: none; transition: all 0.15s;"
+                                       onmouseover="this.style.background='#f1f5f9'; this.style.color='#0f172a'"
+                                       onmouseout="this.style.background='transparent'; this.style.color='#64748b'"
+                                       title="Edit Vehicle">
+                                        <i class="fas fa-pen-to-square" style="font-size: 1rem;"></i>
+                                    </a>
+                                    @if($vehicle->customer)
+                                        <a href="{{ route('customers.show', $vehicle->customer) }}" onclick="event.stopPropagation();"
+                                           style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 8px; color: #64748b; text-decoration: none; transition: all 0.15s;"
+                                           onmouseover="this.style.background='#eef2ff'; this.style.color='#2563eb'"
+                                           onmouseout="this.style.background='transparent'; this.style.color='#64748b'"
+                                           title="View Customer">
+                                            <i class="fas fa-user" style="font-size: 1rem;"></i>
+                                        </a>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
