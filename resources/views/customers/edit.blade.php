@@ -40,7 +40,7 @@
                     <i class="fas fa-edit me-2" style="color: var(--module-active);"></i> Edit Customer Profile
                 </div>
                 <div class="main-card-body p-4">
-                    <form method="POST" action="{{ route('customers.update', $customer) }}">
+                    <form method="POST" action="{{ route('customers.update', $customer) }}" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
                         
@@ -258,6 +258,35 @@
 
         <!-- Right Sidebar -->
         <div class="col-lg-4">
+            <!-- Profile Photo Card -->
+            <div class="main-card mb-4">
+                <div class="main-card-header">
+                    <i class="fas fa-camera me-2" style="color: var(--module-active);"></i> Profile Photo
+                </div>
+                <div class="main-card-body px-3 py-3 text-center">
+                    <div style="width:120px;height:120px;border-radius:50%;margin:0 auto 1rem;overflow:hidden;border:3px solid #eef0f3;background:#f4f6fa;display:flex;align-items:center;justify-content:center;" id="customerEditPhotoPreview">
+                        @if($customer->profile_picture)
+                            <img src="{{ asset('storage/' . $customer->profile_picture) }}" alt="{{ $customer->first_name }}" style="width:100%;height:100%;object-fit:cover;">
+                        @else
+                            <i class="fas fa-user" style="font-size:2.5rem;color:#9ca3af;"></i>
+                        @endif
+                    </div>
+                    <input type="file" class="d-none" id="customerEditPhotoInput" name="profile_picture" accept="image/*">
+                    <input type="hidden" name="cropped_image" id="customerEditCroppedInput" value="">
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('customerEditPhotoInput').click();">
+                        <i class="fas fa-upload me-1"></i> @if($customer->profile_picture) Replace Photo @else Upload Photo @endif
+                    </button>
+                    @if($customer->profile_picture)
+                        <div class="mt-2">
+                            <label class="btn btn-outline-danger btn-sm" id="customerRemovePhotoBtn" style="cursor:pointer;font-size:.72rem;">
+                                <i class="fas fa-trash me-1"></i> Remove
+                            </label>
+                            <input type="hidden" name="remove_photo" id="customerRemovePhotoInput" value="0">
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             <div class="main-card">
                 <div class="main-card-header">
                     <i class="fas fa-info-circle me-2" style="color: var(--module-active);"></i> Quick Info
@@ -314,8 +343,33 @@
 </div>
 @endsection
 
+@include('partials.avatar-crop-modal')
+
 @push('scripts')
 <script>
+// ── Customer photo upload + crop ──
+document.addEventListener('DOMContentLoaded', function () {
+    initAvatarCrop({
+        fileInput: '#customerEditPhotoInput',
+        previewWrap: '#customerEditPhotoPreview',
+        previewImg: '#customerEditPhotoPreview img',
+        hiddenInput: '#customerEditCroppedInput',
+        aspectRatio: 1,
+    });
+
+    const removeBtn = document.getElementById('customerRemovePhotoBtn');
+    if (removeBtn) {
+        removeBtn.addEventListener('click', function () {
+            if (confirm('Remove the current profile photo?')) {
+                document.getElementById('customerRemovePhotoInput').value = '1';
+                document.getElementById('customerEditPhotoPreview').innerHTML = '<i class="fas fa-user" style="font-size:2.5rem;color:#9ca3af;"></i>';
+                document.getElementById('customerEditCroppedInput').value = '';
+                this.style.display = 'none';
+            }
+        });
+    }
+});
+
     $(document).ready(function() {
         // Auto-format phone number
         $('#phone').on('input', function() {

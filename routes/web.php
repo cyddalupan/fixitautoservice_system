@@ -133,9 +133,28 @@ Route::get('/api/vehicle-colors', function() {
 Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->group(function () {
     // Check if a vehicle has active transactions (appointment, work order, estimate)
     Route::get('/api/vehicle-transactions/{vehicle}', function (\App\Models\Vehicle $vehicle) {
+        // Get appointment IDs from archived inspections tied to this vehicle
+        $archivedInspectionIds = \App\Models\Archive::where('archivable_type', 'App\\Models\\VehicleInspection')
+            ->pluck('archivable_id')
+            ->toArray();
+        $archivedAppointmentIds = [];
+        if (!empty($archivedInspectionIds)) {
+            $archivedAppointmentIds = \App\Models\VehicleInspection::withTrashed()->whereIn('id', $archivedInspectionIds)
+                ->where('vehicle_id', $vehicle->id)
+                ->whereNotNull('appointment_id')
+                ->pluck('appointment_id')
+                ->toArray();
+        }
+
         $activeAppointment = \App\Models\Appointment::where('vehicle_id', $vehicle->id)
-            ->where('appointment_status', 'scheduled')
+            ->whereIn('appointment_status', ['scheduled', 'checked_in', 'in_progress'])
             ->whereNull('deleted_at')
+            ->where(function($q) use ($archivedAppointmentIds) {
+                // Exclude appointments whose inspection has been archived
+                if (!empty($archivedAppointmentIds)) {
+                    $q->whereNotIn('id', $archivedAppointmentIds);
+                }
+            })
             ->first();
         
         $activeWorkOrder = \App\Models\WorkOrder::where('vehicle_id', $vehicle->id)

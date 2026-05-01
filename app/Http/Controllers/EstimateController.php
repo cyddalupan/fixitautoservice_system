@@ -237,9 +237,24 @@ class EstimateController extends Controller
             // Check for duplicate vehicle in active transactions
             $vehicleId = $validated['vehicle_id'];
             
+            $archivedInspectionIds = \App\Models\Archive::where('archivable_type', 'App\\Models\\VehicleInspection')
+                ->pluck('archivable_id')->toArray();
+            $archivedAppointmentIds = [];
+            if (!empty($archivedInspectionIds)) {
+                $archivedAppointmentIds = \App\Models\VehicleInspection::withTrashed()->whereIn('id', $archivedInspectionIds)
+                    ->where('vehicle_id', $vehicleId)
+                    ->whereNotNull('appointment_id')
+                    ->pluck('appointment_id')->toArray();
+            }
+
             $existingAppointment = Appointment::where('vehicle_id', $vehicleId)
-                ->where('appointment_status', 'scheduled')
+                ->whereIn('appointment_status', ['scheduled', 'checked_in', 'in_progress'])
                 ->whereNull('deleted_at')
+                ->where(function($q) use ($archivedAppointmentIds) {
+                    if (!empty($archivedAppointmentIds)) {
+                        $q->whereNotIn('id', $archivedAppointmentIds);
+                    }
+                })
                 ->first();
             
             if ($existingAppointment) {

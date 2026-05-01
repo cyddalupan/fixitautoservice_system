@@ -414,7 +414,7 @@ $(document).ready(function() {
         var customerId = parseInt($(this).val());
         if (!customerId) return;
         
-        $.get('{{ route("api.customer-latest-quotation", "") }}/' + customerId, function(data) {
+        $.get('/api/customer-latest-quotation/' + customerId, function(data) {
             if (data && data.service_description) {
                 var concernField = $('#customer_concerns');
                 if (!concernField.val() || concernField.val().trim() === '') {

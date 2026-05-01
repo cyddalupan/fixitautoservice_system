@@ -23,7 +23,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-body">
-                <form method="POST" action="{{ route('customers.store') }}">
+                <form method="POST" action="{{ route('customers.store') }}" enctype="multipart/form-data">
                     @csrf
                     
                     <div class="row">
@@ -49,6 +49,22 @@
                                 @enderror>
                             </div>
                             
+                        </div>
+                        
+                        <!-- Profile Photo -->
+                        <div class="col-md-6">
+                            <h5 class="mb-3 border-bottom pb-2">Profile Photo</h5>
+                            <div style="text-align:center;padding:1rem;border:2px dashed #dee2e6;border-radius:10px;">
+                                <div class="prsnl-photo-preview" id="customerPhotoPreview" style="width:120px;height:120px;border-radius:50%;margin:0 auto 1rem;overflow:hidden;background:#f4f6fa;display:flex;align-items:center;justify-content:center;">
+                                    <i class="fas fa-user" style="font-size:2.5rem;color:#9ca3af;"></i>
+                                </div>
+                                <input type="file" class="d-none" id="customerPhotoInput" name="profile_picture" accept="image/*">
+                                <input type="hidden" name="cropped_image" id="customerCroppedInput" value="">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('customerPhotoInput').click();">
+                                    <i class="fas fa-upload me-1"></i> Upload Photo
+                                </button>
+                                <p class="text-muted mt-2" style="font-size:.7rem;">Optional. JPEG, PNG, WebP.</p>
+                            </div>
                         </div>
                         
                         <!-- Optional Information -->
@@ -783,5 +799,20 @@
         console.log('Multiple vehicle management initialized');
         console.log('Vehicle sections found:', $('.vehicle-section').length);
     });
+</script>
+
+@include('partials.avatar-crop-modal')
+
+<script>
+// ── Customer photo upload + crop ──
+document.addEventListener('DOMContentLoaded', function() {
+    initAvatarCrop({
+        fileInput: '#customerPhotoInput',
+        previewWrap: '#customerPhotoPreview',
+        previewImg: '#customerPhotoPreview img',
+        hiddenInput: '#customerCroppedInput',
+        aspectRatio: 1,
+    });
+});
 </script>
 @endpush

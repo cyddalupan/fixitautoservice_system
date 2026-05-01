@@ -3,363 +3,394 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Models\TimeLog;
-use App\Models\PerformanceMetric;
-use App\Models\TrainingRecord;
-use App\Models\PartsRequest;
+use App\Models\Appointment;
+use App\Models\WorkOrder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use App\Traits\HandlesCroppedImage;
 
 class PersonnelController extends Controller
 {
+    protected array $validRoles;
+
+    use HandlesCroppedImage;
+
+    public function __construct()
+    {
+        $this->validRoles = array_keys(User::roleLabels());
+    }
+
     /**
-     * Display all personnel dashboard with filtering and sorting.
+     * Display a listing of personnel.
      */
     public function index(Request $request)
     {
-        // Start query for all personnel (excluding customers)
         $query = User::whereNotIn('role', ['customer']);
 
-        // Apply role filter if specified
-        if ($request->has('role') && $request->role) {
-            if ($request->role === 'office_staff') {
-                // Office staff includes multiple roles
-                $query->whereIn('role', ['admin', 'manager', 'service_advisor', 'office_staff']);
-            } else {
-                $query->where('role', $request->role);
-            }
-        }
-
-        // Apply status filter if specified
-        if ($request->has('status') && $request->status !== '') {
-            $query->where('is_active', $request->status === 'active');
-        }
-
-        // Apply search filter if specified
-        if ($request->has('search') && $request->search) {
+        // Search/filter
+        if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
                   ->orWhere('phone', 'like', "%{$search}%")
-                  ->orWhere('specialization', 'like', "%{$search}%");
+                  ->orWhere('role', 'like', "%{$search}%");
             });
         }
 
-        // Apply sorting
-        $sortBy = $request->get('sort_by', 'name');
-        $sortOrder = $request->get('sort_order', 'asc');
-        
-        // Validate sort fields
-        $validSortFields = ['name', 'email', 'role', 'hire_date', 'years_experience', 'created_at'];
-        if (!in_array($sortBy, $validSortFields)) {
-            $sortBy = 'name';
+        if ($request->filled('role_filter')) {
+            $roleFilter = $request->role_filter;
+            // Search primary role OR JSON roles column
+            $query->where(function ($q) use ($roleFilter) {
+                $q->where('role', $roleFilter)
+                  ->orWhere('roles', 'like', "%\"{$roleFilter}\"%");
+            });
         }
-        
+
+        if ($request->filled('status')) {
+            $query->where('is_active', $request->status === 'active' ? 1 : 0);
+        }
+
+        // Sorting
+        $sortBy = $request->sort_by ?? 'name';
+        $sortOrder = $request->sort_order ?? 'asc';
+        $allowedSorts = ['name', 'role', 'hire_date', 'years_experience', 'created_at'];
+        if (!in_array($sortBy, $allowedSorts)) $sortBy = 'name';
+        if (!in_array($sortOrder, ['asc', 'desc'])) $sortOrder = 'asc';
         $query->orderBy($sortBy, $sortOrder);
 
-        // Get paginated results
-        $personnel = $query->paginate(20)->appends($request->except('page'));
+        $personnel = $query->paginate(20)->withQueryString();
 
-        // Get statistics - using is_active instead of status
+        $availableRoles = User::roleLabels();
+
+        // Stats
         $stats = [
             'total' => User::whereNotIn('role', ['customer'])->count(),
-            'technicians' => User::where('role', 'technician')->count(),
-            'office_staff' => User::whereIn('role', ['admin', 'manager', 'service_advisor', 'office_staff'])->count(),
-            'executives' => User::where('role', 'executive')->count(),
-            'active' => User::whereNotIn('role', ['customer'])->where('is_active', true)->count(),
-            'inactive' => User::whereNotIn('role', ['customer'])->where('is_active', false)->count(),
+            'technicians' => User::whereNotIn('role', ['customer'])->where('role', 'technician')->count(),
+            'office_staff' => User::whereNotIn('role', ['customer'])->whereIn('role', ['office_staff', 'service_advisor'])->count(),
+            'executives' => User::whereNotIn('role', ['customer'])->whereIn('role', ['super_admin', 'admin', 'executive', 'manager'])->count(),
         ];
 
-        // Get departments for filtering - check if Department model exists
-        $departments = [];
-        if (class_exists('App\\Models\\Department')) {
-            $departments = \App\Models\Department::all();
-        }
-
-        // Get all available roles for filtering
-        $availableRoles = [
-            'technician' => 'Technician',
-            'service_advisor' => 'Service Advisor',
-            'manager' => 'Manager',
-            'admin' => 'Administrator',
-            'office_staff' => 'Office Staff',
-            'executive' => 'Executive',
-        ];
-
-        return view('personnel.index', compact('personnel', 'stats', 'departments', 'availableRoles'));
+        return view('personnel.index', compact('personnel', 'availableRoles', 'stats'));
     }
-
-    /**
-     * Display technicians only.
-     */
-    // Category-specific methods removed - now using single personnel page with filtering
 
     /**
      * Show the form for creating new personnel.
      */
     public function create()
     {
-        $roles = [
-            'technician' => 'Technician',
-            'service_advisor' => 'Service Advisor',
-            'manager' => 'Manager',
-            'admin' => 'Administrator',
-            'office_staff' => 'Office Staff',
-            'executive' => 'Executive',
-        ];
-
-        return view('personnel.create', compact('roles'));
+        $availableRoles = User::roleLabels();
+        return view('personnel.create', compact('availableRoles'));
     }
 
     /**
-     * Store a newly created personnel in storage.
+     * Store newly created personnel.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'phone' => 'nullable|string|max:20',
-            'role' => 'required|string|max:50',
-            'specialization' => 'nullable|string|max:500',
-            'years_experience' => 'nullable|integer|min:0',
-            'hire_date' => 'nullable|date',
-            'is_active' => 'required|boolean',
-            'notes' => 'nullable|string',
-            'additional_roles' => 'nullable|array',
-            'additional_roles.*' => 'string|max:50',
+            'name'            => 'required|string|max:255',
+            'email'           => 'required|email|max:255|unique:users,email',
+            'phone'           => 'nullable|string|max:50',
+            'address'         => 'nullable|string|max:500',
+            'role'            => 'required|string|in:' . implode(',', $this->validRoles),
+            'roles'           => 'nullable|string',
+            'password'        => 'required|string|min:8',
+            'is_active'       => 'boolean',
+            'employee_id'     => 'nullable|string|max:50',
+            'hire_date'       => 'nullable|date',
+            'employment_type' => 'nullable|string|max:50',
+            'specialization'  => 'nullable|string|max:255',
+            'skills'          => 'nullable|string',
+            'shift_schedule'  => 'nullable|string|max:100',
+            'hourly_rate'     => 'nullable|numeric|min:0',
+            'notes'           => 'nullable|string|max:2000',
+            'profile_photo'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'cropped_image'   => 'nullable|string',
         ]);
 
-        // Prepare notes with additional roles if any
-        $notes = $validated['notes'] ?? '';
-        if (!empty($validated['additional_roles'])) {
-            $additionalRolesText = 'Additional Roles: ' . implode(', ', array_map(function($roleValue) {
-                // Convert role value to readable name
-                $roleMap = [
-                    'technician' => 'Technician',
-                    'service_advisor' => 'Service Advisor',
-                    'manager' => 'Manager',
-                    'admin' => 'Administrator',
-                    'office_staff' => 'Office Staff',
-                    'executive' => 'Executive'
-                ];
-                
-                return $roleMap[$roleValue] ?? ucfirst(str_replace('_', ' ', $roleValue));
-            }, $validated['additional_roles']));
-            
-            $notes = $notes ? $notes . "\n\n" . $additionalRolesText : $additionalRolesText;
+        // Parse comma-separated roles string into array, validate each
+        $rolesArray = [];
+        if (!empty($validated['roles'])) {
+            $parts = explode(',', $validated['roles']);
+            foreach ($parts as $r) {
+                $r = trim($r);
+                if (!empty($r) && in_array($r, $this->validRoles)) {
+                    $rolesArray[] = $r;
+                }
+            }
         }
-        
-        // Create the user
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
-            'role' => $validated['role'],
-            'specialization' => $validated['specialization'] ?? null,
-            'years_experience' => $validated['years_experience'] ?? 0,
-            'hire_date' => $validated['hire_date'] ?? now(),
-            'is_active' => $validated['is_active'],
-            'notes' => $notes,
-            'password' => Hash::make('password123'), // Default password
-        ]);
 
-        return redirect()->route('personnel.show', $user)
-            ->with('success', 'Personnel created successfully. Default password: password123');
+        $data = [
+            'name'            => $validated['name'],
+            'email'           => $validated['email'],
+            'password'        => Hash::make($validated['password']),
+            'role'            => $validated['role'],
+            'roles'           => $rolesArray,
+            'phone'           => $validated['phone'] ?? null,
+            'address'         => $validated['address'] ?? null,
+            'is_active'       => $request->boolean('is_active', true),
+            'employee_id'     => $validated['employee_id'] ?? null,
+            'hire_date'       => $validated['hire_date'] ?? null,
+            'employment_type' => $validated['employment_type'] ?? null,
+            'specialization'  => $validated['specialization'] ?? null,
+            'skills'          => $validated['skills'] ?? null,
+            'shift_schedule'  => $validated['shift_schedule'] ?? null,
+            'hourly_rate'     => $validated['hourly_rate'] ?? null,
+            'notes'           => $validated['notes'] ?? null,
+        ];
+
+        // Handle profile photo (cropped or raw upload)
+        $path = $this->saveCroppedImage($request, 'cropped_image', 'profile_photo', 'profile-photos', 300, 85);
+        if ($path) {
+            $data['profile_photo_path'] = $path;
+        }
+
+        $user = User::create($data);
+
+        return redirect()->route('personnel.index')
+            ->with('success', "Personnel {$user->name} created successfully.");
     }
 
     /**
      * Display the specified personnel.
      */
-    public function show(User $user)
+    public function show($id)
     {
-        // Load related data based on role
-        if ($user->isTechnician()) {
-            $user->load([
-                'timeLogs' => function ($query) {
-                    $query->orderBy('log_time', 'desc')->limit(10);
-                },
-                'performanceMetrics' => function ($query) {
-                    $query->orderBy('created_at', 'desc')->limit(10);
-                },
-                // 'trainingRecords' => function ($query) {
-                //     $query->with('trainingModule')->orderBy('created_at', 'desc')->limit(10);
-                // },
-            ]);
-        }
+        $personnel = User::whereNotIn('role', ['customer'])->findOrFail($id);
 
-        return view('personnel.show', compact('user'));
+        // Get assigned appointments
+        $appointments = Appointment::where('assigned_technician_id', $personnel->id)
+            ->orWhere('service_advisor_id', $personnel->id)
+            ->orderBy('appointment_date', 'desc')
+            ->take(10)
+            ->get();
+
+        // Get work orders
+        $workOrders = WorkOrder::where('technician_id', $personnel->id)
+            ->orderBy('created_at', 'desc')
+            ->take(10)
+            ->get();
+
+        $availableRoles = User::roleLabels();
+
+        return view('personnel.show', compact('personnel', 'appointments', 'workOrders', 'availableRoles'));
     }
 
     /**
-     * Show the form for editing the specified personnel.
+     * Show the form for editing personnel.
      */
-    public function edit(User $user)
+    public function edit($id)
     {
-        $roles = [
-            'technician' => 'Technician',
-            'service_advisor' => 'Service Advisor',
-            'manager' => 'Manager',
-            'admin' => 'Administrator',
-            'office_staff' => 'Office Staff',
-            'executive' => 'Executive',
-        ];
-
-        return view('personnel.edit', compact('user', 'roles'));
+        $personnel = User::whereNotIn('role', ['customer'])->findOrFail($id);
+        $availableRoles = User::roleLabels();
+        return view('personnel.edit', compact('personnel', 'availableRoles'));
     }
 
     /**
-     * Update the specified personnel in storage.
+     * Update the specified personnel.
      */
-    public function update(Request $request, User $user)
+    public function update(Request $request, $id)
     {
+        $personnel = User::whereNotIn('role', ['customer'])->findOrFail($id);
+
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'phone' => 'nullable|string|max:20',
-            'role' => 'required|string|max:50',
-            'specialization' => 'nullable|string|max:500',
-            'years_experience' => 'nullable|integer|min:0',
-            'hire_date' => 'nullable|date',
-            'is_active' => 'required|boolean',
-            'notes' => 'nullable|string',
-            'additional_roles' => 'nullable|array',
-            'additional_roles.*' => 'string|max:50',
+            'name'            => 'required|string|max:255',
+            'email'           => 'required|email|max:255|unique:users,email,' . $personnel->id,
+            'phone'           => 'nullable|string|max:50',
+            'address'         => 'nullable|string|max:500',
+            'role'            => 'required|string|in:' . implode(',', $this->validRoles),
+            'roles'           => 'nullable|string',
+            'password'        => 'nullable|string|min:8',
+            'is_active'       => 'boolean',
+            'employee_id'     => 'nullable|string|max:50',
+            'hire_date'       => 'nullable|date',
+            'employment_type' => 'nullable|string|max:50',
+            'specialization'  => 'nullable|string|max:255',
+            'skills'          => 'nullable|string',
+            'shift_schedule'  => 'nullable|string|max:100',
+            'hourly_rate'     => 'nullable|numeric|min:0',
+            'notes'           => 'nullable|string|max:2000',
+            'profile_photo'   => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048',
+            'cropped_image'   => 'nullable|string',
+            'remove_photo'    => 'boolean',
         ]);
 
-        // Prepare notes with additional roles if any
-        $notes = $validated['notes'] ?? '';
-        if (!empty($validated['additional_roles'])) {
-            $additionalRolesText = 'Additional Roles: ' . implode(', ', array_map(function($roleValue) {
-                // Convert role value to readable name
-                $roleMap = [
-                    'technician' => 'Technician',
-                    'service_advisor' => 'Service Advisor',
-                    'manager' => 'Manager',
-                    'admin' => 'Administrator',
-                    'office_staff' => 'Office Staff',
-                    'executive' => 'Executive'
-                ];
-                
-                return $roleMap[$roleValue] ?? ucfirst(str_replace('_', ' ', $roleValue));
-            }, $validated['additional_roles']));
-            
-            $notes = $notes ? $notes . "\n\n" . $additionalRolesText : $additionalRolesText;
+        // Parse comma-separated roles string into array, validate each
+        $rolesArray = [];
+        if (!empty($validated['roles'])) {
+            $parts = explode(',', $validated['roles']);
+            foreach ($parts as $r) {
+                $r = trim($r);
+                if (!empty($r) && in_array($r, $this->validRoles)) {
+                    $rolesArray[] = $r;
+                }
+            }
         }
-        
-        $validated['notes'] = $notes;
 
-        $user->update($validated);
+        $data = [
+            'name'            => $validated['name'],
+            'email'           => $validated['email'],
+            'role'            => $validated['role'],
+            'roles'           => $rolesArray,
+            'phone'           => $validated['phone'] ?? null,
+            'address'         => $validated['address'] ?? null,
+            'is_active'       => $request->boolean('is_active', true),
+            'employee_id'     => $validated['employee_id'] ?? null,
+            'hire_date'       => $validated['hire_date'] ?? null,
+            'employment_type' => $validated['employment_type'] ?? null,
+            'specialization'  => $validated['specialization'] ?? null,
+            'skills'          => $validated['skills'] ?? null,
+            'shift_schedule'  => $validated['shift_schedule'] ?? null,
+            'hourly_rate'     => $validated['hourly_rate'] ?? null,
+            'notes'           => $validated['notes'] ?? null,
+        ];
 
-        return redirect()->route('personnel.show', $user)
-            ->with('success', 'Personnel updated successfully');
+        // Handle password update
+        if ($request->filled('password')) {
+            $data['password'] = Hash::make($validated['password']);
+        }
+
+        // Handle profile photo (cropped or raw upload)
+        if ($request->filled('cropped_image') || $request->hasFile('profile_photo')) {
+            // Delete old photo
+            $this->deleteStoredImage($personnel->profile_photo_path);
+            $path = $this->saveCroppedImage($request, 'cropped_image', 'profile_photo', 'profile-photos', 300, 85);
+            if ($path) {
+                $data['profile_photo_path'] = $path;
+            }
+        }
+
+        // Handle photo removal
+        if ($request->boolean('remove_photo')) {
+            if ($personnel->profile_photo_path) {
+                Storage::disk('public')->delete($personnel->profile_photo_path);
+            }
+            $data['profile_photo_path'] = null;
+        }
+
+        $personnel->update($data);
+
+        return redirect()->route('personnel.show', $personnel->id)
+            ->with('success', "Personnel {$personnel->name} updated successfully.");
     }
 
     /**
      * Remove the specified personnel from storage.
      */
-    public function destroy(User $user)
+    public function destroy($id)
     {
-        // Don't allow deletion of the last admin
-        if ($user->isAdmin() && User::where('role', 'admin')->count() <= 1) {
+        $personnel = User::whereNotIn('role', ['customer'])->findOrFail($id);
+
+        // Don't delete super_admin records
+        if ($personnel->role === 'super_admin') {
             return redirect()->route('personnel.index')
-                ->with('error', 'Cannot delete the last administrator');
+                ->with('error', 'Super Admin accounts cannot be deleted.');
         }
 
-        $user->delete();
+        // Delete profile photo if exists
+        if ($personnel->profile_photo_path) {
+            Storage::disk('public')->delete($personnel->profile_photo_path);
+        }
+
+        $name = $personnel->name;
+        $personnel->delete();
 
         return redirect()->route('personnel.index')
-            ->with('success', 'Personnel deleted successfully');
+            ->with('success', "Personnel {$name} deleted successfully.");
     }
 
     /**
-     * Assign a new role to personnel.
+     * Get initial characters for avatar fallback.
      */
-    public function assignRole(Request $request, User $user)
+    public static function getInitials(?string $name): string
     {
-        $validated = $request->validate([
-            'role' => 'required|string|max:50',
-        ]);
-
-        $user->update(['role' => $validated['role']]);
-
-        return redirect()->route('personnel.show', $user)
-            ->with('success', 'Role assigned successfully');
+        if (empty($name)) return '?';
+        $words = explode(' ', trim($name));
+        $initials = '';
+        foreach ($words as $word) {
+            if (!empty($word)) {
+                $initials .= strtoupper(mb_substr($word, 0, 1));
+            }
+        }
+        return substr($initials, 0, 2);
     }
 
     /**
-     * Update department for personnel.
-     * Note: Department functionality is not implemented in this version.
-     * Uncomment and implement when departments table and model are created.
+     * Get color for initials avatar background based on name.
      */
-    /*
-    public function updateDepartment(Request $request, User $user)
+    public static function getInitialsColor(?string $name): string
     {
-        $validated = $request->validate([
-            'department_id' => 'nullable|exists:departments,id',
-        ]);
-
-        $user->update(['department_id' => $validated['department_id']]);
-
-        return redirect()->route('personnel.show', $user)
-            ->with('success', 'Department updated successfully');
+        $colors = ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b', '#5a5c69', '#6f42c1', '#fd7e14', '#20c997', '#e83e8c'];
+        if (empty($name)) return $colors[0];
+        $index = crc32($name) % count($colors);
+        return $colors[abs($index)];
     }
-    */
 
     /**
-     * Display performance metrics for personnel.
+     * Export personnel to CSV.
      */
-    public function performance(User $user)
+    public function export()
     {
-        if (!$user->isTechnician()) {
-            return redirect()->route('personnel.show', $user)
-                ->with('error', 'Performance metrics are only available for technicians');
+        $personnel = User::whereNotIn('role', ['customer'])->get();
+
+        $csv = "Name,Email,Phone,Role,Status,Employee ID,Hire Date\n";
+        foreach ($personnel as $p) {
+            $roles = implode(', ', array_map(fn($r) => User::roleLabels()[$r] ?? $r, $p->all_roles));
+            $csv .= '"' . $p->name . '","' . $p->email . '","' . ($p->phone ?? '') . '","' . $roles . '",' . ($p->is_active ? 'Active' : 'Inactive') . ',"' . ($p->employee_id ?? '') . '","' . ($p->hire_date ? $p->hire_date->format('Y-m-d') : '') . '"' . "\n";
         }
 
-        $performanceMetrics = PerformanceMetric::where('technician_id', $user->id)
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
-
-        $stats = [
-            'avg_efficiency' => PerformanceMetric::where('technician_id', $user->id)->avg('efficiency_score') ?? 0,
-            'avg_quality' => PerformanceMetric::where('technician_id', $user->id)->avg('quality_score') ?? 0,
-            'total_jobs' => PerformanceMetric::where('technician_id', $user->id)->count(),
-        ];
-
-        return view('personnel.performance', compact('user', 'performanceMetrics', 'stats'));
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="personnel_export_' . now()->format('Ymd_His') . '.csv"',
+        ]);
     }
 
     /**
-     * Export personnel data.
+     * Assign additional role to a user.
      */
-    public function export(Request $request)
+    public function assignRole(Request $request, $id)
     {
-        $type = $request->get('type', 'all');
-        
-        switch ($type) {
-            case 'technicians':
-                $personnel = User::where('role', 'technician')->get();
-                $filename = 'technicians_' . date('Y-m-d') . '.csv';
-                break;
-            case 'office-staff':
-                $personnel = User::whereIn('role', ['admin', 'manager', 'service_advisor', 'office_staff'])->get();
-                $filename = 'office_staff_' . date('Y-m-d') . '.csv';
-                break;
-            case 'executives':
-                $personnel = User::where('role', 'executive')->get();
-                $filename = 'executives_' . date('Y-m-d') . '.csv';
-                break;
-            default:
-                $personnel = User::whereNotIn('role', ['customer'])->get();
-                $filename = 'all_personnel_' . date('Y-m-d') . '.csv';
-                break;
+        $personnel = User::whereNotIn('role', ['customer'])->findOrFail($id);
+
+        $request->validate([
+            'role' => 'required|string|in:' . implode(',', $this->validRoles),
+        ]);
+
+        $currentRoles = $personnel->roles ?? [];
+        if (!is_array($currentRoles)) {
+            $currentRoles = [];
         }
 
-        // In a real implementation, you would generate a CSV or Excel file
-        // For now, we'll just return a success message
-        return redirect()->route('personnel.index')
-            ->with('success', 'Export file generated: ' . $filename . ' (This is a demo - in production, a file would be downloaded)');
+        if (!in_array($request->role, $currentRoles)) {
+            $currentRoles[] = $request->role;
+            $personnel->update(['roles' => $currentRoles]);
+        }
+
+        return redirect()->route('personnel.show', $personnel)
+            ->with('success', "Role assigned to {$personnel->name}.");
+    }
+
+    /**
+     * View personnel performance summary.
+     */
+    public function performance($id)
+    {
+        $personnel = User::whereNotIn('role', ['customer'])->findOrFail($id);
+
+        $appointmentCount = Appointment::where('technician_id', $personnel->id)->count();
+        $workOrderCount = WorkOrder::where('technician_id', $personnel->id)->count();
+
+        return view('personnel.performance', compact('personnel', 'appointmentCount', 'workOrderCount'));
+    }
+
+    /**
+     * API: Get available roles.
+     */
+    public function roles()
+    {
+        return response()->json(User::roleLabels());
     }
 }

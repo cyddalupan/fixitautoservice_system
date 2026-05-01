@@ -192,8 +192,8 @@
                         <li class="tab-item" role="presentation">
                             <button class="tab-link" id="services-tab" data-bs-toggle="tab" data-bs-target="#services" type="button" role="tab" aria-selected="false">
                                 <i class="fas fa-wrench me-1"></i> Service History
-                                @if($customer->serviceRecords && $customer->serviceRecords->count() > 0)
-                                    <span class="badge-tab">{{ $customer->serviceRecords->count() }}</span>
+                                @if(isset($unifiedHistory) && count($unifiedHistory) > 0)
+                                    <span class="badge-tab">{{ count($unifiedHistory) }}</span>
                                 @endif
                             </button>
                         </li>
@@ -210,6 +210,14 @@
                                 <i class="fas fa-sticky-note me-1"></i> Notes
                                 @if($customer->notes && $customer->notes->count() > 0)
                                     <span class="badge-tab">{{ $customer->notes->count() }}</span>
+                                @endif
+                            </button>
+                        </li>
+                        <li class="tab-item" role="presentation">
+                            <button class="tab-link" id="archived-tab" data-bs-toggle="tab" data-bs-target="#archived" type="button" role="tab" aria-selected="false">
+                                <i class="fas fa-archive me-1"></i> Archived
+                                @if(isset($archivedInspections) && $archivedInspections->count() > 0)
+                                    <span class="badge-tab">{{ $archivedInspections->count() }}</span>
                                 @endif
                             </button>
                         </li>
@@ -301,49 +309,64 @@
 
                     <!-- Service History Tab -->
                     <div class="tab-pane fade" id="services" role="tabpanel">
-                        @if($customer->serviceRecords && $customer->serviceRecords->count() > 0)
+                        @if(isset($unifiedHistory) && count($unifiedHistory) > 0)
                             <div class="table-responsive">
                                 <table class="table-fixit">
                                     <thead>
                                         <tr>
+                                            <th>Transaction ID</th>
                                             <th>Date</th>
-                                            <th>Service Type</th>
+                                            <th>Type</th>
+                                            <th>Service</th>
                                             <th>Vehicle</th>
                                             <th class="text-end">Amount</th>
                                             <th>Status</th>
-                                            <th class="text-end" style="width: 60px;"></th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($customer->serviceRecords->take(5) as $record)
+                                        @foreach(array_slice($unifiedHistory, 0, 50) as $tx)
                                             <tr>
-                                                <td><span style="font-size: 0.85rem;">{{ $record->service_date->format('M j, Y') }}</span></td>
-                                                <td><span style="font-size: 0.85rem; font-weight: 500;">{{ $record->service_type }}</span></td>
-                                                <td><small class="text-muted">{{ $record->vehicle->make ?? 'N/A' }} {{ $record->vehicle->model ?? '' }}</small></td>
-                                                <td class="text-end"><span style="font-weight: 600;">${{ number_format($record->total_amount, 2) }}</span></td>
+                                                <td><span class="badge" style="font-size:.7rem; background: var(--module-active);">{{ $tx->ref_number }}</span></td>
+                                                <td><span style="font-size: 0.85rem;">@if($tx->created_at ?? $tx->archived_at){{ \Carbon\Carbon::parse($tx->created_at ?? $tx->archived_at)->format('M j, Y h:i A') }}@else—@endif</span></td>
+                                                <td>
+                                                    <span class="badge" style="font-size:.7rem; background: var(--module-bg); color: var(--module-active);">
+                                                        @switch($tx->type)
+                                                            @case('appointment') <i class="fas fa-calendar"></i> Appt @break
+                                                            @case('inspection') <i class="fas fa-clipboard-check"></i> Inspection @break
+                                                            @case('work_order') <i class="fas fa-wrench"></i> Work Order @break
+                                                            @case('estimate') <i class="fas fa-file-invoice-dollar"></i> Estimate @break
+                                                            @case('invoice') <i class="fas fa-receipt"></i> Invoice @break
+                                                            @case('archived_inspection') <i class="fas fa-archive"></i> Archived @break
+                                                            @default {{ ucfirst(str_replace('_', ' ', $tx->type)) }}
+                                                        @endswitch
+                                                    </span>
+                                                </td>
+                                                <td><span style="font-size: 0.85rem; font-weight: 500;">{{ $tx->service_type ?: 'General' }}</span></td>
+                                                <td><small class="text-muted">{{ $tx->vehicle_label ?? 'N/A' }}</small></td>
+                                                <td class="text-end">
+                                                    @if($tx->total_amount)
+                                                        <span style="font-weight: 600;">${{ number_format($tx->total_amount, 2) }}</span>
+                                                    @else
+                                                        <span class="text-muted">—</span>
+                                                    @endif
+                                                </td>
                                                 <td>
                                                     @php
-                                                        $svcColors = ['completed' => 'bg-success', 'in_progress' => 'bg-warning text-dark', 'pending' => 'bg-secondary'];
-                                                        $svcColor = $svcColors[$record->status] ?? 'bg-secondary';
+                                                        $color = \App\Services\TransactionHistoryService::statusColor($tx->type, $tx->status ?? 'pending');
                                                     @endphp
-                                                    <span class="status-badge {{ $svcColor }}">{{ ucfirst($record->status) }}</span>
-                                                </td>
-                                                <td class="text-end">
-                                                    <a href="#" class="btn btn-sm btn-outline-secondary" style="border-radius: 6px; padding: 0.25rem 0.5rem;">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
+                                                    <span class="status-badge {{ $color }}">{{ ucfirst($tx->status ?? 'pending') }}</span>
+                                                    @if($tx->type === 'archived_inspection')
+                                                        <span class="status-badge bg-secondary">Archived</span>
+                                                    @endif
                                                 </td>
                                             </tr>
                                         @endforeach
                                     </tbody>
                                 </table>
                             </div>
-                            @if($customer->serviceRecords->count() > 5)
+                            @if(count($unifiedHistory) > 50)
                                 <div class="text-center py-3 border-top">
-                                    <a href="{{ route('customers.service-history', $customer) }}" class="btn-filter-outline btn-sm">
-                                        View All {{ $customer->serviceRecords->count() }} Services
-                                        <i class="fas fa-arrow-right ms-1"></i>
-                                    </a>
+                                    <span class="text-muted">Showing 50 of {{ count($unifiedHistory) }} transactions</span>
                                 </div>
                             @endif
                         @else
@@ -352,7 +375,56 @@
                                     <i class="fas fa-tools"></i>
                                 </div>
                                 <h5>No Service History</h5>
-                                <p>No service records available for this customer.</p>
+                                <p>No transactions recorded for this customer yet.</p>
+                            </div>
+                        @endif
+                    </div>
+
+                    <!-- Archived Records Tab -->
+                    <div class="tab-pane fade" id="archived" role="tabpanel">
+                        @if(isset($archivedInspections) && $archivedInspections->count() > 0)
+                            <div class="table-responsive">
+                                <table class="table-fixit">
+                                    <thead>
+                                        <tr>
+                                            <th>Transaction ID</th>
+                                            <th>Date Archived</th>
+                                            <th>Type</th>
+                                            <th>Vehicle</th>
+                                            <th>Concern</th>
+                                            <th>Archived By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($archivedInspections as $archive)
+                                            @php
+                                                $origData = $archive->original_data;
+                                                $concerns = $origData['customer_concerns'] ?? '—';
+                                                $inspType = $origData['inspection_type'] ?? '—';
+                                                $archiver = $archive->archivedBy ? $archive->archivedBy->name : 'Unknown';
+                                                $vehicleMake = $origData['vehicle_make'] ?? '';
+                                                $vehicleModel = $origData['vehicle_model'] ?? '';
+                                                $vehicleDisplay = $vehicleMake ? $vehicleMake . ' ' . $vehicleModel : 'Vehicle #' . ($origData['vehicle_id'] ?? '?');
+                                            @endphp
+                                            <tr style="background: #f8f9fa;">
+                                                <td><span class="badge bg-secondary">INS-{{ str_pad($origData['id'] ?? $archive->archivable_id, 5, '0', STR_PAD_LEFT) }}</span></td>
+                                                <td>{{ $archive->archived_at->format('M d, Y h:i A') }}</td>
+                                                <td>{{ ucfirst(str_replace('_', ' ', $inspType)) }}</td>
+                                                <td><small class="text-muted">{{ $vehicleDisplay }}</small></td>
+                                                <td>{{ Str::limit($concerns, 40) }}</td>
+                                                <td>{{ $archiver }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @else
+                            <div class="empty-state-module py-4">
+                                <div class="empty-state-icon">
+                                    <i class="fas fa-archive"></i>
+                                </div>
+                                <h5>No Archived Records</h5>
+                                <p>No archived transactions for this customer.</p>
                             </div>
                         @endif
                     </div>

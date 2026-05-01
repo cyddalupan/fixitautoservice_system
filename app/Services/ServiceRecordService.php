@@ -210,7 +210,8 @@ class ServiceRecordService
                 'date' => $appointment->appointment_date,
                 'service_type' => $appointment->appointment_type,
                 'status' => $appointment->appointment_status,
-                'notes' => $appointment->service_request
+                'notes' => $appointment->service_request,
+                'transaction_id' => 'APT-' . str_pad($appointment->id, 5, '0', STR_PAD_LEFT)
             ];
 
             // ANY appointment counts as a transaction!
@@ -224,7 +225,8 @@ class ServiceRecordService
                     'inspection_types' => $appointment->vehicleInspection->inspection_types,
                     'status' => $appointment->vehicleInspection->inspection_type,
                     'technician' => $appointment->vehicleInspection->technician,
-                    'customer_concerns' => $appointment->vehicleInspection->customer_concerns
+                    'customer_concerns' => $appointment->vehicleInspection->customer_concerns,
+                    'transaction_id' => 'INS-' . str_pad($appointment->vehicleInspection->id, 5, '0', STR_PAD_LEFT)
                 ];
                 $workflow['has_any_transaction'] = true;
             }
@@ -280,6 +282,30 @@ class ServiceRecordService
                 ];
                 $workflow['has_any_transaction'] = true;
             }
+        }
+
+        // ── Load archived inspections for this vehicle ──
+        $archivedInspections = \App\Models\Archive::where('source_module', 'inspection')
+            ->whereRaw('JSON_EXTRACT(original_data, "$.vehicle_id") = ?', [$vehicle->id])
+            ->orderBy('archived_at', 'desc')
+            ->get();
+
+        foreach ($archivedInspections as $archive) {
+            $origData = $archive->original_data;
+            $workflow['inspections'][] = [
+                'id' => $archive->archivable_id,
+                'date' => $archive->archived_at,
+                'inspection_type' => $origData['inspection_type'] ?? '—',
+                'inspection_types' => $origData['inspection_types'] ?? null,
+                'status' => 'archived',
+                'technician' => null,
+                'customer_concerns' => $origData['customer_concerns'] ?? '—',
+                'is_archived' => true,
+                'archive_id' => $archive->id,
+                'transaction_id' => 'INS-' . str_pad($origData['id'] ?? $archive->archivable_id, 5, '0', STR_PAD_LEFT),
+            ];
+            // Archived inspections count as transactions too
+            $workflow['has_any_transaction'] = true;
         }
 
         return $workflow;

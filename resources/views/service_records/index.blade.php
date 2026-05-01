@@ -86,6 +86,7 @@
                             @foreach(['booked','checked_in','inspection','estimate','approved','in_progress','waiting_parts','ready','paid','completed'] as $s)
                                 <option value="{{ $s }}" {{ request('stage')===$s?'selected':'' }}>{{ ucfirst(str_replace('_',' ',$s)) }}</option>
                             @endforeach
+                            <option value="archived" {{ request('stage')==='archived'?'selected':'' }}>Archived</option>
                         </select>
                     </div>
                     <div class="col-6 col-md-2">
@@ -299,7 +300,10 @@
                                     @forelse($workflow['appointments'] as $a)
                                         <div class="txn-item">
                                             <div class="d-flex justify-content-between">
-                                                <span class="txn-label">{{ \Carbon\Carbon::parse($a['date'])->format('M d') }}</span>
+                                                <span class="txn-label">
+                                                    <span class="badge bg-primary me-1" style="font-size:.6rem;">APT-{{ str_pad($a['id'] ?? 0, 5, '0', STR_PAD_LEFT) }}</span>
+                                                    {{ \Carbon\Carbon::parse($a['date'])->format('M d') }}
+                                                </span>
                                                 <span class="txn-status status-{{ $a['status'] }}">{{ ucfirst($a['status']) }}</span>
                                             </div>
                                             <div class="txn-desc">{{ $a['service_type'] ?? '—' }}</div>
@@ -319,10 +323,20 @@
                                     @forelse($workflow['inspections'] as $insp)
                                         <div class="txn-item">
                                             <div class="d-flex justify-content-between">
-                                                <span class="txn-label">{{ \Carbon\Carbon::parse($insp['date'])->format('M d') }}</span>
+                                                <span class="txn-label">
+                                                    @if(!empty($insp['transaction_id']))
+                                                        <span class="badge bg-secondary me-1" style="font-size:.6rem;">{{ $insp['transaction_id'] }}</span>
+                                                    @endif
+                                                    {{ \Carbon\Carbon::parse($insp['date'])->format('M d') }}
+                                                </span>
                                                 <span class="txn-status">{{ $insp['technician'] ?? '—' }}</span>
                                             </div>
-                                            <div class="txn-desc">{{ $insp['inspection_type'] ?? ($insp['customer_concerns'] ?? '—') }}</div>
+                                            <div class="d-flex justify-content-between">
+                                                <span class="txn-desc">{{ $insp['inspection_type'] ?? ($insp['customer_concerns'] ?? '—') }}</span>
+                                                @if(!empty($insp['is_archived']))
+                                                    <span class="txn-status" style="color:#6c757d;"><i class="fas fa-archive me-1"></i>Archived</span>
+                                                @endif
+                                            </div>
                                         </div>
                                     @empty
                                         <div class="txn-empty">No inspections</div>
@@ -339,7 +353,10 @@
                                     @forelse($workflow['estimates'] as $e)
                                         <div class="txn-item">
                                             <div class="d-flex justify-content-between">
-                                                <span class="txn-label">{{ $e['estimate_number'] ?? '#'.$e['id'] }}</span>
+                                                <span class="txn-label">
+                                                    <span class="badge bg-purple me-1" style="font-size:.6rem;background:#9b59b6;">EST-{{ str_pad($e['id'] ?? 0, 5, '0', STR_PAD_LEFT) }}</span>
+                                                    {{ $e['estimate_number'] ?? '#'.$e['id'] }}
+                                                </span>
                                                 <span class="txn-status">₱{{ number_format($e['total_amount'] ?? 0, 0) }}</span>
                                             </div>
                                             <div class="d-flex justify-content-between">
@@ -362,7 +379,10 @@
                                     @forelse($workflow['work_orders'] as $wo)
                                         <div class="txn-item">
                                             <div class="d-flex justify-content-between">
-                                                <span class="txn-label">#{{ $wo['id'] }}</span>
+                                                <span class="txn-label">
+                                                    <span class="badge bg-danger me-1" style="font-size:.6rem;">WO-{{ str_pad($wo['id'] ?? 0, 5, '0', STR_PAD_LEFT) }}</span>
+                                                    #{{ $wo['id'] }}
+                                                </span>
                                                 <span class="txn-status">₱{{ number_format($wo['estimated_total'] ?? 0, 0) }}</span>
                                             </div>
                                             <div class="d-flex justify-content-between">

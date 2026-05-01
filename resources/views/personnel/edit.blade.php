@@ -1,265 +1,544 @@
 @extends('layouts.app')
 
-@section('title', 'Edit Personnel')
+@section('title', 'Edit ' . $personnel->name)
+
+@push('styles')
+<style>
+/* ── Form redesign (same as create) ── */
+.prsnl-form-wrap {
+    background: #f4f6fa;
+    min-height: 100vh;
+    padding-top: .5rem;
+    padding-bottom: 100px;
+}
+body.dark-mode .prsnl-form-wrap { background: #1a1d23; }
+.prsnl-form-wrap .page-title {
+    color: #1a2332;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+body.dark-mode .prsnl-form-wrap .page-title { color: #e4e6eb; }
+
+.prsnl-section {
+    border-radius: 12px;
+    border: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+    margin-bottom: 1rem;
+}
+body.dark-mode .prsnl-section { background: #2a2d35; }
+.prsnl-section-header {
+    background: transparent;
+    border-bottom: 1px solid #eef0f3;
+    padding: .75rem 1rem;
+    font-size: .82rem;
+    font-weight: 600;
+    color: #1a2332;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+body.dark-mode .prsnl-section-header {
+    border-bottom-color: #3a3d45;
+    color: #e4e6eb;
+}
+.prsnl-section-header i { font-size: .85rem; width: 18px; text-align: center; }
+.prsnl-section-body { padding: 1rem; }
+
+.prsnl-label {
+    font-size: .78rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: .25rem;
+}
+body.dark-mode .prsnl-label { color: #d1d5db; }
+.prsnl-input {
+    font-size: .82rem;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    padding: .4rem .65rem;
+    transition: border-color .15s, box-shadow .15s;
+}
+body.dark-mode .prsnl-input {
+    background: #1f2937;
+    border-color: #4b5563;
+    color: #e4e6eb;
+}
+.prsnl-input:focus {
+    border-color: #4361ee;
+    box-shadow: 0 0 0 2px rgba(67, 97, 238, .15);
+}
+.prsnl-textarea {
+    font-size: .82rem;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    min-height: 80px;
+    resize: vertical;
+    padding: .4rem .65rem;
+}
+body.dark-mode .prsnl-textarea {
+    background: #1f2937;
+    border-color: #4b5563;
+    color: #e4e6eb;
+}
+
+/* ── Role chips ── */
+.prsnl-role-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    margin-top: .4rem;
+}
+.prsnl-role-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .2rem .6rem;
+    border-radius: 20px;
+    font-size: .75rem;
+    font-weight: 500;
+    background: #eef1ff;
+    color: #4361ee;
+    border: 1px solid #ccd5ff;
+}
+body.dark-mode .prsnl-role-chip {
+    background: #1a2a4a;
+    border-color: #2a4a7a;
+    color: #90aef9;
+}
+.prsnl-role-chip .remove-role {
+    cursor: pointer;
+    font-size: .7rem;
+    opacity: .7;
+    transition: opacity .15s;
+}
+.prsnl-role-chip .remove-role:hover { opacity: 1; }
+
+/* ── Image upload ── */
+.prsnl-photo-wrap {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+.prsnl-photo-preview {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #eef1ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 600;
+    color: #4361ee;
+    border: 2px dashed #ccd5ff;
+    flex-shrink: 0;
+    object-fit: cover;
+}
+body.dark-mode .prsnl-photo-preview { border-color: #2a4a7a; }
+.prsnl-photo-preview img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.prsnl-photo-actions {
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+}
+.prsnl-photo-actions .btn { font-size: .75rem; padding: .25rem .75rem; }
+
+/* ── Sticky save bar ── */
+.prsnl-sticky-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    background: #fff;
+    border-top: 1px solid #eef0f3;
+    padding: .75rem 1.5rem;
+    box-shadow: 0 -2px 8px rgba(0,0,0,.05);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: .75rem;
+}
+body.dark-mode .prsnl-sticky-bar {
+    background: #2a2d35;
+    border-top-color: #3a3d45;
+}
+
+.prsnl-role-select {
+    font-size: .82rem;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    padding: .4rem .65rem;
+}
+body.dark-mode .prsnl-role-select {
+    background: #1f2937;
+    border-color: #4b5563;
+    color: #e4e6eb;
+}
+
+@media (min-width: 768px) {
+    .prsnl-form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 1.5rem;
+    }
+    .prsnl-form-grid-full { grid-column: 1 / -1; }
+}
+
+/* ── Current image display ── */
+.prsnl-current-photo {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid var(--bs-primary, #4361ee);
+}
+.prsnl-current-photo img { width: 100%; height: 100%; object-fit: cover; }
+.prsnl-current-photo.fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef1ff;
+    color: #4361ee;
+    font-size: 2rem;
+    font-weight: 700;
+    border-color: #ccd5ff;
+}
+</style>
+@endpush
 
 @section('content')
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="page-header">
-                <h1 class="mb-0">
-                    <i class="fas fa-user-edit me-2"></i>Edit Personnel
-                </h1>
-                <p class="text-muted">Update information for {{ $user->name }}</p>
-            </div>
+<div class="container-fluid px-3 px-md-4 prsnl-form-wrap">
+    <!-- ══ HEADER ══ -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+        <div>
+            <h4 class="mb-0 page-title">
+                <i class="fas fa-user-edit me-2 accent-icon" style="color:#4361ee;"></i>Edit Personnel
+            </h4>
+            <p class="mb-0 text-muted small">Update staff member record</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ route('personnel.show', $personnel) }}" class="btn btn-sm btn-outline-info">
+                <i class="fas fa-eye me-1"></i> View Profile
+            </a>
+            <a href="{{ route('personnel.index') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to List
+            </a>
         </div>
     </div>
 
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Edit Personnel Information</h5>
-                </div>
-                <div class="card-body">
-                    <form action="{{ route('personnel.update', $user) }}" method="POST">
-                        @csrf
-                        @method('PUT')
+    <form method="POST" action="{{ route('personnel.update', $personnel) }}" enctype="multipart/form-data">
+        @csrf
+        @method('PUT')
 
-                        <div class="row">
-                            <!-- Basic Information -->
-                            <div class="col-md-6">
-                                <h6 class="mb-3">Basic Information</h6>
-                                
-                                <div class="mb-3">
-                                    <label for="name" class="form-label">Full Name *</label>
-                                    <input type="text" class="form-control @error('name') is-invalid @enderror" 
-                                           id="name" name="name" value="{{ old('name', $user->name) }}" required>
-                                    @error('name')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+        <!-- ══ SECTION A: BASIC INFO ══ -->
+        <div class="card prsnl-section">
+            <div class="prsnl-section-header">
+                <i class="fas fa-id-card" style="color:#4361ee;"></i> Basic Information
+            </div>
+            <div class="prsnl-section-body">
+                <div class="prsnl-form-grid">
+                    <div class="mb-3">
+                        <label class="prsnl-label">Full Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control prsnl-input @error('name') is-invalid @enderror"
+                               name="name" value="{{ old('name', $personnel->name) }}" placeholder="e.g. Juan Dela Cruz">
+                        @error('name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
 
-                                <div class="mb-3">
-                                    <label for="email" class="form-label">Email Address *</label>
-                                    <input type="email" class="form-control @error('email') is-invalid @enderror" 
-                                           id="email" name="email" value="{{ old('email', $user->email) }}" required>
-                                    @error('email')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                    <div class="mb-3">
+                        <label class="prsnl-label">Primary Role <span class="text-danger">*</span></label>
+                        <select class="form-select prsnl-input @error('role') is-invalid @enderror" name="role" id="primaryRole">
+                            <option value="">Select primary role</option>
+                            @foreach($availableRoles as $key => $label)
+                                <option value="{{ $key }}" {{ old('role', $personnel->role) == $key ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        @error('role')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
 
-                                <div class="mb-3">
-                                    <label for="phone" class="form-label">Phone Number</label>
-                                    <input type="text" class="form-control @error('phone') is-invalid @enderror" 
-                                           id="phone" name="phone" value="{{ old('phone', $user->phone) }}">
-                                    @error('phone')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                    <div class="mb-3 prsnl-form-grid-full">
+                        <label class="prsnl-label">Additional Roles</label>
+                        <select class="form-select prsnl-role-select" id="addRoleSelect">
+                            <option value="">Select additional role...</option>
+                            @foreach($availableRoles as $key => $label)
+                                <option value="{{ $key }}">{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <div class="prsnl-role-chips" id="roleChips">
+                            <!-- Additional roles appear as chips -->
+                        </div>
+                        @php
+                            $existingRoles = old('roles', $personnel->roles ?? []);
+                            $existingRolesStr = is_array($existingRoles) ? implode(',', $existingRoles) : $existingRoles;
+                        @endphp
+                        <input type="hidden" name="roles" id="rolesInput" value="{{ $existingRolesStr }}">
+                        @error('roles')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                        @error('roles.*')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                        <small class="text-muted" style="font-size:.68rem;">Select additional roles. Click the ✕ to remove.</small>
+                    </div>
 
-                                <div class="mb-3">
-                                    <label for="role" class="form-label">Role *</label>
-                                    <select class="form-control @error('role') is-invalid @enderror" 
-                                            id="role" name="role" required>
-                                        <option value="">Select Role</option>
-                                        @foreach($roles as $key => $label)
-                                            <option value="{{ $key }}" {{ old('role', $user->role) == $key ? 'selected' : '' }}>
-                                                {{ $label }}
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    @error('role')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                    <div class="mb-3">
+                        <label class="prsnl-label">Status</label>
+                        <div class="d-flex gap-3 pt-1">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="is_active" value="1" id="statusActive"
+                                    {{ old('is_active', $personnel->is_active) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="statusActive" style="font-size:.78rem;">Active</label>
                             </div>
-
-                            <!-- Professional Information -->
-                            <div class="col-md-6">
-                                <h6 class="mb-3">Professional Information</h6>
-                                
-                                <div class="mb-3">
-                                    <label for="specialization" class="form-label">Specialization</label>
-                                    <textarea class="form-control @error('specialization') is-invalid @enderror" 
-                                              id="specialization" name="specialization" rows="3">{{ old('specialization', $user->specialization) }}</textarea>
-                                    @error('specialization')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="years_experience" class="form-label">Years of Experience</label>
-                                    <input type="number" class="form-control @error('years_experience') is-invalid @enderror" 
-                                           id="years_experience" name="years_experience" 
-                                           value="{{ old('years_experience', $user->years_experience) }}" min="0">
-                                    @error('years_experience')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="certifications" class="form-label">Certifications</label>
-                                    <textarea class="form-control @error('certifications') is-invalid @enderror" 
-                                              id="certifications" name="certifications" rows="3">{{ old('certifications', is_array($user->certifications) ? implode(', ', $user->certifications) : $user->certifications) }}</textarea>
-                                    <small class="form-text text-muted">Enter certifications separated by commas</small>
-                                    @error('certifications')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="skills" class="form-label">Skills</label>
-                                    <textarea class="form-control @error('skills') is-invalid @enderror" 
-                                              id="skills" name="skills" rows="3">{{ old('skills', is_array($user->skills) ? implode(', ', $user->skills) : $user->skills) }}</textarea>
-                                    <small class="form-text text-muted">Enter skills separated by commas</small>
-                                    @error('skills')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="mb-3">
-                                    <label for="hourly_rate" class="form-label">Hourly Rate ($)</label>
-                                    <input type="number" step="0.01" class="form-control @error('hourly_rate') is-invalid @enderror" 
-                                           id="hourly_rate" name="hourly_rate" 
-                                           value="{{ old('hourly_rate', $user->hourly_rate) }}" min="0">
-                                    @error('hourly_rate')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="is_active" value="0" id="statusInactive"
+                                    {{ !old('is_active', $personnel->is_active) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="statusInactive" style="font-size:.78rem;">Inactive</label>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Account Status -->
-                        <div class="row mt-4">
-                            <div class="col-12">
-                                <h6 class="mb-3">Account Status</h6>
-                                
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" 
-                                           id="is_active" name="is_active" value="1" 
-                                           {{ old('is_active', $user->is_active) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="is_active">
-                                        Active Account
-                                    </label>
-                                    <small class="form-text text-muted d-block">
-                                        Uncheck to deactivate this personnel account
-                                    </small>
-                                </div>
-
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" 
-                                           id="can_login" name="can_login" value="1" 
-                                           {{ old('can_login', $user->can_login) ? 'checked' : '' }}>
-                                    <label class="form-check-label" for="can_login">
-                                        Allow System Login
-                                    </label>
-                                    <small class="form-text text-muted d-block">
-                                        Allow this personnel to log in to the system
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Password Reset (Optional) -->
-                        <div class="row mt-4">
-                            <div class="col-12">
-                                <h6 class="mb-3">Password Reset (Optional)</h6>
-                                <p class="text-muted mb-3">
-                                    Leave password fields blank to keep current password. Only fill if you want to change the password.
-                                </p>
-                                
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="password" class="form-label">New Password</label>
-                                            <input type="password" class="form-control @error('password') is-invalid @enderror" 
-                                                   id="password" name="password">
-                                            @error('password')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="mb-3">
-                                            <label for="password_confirmation" class="form-label">Confirm New Password</label>
-                                            <input type="password" class="form-control" 
-                                                   id="password_confirmation" name="password_confirmation">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Form Actions -->
-                        <div class="row mt-4">
-                            <div class="col-12">
-                                <div class="d-flex justify-content-between">
-                                    <a href="{{ route('personnel.show', $user) }}" class="btn btn-outline-secondary">
-                                        <i class="fas fa-times me-1"></i> Cancel
-                                    </a>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save me-1"></i> Update Personnel
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
+                    <div class="mb-3">
+                        <label class="prsnl-label">Position / Title</label>
+                        <input type="text" class="form-control prsnl-input @error('specialization') is-invalid @enderror"
+                               name="specialization" value="{{ old('specialization', $personnel->specialization) }}" placeholder="e.g. Lead Technician">
+                        @error('specialization')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+
+        <!-- ══ SECTION B: CONTACT ══ -->
+        <div class="card prsnl-section">
+            <div class="prsnl-section-header">
+                <i class="fas fa-phone-alt" style="color:#2ec4b6;"></i> Contact Information
+            </div>
+            <div class="prsnl-section-body">
+                <div class="prsnl-form-grid">
+                    <div class="mb-3">
+                        <label class="prsnl-label">Phone Number</label>
+                        <input type="text" class="form-control prsnl-input @error('phone') is-invalid @enderror"
+                               name="phone" value="{{ old('phone', $personnel->phone) }}" placeholder="e.g. 0917xxxxxxx">
+                        @error('phone')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="prsnl-label">Email Address <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control prsnl-input @error('email') is-invalid @enderror"
+                               name="email" value="{{ old('email', $personnel->email) }}" placeholder="e.g. juan@example.com">
+                        @error('email')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-3 prsnl-form-grid-full">
+                        <label class="prsnl-label">Address</label>
+                        <textarea class="form-control prsnl-textarea @error('address') is-invalid @enderror"
+                                  name="address" placeholder="Complete address">{{ old('address', $personnel->address) }}</textarea>
+                        @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ SECTION C: WORK INFO ══ -->
+        <div class="card prsnl-section">
+            <div class="prsnl-section-header">
+                <i class="fas fa-briefcase" style="color:#f7a429;"></i> Work Information
+            </div>
+            <div class="prsnl-section-body">
+                <div class="prsnl-form-grid">
+                    <div class="mb-3">
+                        <label class="prsnl-label">Employee ID</label>
+                        <input type="text" class="form-control prsnl-input @error('employee_id') is-invalid @enderror"
+                               name="employee_id" value="{{ old('employee_id', $personnel->employee_id) }}" placeholder="e.g. EMP-001">
+                        @error('employee_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="prsnl-label">Hire Date</label>
+                        <input type="date" class="form-control prsnl-input @error('hire_date') is-invalid @enderror"
+                               name="hire_date" value="{{ old('hire_date', $personnel->hire_date ? $personnel->hire_date->format('Y-m-d') : '') }}">
+                        @error('hire_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="prsnl-label">Employment Type</label>
+                        <select class="form-select prsnl-input @error('employment_type') is-invalid @enderror" name="employment_type">
+                            <option value="">Select type...</option>
+                            <option value="full_time" {{ old('employment_type', $personnel->employment_type) == 'full_time' ? 'selected' : '' }}>Full Time</option>
+                            <option value="part_time" {{ old('employment_type', $personnel->employment_type) == 'part_time' ? 'selected' : '' }}>Part Time</option>
+                            <option value="contractual" {{ old('employment_type', $personnel->employment_type) == 'contractual' ? 'selected' : '' }}>Contractual</option>
+                            <option value="probationary" {{ old('employment_type', $personnel->employment_type) == 'probationary' ? 'selected' : '' }}>Probationary</option>
+                        </select>
+                        @error('employment_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="prsnl-label">Shift Schedule</label>
+                        <select class="form-select prsnl-input @error('shift_schedule') is-invalid @enderror" name="shift_schedule">
+                            <option value="">Select shift...</option>
+                            <option value="day" {{ old('shift_schedule', $personnel->shift_schedule) == 'day' ? 'selected' : '' }}>Day Shift</option>
+                            <option value="mid" {{ old('shift_schedule', $personnel->shift_schedule) == 'mid' ? 'selected' : '' }}>Mid Shift</option>
+                            <option value="night" {{ old('shift_schedule', $personnel->shift_schedule) == 'night' ? 'selected' : '' }}>Night Shift</option>
+                            <option value="flexible" {{ old('shift_schedule', $personnel->shift_schedule) == 'flexible' ? 'selected' : '' }}>Flexible</option>
+                        </select>
+                        @error('shift_schedule')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="prsnl-label">Hourly Rate (₱)</label>
+                        <input type="number" step="0.01" min="0" class="form-control prsnl-input @error('hourly_rate') is-invalid @enderror"
+                               name="hourly_rate" value="{{ old('hourly_rate', $personnel->hourly_rate) }}" placeholder="e.g. 150.00">
+                        @error('hourly_rate')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-3 prsnl-form-grid-full">
+                        <label class="prsnl-label">Skills / Specializations</label>
+                        <textarea class="form-control prsnl-textarea @error('skills') is-invalid @enderror"
+                                  name="skills" placeholder="List skills separated by commas (e.g. Engine Repair, Electrical, AC)"
+                        >{{ old('skills', is_array($personnel->skills) ? implode(', ', $personnel->skills) : $personnel->skills) }}</textarea>
+                        @error('skills')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+
+                    <div class="mb-3 prsnl-form-grid-full">
+                        <label class="prsnl-label">New Password <small class="text-muted">(leave blank to keep current)</small></label>
+                        <input type="password" class="form-control prsnl-input @error('password') is-invalid @enderror"
+                               name="password" placeholder="Min 8 characters">
+                        @error('password')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ SECTION D: PROFILE IMAGE ══ -->
+        <div class="card prsnl-section">
+            <div class="prsnl-section-header">
+                <i class="fas fa-camera" style="color:#6f42c1;"></i> Profile Photo
+            </div>
+            <div class="prsnl-section-body">
+                <div class="prsnl-photo-wrap">
+                    <div class="prsnl-photo-preview" id="photoPreview">
+                        @if($personnel->profile_photo_path)
+                            <img src="{{ Storage::url($personnel->profile_photo_path) }}" alt="{{ $personnel->name }}">
+                        @else
+                            <i class="fas fa-user"></i>
+                        @endif
+                    </div>
+                    <div class="prsnl-photo-actions">
+                        <input type="file" class="d-none" id="photoInput" name="profile_photo" accept="image/*">
+                        <input type="hidden" name="cropped_image" id="croppedImageInput" value="">
+                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="document.getElementById('photoInput').click();">
+                            <i class="fas fa-upload me-1"></i> Replace Photo
+                        </button>
+                        @if($personnel->profile_photo_path)
+                            <label class="btn btn-outline-danger btn-sm" id="removePhotoBtn" style="cursor:pointer;">
+                                <i class="fas fa-trash me-1"></i> Remove Photo
+                            </label>
+                            <input type="hidden" name="remove_photo" id="removePhotoInput" value="0">
+                        @endif
+                        <small class="text-muted" style="font-size:.68rem;">JPEG, PNG, or WebP. Max 2MB.</small>
+                        @error('profile_photo')<div class="text-danger small mt-1">{{ $message }}</div>@enderror
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ SECTION E: NOTES ══ -->
+        <div class="card prsnl-section">
+            <div class="prsnl-section-header">
+                <i class="fas fa-sticky-note" style="color:#20c997;"></i> Notes
+            </div>
+            <div class="prsnl-section-body">
+                <textarea class="form-control prsnl-textarea @error('notes') is-invalid @enderror"
+                          name="notes" placeholder="Any additional notes about this personnel...">{{ old('notes', $personnel->notes) }}</textarea>
+                @error('notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
+            </div>
+        </div>
+
+    @include('partials.avatar-crop-modal')
+
+        <!-- ══ STICKY SAVE BAR ══ -->
+        <div class="prsnl-sticky-bar">
+            <a href="{{ route('personnel.show', $personnel) }}" class="btn btn-sm btn-outline-secondary">Cancel</a>
+            <button type="submit" class="btn btn-sm btn-primary px-4">
+                <i class="fas fa-save me-1"></i> Update Personnel
+            </button>
+        </div>
+    </form>
 </div>
 
-<!-- JavaScript for form validation and enhancements -->
-@section('scripts')
+@push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Phone number formatting
-        const phoneInput = document.getElementById('phone');
-        if (phoneInput) {
-            phoneInput.addEventListener('input', function(e) {
-                let value = e.target.value.replace(/\D/g, '');
-                if (value.length > 0) {
-                    if (value.length <= 3) {
-                        value = value;
-                    } else if (value.length <= 6) {
-                        value = value.slice(0, 3) + '-' + value.slice(3);
-                    } else {
-                        value = value.slice(0, 3) + '-' + value.slice(3, 6) + '-' + value.slice(6, 10);
-                    }
-                }
-                e.target.value = value;
-            });
-        }
+document.addEventListener('DOMContentLoaded', function () {
+    const select = document.getElementById('addRoleSelect');
+    const chips = document.getElementById('roleChips');
+    const hidden = document.getElementById('rolesInput');
+    const primarySelect = document.getElementById('primaryRole');
+    const selectedRoles = new Set();
 
-        // Hourly rate formatting
-        const hourlyRateInput = document.getElementById('hourly_rate');
-        if (hourlyRateInput) {
-            hourlyRateInput.addEventListener('blur', function(e) {
-                let value = parseFloat(e.target.value);
-                if (!isNaN(value)) {
-                    e.target.value = value.toFixed(2);
-                }
-            });
-        }
+    // Load existing additional roles
+    if (hidden.value) {
+        hidden.value.split(',').forEach(r => {
+            r = r.trim();
+            if (r) selectedRoles.add(r);
+        });
+        renderChips();
+    }
 
-        // Form validation
-        const form = document.querySelector('form');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                // Validate password confirmation
-                const password = document.getElementById('password').value;
-                const passwordConfirm = document.getElementById('password_confirmation').value;
-                
-                if (password && password !== passwordConfirm) {
-                    e.preventDefault();
-                    alert('Passwords do not match. Please confirm your password.');
-                    document.getElementById('password_confirmation').focus();
-                }
-            });
+    select.addEventListener('change', function () {
+        const val = this.value;
+        if (!val) return;
+        if (selectedRoles.has(val)) { this.value = ''; return; }
+        if (primarySelect.value === val) {
+            alert('This role is already set as the primary role.');
+            this.value = '';
+            return;
         }
+        selectedRoles.add(val);
+        this.value = '';
+        renderChips();
     });
+
+    function renderChips() {
+        chips.innerHTML = '';
+        const labels = @json($availableRoles);
+        selectedRoles.forEach(role => {
+            const chip = document.createElement('span');
+            chip.className = 'prsnl-role-chip';
+            chip.innerHTML = `${labels[role] || role} <span class="remove-role" data-role="${role}">✕</span>`;
+            chip.querySelector('.remove-role').addEventListener('click', function () {
+                selectedRoles.delete(this.dataset.role);
+                renderChips();
+            });
+            chips.appendChild(chip);
+        });
+        hidden.value = Array.from(selectedRoles).join(',');
+    }
+
+    // ── Photo upload + crop ──
+    initAvatarCrop({
+        fileInput: '#photoInput',
+        previewWrap: '#photoPreview',
+        previewImg: '#photoPreview img',
+        hiddenInput: '#croppedImageInput',
+        aspectRatio: 1,
+    });
+
+    // Remove photo confirmation
+    const removeBtn = document.getElementById('removePhotoBtn');
+    if (removeBtn) {
+        removeBtn.addEventListener('click', function () {
+            if (confirm('Remove the current profile photo?')) {
+                document.getElementById('removePhotoInput').value = '1';
+                const preview = document.getElementById('photoPreview');
+                preview.innerHTML = '<i class="fas fa-user"></i>';
+                this.style.display = 'none';
+                // Clear cropped image too
+                const cropInput = document.getElementById('croppedImageInput');
+                if (cropInput) cropInput.value = '';
+            }
+        });
+    }
+});
 </script>
-@endsection
+@endpush
 @endsection

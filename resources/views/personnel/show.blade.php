@@ -1,419 +1,400 @@
 @extends('layouts.app')
 
-@section('title', 'Personnel Details')
+@section('title', $personnel->name . ' - Profile')
+
+@push('styles')
+<style>
+:root {
+    --prsnl-primary: #4361ee;
+}
+body.dark-mode { --prsnl-card-bg: #2a2d35; }
+.prsnl-profile { background: #f4f6fa; min-height: 100vh; padding-top: .5rem; padding-bottom: 2rem; }
+body.dark-mode .prsnl-profile { background: #1a1d23; }
+.prsnl-card { border-radius: 12px; border: 0; box-shadow: 0 1px 3px rgba(0,0,0,.04); margin-bottom: 1rem; }
+body.dark-mode .prsnl-card { background: #2a2d35; }
+
+/* ── Profile header ── */
+.prsnl-profile-header {
+    position: relative;
+    padding: 2rem 1.5rem 1.5rem;
+    text-align: center;
+    background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+    border-radius: 12px 12px 0 0;
+    color: #fff;
+    overflow: hidden;
+}
+.prsnl-profile-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(45deg, transparent, transparent 20px, rgba(255,255,255,.03) 20px, rgba(255,255,255,.03) 40px);
+}
+.prsnl-profile-avatar {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,.4);
+    overflow: hidden;
+    margin: 0 auto .75rem;
+    position: relative;
+    object-fit: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    background: rgba(255,255,255,.2);
+}
+.prsnl-profile-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.prsnl-profile-name {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: .25rem;
+    position: relative;
+}
+.prsnl-profile-role-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem;
+    justify-content: center;
+    margin-bottom: .75rem;
+    position: relative;
+}
+.prsnl-profile-role-badges .badge {
+    font-size: .68rem;
+    font-weight: 500;
+    padding: .15rem .55rem;
+    background: rgba(255,255,255,.2);
+    backdrop-filter: blur(4px);
+}
+.prsnl-profile-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .5rem 1.5rem;
+    position: relative;
+    font-size: .78rem;
+    opacity: .9;
+}
+.prsnl-profile-meta i {
+    margin-right: .3rem;
+    width: 14px;
+    text-align: center;
+}
+
+/* ── Section cards ── */
+.prsnl-section-title {
+    font-size: .82rem;
+    font-weight: 600;
+    color: #1a2332;
+    padding: .75rem 1rem;
+    border-bottom: 1px solid #eef0f3;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+body.dark-mode .prsnl-section-title { color: #e4e6eb; border-bottom-color: #3a3d45; }
+
+/* ── Skills chips ── */
+.skill-chip {
+    display: inline-block;
+    padding: .15rem .6rem;
+    border-radius: 20px;
+    font-size: .72rem;
+    font-weight: 500;
+    background: #eef1ff;
+    color: #4361ee;
+    margin: 2px;
+}
+body.dark-mode .skill-chip { background: #1a2a4a; color: #90aef9; }
+
+/* ── Info rows ── */
+.prsnl-info-row {
+    display: flex;
+    padding: .4rem 1rem;
+    font-size: .8rem;
+}
+.prsnl-info-row:nth-child(even) { background: rgba(0,0,0,.02); }
+body.dark-mode .prsnl-info-row:nth-child(even) { background: rgba(255,255,255,.03); }
+.prsnl-info-label {
+    width: 140px;
+    flex-shrink: 0;
+    color: #6c7a8d;
+    font-weight: 500;
+}
+body.dark-mode .prsnl-info-label { color: #9ca3af; }
+.prsnl-info-value { color: #1a2332; }
+body.dark-mode .prsnl-info-value { color: #d1d5db; }
+
+/* ── Empty state ── */
+.prsnl-empty {
+    padding: 2rem 1rem;
+    text-align: center;
+    color: #9ca3af;
+    font-size: .82rem;
+}
+
+/* ── Timeline ── */
+.prsnl-timeline { position: relative; padding: 1rem; }
+.prsnl-timeline-item {
+    position: relative;
+    padding-left: 1.5rem;
+    padding-bottom: 1rem;
+}
+.prsnl-timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 5px;
+    top: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #4361ee;
+}
+.prsnl-timeline-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 18px;
+    bottom: 0;
+    width: 2px;
+    background: #e5e7eb;
+}
+.prsnl-timeline-item small { color: #9ca3af; font-size: .68rem; }
+</style>
+@endpush
 
 @section('content')
-<div class="container-fluid">
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="page-header">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h1 class="mb-0">
-                            <i class="fas fa-user me-2"></i>Personnel Details
-                        </h1>
-                        <p class="text-muted mb-0">{{ $user->name }} - {{ $user->role }}</p>
-                    </div>
-                    <div>
-                        <a href="{{ route('personnel.index') }}" class="btn btn-outline-secondary">
-                            <i class="fas fa-arrow-left me-1"></i> Back to List
-                        </a>
-                        <a href="{{ route('personnel.edit', $user) }}" class="btn btn-primary">
-                            <i class="fas fa-edit me-1"></i> Edit
-                        </a>
-                    </div>
-                </div>
-            </div>
+<div class="container-fluid px-3 px-md-4 prsnl-profile">
+    <!-- ══ NAV ══ -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <a href="{{ route('personnel.index') }}" class="btn btn-sm btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Personnel
+            </a>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ route('personnel.edit', $personnel) }}" class="btn btn-sm btn-warning">
+                <i class="fas fa-edit me-1"></i> Edit
+            </a>
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete({{ $personnel->id }}, '{{ addslashes($personnel->name) }}')">
+                <i class="fas fa-trash me-1"></i> Delete
+            </button>
         </div>
     </div>
 
-    <!-- Personnel Details -->
-    <div class="row">
-        <div class="col-md-4">
-            <!-- Basic Information Card -->
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0"><i class="fas fa-id-card me-2"></i>Basic Information</h5>
-                </div>
-                <div class="card-body">
-                    <div class="text-center mb-4">
-                        <div class="avatar-placeholder bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 100px; height: 100px; font-size: 2.5rem;">
-                            {{ strtoupper(substr($user->name, 0, 1)) }}
-                        </div>
-                        <h4 class="mt-3 mb-1">{{ $user->name }}</h4>
-                        <span class="badge bg-{{ $user->role_badge_color }}">{{ ucfirst(str_replace('_', ' ', $user->role)) }}</span>
+    <div class="row g-4">
+        <!-- ══ LEFT COLUMN: Profile Header + Contact + Info ══ -->
+        <div class="col-lg-4">
+            <!-- Profile Header -->
+            <div class="card prsnl-card">
+                <div class="prsnl-profile-header">
+                    <div class="prsnl-profile-avatar">
+                        @if($personnel->profile_photo_path)
+                            <img src="{{ Storage::url($personnel->profile_photo_path) }}" alt="{{ $personnel->name }}">
+                        @else
+                            {{ \App\Http\Controllers\PersonnelController::getInitials($personnel->name) }}
+                        @endif
                     </div>
-
-                    <div class="row">
-                        <div class="col-12">
-                            <table class="table table-borderless">
-                                <tr>
-                                    <th width="40%">Employee ID:</th>
-                                    <td>{{ $user->employee_id ?? 'N/A' }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Email:</th>
-                                    <td>{{ $user->email }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Phone:</th>
-                                    <td>{{ $user->phone ?? 'N/A' }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Status:</th>
-                                    <td>
-                                        @if($user->is_active)
-                                            <span class="badge bg-success">Active</span>
-                                        @else
-                                            <span class="badge bg-danger">Inactive</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>Hire Date:</th>
-                                    <td>{{ $user->hire_date ? $user->hire_date->format('M d, Y') : 'N/A' }}</td>
-                                </tr>
-                                <tr>
-                                    <th>Experience:</th>
-                                    <td>{{ $user->years_experience ?? 0 }} years</td>
-                                </tr>
-                            </table>
-                        </div>
+                    <div class="prsnl-profile-name">{{ $personnel->name }}</div>
+                    <div class="prsnl-profile-role-badges">
+                        @foreach($personnel->all_role_labels as $label)
+                            <span class="badge">{{ $label }}</span>
+                        @endforeach
+                    </div>
+                    <div class="prsnl-profile-meta">
+                        <span>
+                            <i class="fas fa-envelope"></i>{{ $personnel->email }}
+                        </span>
+                        @if($personnel->phone)
+                            <span><i class="fas fa-phone"></i>{{ $personnel->phone }}</span>
+                        @endif
+                        <span>
+                            <i class="fas fa-{{ $personnel->is_active ? 'check-circle text-success' : 'times-circle text-danger' }}"></i>
+                            {{ $personnel->is_active ? 'Active' : 'Inactive' }}
+                        </span>
                     </div>
                 </div>
             </div>
 
-            <!-- Skills & Certifications -->
-            <div class="card mb-4">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0"><i class="fas fa-certificate me-2"></i>Skills & Certifications</h5>
+            <!-- Contact Details -->
+            <div class="card prsnl-card">
+                <div class="prsnl-section-title">
+                    <i class="fas fa-address-card" style="color:#2ec4b6;"></i> Contact Details
                 </div>
-                <div class="card-body">
-                    @if($user->skills && count($user->skills) > 0)
-                        <h6 class="mb-2">Skills:</h6>
-                        <div class="mb-3">
-                            @foreach($user->skills as $skill)
-                                <span class="badge bg-primary me-1 mb-1">{{ $skill }}</span>
-                            @endforeach
-                        </div>
-                    @endif
+                <div>
+                    <div class="prsnl-info-row">
+                        <span class="prsnl-info-label">Email</span>
+                        <span class="prsnl-info-value">{{ $personnel->email }}</span>
+                    </div>
+                    <div class="prsnl-info-row">
+                        <span class="prsnl-info-label">Phone</span>
+                        <span class="prsnl-info-value">{{ $personnel->phone ?? '—' }}</span>
+                    </div>
+                    <div class="prsnl-info-row">
+                        <span class="prsnl-info-label">Address</span>
+                        <span class="prsnl-info-value">{{ $personnel->address ?? '—' }}</span>
+                    </div>
+                </div>
+            </div>
 
-                    @if($user->certifications && count($user->certifications) > 0)
-                        <h6 class="mb-2">Certifications:</h6>
-                        <div>
-                            @foreach($user->certifications as $cert)
-                                <span class="badge bg-success me-1 mb-1">{{ $cert }}</span>
-                            @endforeach
-                        </div>
-                    @endif
-
-                    @if(!$user->skills && !$user->certifications)
-                        <p class="text-muted mb-0">No skills or certifications recorded.</p>
-                    @endif
+            <!-- Employment Info -->
+            <div class="card prsnl-card">
+                <div class="prsnl-section-title">
+                    <i class="fas fa-briefcase" style="color:#f7a429;"></i> Employment
+                </div>
+                <div>
+                    <div class="prsnl-info-row">
+                        <span class="prsnl-info-label">Employee ID</span>
+                        <span class="prsnl-info-value">{{ $personnel->employee_id ?? '—' }}</span>
+                    </div>
+                    <div class="prsnl-info-row">
+                        <span class="prsnl-info-label">Hire Date</span>
+                        <span class="prsnl-info-value">{{ $personnel->hire_date ? $personnel->hire_date->format('M d, Y') : '—' }}</span>
+                    </div>
+                    <div class="prsnl-info-row">
+                        <span class="prsnl-info-label">Type</span>
+                        <span class="prsnl-info-value">{{ $personnel->employment_type ? ucfirst(str_replace('_', ' ', $personnel->employment_type)) : '—' }}</span>
+                    </div>
+                    <div class="prsnl-info-row">
+                        <span class="prsnl-info-label">Shift</span>
+                        <span class="prsnl-info-value">{{ $personnel->shift_schedule ? ucfirst($personnel->shift_schedule) : '—' }}</span>
+                    </div>
+                    <div class="prsnl-info-row">
+                        <span class="prsnl-info-label">Rate</span>
+                        <span class="prsnl-info-value">{{ $personnel->hourly_rate ? '₱' . number_format($personnel->hourly_rate, 2) . '/hr' : '—' }}</span>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-8">
-            <!-- Role-Specific Information -->
-            @if($user->isTechnician())
-                <!-- Technician Details -->
-                <div class="card mb-4">
-                    <div class="card-header bg-warning text-white">
-                        <h5 class="mb-0"><i class="fas fa-wrench me-2"></i>Technician Information</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <table class="table table-borderless">
-                                    <tr>
-                                        <th width="50%">Specialization:</th>
-                                        <td>{{ $user->specialization ?? 'General' }}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Hourly Rate:</th>
-                                        <td>${{ number_format($user->hourly_rate ?? 0, 2) }}/hr</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Shift Schedule:</th>
-                                        <td>{{ $user->shift_schedule ?? 'Standard' }}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Employment Type:</th>
-                                        <td>
-                                            <span class="badge bg-{{ $user->employment_type_badge_color }}">
-                                                {{ $user->formatted_employment_type }}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
-                            <div class="col-md-6">
-                                <table class="table table-borderless">
-                                    <tr>
-                                        <th width="50%">Completed Services:</th>
-                                        <td>{{ $user->completed_services_count }}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Total Labor Hours:</th>
-                                        <td>{{ $user->total_labor_hours }} hours</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Total Labor Revenue:</th>
-                                        <td>${{ number_format($user->total_labor_revenue, 2) }}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Can Train Others:</th>
-                                        <td>
-                                            @if($user->can_train_others)
-                                                <span class="badge bg-success">Yes</span>
-                                            @else
-                                                <span class="badge bg-secondary">No</span>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
+        <!-- ══ RIGHT COLUMN: Skills, Tasks, Timeline, Notes ══ -->
+        <div class="col-lg-8">
+            <!-- Skills -->
+            <div class="card prsnl-card">
+                <div class="prsnl-section-title">
+                    <i class="fas fa-tools" style="color:#4361ee;"></i> Skills & Specializations
+                </div>
+                <div class="p-3">
+                    @if($personnel->specialization)
+                        <div class="mb-2">
+                            <strong style="font-size:.78rem;">Position:</strong>
+                            <span style="font-size:.8rem;">{{ $personnel->specialization }}</span>
                         </div>
-                    </div>
-                </div>
-
-                <!-- Recent Time Logs -->
-                <div class="card mb-4">
-                    <div class="card-header bg-secondary text-white">
-                        <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Recent Time Logs</h5>
-                    </div>
-                    <div class="card-body">
-                        @if($user->timeLogs && $user->timeLogs->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Date/Time</th>
-                                            <th>Type</th>
-                                            <th>Work Order</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($user->timeLogs as $log)
-                                            <tr>
-                                                <td>{{ $log->log_time->format('M d, Y H:i') }}</td>
-                                                <td>
-                                                    <span class="badge bg-info">{{ $log->log_type_label }}</span>
-                                                </td>
-                                                <td>
-                                                    @if($log->workOrder)
-                                                        <a href="{{ route('work-orders.show', $log->workOrder) }}">WO-{{ $log->workOrder->id }}</a>
-                                                    @else
-                                                        N/A
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-{{ $log->status == 'approved' ? 'success' : ($log->status == 'pending' ? 'warning' : 'danger') }}">
-                                                        {{ $log->status_label }}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @else
-                            <p class="text-muted mb-0">No time logs recorded.</p>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Performance Metrics -->
-                <div class="card mb-4">
-                    <div class="card-header bg-success text-white">
-                        <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Performance Metrics</h5>
-                    </div>
-                    <div class="card-body">
-                        @if($user->performanceMetrics && $user->performanceMetrics->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Quality Score</th>
-                                            <th>Efficiency</th>
-                                            <th>Customer Satisfaction</th>
-                                            <th>Safety Score</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($user->performanceMetrics as $metric)
-                                            <tr>
-                                                <td>{{ $metric->created_at->format('M d, Y') }}</td>
-                                                <td>
-                                                    <span class="badge bg-{{ $metric->quality_score >= 90 ? 'success' : ($metric->quality_score >= 80 ? 'warning' : 'danger') }}">
-                                                        {{ $metric->quality_score }}%
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-{{ $metric->efficiency_score >= 90 ? 'success' : ($metric->efficiency_score >= 80 ? 'warning' : 'danger') }}">
-                                                        {{ $metric->efficiency_score }}%
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-{{ $metric->customer_satisfaction_score >= 90 ? 'success' : ($metric->customer_satisfaction_score >= 80 ? 'warning' : 'danger') }}">
-                                                        {{ $metric->customer_satisfaction_score }}%
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-{{ $metric->safety_score >= 90 ? 'success' : ($metric->safety_score >= 80 ? 'warning' : 'danger') }}">
-                                                        {{ $metric->safety_score }}%
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @else
-                            <p class="text-muted mb-0">No performance metrics recorded.</p>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Training Records (Temporarily Disabled - Table technician_training_records doesn't exist) -->
-                {{-- <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0"><i class="fas fa-graduation-cap me-2"></i>Training Records</h5>
-                    </div>
-                    <div class="card-body">
-                        @if($user->trainingRecords && $user->trainingRecords->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Training Module</th>
-                                            <th>Completed Date</th>
-                                            <th>Score</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($user->trainingRecords as $record)
-                                            <tr>
-                                                <td>
-                                                    @if($record->trainingModule)
-                                                        {{ $record->trainingModule->title }}
-                                                    @else
-                                                        N/A
-                                                    @endif
-                                                </td>
-                                                <td>{{ $record->created_at->format('M d, Y') }}</td>
-                                                <td>
-                                                    @if($record->score)
-                                                        <span class="badge bg-{{ $record->score >= 80 ? 'success' : ($record->score >= 70 ? 'warning' : 'danger') }}">
-                                                            {{ $record->score }}%
-                                                        </span>
-                                                    @else
-                                                        <span class="badge bg-secondary">N/A</span>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    <span class="badge bg-{{ $record->status == 'completed' ? 'success' : ($record->status == 'in_progress' ? 'warning' : 'secondary') }}">
-                                                        {{ ucfirst($record->status) }}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @else
-                            <p class="text-muted mb-0">No training records.</p>
-                        @endif
-                    </div>
-                </div> --}}
-            @else
-                <!-- Non-Technician Details -->
-                <div class="card mb-4">
-                    <div class="card-header bg-info text-white">
-                        <h5 class="mb-0"><i class="fas fa-briefcase me-2"></i>Staff Information</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <table class="table table-borderless">
-                                    <tr>
-                                        <th width="50%">Role:</th>
-                                        <td>{{ ucfirst(str_replace('_', ' ', $user->role)) }}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Employment Type:</th>
-                                        <td>
-                                            <span class="badge bg-{{ $user->employment_type_badge_color }}">
-                                                {{ $user->formatted_employment_type }}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>Shift Schedule:</th>
-                                        <td>{{ $user->shift_schedule ?? 'Standard' }}</td>
-                                    </tr>
-                                </table>
-                            </div>
-                            <div class="col-md-6">
-                                <table class="table table-borderless">
-                                    <tr>
-                                        <th width="50%">Team Lead:</th>
-                                        <td>
-                                            @if($user->is_team_lead)
-                                                <span class="badge bg-success">Yes</span>
-                                            @else
-                                                <span class="badge bg-secondary">No</span>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>Emergency Contact:</th>
-                                        <td>
-                                            @if($user->emergency_contact_name)
-                                                {{ $user->emergency_contact_name }}<br>
-                                                <small>{{ $user->emergency_contact_phone }}</small>
-                                            @else
-                                                N/A
-                                            @endif
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
+                    @endif
+                    @if($personnel->skills)
+                        @php
+                            $skillsList = is_array($personnel->skills) ? $personnel->skills : explode(',', $personnel->skills);
+                        @endphp
+                        <div style="display:flex;flex-wrap:wrap;gap:3px;">
+                            @foreach($skillsList as $skill)
+                                <span class="skill-chip">{{ trim($skill) }}</span>
+                            @endforeach
                         </div>
-                    </div>
-                </div>
-            @endif
-
-            <!-- Address Information -->
-            <div class="card mb-4">
-                <div class="card-header bg-dark text-white">
-                    <h5 class="mb-0"><i class="fas fa-home me-2"></i>Address Information</h5>
-                </div>
-                <div class="card-body">
-                    @if($user->address)
-                        <p class="mb-0">{{ $user->address }}</p>
                     @else
-                        <p class="text-muted mb-0">No address recorded.</p>
+                        <div class="prsnl-empty">No skills listed</div>
                     @endif
                 </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="card prsnl-card">
+                <div class="prsnl-section-title">
+                    <i class="fas fa-sticky-note" style="color:#20c997;"></i> Notes
+                </div>
+                <div class="p-3">
+                    @if($personnel->notes)
+                        <p style="font-size:.82rem;margin:0;white-space:pre-wrap;">{{ $personnel->notes }}</p>
+                    @else
+                        <div class="prsnl-empty">No notes</div>
+                    @endif
+                </div>
+            </div>
+
+            <!-- Recent Appointments -->
+            <div class="card prsnl-card">
+                <div class="prsnl-section-title">
+                    <i class="fas fa-calendar-check" style="color:#2ec4b6;"></i> Recent Appointments
+                </div>
+                @if($appointments->count() > 0)
+                    <div class="prsnl-timeline">
+                        @foreach($appointments as $apt)
+                            <div class="prsnl-timeline-item">
+                                <strong style="font-size:.8rem;">{{ $apt->appointment_number ?? '#' . $apt->id }}</strong>
+                                <br>
+                                <small>{{ $apt->appointment_date ? \Carbon\Carbon::parse($apt->appointment_date)->format('M d, Y') : '' }} — {{ $apt->status ?? 'N/A' }}</small>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="prsnl-empty">
+                        <i class="fas fa-calendar-times fa-2x mb-2"></i><br>
+                        No recent appointments assigned
+                    </div>
+                @endif
+            </div>
+
+            <!-- Recent Work Orders -->
+            <div class="card prsnl-card">
+                <div class="prsnl-section-title">
+                    <i class="fas fa-clipboard-list" style="color:#f7a429;"></i> Recent Work Orders
+                </div>
+                @if($workOrders->count() > 0)
+                    <div class="prsnl-timeline">
+                        @foreach($workOrders as $wo)
+                            <div class="prsnl-timeline-item">
+                                <strong style="font-size:.8rem;">{{ $wo->work_order_number ?? '#' . $wo->id }}</strong>
+                                <br>
+                                <small>{{ $wo->created_at->format('M d, Y') }} — {{ $wo->status ?? 'N/A' }}</small>
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="prsnl-empty">
+                        <i class="fas fa-clipboard fa-2x mb-2"></i><br>
+                        No work orders assigned yet
+                    </div>
+                @endif
             </div>
         </div>
     </div>
 </div>
 
-<style>
-.avatar-placeholder {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+<!-- Delete Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h6 class="modal-title fw-bold">Delete Personnel</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-1">Delete <strong id="deleteName"></strong>?</p>
+                <p class="text-danger small mb-0">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="POST">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+function confirmDelete(id, name) {
+    document.getElementById('deleteForm').action = '/personnel/' + id;
+    document.getElementById('deleteName').textContent = name;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
 }
-.stat-card {
-    transition: transform 0.2s;
-}
-.stat-card:hover {
-    transform: translateY(-2px);
-}
-</style>
+</script>
+@endpush
 @endsection

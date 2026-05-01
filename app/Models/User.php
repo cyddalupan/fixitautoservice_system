@@ -22,6 +22,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'roles',
+        'profile_photo_path',
         'specialization',
         'phone',
         'address',
@@ -32,6 +34,7 @@ class User extends Authenticatable
         'hourly_rate',
         'years_experience',
         'is_active',
+        'notes',
         'employment_type',
         'shift_schedule',
         'emergency_contact_name',
@@ -63,6 +66,7 @@ class User extends Authenticatable
             'hire_date' => 'date',
             'skills' => 'array',
             'certifications' => 'array',
+            'roles' => 'array',
             'hourly_rate' => 'decimal:2',
             'years_experience' => 'integer',
             'is_active' => 'boolean',
@@ -134,9 +138,82 @@ class User extends Authenticatable
             'office_staff' => 'info',
             'technician' => 'primary',
             'accounting' => 'purple',
+            'service_advisor' => 'info',
+            'manager' => 'dark',
+            'executive' => 'danger',
             'customer' => 'success',
             default => 'secondary',
         };
+    }
+
+    /**
+     * Get all roles for this user (primary + additional).
+     */
+    public function getAllRolesAttribute(): array
+    {
+        $allRoles = [$this->role];
+        $additional = $this->roles ?? [];
+        if (is_array($additional) && !empty($additional)) {
+            foreach ($additional as $r) {
+                if (!in_array($r, $allRoles)) {
+                    $allRoles[] = $r;
+                }
+            }
+        }
+        return $allRoles;
+    }
+
+    /**
+     * Get display labels for all roles.
+     */
+    public function getAllRoleLabelsAttribute(): array
+    {
+        $map = self::roleLabels();
+        return array_map(fn($r) => $map[$r] ?? ucfirst(str_replace('_', ' ', $r)), $this->all_roles);
+    }
+
+    /**
+     * Alias: get roles as a flat array of label strings.
+     */
+    public function getRoleLabelsAttribute(): array
+    {
+        return $this->all_role_labels;
+    }
+
+    /**
+     * Get badge color for any role key.
+     */
+    public static function roleBadgeColor(string $roleKey): string
+    {
+        return match($roleKey) {
+            'super_admin' => 'danger',
+            'admin' => 'warning',
+            'office_staff' => 'info',
+            'technician' => 'primary',
+            'accounting' => 'purple',
+            'service_advisor' => 'info',
+            'manager' => 'dark',
+            'executive' => 'danger',
+            'customer' => 'success',
+            default => 'secondary',
+        };
+    }
+
+    /**
+     * Get all available role labels.
+     */
+    public static function roleLabels(): array
+    {
+        return [
+            'technician' => 'Technician',
+            'service_advisor' => 'Service Advisor',
+            'manager' => 'Manager',
+            'admin' => 'Administrator',
+            'office_staff' => 'Office Staff',
+            'executive' => 'Executive',
+            'super_admin' => 'Super Admin',
+            'accounting' => 'Accounting',
+        ];
     }
 
     public function getFormattedSkillsAttribute()

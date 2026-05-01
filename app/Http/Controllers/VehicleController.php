@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
+use App\Services\TransactionHistoryService;
 use Illuminate\Http\Request;
 
 class VehicleController extends Controller
@@ -189,7 +190,17 @@ class VehicleController extends Controller
     public function show(Vehicle $vehicle)
     {
         $vehicle->load(['customer', 'serviceRecords', 'appointments']);
-        return view('vehicles.show', compact('vehicle'));
+        
+        // Build unified transaction history from all modules
+        $unifiedHistory = TransactionHistoryService::forVehicle($vehicle->id);
+        
+        // Load archived inspections for this vehicle
+        $archivedInspections = \App\Models\Archive::where('source_module', 'inspection')
+            ->whereRaw('JSON_EXTRACT(original_data, "$.vehicle_id") = ?', [$vehicle->id])
+            ->orderBy('archived_at', 'desc')
+            ->get();
+        
+        return view('vehicles.show', compact('vehicle', 'archivedInspections', 'unifiedHistory'));
     }
 
     /**

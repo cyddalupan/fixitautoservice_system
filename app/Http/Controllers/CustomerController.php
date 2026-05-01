@@ -6,13 +6,17 @@ use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\ServiceRecord;
 use App\Models\CustomerNote;
+use App\Services\TransactionHistoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
+use App\Traits\HandlesCroppedImage;
 
 class CustomerController extends Controller
 {
+    use HandlesCroppedImage;
+
     /**
      * Display a listing of the resource.
      */
@@ -85,6 +89,7 @@ class CustomerController extends Controller
             'address' => 'nullable|string|max:255',
             'facebook_profile' => 'nullable|string|max:255',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'cropped_image'   => 'nullable|string',
             // Vehicle fields (array format for multiple vehicles)
             'vehicles' => 'nullable|array',
             'vehicles.*.make' => 'nullable|string|max:50',
@@ -117,13 +122,11 @@ class CustomerController extends Controller
         $firstName = $firstName ?: null;
         $lastName = $lastName ?: ''; // Keep as empty string, not null (last_name column is NOT NULL)
         
-        // Handle profile picture upload
-        $profilePicturePath = null;
-        if ($request->hasFile('profile_picture')) {
-            $profilePicturePath = $request->file('profile_picture')->store('profile_pictures', 'public');
-        }
+        // Handle profile picture (cropped or raw upload)
+        // Handle profile picture (cropped or raw upload)
+        $profilePicturePath = $this->saveCroppedImage($request, 'cropped_image', 'profile_picture', 'profile_pictures', 300, 85);
         
-        // Create customer data array (only include fields that exist in database)
+        // Create customer data array
         $customerData = [
             'first_name' => $firstName,
             'last_name' => $lastName,
@@ -134,13 +137,10 @@ class CustomerController extends Controller
             'is_active' => true,
         ];
         
-        // Only include facebook_profile if column exists (migration might not be run)
-        // $customerData['facebook_profile'] = $request->facebook_profile;
-        
-        // Only include profile_picture if column exists and we have a path
-        // if ($profilePicturePath) {
-        //     $customerData['profile_picture'] = $profilePicturePath;
-        // }
+        // Include profile_picture
+        if ($profilePicturePath) {
+            $customerData['profile_picture'] = $profilePicturePath;
+        }
         
         try {
             $customer = Customer::create($customerData);
@@ -210,24 +210,45 @@ class CustomerController extends Controller
             $query->orderBy('created_at', 'desc');
         }]);
 
-        // Calculate customer statistics
+        // Build unified transaction history from all modules
+        $unifiedHistory = TransactionHistoryService::forCustomer($customer->id);
+
+        // Calculate customer statistics from unified history
         $stats = [
             'total_vehicles' => $customer->vehicles->count(),
-            'total_services' => $customer->serviceRecords->count(),
-            'total_spent' => $customer->serviceRecords->sum('final_amount'),
-            'average_service_cost' => $customer->serviceRecords->avg('final_amount'),
-            'last_service_date' => $customer->serviceRecords->max('service_date'),
+            'total_services' => count($unifiedHistory),
+            'total_spent' => collect($unifiedHistory)->sum('total_amount') ?? 0,
+            'average_service_cost' => count($unifiedHistory) > 0 ? collect($unifiedHistory)->sum('total_amount') / count($unifiedHistory) : 0,
+            'last_service_date' => collect($unifiedHistory)->first() ? (collect($unifiedHistory)->first()->created_at ?? null) : null,
             'upcoming_services' => $customer->vehicles->where('next_service_date', '>=', now())->count(),
         ];
-
-        // Get service history summary
-        $serviceHistory = $customer->serviceRecords()
-            ->select('service_type', \DB::raw('COUNT(*) as count'), \DB::raw('SUM(final_amount) as revenue'))
-            ->groupBy('service_type')
-            ->orderBy('revenue', 'desc')
+        
+        // Load archived inspections for this customer
+        $customerVehicleIds = $customer->vehicles->pluck('id')->toArray();
+        
+        $archivedInspections = \App\Models\Archive::where('source_module', 'inspection')
+            ->where(function($q) use ($customer, $customerVehicleIds) {
+                $q->whereRaw('JSON_EXTRACT(original_data, "$.customer_id") = ?', [$customer->id]);
+                if (!empty($customerVehicleIds)) {
+                    foreach ($customerVehicleIds as $vid) {
+                        $q->orWhereRaw('JSON_EXTRACT(original_data, "$.vehicle_id") = ?', [$vid]);
+                    }
+                }
+            })
+            ->orderBy('archived_at', 'desc')
             ->get();
 
-        return view('customers.show', compact('customer', 'stats', 'serviceHistory'));
+        // Get service history summary from unified history
+        $grouped = collect($unifiedHistory)->groupBy('service_type')->map(function($items, $key) {
+            return [
+                'service_type' => $key ?: 'General',
+                'count' => $items->count(),
+                'revenue' => $items->sum('total_amount'),
+            ];
+        })->values();
+        $serviceHistory = $grouped;
+
+        return view('customers.show', compact('customer', 'stats', 'serviceHistory', 'archivedInspections', 'unifiedHistory'));
     }
 
     /**
@@ -257,7 +278,8 @@ class CustomerController extends Controller
             'vehicle_color' => 'nullable|string|max:30',
             'vehicle_mileage' => 'nullable|integer|min:0',
             'engine_no' => 'nullable|string|max:50',
-            // Optional service needed field (can be added in edit)
+            'cropped_image' => 'nullable|string',
+            'remove_photo' => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -282,25 +304,26 @@ class CustomerController extends Controller
         $firstName = $firstName ?: null;
         $lastName = $lastName ?: ''; // Keep as empty string, not null (last_name column is NOT NULL)
         
-        // Handle profile picture upload
+        // Handle profile picture (cropped or raw upload)
         $updateData = [
             'first_name' => $firstName,
             'last_name' => $lastName,
             'email' => $request->email,
             'phone' => $request->phone,
             'address' => $request->address,
-            // 'facebook_profile' => $request->facebook_profile, // Column might not exist
         ];
-        // Profile picture update disabled - column might not exist in database
-        // if ($request->hasFile('profile_picture')) {
-        //     // Delete old profile picture if exists
-        //     if ($customer->profile_picture) {
-        //         Storage::disk('public')->delete($customer->profile_picture);
-        //     }
-        //     
-        //     $profilePicturePath = $request->file('profile_picture')->store('profile_pictures', 'public');
-        //     $updateData['profile_picture'] = $profilePicturePath;
-        // }
+        if ($request->filled('cropped_image') || $request->hasFile('profile_picture')) {
+            $this->deleteStoredImage($customer->profile_picture);
+            $path = $this->saveCroppedImage($request, 'cropped_image', 'profile_picture', 'profile_pictures', 300, 85);
+            if ($path) {
+                $updateData['profile_picture'] = $path;
+            }
+        }
+        // Handle photo removal
+        if ($request->boolean('remove_photo')) {
+            $this->deleteStoredImage($customer->profile_picture);
+            $updateData['profile_picture'] = null;
+        }
         
         $customer->update($updateData);
 

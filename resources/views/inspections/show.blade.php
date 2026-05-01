@@ -192,6 +192,15 @@
                                         <i class="fas fa-user-cog me-1 text-primary"></i>
                                         {{ $inspection->technician->name ?? 'Unassigned' }}
                                     </p>
+                                    @if($inspection->technicians->isNotEmpty())
+                                        <div class="mt-1">
+                                            @foreach($inspection->technicians as $tech)
+                                                <span class="badge bg-light text-dark me-1" style="font-weight:500;">
+                                                    <i class="fas fa-user me-1"></i>{{ $tech->name }}
+                                                </span>
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 </div>
                                 <div class="col-md-6">
                                     <label class="text-muted small text-uppercase">Service Advisor</label>

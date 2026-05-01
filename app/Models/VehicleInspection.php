@@ -25,6 +25,7 @@ class VehicleInspection extends Model
         'inspection_status',
         'inspection_name',
         'inspection_notes',
+        'service_type',
         'technician_notes',
         'customer_concerns',
         'recommended_services',

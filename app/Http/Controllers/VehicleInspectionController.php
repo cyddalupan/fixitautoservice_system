@@ -323,6 +323,7 @@ class VehicleInspectionController extends Controller
             'workOrder',
             'appointment',
             'items.category',
+            'technicians',
             'createdBy',
             'approvedBy',
             'serviceProgress',
@@ -660,6 +661,14 @@ class VehicleInspectionController extends Controller
                 auth()->id(),
                 []
             );
+            
+            // Also mark the source appointment as completed so the vehicle becomes available
+            if ($inspection->appointment_id) {
+                $appointment = \App\Models\Appointment::find($inspection->appointment_id);
+                if ($appointment && !in_array($appointment->appointment_status, ['completed', 'cancelled', 'no_show'])) {
+                    $appointment->update(['appointment_status' => 'completed']);
+                }
+            }
         } catch (\Exception $e) {
             // If archiving fails, fall back to simple delete
             $inspection->delete();

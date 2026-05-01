@@ -202,9 +202,25 @@ class AppointmentController extends Controller
         }
         
         if ($vehicleId) {
+            // Get IDs of appointments whose inspections have been archived (exclude from active check)
+            $archivedInspectionIds = \App\Models\Archive::where('archivable_type', 'App\\Models\\VehicleInspection')
+                ->pluck('archivable_id')->toArray();
+            $archivedAppointmentIds = [];
+            if (!empty($archivedInspectionIds)) {
+                $archivedAppointmentIds = \App\Models\VehicleInspection::withTrashed()->whereIn('id', $archivedInspectionIds)
+                    ->where('vehicle_id', $vehicleId)
+                    ->whereNotNull('appointment_id')
+                    ->pluck('appointment_id')->toArray();
+            }
+
             $existingAppointment = Appointment::where('vehicle_id', $vehicleId)
-                ->where('appointment_status', 'scheduled')
+                ->whereIn('appointment_status', ['scheduled', 'checked_in', 'in_progress'])
                 ->whereNull('deleted_at')
+                ->where(function($q) use ($archivedAppointmentIds) {
+                    if (!empty($archivedAppointmentIds)) {
+                        $q->whereNotIn('id', $archivedAppointmentIds);
+                    }
+                })
                 ->first();
             
             if ($existingAppointment) {
@@ -486,13 +502,31 @@ class AppointmentController extends Controller
             }
         }
         
-        // Create vehicle inspection for the appointment
-        // Note: vehicle_id may be null since appointments now use vehicle_description
+        // Inherit service type from appointment
+        // service_types (JSON array of service-types.list keys) takes priority
+        // Fallback: map appointment_type back to a service-types.list key
+        $serviceTypeLookup = [
+            'maintenance' => 'preventive_maintenance',
+            'repair' => 'auto_mechanical',
+            'emergency' => 'auto_mechanical',
+            'inspection' => 'auto_mechanical',
+            'diagnostic' => 'auto_electrical',
+            'tire_service' => 'auto_mechanical',
+            'oil_change' => 'preventive_maintenance',
+            'brake_service' => 'auto_mechanical',
+            'regular_service' => 'auto_parts_sales',
+            'other' => 'auto_mechanical',
+        ];
+        $serviceType = $appointment->service_types 
+            ?? ($serviceTypeLookup[$appointment->appointment_type] ?? null);
+        
         $inspection = \App\Models\VehicleInspection::create([
             'appointment_id' => $appointment->id,
             'customer_id' => $appointment->customer_id,
             'vehicle_id' => $appointment->vehicle_id, // May be null
+            'technician_id' => $appointment->assigned_technician_id,
             'service_advisor_id' => $appointment->service_advisor_id,
+            'service_type' => $serviceType,
             'inspection_type' => 'pre_service',
             'inspection_status' => 'draft',
             'inspection_name' => 'Pre-Service Inspection for ' . $customerName,
@@ -500,6 +534,13 @@ class AppointmentController extends Controller
             'inspection_started_at' => now(),
             'created_by' => auth()->id(),
         ]);
+        
+        // Copy additional technicians from appointment to inspection
+        if ($appointment->technicians()->exists()) {
+            foreach ($appointment->technicians as $tech) {
+                $inspection->technicians()->attach($tech->id, ['role' => $tech->pivot->role ?? 'technician']);
+            }
+        }
         
         // If appointment has a service_id, link it to the inspection
         if ($appointment->service_id) {
@@ -817,11 +858,28 @@ class AppointmentController extends Controller
                 }
             }
             
+            $serviceTypeLookup = [
+                'maintenance' => 'preventive_maintenance',
+                'repair' => 'auto_mechanical',
+                'emergency' => 'auto_mechanical',
+                'inspection' => 'auto_mechanical',
+                'diagnostic' => 'auto_electrical',
+                'tire_service' => 'auto_mechanical',
+                'oil_change' => 'preventive_maintenance',
+                'brake_service' => 'auto_mechanical',
+                'regular_service' => 'auto_parts_sales',
+                'other' => 'auto_mechanical',
+            ];
+            $serviceType = $appointment->service_types 
+                ?? ($serviceTypeLookup[$appointment->appointment_type] ?? null);
+            
             $inspection = \App\Models\VehicleInspection::create([
                 'appointment_id' => $appointment->id,
                 'customer_id' => $appointment->customer_id,
                 'vehicle_id' => $vehicleId, // Now guaranteed to have a value
+                'technician_id' => $appointment->assigned_technician_id,
                 'service_advisor_id' => $appointment->service_advisor_id,
+                'service_type' => $serviceType,
                 'inspection_type' => 'pre_service',
                 'inspection_status' => 'draft',
                 'inspection_name' => 'Pre-Service Inspection for ' . $customerName,
@@ -841,6 +899,13 @@ class AppointmentController extends Controller
                 'customer_approved' => 0,
                 'has_upsell_opportunities' => 0,
             ]);
+            
+            // Copy additional technicians from appointment to inspection
+            if ($appointment->technicians()->exists()) {
+                foreach ($appointment->technicians as $tech) {
+                    $inspection->technicians()->attach($tech->id, ['role' => $tech->pivot->role ?? 'technician']);
+                }
+            }
             
             // If appointment has a service_id, link it to the inspection
             if ($appointment->service_id) {

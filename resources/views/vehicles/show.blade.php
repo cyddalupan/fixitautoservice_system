@@ -111,24 +111,56 @@
                 </h6>
             </div>
             <div class="card-body">
-                @if($vehicle->serviceRecords && $vehicle->serviceRecords->count() > 0)
+                @if(isset($unifiedHistory) && count($unifiedHistory) > 0)
                     <div class="table-responsive">
                         <table class="table table-sm table-hover">
                             <thead>
                                 <tr>
+                                    <th>Transaction ID</th>
                                     <th>Date</th>
-                                    <th>Service Type</th>
+                                    <th>Type</th>
+                                    <th>Service</th>
                                     <th>Description</th>
-                                    <th>Cost</th>
+                                    <th class="text-end">Amount</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($vehicle->serviceRecords->sortByDesc('service_date') as $record)
+                                @foreach($unifiedHistory as $tx)
                                     <tr>
-                                        <td>{{ $record->service_date->format('M d, Y') }}</td>
-                                        <td>{{ $record->service_type }}</td>
-                                        <td>{{ Str::limit($record->description, 50) }}</td>
-                                        <td>${{ number_format($record->cost, 2) }}</td>
+                                        <td><span class="badge" style="font-size:.7rem; background: var(--bs-primary);">{{ $tx->ref_number }}</span></td>
+                                        <td>@if($tx->created_at ?? $tx->archived_at){{ \Carbon\Carbon::parse($tx->created_at ?? $tx->archived_at)->format('M d, Y h:i A') }}@else—@endif</td>
+                                        <td>
+                                            <span class="badge" style="font-size:.7rem; background: #e9ecef; color: #495057;">
+                                                @switch($tx->type)
+                                                    @case('appointment') <i class="fas fa-calendar"></i> Appt @break
+                                                    @case('inspection') <i class="fas fa-clipboard-check"></i> Inspection @break
+                                                    @case('work_order') <i class="fas fa-wrench"></i> Work Order @break
+                                                    @case('estimate') <i class="fas fa-file-invoice-dollar"></i> Estimate @break
+                                                    @case('invoice') <i class="fas fa-receipt"></i> Invoice @break
+                                                    @case('archived_inspection') <i class="fas fa-archive"></i> Archived @break
+                                                    @default {{ ucfirst(str_replace('_', ' ', $tx->type)) }}
+                                                @endswitch
+                                            </span>
+                                        </td>
+                                        <td>{{ $tx->service_type ?: 'General' }}</td>
+                                        <td>{{ Str::limit($tx->description ?? '—', 50) }}</td>
+                                        <td class="text-end">
+                                            @if($tx->total_amount)
+                                                ${{ number_format($tx->total_amount, 2) }}
+                                            @else
+                                                <span class="text-muted">—</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @php
+                                                $color = \App\Services\TransactionHistoryService::statusColor($tx->type, $tx->status ?? 'pending');
+                                            @endphp
+                                            <span class="badge {{ $color }}">{{ ucfirst($tx->status ?? 'pending') }}</span>
+                                            @if($tx->type === 'archived_inspection')
+                                                <span class="badge bg-secondary">Archived</span>
+                                            @endif
+                                        </td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -233,12 +265,12 @@
             <div class="card-body">
                 <div class="text-center">
                     <div class="mb-3">
-                        <div class="h4 mb-0">{{ $vehicle->serviceRecords->count() }}</div>
-                        <div class="text-muted small">Total Services</div>
+                        <div class="h4 mb-0">{{ isset($unifiedHistory) ? count($unifiedHistory) : $vehicle->serviceRecords->count() }}</div>
+                        <div class="text-muted small">Total Transactions</div>
                     </div>
                     <div class="mb-3">
                         <div class="h4 mb-0">
-                            ${{ number_format($vehicle->serviceRecords->sum('cost'), 2) }}
+                            ${{ number_format(collect($unifiedHistory)->sum('total_amount'), 2) }}
                         </div>
                         <div class="text-muted small">Total Service Cost</div>
                     </div>

@@ -86,7 +86,14 @@ class ServiceRecordController extends Controller
 
         // Stage filter (post-processing)
         $stageSteps = ['booked','checked_in','inspection','estimate','approved','in_progress','ready','paid','completed'];
-        if ($stage) {
+        if ($stage === 'archived') {
+            $workflows = array_filter($workflows, function($wf) {
+                foreach ($wf['inspections'] ?? [] as $insp) {
+                    if (!empty($insp['is_archived'])) return true;
+                }
+                return false;
+            });
+        } elseif ($stage) {
             $workflows = array_filter($workflows, function($wf) use ($stage, $stageSteps) {
                 $currentStage = $this->determineStage($wf);
                 return $currentStage === $stage;
