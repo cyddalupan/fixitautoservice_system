@@ -297,6 +297,16 @@
             border-color: var(--primary-red) !important;
         }
         
+        .upload-area-dragover {
+            border-color: #8a0907 !important;
+            background: rgba(181, 12, 9, 0.15) !important;
+        }
+        .photo-thumb-remove {
+            transition: all 0.2s ease;
+        }
+        .photo-thumb-remove:hover {
+            transform: scale(1.2);
+        }
         .ui-helper-hidden-accessible {
             display: none !important;
         }
@@ -480,11 +490,13 @@
                     <i class="fas fa-cloud-upload-alt fa-3x text-danger mb-3"></i>
                     <h5>Click to Upload Photos</h5>
                     <p class="text-muted">Drag & drop or click to select photos (max 3 photos, 5MB each)</p>
-                    <input type="file" name="photos[]" multiple accept="image/*" class="d-none" id="photoUpload">
-                    <button type="button" class="btn btn-outline-danger" onclick="document.getElementById('photoUpload').click()">
+                    <input type="file" name="photos[]" multiple accept="image/*" style="display:none" id="photoUpload">
+                    <button type="button" class="btn btn-outline-danger" id="btnSelectPhotos">
                         <i class="fas fa-camera me-2"></i>Select Photos
                     </button>
                 </div>
+                <!-- Photo Preview Area -->
+                <div id="photoPreviewContainer" class="row mt-3 g-2"></div>
             </div>
             
             <!-- SECTION 4: SERVICE OPTIONS -->
@@ -609,11 +621,123 @@
     </div>
     
     <script>
-        // Photo upload feedback
-        document.getElementById('photoUpload').addEventListener('change', function(e) {
-            const files = e.target.files;
-            const maxFiles = Math.min(files.length, 3);
-            alert(maxFiles + ' photo(s) selected. You can upload up to 3 photos.');
+        // Photo upload with preview
+        const photoInput = document.getElementById('photoUpload');
+        const previewContainer = document.getElementById('photoPreviewContainer');
+        const btnSelect = document.getElementById('btnSelectPhotos');
+        let selectedFiles = [];
+
+        btnSelect.addEventListener('click', function() {
+            photoInput.click();
+        });
+
+        // Also allow clicking the upload area itself
+        const uploadArea = document.querySelector('.border.border-danger.border-2.rounded.p-4.text-center');
+        uploadArea.addEventListener('click', function(e) {
+            if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'I') {
+                photoInput.click();
+            }
+        });
+
+        // Drag & drop support
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '#8a0907';
+            this.style.background = 'rgba(181, 12, 9, 0.15)';
+        });
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '';
+            this.style.background = '';
+        });
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.style.borderColor = '';
+            this.style.background = '';
+            const droppedFiles = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+            if (droppedFiles.length === 0) {
+                alert('Please drop image files only.');
+                return;
+            }
+            if (selectedFiles.length + droppedFiles.length > 3) {
+                alert('Maximum of 3 photos only. You already have ' + selectedFiles.length + ' selected.');
+                return;
+            }
+            for (let f of droppedFiles) {
+                if (f.size > 5 * 1024 * 1024) {
+                    alert('"' + f.name + '" is too large. Max 5MB per photo.');
+                    return;
+                }
+            }
+            droppedFiles.forEach(f => selectedFiles.push(f));
+            renderPreviews();
+        });
+
+        photoInput.addEventListener('change', function(e) {
+            const newFiles = Array.from(e.target.files);
+            const totalCount = selectedFiles.length + newFiles.length;
+
+            if (totalCount > 3) {
+                alert('Maximum of 3 photos only. You already have ' + selectedFiles.length + ' selected.');
+                photoInput.value = '';
+                return;
+            }
+
+            // Check file size (5MB each)
+            for (let f of newFiles) {
+                if (f.size > 5 * 1024 * 1024) {
+                    alert('"' + f.name + '" is too large. Max 5MB per photo.');
+                    photoInput.value = '';
+                    return;
+                }
+            }
+
+            // Add new files
+            newFiles.forEach(f => selectedFiles.push(f));
+            renderPreviews();
+            // Reset input so same file can be re-selected
+            photoInput.value = '';
+        });
+
+        function renderPreviews() {
+            previewContainer.innerHTML = '';
+            selectedFiles.forEach(function(file, index) {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    const col = document.createElement('div');
+                    col.className = 'col-4';
+                    col.innerHTML = `
+                        <div class="position-relative" style="padding-top: 75%;">
+                            <img src="${ev.target.result}" 
+                                 style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;border-radius:8px;border:2px solid #B50C09;">
+                            <button type="button" class="btn btn-danger btn-sm position-absolute" 
+                                    style="top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;padding:0;font-size:12px;line-height:1;"
+                                    onclick="removePhoto(${index})">&times;</button>
+                        </div>
+                        <small class="text-muted d-block text-center mt-1" style="font-size:11px;">${file.name.substring(0,15)}${file.name.length>15?'...':''}</small>
+                    `;
+                    previewContainer.appendChild(col);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        window.removePhoto = function(index) {
+            selectedFiles.splice(index, 1);
+            renderPreviews();
+            rebuildFileInput();
+        };
+
+        function rebuildFileInput() {
+            // Create a DataTransfer to update the input's files
+            const dt = new DataTransfer();
+            selectedFiles.forEach(f => dt.items.add(f));
+            photoInput.files = dt.files;
+        }
+
+        // Override form submit to ensure files are set
+        document.querySelector('form').addEventListener('submit', function() {
+            rebuildFileInput();
         });
         
         // Budget validation
