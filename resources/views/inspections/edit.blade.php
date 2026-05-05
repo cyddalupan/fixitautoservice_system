@@ -81,13 +81,14 @@
                                 </label>
                                 <select class="form-select @error('inspection_type') is-invalid @enderror" id="inspection_type" name="inspection_type">
                                     <option value="">Select type...</option>
-                                    <option value="pre_purchase" {{ old('inspection_type', $inspection->inspection_type) == 'pre_purchase' ? 'selected' : '' }}>Pre-Purchase</option>
-                                    <option value="routine_maintenance" {{ old('inspection_type', $inspection->inspection_type) == 'routine_maintenance' ? 'selected' : '' }}>Routine Maintenance</option>
-                                    <option value="safety" {{ old('inspection_type', $inspection->inspection_type) == 'safety' ? 'selected' : '' }}>Safety</option>
-                                    <option value="comprehensive" {{ old('inspection_type', $inspection->inspection_type) == 'comprehensive' ? 'selected' : '' }}>Comprehensive</option>
-                                    <option value="diagnostic" {{ old('inspection_type', $inspection->inspection_type) == 'diagnostic' ? 'selected' : '' }}>Diagnostic</option>
-                                    <option value="emissions" {{ old('inspection_type', $inspection->inspection_type) == 'emissions' ? 'selected' : '' }}>Emissions</option>
-                                    <option value="custom" {{ old('inspection_type', $inspection->inspection_type) == 'custom' ? 'selected' : '' }}>Custom</option>
+                                    <option value="pre_purchase" {{ old('inspection_type', is_array($inspection->inspection_type) ? '' : $inspection->inspection_type) == 'pre_purchase' ? 'selected' : '' }}>Pre-Purchase</option>
+                                    <option value="routine_maintenance" {{ old('inspection_type', is_array($inspection->inspection_type) ? '' : $inspection->inspection_type) == 'routine_maintenance' ? 'selected' : '' }}>Routine Maintenance</option>
+                                    <option value="pre_service" {{ old('inspection_type', is_array($inspection->inspection_type) ? '' : $inspection->inspection_type) == 'pre_service' ? 'selected' : '' }}>Pre-Service</option>
+                                    <option value="safety" {{ old('inspection_type', is_array($inspection->inspection_type) ? '' : $inspection->inspection_type) == 'safety' ? 'selected' : '' }}>Safety</option>
+                                    <option value="comprehensive" {{ old('inspection_type', is_array($inspection->inspection_type) ? '' : $inspection->inspection_type) == 'comprehensive' ? 'selected' : '' }}>Comprehensive</option>
+                                    <option value="diagnostic" {{ old('inspection_type', is_array($inspection->inspection_type) ? '' : $inspection->inspection_type) == 'diagnostic' ? 'selected' : '' }}>Diagnostic</option>
+                                    <option value="emissions" {{ old('inspection_type', is_array($inspection->inspection_type) ? '' : $inspection->inspection_type) == 'emissions' ? 'selected' : '' }}>Emissions</option>
+                                    <option value="custom" {{ old('inspection_type', is_array($inspection->inspection_type) ? '' : $inspection->inspection_type) == 'custom' ? 'selected' : '' }}>Custom</option>
                                 </select>
                                 @error('inspection_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>

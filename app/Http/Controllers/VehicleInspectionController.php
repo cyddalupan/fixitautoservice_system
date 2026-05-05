@@ -191,6 +191,12 @@ class VehicleInspectionController extends Controller
         // All technicians for multi-select
         $allTechnicians = $technicians;
         
+        // Check for active transactions on the selected vehicle
+        $activeTransaction = null;
+        if ($selectedVehicle) {
+            $activeTransaction = \App\Services\ActiveTransactionService::checkActiveTransaction($selectedVehicle->id);
+        }
+        
         return view('inspections.create', compact(
             'customers', 
             'vehicles', 
@@ -207,7 +213,8 @@ class VehicleInspectionController extends Controller
             'customerVehicles',
             'customerHistory',
             'allTechnicians',
-            'quotationData'
+            'quotationData',
+            'activeTransaction'
         ));
     }
 
@@ -274,6 +281,16 @@ class VehicleInspectionController extends Controller
         
         // Set created by
         $validated['created_by'] = auth()->id();
+        
+        // Check for duplicate active transaction (skip if override_duplicate is set)
+        if (!$request->filled('override_duplicate') || $request->override_duplicate !== '1') {
+            if ($request->filled('vehicle_id')) {
+                $activeTransaction = \App\Services\ActiveTransactionService::checkActiveTransaction($request->vehicle_id);
+                if ($activeTransaction) {
+                    return back()->withErrors(['duplicate' => 'This vehicle already has an active ' . $activeTransaction['stage'] . ' (' . $activeTransaction['reference_number'] . ').'])->withInput();
+                }
+            }
+        }
         
         // Create inspection
         $inspection = VehicleInspection::create($validated);
@@ -421,7 +438,7 @@ class VehicleInspectionController extends Controller
                 'technician_notes' => 'nullable|string|max:2000',
                 'customer_concerns' => 'nullable|string|max:2000',
                 'vehicle_mileage' => 'nullable|integer|min:0',
-                'inspection_type' => 'nullable|in:pre_purchase,routine_maintenance,safety,comprehensive,diagnostic,emissions,custom',
+                'inspection_type' => 'nullable|in:pre_purchase,routine_maintenance,pre_service,safety,comprehensive,diagnostic,emissions,custom',
             ]);
             
             // Update only the provided fields
@@ -583,7 +600,7 @@ class VehicleInspectionController extends Controller
             'technician_id' => 'nullable|exists:users,id',
             'technicians' => 'nullable|array',
             'technicians.*' => 'exists:users,id',
-            'inspection_type' => 'required|in:pre_purchase,routine_maintenance,safety,comprehensive,diagnostic,emissions,custom',
+            'inspection_type' => 'required|in:pre_purchase,routine_maintenance,pre_service,safety,comprehensive,diagnostic,emissions,custom',
             'inspection_status' => 'required|in:draft,in_progress,completed,approved,rejected,cancelled',
             'inspection_name' => 'required|string|max:255',
             'inspection_notes' => 'nullable|string|max:2000',

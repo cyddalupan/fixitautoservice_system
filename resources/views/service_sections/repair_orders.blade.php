@@ -40,7 +40,7 @@
                                             <strong>{{ $inspection['vehicle']->year }} {{ $inspection['vehicle']->make }} {{ $inspection['vehicle']->model }}</strong><br>
                                             <small class="text-muted">{{ $inspection['vehicle']->license_plate }}</small>
                                         </td>
-                                        <td>{{ $inspection['inspection_type'] ?? 'General Inspection' }}</td>
+                                        <td>{{ is_array($inspection['inspection_type'] ?? '') ? implode(', ', $inspection['inspection_type']) : ($inspection['inspection_type'] ?? 'General Inspection') }}</td>
                                         <td>{{ $inspection['technician'] ?? 'Not assigned' }}</td>
                                         <td>
                                             @if(!empty($inspection['customer_concerns']))
@@ -111,7 +111,7 @@
                             <li><strong>Date:</strong> {{ $inspection['date']->format('M d, Y') }}</li>
                             <li><strong>Customer:</strong> {{ $inspection['customer']->first_name }} {{ $inspection['customer']->last_name }}</li>
                             <li><strong>Vehicle:</strong> {{ $inspection['vehicle']->year }} {{ $inspection['vehicle']->make }} {{ $inspection['vehicle']->model }} ({{ $inspection['vehicle']->license_plate }})</li>
-                            <li><strong>Inspection Type:</strong> {{ $inspection['inspection_type'] ?? 'General Inspection' }}</li>
+                            <li><strong>Inspection Type:</strong> {{ is_array($inspection['inspection_type'] ?? '') ? implode(', ', $inspection['inspection_type']) : ($inspection['inspection_type'] ?? 'General Inspection') }}</li>
                             <li><strong>Technician:</strong> {{ $inspection['technician'] ?? 'Not assigned' }}</li>
                         </ul>
                     </div>

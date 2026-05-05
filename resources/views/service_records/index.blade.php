@@ -68,7 +68,7 @@
                 <div class="row g-2 g-md-3 align-items-end">
                     <div class="col-12 col-md-3">
                         <label class="form-label mb-1 filter-label"><i class="fas fa-search me-1"></i>Search</label>
-                        <input type="text" class="form-control form-control-sm filter-input" name="search" placeholder="Name, plate, VIN, invoice #..." value="{{ request('search') }}">
+                        <input type="text" class="form-control form-control-sm filter-input" name="search" placeholder="Appointment code, estimate code, service type, status, customer, plate..." value="{{ request('search') }}">
                     </div>
                     <div class="col-6 col-md-2">
                         <label class="form-label mb-1 filter-label"><i class="fas fa-user me-1"></i>Customer</label>
@@ -141,6 +141,19 @@
         </div>
     @endif
 
+    <!-- SEARCH RESULTS INFO                       -->
+    @if(request('search'))
+        <div class="mb-3 d-flex align-items-center gap-2">
+            <i class="fas fa-search" style="color:#6c7a8d;font-size:.85rem;"></i>
+            <span style="font-size:.85rem;color:#1a2332;">
+                Found <strong>{{ count($workflows) }}</strong> result{{ count($workflows) !== 1 ? 's' : '' }} for
+                <strong>"{{ e(request('search')) }}"</strong>
+            </span>
+            <a href="{{ route('service-records.index') }}" class="btn btn-sm btn-outline-secondary ms-2" style="border-radius:20px;font-size:.75rem;">
+                <i class="fas fa-times me-1"></i>Clear
+            </a>
+        </div>
+    @endif
     <!-- ─────────────────────────────────────── -->
     <!-- WORKFLOW RECORDS TABLE (Sections 2-6)    -->
     <!-- ─────────────────────────────────────── -->
@@ -149,10 +162,10 @@
             @php
                 $customer = $workflow['customer'];
                 $vehicle = $workflow['vehicle'];
-                $hasAppts  = count($workflow['appointments']) > 0;
-                $hasInsp   = count($workflow['inspections']) > 0;
-                $hasEst    = count($workflow['estimates']) > 0;
-                $hasWO     = count($workflow['work_orders']) > 0;
+                $hasAppts  = count($workflow['appointments'] ?? []) > 0;
+                $hasInsp   = count($workflow['inspections'] ?? []) > 0;
+                $hasEst    = count($workflow['estimates'] ?? []) > 0;
+                $hasWO     = count($workflow['work_orders'] ?? []) > 0;
 
                 // Determine current stage
                 $currentStage = 'booked';
@@ -166,6 +179,21 @@
                 } elseif ($hasAppts) {
                     $currentStage = ($workflow['appointments'][0]['status'] ?? '') === 'checked_in' ? 'checked_in' : 'booked';
                 }
+
+                // Determine the entry point (first non-empty section) for :x: skipped-step display
+                $entryPoint = 'appointments';
+                if ($hasAppts) $entryPoint = 'appointments';
+                elseif ($hasInsp) $entryPoint = 'inspections';
+                elseif ($hasEst) $entryPoint = 'estimates';
+                elseif ($hasWO) $entryPoint = 'work_orders';
+                
+                // Helper: check if a section was skipped (upstream of entry point)
+                $isSkipped = function($sectionName) use ($entryPoint, $hasAppts, $hasInsp, $hasEst, $hasWO) {
+                    $order = ['appointments', 'inspections', 'estimates', 'work_orders'];
+                    $entryIdx = array_search($entryPoint, $order);
+                    $sectionIdx = array_search($sectionName, $order);
+                    return $sectionIdx < $entryIdx;
+                };
 
                 $stageIdx = array_search($currentStage, $stageSteps);
                 $stageIdx = $stageIdx === false ? 0 : $stageIdx;
@@ -193,7 +221,7 @@
             <div class="workflow-card mb-3">
                 <!-- Header -->
                 <div class="wf-header" data-bs-toggle="collapse" data-bs-target="#wfBody-{{ $loop->index }}"
-                     aria-expanded="{{ $loop->index < 5 ? 'true' : 'false' }}">
+                     aria-expanded="false">
                     <div class="d-flex align-items-center gap-3 flex-grow-1 min-w-0">
                         <div class="wf-avatar" style="background:{{ $sc }}12;color:{{ $sc }};">
                             <i class="fas fa-user"></i>
@@ -256,7 +284,7 @@
                 </div>
 
                 <!-- Body -->
-                <div class="collapse {{ $loop->index < 5 ? 'show' : '' }}" id="wfBody-{{ $loop->index }}">
+                <div class="collapse" id="wfBody-{{ $loop->index }}">
                     <div class="wf-body">
                         <!-- Progress Stepper -->
                         <div class="stepper-wrapper mb-3">
@@ -295,9 +323,9 @@
                                 <div class="txn-card txn-appt">
                                     <div class="txn-header">
                                         <i class="fas fa-calendar-check me-1"></i>Appointments
-                                        <span class="txn-badge">{{ count($workflow['appointments']) }}</span>
+                                        <span class="txn-badge">{{ count($workflow['appointments'] ?? []) }}</span>
                                     </div>
-                                    @forelse($workflow['appointments'] as $a)
+                                    @forelse(($workflow['appointments'] ?? []) as $a)
                                         <div class="txn-item">
                                             <div class="d-flex justify-content-between">
                                                 <span class="txn-label">
@@ -309,7 +337,11 @@
                                             <div class="txn-desc">{{ $a['service_type'] ?? '—' }}</div>
                                         </div>
                                     @empty
-                                        <div class="txn-empty">No appointments</div>
+                                        @if($isSkipped('appointments'))
+                                            <div class="txn-empty txn-skipped"><span class="skipped-x">:x:</span> Skipped</div>
+                                        @else
+                                            <div class="txn-empty">No appointments</div>
+                                        @endif
                                     @endforelse
                                 </div>
                             </div>
@@ -318,9 +350,9 @@
                                 <div class="txn-card txn-insp">
                                     <div class="txn-header">
                                         <i class="fas fa-search me-1"></i>Inspections
-                                        <span class="txn-badge">{{ count($workflow['inspections']) }}</span>
+                                        <span class="txn-badge">{{ count($workflow['inspections'] ?? []) }}</span>
                                     </div>
-                                    @forelse($workflow['inspections'] as $insp)
+                                    @forelse(($workflow['inspections'] ?? []) as $insp)
                                         <div class="txn-item">
                                             <div class="d-flex justify-content-between">
                                                 <span class="txn-label">
@@ -332,14 +364,18 @@
                                                 <span class="txn-status">{{ $insp['technician'] ?? '—' }}</span>
                                             </div>
                                             <div class="d-flex justify-content-between">
-                                                <span class="txn-desc">{{ $insp['inspection_type'] ?? ($insp['customer_concerns'] ?? '—') }}</span>
+                                                <span class="txn-desc">{{ is_array($insp['inspection_type'] ?? '—') ? implode(', ', $insp['inspection_type']) : ($insp['inspection_type'] ?? ($insp['customer_concerns'] ?? '—')) }}</span>
                                                 @if(!empty($insp['is_archived']))
                                                     <span class="txn-status" style="color:#6c757d;"><i class="fas fa-archive me-1"></i>Archived</span>
                                                 @endif
                                             </div>
                                         </div>
                                     @empty
-                                        <div class="txn-empty">No inspections</div>
+                                        @if($isSkipped('inspections'))
+                                            <div class="txn-empty txn-skipped"><span class="skipped-x">:x:</span> Skipped</div>
+                                        @else
+                                            <div class="txn-empty">No inspections</div>
+                                        @endif
                                     @endforelse
                                 </div>
                             </div>
@@ -348,9 +384,9 @@
                                 <div class="txn-card txn-est">
                                     <div class="txn-header">
                                         <i class="fas fa-file-invoice me-1"></i>Estimates
-                                        <span class="txn-badge">{{ count($workflow['estimates']) }}</span>
+                                        <span class="txn-badge">{{ count($workflow['estimates'] ?? []) }}</span>
                                     </div>
-                                    @forelse($workflow['estimates'] as $e)
+                                    @forelse(($workflow['estimates'] ?? []) as $e)
                                         <div class="txn-item">
                                             <div class="d-flex justify-content-between">
                                                 <span class="txn-label">
@@ -365,7 +401,11 @@
                                             </div>
                                         </div>
                                     @empty
-                                        <div class="txn-empty">No estimates</div>
+                                        @if($isSkipped('estimates'))
+                                            <div class="txn-empty txn-skipped"><span class="skipped-x">:x:</span> Skipped</div>
+                                        @else
+                                            <div class="txn-empty">No estimates</div>
+                                        @endif
                                     @endforelse
                                 </div>
                             </div>
@@ -374,9 +414,9 @@
                                 <div class="txn-card txn-wo">
                                     <div class="txn-header">
                                         <i class="fas fa-clipboard-list me-1"></i>Job Orders
-                                        <span class="txn-badge">{{ count($workflow['work_orders']) }}</span>
+                                        <span class="txn-badge">{{ count($workflow['work_orders'] ?? []) }}</span>
                                     </div>
-                                    @forelse($workflow['work_orders'] as $wo)
+                                    @forelse(($workflow['work_orders'] ?? []) as $wo)
                                         <div class="txn-item">
                                             <div class="d-flex justify-content-between">
                                                 <span class="txn-label">
@@ -391,7 +431,11 @@
                                             </div>
                                         </div>
                                     @empty
-                                        <div class="txn-empty">No job orders</div>
+                                        @if($isSkipped('work_orders'))
+                                            <div class="txn-empty txn-skipped"><span class="skipped-x">:x:</span> Skipped</div>
+                                        @else
+                                            <div class="txn-empty">No job orders</div>
+                                        @endif
                                     @endforelse
                                 </div>
                             </div>
@@ -444,7 +488,6 @@
 </div>
 @endsection
 
-@section('styles')
 @push('styles')
 <style>
 /* ── FixIt Service Records Dashboard CSS ── */
@@ -520,6 +563,8 @@
 .txn-label{ font-weight:500;color:#1a2332; }
 .txn-desc{ color:#8b9aab; font-size:.73rem; margin-top:1px; }
 .txn-empty{ color:#c0cad8; font-size:.78rem; padding:.3rem 0; font-style:italic; }
+.txn-skipped{ color:#8b9aab; }
+.txn-skipped .skipped-x{ color:#e63946; font-weight:600; }
 .txn-status{ font-size:.73rem; font-weight:500; }
 .status-booked{ color:#4361ee; }
 .status-checked_in{ color:#f7a429; }
@@ -541,5 +586,91 @@
     .stage-badge{ font-size:.68rem;padding:.2rem .5rem; }
     .chevron-icon{ font-size:.6rem; }
 }
+
+/* ── FIX: Tailwind .collapse overrides Bootstrap collapse ── */
+/* Tailwind's @layer utilities defines .collapse { visibility: collapse; }
+   which breaks Bootstrap's collapse component (div with class="collapse show").
+   We restore visibility so Bootstrap can manage show/hide via its JS. */
+.collapse:not(.navbar-collapse) {
+    visibility: visible;
+}
+
+/* ── DARK MODE OVERRIDES ── */
+[data-theme="dark"] .fixit-sr-dash{ background:#0f1419; }
+[data-theme="dark"] .fixit-sr-dash .page-title,
+[data-theme="dark"] .fixit-sr-dash h4,
+[data-theme="dark"] .fixit-sr-dash h5,
+[data-theme="dark"] .fixit-sr-dash h6{ color:#e4e8ec !important; }
+[data-theme="dark"] .fixit-sr-dash .text-muted,
+[data-theme="dark"] .summary-sublabel,
+[data-theme="dark"] .wf-meta,
+[data-theme="dark"] .txn-desc,
+[data-theme="dark"] .filter-label{ color:#8899a6 !important; }
+
+[data-theme="dark"] .summary-card{ background:#1a2332; border:1px solid #2a3440; }
+[data-theme="dark"] .summary-value,
+[data-theme="dark"] .summary-label,
+[data-theme="dark"] .summary-card .fw-bold{ color:#e4e8ec !important; }
+
+[data-theme="dark"] .filter-bar{ background:#1a2332; border:1px solid #2a3440; }
+[data-theme="dark"] .filter-input{ background:#0f1419; border-color:#2a3440; color:#e4e8ec; }
+[data-theme="dark"] .filter-input:focus{ background:#1a2332; }
+[data-theme="dark"] .btn-clear{ background:#2a3440; border-color:#3a4550; color:#8899a6; }
+[data-theme="dark"] .btn-clear:hover{ background:#3a4550; }
+
+[data-theme="dark"] .workflow-card{ background:#1a2332; border:1px solid #2a3440; }
+[data-theme="dark"] .wf-header{ background:#1a2332; }
+[data-theme="dark"] .wf-header:hover{ background:#1e2a38; }
+[data-theme="dark"] .wf-header h6{ color:#e4e8ec !important; }
+[data-theme="dark"] .badge-vehicle{ background:#2a3440; color:#8899a6; }
+[data-theme="dark"] .badge-plate{ background:#0f1419; color:#e4e8ec; }
+[data-theme="dark"] .btn-ghost{ border-color:#3a4550; color:#8899a6; }
+[data-theme="dark"] .btn-ghost:hover{ background:#2a3440; }
+[data-theme="dark"] .chevron-icon{ color:#3a4550; }
+[data-theme="dark"] .wf-body{ background:#0f1419; border-top-color:#2a3440; }
+[data-theme="dark"] .wf-dropdown{ background:#1a2332; border:1px solid #2a3440; }
+[data-theme="dark"] .wf-dropdown .dropdown-item{ color:#e4e8ec; }
+[data-theme="dark"] .wf-dropdown .dropdown-item:hover{ background:#2a3440; }
+
+[data-theme="dark"] .txn-card{ background:#1a2332; border-color:#2a3440; }
+[data-theme="dark"] .txn-header{ color:#e4e8ec; }
+[data-theme="dark"] .txn-badge{ background:#2a3440; color:#8899a6; }
+[data-theme="dark"] .txn-item{ border-bottom-color:#2a3440; }
+[data-theme="dark"] .txn-label{ color:#e4e8ec; }
+[data-theme="dark"] .txn-empty{ color:#3a4550; }
+[data-theme="dark"] .txn-skipped{ color:#4a5568; }
+[data-theme="dark"] .txn-skipped .skipped-x{ color:#e63946; }
+
+[data-theme="dark"] .stepper-track{ background:#2a3440; }
+[data-theme="dark"] .step-circle{ border-color:#3a4550 !important; }
+[data-theme="dark"] .step.active .step-circle{ box-shadow:0 0 0 3px rgba(67,97,238,.3); }
+[data-theme="dark"] .step-label{ color:#8899a6; }
+[data-theme="dark"] .step.active .step-label{ color:#e4e8ec; }
+
+[data-theme="dark"] .alert-payment{ background:#2a2000; color:#ffc107; border:1px solid #4a3800; }
+[data-theme="dark"] .alert-parts{ background:#2a0a0a; color:#ff6b6b; border:1px solid #4a1515; }
+
+[data-theme="dark"] .btn-action{ border-color:#3a4550 !important; }
+[data-theme="dark"] .btn-action[style*="color:#6c7a8d"]{ color:#8899a6 !important; }
+[data-theme="dark"] .btn-action[style*="border-color:#d0d5dd"]{ border-color:#3a4550 !important; }
+
+[data-theme="dark"] .fixit-sr-dash small.text-muted{ color:#3a4550 !important; }
+
+/* Empty state dark mode */
+[data-theme="dark"] .card.border-0.shadow-sm{ background:#1a2332 !important; border:1px solid #2a3440 !important; }
+[data-theme="dark"] .card-body.text-center h5.fw-bold{ color:#e4e8ec !important; }
+[data-theme="dark"] .card-body.text-center .text-muted{ color:#8899a6 !important; }
+[data-theme="dark"] .card-body.text-center div[style*="background:#f0f2f5"]{ background:#2a3440 !important; }
+[data-theme="dark"] .card-body.text-center div[style*="color:#c0cad8"] i{ color:#3a4550 !important; }
+
+/* Search results info */
+[data-theme="dark"] .fixit-sr-dash .mb-3.d-flex.align-items-center span,
+[data-theme="dark"] .fixit-sr-dash .mb-3.d-flex.align-items-center strong{ color:#e4e8ec !important; }
+[data-theme="dark"] .fixit-sr-dash .mb-3.d-flex.align-items-center .btn-outline-secondary{ color:#8899a6;border-color:#3a4550; }
+[data-theme="dark"] .fixit-sr-dash .mb-3.d-flex.align-items-center .btn-outline-secondary:hover{ background:#2a3440;color:#e4e8ec; }
+
+/* Quick actions footer */
+[data-theme="dark"] .mt-3.pt-2[style*="border-top"]{ border-top-color:#2a3440 !important; }
+
 </style>
 @endpush
