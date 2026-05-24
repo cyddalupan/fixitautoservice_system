@@ -254,6 +254,88 @@
                     </form>
                 </div>
             </div>
+
+            <!-- Customer Portal Login Card -->
+            <div class="main-card mb-4">
+                <div class="main-card-header">
+                    <i class="fas fa-user-lock me-2" style="color: var(--module-active);"></i> Customer Portal Login
+                </div>
+                <div class="card-body p-4">
+                    @php $portalUser = $customer->portalUser; @endphp
+                    
+                    @if($portalUser)
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Login Email</label>
+                            <div class="d-flex align-items-center">
+                                <input type="email" class="form-control" id="portalEmail" value="{{ $portalUser->email }}" readonly>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Status</label>
+                            <div>
+                                @if($portalUser->is_active)
+                                    <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i> Active</span>
+                                @else
+                                    <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i> Disabled</span>
+                                @endif
+                                @if($portalUser->email_verified_at)
+                                    <span class="badge bg-info ms-1"><i class="fas fa-envelope me-1"></i> Email Verified</span>
+                                @else
+                                    <span class="badge bg-warning ms-1"><i class="fas fa-envelope me-1"></i> Not Verified</span>
+                                @endif
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Update Password</label>
+                            <div class="input-group">
+                                <input type="password" class="form-control" id="portalPassword" placeholder="New password (leave blank to keep current)" autocomplete="new-password">
+                                <button class="btn btn-outline-secondary" type="button" onclick="togglePortalPassword()">
+                                    <i class="fas fa-eye" id="portalPasswordToggle"></i>
+                                </button>
+                            </div>
+                            <div class="mt-2 d-flex gap-2">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="portalToggleActive" {{ $portalUser->is_active ? 'checked' : '' }}>
+                                    <label class="form-check-label" for="portalToggleActive">Account Active</label>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary btn-sm mt-2" onclick="updatePortal({{ $customer->id }})">
+                                <i class="fas fa-save me-1"></i> Save Portal Settings
+                            </button>
+                        </div>
+                        <div class="mt-3 pt-3 border-top">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Customer can book appointments at <a href="https://app.fixitautoservices.com/booking/login" target="_blank">app.fixitautoservices.com/booking/login</a>
+                            </small>
+                        </div>
+                    @else
+                        <div class="text-center py-4">
+                            <i class="fas fa-user-circle fa-3x text-muted mb-3"></i>
+                            <p class="text-muted mb-3">This customer doesn't have a portal account yet.</p>
+                            <button class="btn btn-primary" onclick="createPortal({{ $customer->id }})">
+                                <i class="fas fa-plus me-1"></i> Create Portal Account
+                            </button>
+                            <div class="mt-3 text-start" id="portalCreateForm" style="display:none;">
+                                <div class="mb-2">
+                                    <label class="form-label fw-bold">Email</label>
+                                    <input type="email" class="form-control" id="newPortalEmail" value="{{ $customer->email }}" placeholder="customer@email.com">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label fw-bold">Password</label>
+                                    <input type="password" class="form-control" id="newPortalPassword" placeholder="Set a password">
+                                </div>
+                                <button class="btn btn-success btn-sm" onclick="saveNewPortal({{ $customer->id }})">
+                                    <i class="fas fa-check me-1"></i> Create
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="document.getElementById('portalCreateForm').style.display='none'">
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
         </div>
 
         <!-- Right Sidebar -->
@@ -478,5 +560,99 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     });
+</script>
+
+<script>
+// ── Portal Account Management ──
+function togglePortalPassword() {
+    var pwd = document.getElementById('portalPassword');
+    var icon = document.getElementById('portalPasswordToggle');
+    if (pwd.type === 'password') {
+        pwd.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        pwd.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+function updatePortal(customerId) {
+    var password = document.getElementById('portalPassword').value;
+    var isActive = document.getElementById('portalToggleActive').checked;
+    
+    $.ajax({
+        url: '/portal-admin/' + customerId + '/update',
+        type: 'POST',
+        data: {
+            _token: '{{ csrf_token() }}',
+            password: password,
+            is_active: isActive ? 1 : 0,
+        },
+        success: function(response) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Updated!',
+                text: 'Portal settings saved successfully.',
+                timer: 2000,
+                showConfirmButton: true
+            });
+            document.getElementById('portalPassword').value = '';
+        },
+        error: function(xhr) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: xhr.responseJSON?.message || 'Failed to update portal settings.',
+                confirmButtonColor: '#d33'
+            });
+        }
+    });
+}
+
+function createPortal(customerId) {
+    var form = document.getElementById('portalCreateForm');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+function saveNewPortal(customerId) {
+    var email = document.getElementById('newPortalEmail').value;
+    var password = document.getElementById('newPortalPassword').value;
+    
+    if (!email || !password) {
+        Swal.fire({ icon: 'warning', title: 'Required', text: 'Email and password are required.' });
+        return;
+    }
+    
+    $.ajax({
+        url: '/portal-admin/' + customerId + '/create',
+        type: 'POST',
+        data: {
+            _token: '{{ csrf_token() }}',
+            email: email,
+            password: password,
+        },
+        success: function(response) {
+            Swal.fire({
+                icon: 'success',
+                title: 'Created!',
+                text: 'Portal account created successfully.',
+                timer: 2000,
+                showConfirmButton: true
+            }).then(function() {
+                location.reload();
+            });
+        },
+        error: function(xhr) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: xhr.responseJSON?.message || 'Failed to create portal account.',
+                confirmButtonColor: '#d33'
+            });
+        }
+    });
+}
 </script>
 @endpush

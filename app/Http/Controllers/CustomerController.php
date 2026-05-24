@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\ServiceRecord;
 use App\Models\CustomerNote;
+use App\Models\Appointment;
 use App\Services\TransactionHistoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -689,14 +690,22 @@ class CustomerController extends Controller
             $expiresAt = $now->copy()->addDays(7)->endOfDay(); // Expire at end of 7th day
             
             // Store form token in database (survives cache clears)
-            \DB::table('customer_form_tokens')->insert([
+            $formData = [
                 'token' => $token,
                 'generated_by' => auth()->id(),
                 'generated_at' => $now,
                 'expires_at' => $expiresAt,
                 'created_at' => $now,
                 'updated_at' => $now,
-            ]);
+            ];
+            
+            // Add email if provided
+            if ($request->filled('email')) {
+                $request->validate(['email' => 'email:rfc,dns']);
+                $formData['email'] = $request->input('email');
+            }
+            
+            \DB::table('customer_form_tokens')->insert($formData);
 
             // Generate the form URL
             $formUrl = 'https://form.fixitautoservices.com/customer-form/' . $token;
@@ -710,6 +719,7 @@ class CustomerController extends Controller
                 'form_url' => $formUrl,
                 'qr_code_url' => $qrCodeUrl,
                 'token' => $token,
+                'email' => $formData['email'] ?? null,
                 'expires_at' => $expiresAt->format('F j, Y \a\t g:i A'),
             ]);
         } catch (\Exception $e) {
@@ -790,20 +800,24 @@ class CustomerController extends Controller
             ], 400);
         }
 
-        // Validate form data
+        // Validate form data - including booking fields
         $validator = Validator::make($request->all(), [
             'full_name' => 'required|string|max:100',
             'email' => 'nullable|email|unique:customers,email',
             'phone' => 'required|string|max:20',
             'address' => 'nullable|string|max:255',
             'facebook_profile' => 'nullable|string|max:255',
-            // Optional vehicle fields
             'vehicle_make' => 'nullable|string|max:50',
             'vehicle_model' => 'nullable|string|max:100',
             'vehicle_year' => 'nullable|integer|min:1900|max:' . (date('Y') + 1),
             'vehicle_vin' => 'nullable|string|max:17',
             'vehicle_plate' => 'nullable|string|max:20',
             'vehicle_color' => 'nullable|string|max:30',
+            'book_appointment' => 'nullable|boolean',
+            'preferred_date' => 'nullable|date|after_or_equal:today',
+            'preferred_time' => 'nullable|string|max:10',
+            'appointment_service_type' => 'nullable|string|max:100',
+            'appointment_notes' => 'nullable|string|max:1000',
         ]);
 
         if ($validator->fails()) {
@@ -817,8 +831,6 @@ class CustomerController extends Controller
         $nameParts = explode(' ', $request->full_name, 2);
         $firstName = $nameParts[0] ?? '';
         $lastName = $nameParts[1] ?? '';
-        
-        // Ensure last_name is not null (database constraint)
         $lastName = $lastName ?: '';
 
         $customer = Customer::create([
@@ -830,17 +842,18 @@ class CustomerController extends Controller
             'facebook_profile' => $request->facebook_profile,
             'customer_since' => now(),
             'is_active' => true,
-            'created_via_form' => true, // Mark as created via form
-            'form_token' => $token, // Store which form was used
-            'form_submitted_at' => now(), // Timestamp when form was submitted
+            'created_via_form' => true,
+            'form_token' => $token,
+            'form_submitted_at' => now(),
         ]);
 
         // Create vehicle if provided
+        $vehicle = null;
         if ($request->filled('vehicle_make') || $request->filled('vehicle_model') || 
             $request->filled('vehicle_year') || $request->filled('vehicle_vin') || 
             $request->filled('vehicle_plate') || $request->filled('vehicle_color')) {
             
-            Vehicle::create([
+            $vehicle = Vehicle::create([
                 'customer_id' => $customer->id,
                 'make' => $request->vehicle_make,
                 'model' => $request->vehicle_model,
@@ -854,22 +867,126 @@ class CustomerController extends Controller
 
         // Add a note that customer was created via form
         $customer->notes()->create([
-            'user_id' => $formData->generated_by, // User who generated the form
+            'user_id' => $formData->generated_by,
             'note_type' => 'general',
             'content' => 'Customer created via public form submission.',
             'is_important' => false,
             'tags' => ['form', 'public'],
         ]);
 
-        // Invalidate the token after successful submission (optional)
-        // \Cache::forget('customer_form_token_' . $token);
+        $bookingMade = false;
+        $appointmentData = null;
+
+        // Handle appointment booking if customer opted in
+        if ($request->boolean('book_appointment') && $request->filled('preferred_date')) {
+            $duplicateWarning = null;
+
+            // Duplicate prevention: check if vehicle has active transactions
+            if ($vehicle) {
+                $existingAppointment = \App\Models\Appointment::where('vehicle_id', $vehicle->id)
+                    ->whereIn('appointment_status', ['scheduled', 'confirmed', 'checked_in', 'in_progress', 'customer_booked'])
+                    ->whereNull('deleted_at')
+                    ->first();
+
+                if ($existingAppointment) {
+                    $duplicateWarning = 'This vehicle already has an ongoing service. Please wait for completion or contact support.';
+                } else {
+                    $existingWorkOrder = \App\Models\WorkOrder::where('vehicle_id', $vehicle->id)
+                        ->whereIn('work_order_status', ['pending', 'repairing', 'waiting_parts'])
+                        ->whereNull('deleted_at')
+                        ->first();
+
+                    if ($existingWorkOrder) {
+                        $duplicateWarning = 'This vehicle already has an ongoing service. Please wait for completion or contact support.';
+                    }
+                }
+            }
+
+            if ($duplicateWarning) {
+                $customer->notes()->create([
+                    'user_id' => $formData->generated_by,
+                    'note_type' => 'general',
+                    'content' => 'Customer attempted to book an appointment but vehicle has an active transaction.',
+                    'is_important' => true,
+                    'tags' => ['form', 'booking', 'duplicate'],
+                ]);
+            } else {
+                // Map service type from form to appointment_type
+                $serviceTypeMapping = [
+                    'preventive_maintenance' => 'maintenance',
+                    'auto_mechanical' => 'repair',
+                    'auto_electrical' => 'repair',
+                    'auto_electronics' => 'repair',
+                    'auto_air_conditioning' => 'repair',
+                    'body_repair_painting' => 'repair',
+                    'auto_parts_sales' => 'regular_service',
+                    'home_service_request' => 'regular_service',
+                ];
+                $selectedType = $request->appointment_service_type;
+                $appointmentType = isset($serviceTypeMapping[$selectedType]) ? $serviceTypeMapping[$selectedType] : 'regular_service';
+
+                // Build vehicle description
+                $vehicleDescription = '';
+                if ($vehicle) {
+                    $parts = array_filter([$vehicle->year, $vehicle->make, $vehicle->model, $vehicle->license_plate ? "({$vehicle->license_plate})" : null]);
+                    $vehicleDescription = implode(' ', $parts);
+                } elseif ($request->filled('vehicle_make')) {
+                    $vehicleDescription = trim("{$request->vehicle_year} {$request->vehicle_make} {$request->vehicle_model}");
+                }
+
+                // Generate appointment number
+                $appointmentNumber = \App\Models\Appointment::generateAppointmentNumber();
+
+                $appointment = \App\Models\Appointment::create([
+                    'appointment_number' => $appointmentNumber,
+                    'customer_id' => $customer->id,
+                    'vehicle_id' => $vehicle ? $vehicle->id : null,
+                    'vehicle_description' => $vehicleDescription,
+                    'appointment_date' => $request->preferred_date,
+                    'appointment_time' => $request->preferred_time ?: '09:00',
+                    'appointment_type' => $appointmentType,
+                    'appointment_status' => 'customer_booked',
+                    'service_request' => $request->appointment_notes ?: 'Submitted via Online Booking',
+                    'customer_notes' => $request->appointment_notes,
+                    'service_types' => $selectedType ? json_encode([$selectedType]) : null,
+                    'booking_source' => 'online_form',
+                    'booking_ip' => $request->ip(),
+                    'scheduled_at' => now(),
+                    'viewed_at' => null,
+                    'priority' => 'normal',
+                ]);
+
+                $customer->notes()->create([
+                    'user_id' => $formData->generated_by,
+                    'note_type' => 'general',
+                    'content' => 'Customer booked an appointment via online form. Appointment #: ' . $appointmentNumber,
+                    'is_important' => true,
+                    'tags' => ['form', 'booking', 'online'],
+                ]);
+
+                $bookingMade = true;
+                $appointmentData = [
+                    'number' => $appointmentNumber,
+                    'date' => $request->preferred_date,
+                    'time' => $request->preferred_time ?: '09:00',
+                    'status' => 'customer_booked',
+                ];
+            }
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'Thank you! Your information has been submitted successfully.',
+            'message' => $bookingMade
+                ? 'Your appointment has been successfully booked! A confirmation reference has been saved.'
+                : 'Thank you! Your information has been submitted successfully.',
             'customer_id' => $customer->id,
+            'booking_made' => $bookingMade,
+            'booking_reference' => $appointmentData ? ($appointmentData['number'] ?? null) : null,
+            'appointment' => $appointmentData,
         ]);
     }
+
+
 
     /**
      * Show generated forms with status
@@ -896,6 +1013,7 @@ class CustomerController extends Controller
             
             $activeForms[] = [
                 'token' => $formData->token,
+                'email' => $formData->email ?? null,
                 'generated_at' => \Carbon\Carbon::parse($formData->generated_at),
                 'generated_by' => $formData->generated_by,
                 'expires_at' => \Carbon\Carbon::parse($formData->expires_at),
@@ -934,6 +1052,7 @@ class CustomerController extends Controller
         
         $formDetails = [
             'token' => $formData->token,
+            'email' => $formData->email ?? null,
             'generated_at' => \Carbon\Carbon::parse($formData->generated_at)->format('F j, Y \a\t g:i A'),
             'generated_by' => $generatedBy ? $generatedBy->name : 'System',
             'expires_at' => \Carbon\Carbon::parse($formData->expires_at)->format('F j, Y \a\t g:i A'),
@@ -947,6 +1066,42 @@ class CustomerController extends Controller
             'success' => true,
             'form' => $formDetails,
         ]);
+    }
+
+    /**
+     * Update the email associated with a form token
+     */
+    public function updateFormEmail(Request $request, $token)
+    {
+        try {
+            $request->validate([
+                'email' => 'required|email:rfc,dns',
+            ]);
+
+            $updated = \DB::table('customer_form_tokens')
+                ->where('token', $token)
+                ->update([
+                    'email' => $request->input('email'),
+                    'updated_at' => now(),
+                ]);
+
+            if ($updated) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Form email updated successfully!',
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Form token not found.',
+            ], 404);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update form email: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -1065,9 +1220,9 @@ class CustomerController extends Controller
                 'vehicles_count' => (int) ($customer->vehicles_count ?? $customer->vehicles->count()),
                 'service_records_count' => (int) ($customer->service_records_count ?? 0),
                 'total_spent' => (float) ($customer->service_records_sum_final_amount ?? 0),
-                'last_service_date' => $lastService ? $lastService->service_date->format('Y-m-d') : null,
+                'last_service_date' => $lastService ? (is_string($lastService->service_date) ? $lastService->service_date : $lastService->service_date->format('Y-m-d')) : null,
                 'last_service_type' => $lastService ? $lastService->service_type : null,
-                'customer_since' => $customer->customer_since ? $customer->customer_since->format('Y-m-d') : null,
+                'customer_since' => $customer->customer_since ? (is_string($customer->customer_since) ? $customer->customer_since : $customer->customer_since->format('Y-m-d')) : null,
                 'vehicles' => $customer->vehicles->map(function ($v) {
                     return [
                         'id' => $v->id,
@@ -1311,5 +1466,80 @@ class CustomerController extends Controller
             return redirect()->route('customers.index')
                 ->with('error', 'Failed to archive customer: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Update a customer's portal account settings.
+     */
+    public function updatePortal(Request $request, Customer $customer)
+    {
+        if (!auth()->user()->isSuperAdmin() && !auth()->user()->isAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'password' => 'nullable|string|min:6',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        $portalUser = $customer->portalUser;
+        if (!$portalUser) {
+            return response()->json(['success' => false, 'message' => 'This customer has no portal account.'], 404);
+        }
+
+        if ($request->filled('password')) {
+            $portalUser->password = bcrypt($request->password);
+        }
+
+        if ($request->has('is_active')) {
+            $portalUser->is_active = $request->boolean('is_active');
+        }
+
+        $portalUser->save();
+
+        return response()->json(['success' => true, 'message' => 'Portal settings updated.']);
+    }
+
+    /**
+     * Create a new portal account for a customer.
+     */
+    public function createPortal(Request $request, Customer $customer)
+    {
+        if (!auth()->user()->isSuperAdmin() && !auth()->user()->isAdmin()) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized.'], 403);
+        }
+
+        if ($customer->portalUser) {
+            return response()->json(['success' => false, 'message' => 'This customer already has a portal account.'], 409);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email|unique:portal_users,email',
+            'password' => 'required|string|min:6',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        $portalUser = \App\Models\PortalUser::create([
+            'customer_id' => $customer->id,
+            'email' => $request->email,
+            'password' => bcrypt($request->password),
+            'is_active' => true,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Portal account created successfully.',
+            'user' => [
+                'id' => $portalUser->id,
+                'email' => $portalUser->email,
+            ],
+        ]);
     }
 }

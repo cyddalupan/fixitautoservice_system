@@ -233,10 +233,23 @@
     <div class="main-card">
         <div class="main-card-body">
             @if($workOrders->count() > 0)
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <span class="text-muted">{{ $workOrders->count() }} job orders</span>
+                    </div>
+                    <div>
+                        @if($workOrders->whereNull('viewed_at')->count() > 0)
+                            <button class="btn-mark-all-read" id="markAllReadBtn" onclick="markAllAsRead('work-orders', this)">
+                                <i class="fas fa-check-double"></i> Mark All as Read
+                            </button>
+                        @endif
+                    </div>
+                </div>
                 <div class="table-responsive">
-                    <table class="table-fixit">
+                    <table class="table-fixit" id="workOrdersTable">
                         <thead>
                             <tr>
+                                <th style="width:30px;"></th>
                                 <th>Work Order #</th>
                                 <th>Customer & Vehicle</th>
                                 <th>Date & Type</th>
@@ -250,9 +263,19 @@
                         </thead>
                         <tbody>
                             @foreach($workOrders as $workOrder)
-                            <tr>
+                            <tr class="{{ $workOrder->viewed_at === null ? 'tr-unread' : '' }}" data-id="{{ $workOrder->id }}">
                                 <td>
-                                    <strong>{{ $workOrder->work_order_number }}</strong>
+                                    @if($workOrder->viewed_at === null)
+                                        <span class="unread-dot" title="New"></span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <span class="{{ $workOrder->viewed_at === null ? 'unread-primary-text' : '' }}">
+                                        <strong>{{ $workOrder->work_order_number }}</strong>
+                                        @if($workOrder->viewed_at === null)
+                                            <span class="badge-new-record">NEW</span>
+                                        @endif
+                                    </span>
                                     @if($workOrder->is_warranty_work)
                                         <br><span class="status-badge status-badge-info" style="margin-top:4px;">Warranty</span>
                                     @endif
@@ -406,10 +429,10 @@
                                 </td>
                                 <td>
                                     <div class="action-group">
-                                        <a href="{{ route('work-orders.show', $workOrder) }}" class="btn-action" title="View">
+                                        <a href="{{ route('work-orders.show', $workOrder) }}" class="btn-action" title="View" onclick="markRecordAsRead('work-orders', {{ $workOrder->id }}, this.closest('tr'))">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{{ route('work-orders.edit', $workOrder) }}" class="btn-action" title="Edit">
+                                        <a href="{{ route('work-orders.edit', $workOrder) }}" class="btn-action" title="Edit" onclick="markRecordAsRead('work-orders', {{ $workOrder->id }}, this.closest('tr'))">
                                             <i class="fas fa-edit"></i>
                                         </a>
                                         
@@ -553,6 +576,39 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Unread system initialization
+    const table = document.getElementById('workOrdersTable');
+    if (table) {
+        initUnreadSystem(table, 'work-orders', { dataAttr: 'data-id', markAllBtnId: 'markAllReadBtn' });
+    }
+
+    // Re-check unread status on page show (browser back/forward)
+    window.addEventListener('pageshow', function(e) {
+        if (e.persisted) {
+            // Page was restored from bfcache - refresh sidebar counters
+            fetch('/sidebar-counters', { method: 'GET', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+            .then(r => r.json())
+            .then(data => {
+                if (data && typeof data === 'object') {
+                    const map = {
+                        's-appointments-new': 'appointments_new',
+                        's-inspections-new': 'inspections_new',
+                        's-estimates-new': 'estimates_new',
+                        's-work-orders-active': 'work_orders_active',
+                        's-invoices-new': 'invoices_new',
+                    };
+                    for (const [elId, key] of Object.entries(map)) {
+                        const el = document.getElementById(elId);
+                        if (el && data[key] !== undefined) {
+                            el.textContent = data[key];
+                            el.style.display = data[key] > 0 ? '' : 'none';
+                        }
+                    }
+                }
+            }).catch(() => {});
+        }
+    });
+
     // Start Repair Confirmation (List View)
     const startRepairListButtons = document.querySelectorAll('.btn-start-repair-list');
     startRepairListButtons.forEach(button => {

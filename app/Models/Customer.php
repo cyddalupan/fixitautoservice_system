@@ -2,55 +2,32 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Customer extends Model
 {
-    use HasFactory, SoftDeletes;
-
     protected $fillable = [
-        'first_name',
-        'last_name',
-        'email',
-        'phone',
-        'address',
-        'city',
-        'state',
-        'zip_code',
-        'date_of_birth',
-        'customer_type',
-        'company_name',
-        'tax_id',
-        'credit_limit',
-        'balance',
-        'payment_terms',
-        'is_active',
-        'customer_since',
-        'loyalty_points',
-        'preferred_contact',
-        'notes',
-        'preferences',
-        'segment',
-        'vehicle_model',
-        'service_needed',
-        'facebook_profile',
-        'profile_picture',
-        'created_via_form',
-        'form_token',
-        'form_submitted_at',
+        'first_name', 'last_name', 'email', 'phone', 'address',
+        'facebook_profile', 'profile_picture', 'last_visit',
+        'is_active', 'notes', 'source',
+    ];
+
+    protected $appends = [
+        'full_name',
+        'name',
+        'total_vehicles',
+        'total_services',
+        'total_spent',
+        'average_service_cost',
+        'last_service_date',
+        'upcoming_services',
     ];
 
     protected $casts = [
-        'credit_limit' => 'decimal:2',
-        'balance' => 'decimal:2',
-        'is_active' => 'boolean',
-        'customer_since' => 'date',
-        'date_of_birth' => 'date',
-        'preferences' => 'array',
-        'created_via_form' => 'boolean',
+        'last_visit' => 'datetime',
         'form_submitted_at' => 'datetime',
+        'is_active' => 'boolean',
     ];
 
     public function vehicles()
@@ -70,7 +47,7 @@ class Customer extends Model
 
     public function getFullNameAttribute()
     {
-        return "{$this->first_name} {$this->last_name}";
+        return trim($this->first_name . ' ' . $this->last_name);
     }
 
     public function getNameAttribute()
@@ -90,70 +67,77 @@ class Customer extends Model
 
     public function getTotalSpentAttribute()
     {
-        return $this->serviceRecords()->sum('final_amount');
+        return $this->serviceRecords()->sum('total_cost');
     }
 
     public function getAverageServiceCostAttribute()
     {
-        $count = $this->serviceRecords()->count();
-        return $count > 0 ? $this->getTotalSpentAttribute() / $count : 0;
+        return $this->serviceRecords()->avg('total_cost') ?? 0;
     }
 
     public function getLastServiceDateAttribute()
     {
-        $lastService = $this->serviceRecords()->latest('service_date')->first();
-        return $lastService ? $lastService->service_date : null;
+        $last = $this->serviceRecords()->latest('service_date')->first();
+        return $last ? $last->service_date : null;
     }
 
     public function getUpcomingServicesAttribute()
     {
-        return $this->vehicles()
-            ->whereNotNull('next_service_date')
-            ->where('next_service_date', '>=', now())
-            ->orderBy('next_service_date')
+        return $this->serviceRecords()
+            ->where('service_date', '>=', now())
+            ->orderBy('service_date')
             ->get();
     }
 
-    /**
-     * Get the customer's avatar (profile picture or initials)
-     */
     public function getAvatarAttribute()
     {
         if ($this->profile_picture) {
-            return asset('storage/' . $this->profile_picture);
+            return Storage::url($this->profile_picture);
         }
         
-        // Return initials if no profile picture
-        $initials = strtoupper(substr($this->first_name, 0, 1) . substr($this->last_name, 0, 1));
-        return $initials;
+        // Generate initials avatar
+        $name = $this->full_name;
+        $initials = '';
+        
+        if (!empty($this->first_name)) {
+            $initials .= strtoupper(substr($this->first_name, 0, 1));
+        }
+        if (!empty($this->last_name)) {
+            $initials .= strtoupper(substr($this->last_name, 0, 1));
+        }
+        
+        if (empty($initials)) {
+            $initials = '?';
+        }
+        
+        return 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&color=7F9CF5&background=EBF4FF&bold=true&size=128';
     }
 
-    /**
-     * Check if customer has a profile picture
-     */
     public function getHasProfilePictureAttribute()
     {
-        return !empty($this->profile_picture);
+        return !is_null($this->profile_picture);
     }
 
     public function invoices()
     {
-        return $this->hasMany(\App\Models\Invoice::class);
+        return $this->hasMany(Invoice::class);
     }
 
-    /**
-     * Get the quotations for this customer.
-     */
     public function quotations()
     {
-        return $this->hasMany(\App\Models\Quotation::class);
+        return $this->hasMany(Quotation::class);
+    }
+
+    public function latestQuotation()
+    {
+        return $this->hasOne(Quotation::class)->latestOfMany();
     }
 
     /**
-     * Get the latest quotation for this customer.
+     * Get the portal user associated with this customer.
      */
-    public function latestQuotation()
+    public function portalUser()
     {
-        return $this->hasOne(\App\Models\Quotation::class)->latestOfMany();
+        return $this->hasOne(PortalUser::class, 'customer_id');
     }
 }

@@ -15,7 +15,6 @@ class ReportsController extends Controller
     public function __construct(ReportGenerator $reportGenerator)
     {
         $this->reportGenerator = $reportGenerator;
-        $this->middleware('auth');
     }
     
     /**

@@ -140,10 +140,23 @@
     <div class="main-card">
         <div class="main-card-body">
             @if($estimates->count() > 0)
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <span class="text-muted">{{ $estimates->count() }} estimates</span>
+                    </div>
+                    <div>
+                        @if($estimates->where('viewed_at', null)->count() > 0)
+                            <button class="btn-mark-all-read" id="markAllReadBtn" onclick="markAllAsRead('estimates', this)">
+                                <i class="fas fa-check-double"></i> Mark All as Read
+                            </button>
+                        @endif
+                    </div>
+                </div>
                 <div class="table-responsive">
-                    <table class="table-fixit">
+                    <table class="table-fixit" id="estimatesTable">
                         <thead>
                             <tr>
+                                <th style="width:30px;"></th>
                                 <th>#</th>
                                 <th>Customer</th>
                                 <th>Vehicle</th>
@@ -156,8 +169,20 @@
                         </thead>
                         <tbody>
                             @foreach($estimates as $estimate)
-                            <tr>
-                                <td><strong>{{ $estimate->estimate_number ?? $estimate->id }}</strong></td>
+                            <tr class="{{ $estimate->viewed_at === null ? 'tr-unread' : '' }}" data-id="{{ $estimate->id }}">
+                                <td>
+                                    @if($estimate->viewed_at === null)
+                                        <span class="unread-dot" title="New"></span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <span class="{{ $estimate->viewed_at === null ? 'unread-primary-text' : '' }}">
+                                        <strong>{{ $estimate->estimate_number ?? $estimate->id }}</strong>
+                                        @if($estimate->viewed_at === null)
+                                            <span class="badge-new-record">NEW</span>
+                                        @endif
+                                    </span>
+                                </td>
                                 <td>
                                     @if($estimate->customer)
                                         <strong>{{ $estimate->customer->full_name }}</strong>
@@ -292,7 +317,10 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Any estimate-specific JS
+    const table = document.getElementById('estimatesTable');
+    if (table) {
+        initUnreadSystem(table, 'estimates', { dataAttr: 'data-id', markAllBtnId: 'markAllReadBtn' });
+    }
 });
 </script>
 @endpush

@@ -23,7 +23,7 @@ class AppointmentController extends Controller
     {
         // Get appointments by status for tabs
         $scheduledAppointments = Appointment::with(['customer', 'technician'])
-            ->whereIn('appointment_status', ['scheduled', 'confirmed'])
+            ->whereIn('appointment_status', ['scheduled', 'confirmed', 'customer_booked'])
             ->whereDate('appointment_date', '>=', Carbon::today()->subDays(7))
             ->orderBy('appointment_date')
             ->orderBy('appointment_time')
@@ -65,12 +65,21 @@ class AppointmentController extends Controller
             $convertedAppointments = collect();
         }
         
+        // Get online bookings (sourced from website or online)
+        $onlineBookings = Appointment::with(['customer', 'technician'])
+            ->whereIn('booking_source', ['website', 'online'])
+            ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30))
+            ->orderBy('appointment_date', 'desc')
+            ->orderBy('appointment_time', 'desc')
+            ->get();
+        
         // Get statistics for tabs
         $stats = [
             'scheduled' => $scheduledAppointments->count(),
             'arrived' => $arrivedAppointments->count(),
             'cancelled' => $cancelledAppointments->count(),
             'converted' => $convertedAppointments->count(),
+            'online' => $onlineBookings->count(),
         ];
         
         return view('appointments.index', compact(
@@ -78,6 +87,7 @@ class AppointmentController extends Controller
             'arrivedAppointments',
             'cancelledAppointments',
             'convertedAppointments',
+            'onlineBookings',
             'stats'
         ));
     }
@@ -132,7 +142,13 @@ class AppointmentController extends Controller
         // All technicians for multi-select
         $allTechnicians = $technicians;
         
-        return view('appointments.create', compact('customers', 'vehicles', 'technicians', 'advisors', 'selectedCustomer', 'selectedVehicle', 'customerVehicles', 'customerHistory', 'allTechnicians', 'quotationData'));
+        // Check for active transactions on the selected vehicle
+        $activeTransaction = null;
+        if ($selectedVehicle) {
+            $activeTransaction = \App\Services\ActiveTransactionService::checkActiveTransaction($selectedVehicle->id);
+        }
+        
+        return view('appointments.create', compact('customers', 'vehicles', 'technicians', 'advisors', 'selectedCustomer', 'selectedVehicle', 'customerVehicles', 'customerHistory', 'allTechnicians', 'quotationData', 'activeTransaction'));
     }
 
     /**
@@ -187,68 +203,70 @@ class AppointmentController extends Controller
             ? ($serviceTypeMapping[$selectedServiceTypes[0]] ?? 'regular_service')
             : 'regular_service';
         
-        // Check for duplicate vehicle in active transactions
-        $vehicleId = $request->filled('vehicle_id') ? $request->integer('vehicle_id') : null;
-        
-        // If no vehicle_id, try to match by vehicle_description text
-        if (!$vehicleId && $request->filled('vehicle_description')) {
-            $vehicleDesc = $request->input('vehicle_description');
-            $vehicle = Vehicle::whereRaw("CONCAT(year, ' ', make, ' ', model, IFNULL(CONCAT(' - ', license_plate), '')) = ?", [$vehicleDesc])
-                ->orWhere('license_plate', $vehicleDesc)
-                ->first();
-            if ($vehicle) {
-                $vehicleId = $vehicle->id;
+        // Check for duplicate vehicle in active transactions (skip if override_duplicate is set)
+        if (!$request->filled('override_duplicate') || $request->override_duplicate !== '1') {
+            $vehicleId = $request->filled('vehicle_id') ? $request->integer('vehicle_id') : null;
+            
+            // If no vehicle_id, try to match by vehicle_description text
+            if (!$vehicleId && $request->filled('vehicle_description')) {
+                $vehicleDesc = $request->input('vehicle_description');
+                $vehicle = Vehicle::whereRaw("CONCAT(year, ' ', make, ' ', model, IFNULL(CONCAT(' - ', license_plate), '')) = ?", [$vehicleDesc])
+                    ->orWhere('license_plate', $vehicleDesc)
+                    ->first();
+                if ($vehicle) {
+                    $vehicleId = $vehicle->id;
+                }
             }
-        }
-        
-        if ($vehicleId) {
-            // Get IDs of appointments whose inspections have been archived (exclude from active check)
-            $archivedInspectionIds = \App\Models\Archive::where('archivable_type', 'App\\Models\\VehicleInspection')
-                ->pluck('archivable_id')->toArray();
-            $archivedAppointmentIds = [];
-            if (!empty($archivedInspectionIds)) {
-                $archivedAppointmentIds = \App\Models\VehicleInspection::withTrashed()->whereIn('id', $archivedInspectionIds)
-                    ->where('vehicle_id', $vehicleId)
-                    ->whereNotNull('appointment_id')
-                    ->pluck('appointment_id')->toArray();
-            }
+            
+            if ($vehicleId) {
+                // Get IDs of appointments whose inspections have been archived (exclude from active check)
+                $archivedInspectionIds = \App\Models\Archive::where('archivable_type', 'App\\Models\\VehicleInspection')
+                    ->pluck('archivable_id')->toArray();
+                $archivedAppointmentIds = [];
+                if (!empty($archivedInspectionIds)) {
+                    $archivedAppointmentIds = \App\Models\VehicleInspection::withTrashed()->whereIn('id', $archivedInspectionIds)
+                        ->where('vehicle_id', $vehicleId)
+                        ->whereNotNull('appointment_id')
+                        ->pluck('appointment_id')->toArray();
+                }
 
-            $existingAppointment = Appointment::where('vehicle_id', $vehicleId)
-                ->whereIn('appointment_status', ['scheduled', 'checked_in', 'in_progress'])
-                ->whereNull('deleted_at')
-                ->where(function($q) use ($archivedAppointmentIds) {
-                    if (!empty($archivedAppointmentIds)) {
-                        $q->whereNotIn('id', $archivedAppointmentIds);
-                    }
-                })
-                ->first();
-            
-            if ($existingAppointment) {
-                return back()->withErrors([
-                    'vehicle_description' => 'This vehicle already has an active Appointment (' . $existingAppointment->appointment_number . ').'
-                ])->withInput();
-            }
-            
-            $existingWorkOrder = WorkOrder::where('vehicle_id', $vehicleId)
-                ->whereIn('work_order_status', ['pending', 'repairing', 'waiting_parts'])
-                ->whereNull('deleted_at')
-                ->first();
-            
-            if ($existingWorkOrder) {
-                return back()->withErrors([
-                    'vehicle_description' => 'This vehicle already has an active Work Order (' . ($existingWorkOrder->work_order_number ?? '#' . $existingWorkOrder->id) . ').'
-                ])->withInput();
-            }
-            
-            $existingEstimate = Estimate::where('vehicle_id', $vehicleId)
-                ->whereIn('status', ['draft', 'pending', 'sent'])
-                ->whereNull('deleted_at')
-                ->first();
-            
-            if ($existingEstimate) {
-                return back()->withErrors([
-                    'vehicle_description' => 'This vehicle already has an active Estimate (' . ($existingEstimate->estimate_number ?? '#' . $existingEstimate->id) . ').'
-                ])->withInput();
+                $existingAppointment = Appointment::where('vehicle_id', $vehicleId)
+                    ->whereIn('appointment_status', ['scheduled', 'checked_in', 'in_progress'])
+                    ->whereNull('deleted_at')
+                    ->where(function($q) use ($archivedAppointmentIds) {
+                        if (!empty($archivedAppointmentIds)) {
+                            $q->whereNotIn('id', $archivedAppointmentIds);
+                        }
+                    })
+                    ->first();
+                
+                if ($existingAppointment) {
+                    return back()->withErrors([
+                        'vehicle_description' => 'This vehicle already has an active Appointment (' . $existingAppointment->appointment_number . ').'
+                    ])->withInput();
+                }
+                
+                $existingWorkOrder = WorkOrder::where('vehicle_id', $vehicleId)
+                    ->whereIn('work_order_status', ['pending', 'repairing', 'waiting_parts'])
+                    ->whereNull('deleted_at')
+                    ->first();
+                
+                if ($existingWorkOrder) {
+                    return back()->withErrors([
+                        'vehicle_description' => 'This vehicle already has an active Work Order (' . ($existingWorkOrder->work_order_number ?? '#' . $existingWorkOrder->id) . ').'
+                    ])->withInput();
+                }
+                
+                $existingEstimate = Estimate::where('vehicle_id', $vehicleId)
+                    ->whereIn('status', ['draft', 'pending', 'sent'])
+                    ->whereNull('deleted_at')
+                    ->first();
+                
+                if ($existingEstimate) {
+                    return back()->withErrors([
+                        'vehicle_description' => 'This vehicle already has an active Estimate (' . ($existingEstimate->estimate_number ?? '#' . $existingEstimate->id) . ').'
+                    ])->withInput();
+                }
             }
         }
         
@@ -1019,6 +1037,52 @@ class AppointmentController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to restore appointment: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * AJAX: Confirm a customer booking (customer_booked -> confirmed).
+     */
+    public function ajaxConfirmBooking(Request $request, $id)
+    {
+        try {
+            $appointment = Appointment::findOrFail($id);
+            
+            if ($appointment->appointment_status !== 'customer_booked') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Only customer-booked appointments can be confirmed via this action.',
+                ], 400);
+            }
+            
+            $appointment->update([
+                'appointment_status' => 'confirmed',
+                'viewed_at' => now(),
+            ]);
+            
+            // Log note
+            $appointment->customer->notes()->create([
+                'user_id' => auth()->id() ?? 1,
+                'note_type' => 'general',
+                'content' => 'Online booking confirmed by staff. Appointment #: ' . $appointment->appointment_number,
+                'is_important' => true,
+                'tags' => ['booking', 'confirmed'],
+            ]);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Booking confirmed successfully.',
+                'new_status' => 'confirmed',
+                'status_color' => 'primary',
+                'status_icon' => '✅ ',
+                'new_status_text' => 'Confirmed',
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Confirm booking error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while confirming the booking.',
             ], 500);
         }
     }

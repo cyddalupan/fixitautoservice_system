@@ -159,8 +159,25 @@ class WorkOrderController extends Controller
             $selectedCustomer = null;
         }
         
+        // Get customer vehicles and history for summary card
+        $customerVehicles = $selectedCustomer 
+            ? $selectedCustomer->vehicles()->orderBy('created_at', 'desc')->get() 
+            : collect();
+        $customerHistory = $selectedCustomer
+            ? Appointment::where('customer_id', $selectedCustomer->id)
+                ->where('appointment_date', '>=', now()->subDays(90))
+                ->orderBy('appointment_date', 'desc')
+                ->get()
+            : collect();
+        
         // Common service templates
         $serviceTemplates = $this->getServiceTemplates();
+        
+        // Check for active transactions on the selected vehicle
+        $activeTransaction = null;
+        if ($selectedVehicle) {
+            $activeTransaction = \App\Services\ActiveTransactionService::checkActiveTransaction($selectedVehicle->id);
+        }
         
         return view('work_orders.create', compact(
             'customers', 
@@ -171,7 +188,10 @@ class WorkOrderController extends Controller
             'selectedAppointment',
             'selectedCustomer',
             'selectedVehicle',
-            'serviceTemplates'
+            'customerVehicles',
+            'customerHistory',
+            'serviceTemplates',
+            'activeTransaction'
         ));
     }
 
@@ -233,57 +253,59 @@ class WorkOrderController extends Controller
             'items.*.notes' => 'nullable|string|max:500',
         ]);
         
-        // Check for duplicate vehicle in active transactions
-        if ($request->filled('vehicle_id')) {
-            $vehicleId = $request->integer('vehicle_id');
+        // Check for duplicate vehicle in active transactions (skip if override_duplicate is set)
+        if (!$request->filled('override_duplicate') || $request->override_duplicate !== '1') {
+            if ($request->filled('vehicle_id')) {
+                $vehicleId = $request->integer('vehicle_id');
 
-            // Exclude appointments whose inspections have been archived
-            $archivedInspectionIds = \App\Models\Archive::where('archivable_type', 'App\\Models\\VehicleInspection')
-                ->pluck('archivable_id')->toArray();
-            $archivedAppointmentIds = [];
-            if (!empty($archivedInspectionIds)) {
-                $archivedAppointmentIds = \App\Models\VehicleInspection::withTrashed()->whereIn('id', $archivedInspectionIds)
-                    ->where('vehicle_id', $vehicleId)
-                    ->whereNotNull('appointment_id')
-                    ->pluck('appointment_id')->toArray();
-            }
+                // Exclude appointments whose inspections have been archived
+                $archivedInspectionIds = \App\Models\Archive::where('archivable_type', 'App\\Models\\VehicleInspection')
+                    ->pluck('archivable_id')->toArray();
+                $archivedAppointmentIds = [];
+                if (!empty($archivedInspectionIds)) {
+                    $archivedAppointmentIds = \App\Models\VehicleInspection::withTrashed()->whereIn('id', $archivedInspectionIds)
+                        ->where('vehicle_id', $vehicleId)
+                        ->whereNotNull('appointment_id')
+                        ->pluck('appointment_id')->toArray();
+                }
 
-            $existingAppointment = Appointment::where('vehicle_id', $vehicleId)
-                ->whereIn('appointment_status', ['scheduled', 'checked_in', 'in_progress'])
-                ->whereNull('deleted_at')
-                ->where(function($q) use ($archivedAppointmentIds) {
-                    if (!empty($archivedAppointmentIds)) {
-                        $q->whereNotIn('id', $archivedAppointmentIds);
-                    }
-                })
-                ->first();
-            
-            if ($existingAppointment) {
-                return back()->withErrors([
-                    'vehicle_id' => 'This vehicle already has an active Appointment (' . $existingAppointment->appointment_number . ').'
-                ])->withInput();
-            }
-            
-            // Exclude current work order if editing
-            $existingWorkOrder = WorkOrder::where('vehicle_id', $vehicleId)
-                ->whereIn('work_order_status', ['pending', 'repairing', 'waiting_parts'])
-                ->whereNull('deleted_at');
-            
-            if ($existingWorkOrder->exists()) {
-                return back()->withErrors([
-                    'vehicle_id' => 'This vehicle already has an active Work Order (' . $existingWorkOrder->first()->work_order_number . ').'
-                ])->withInput();
-            }
-            
-            $existingEstimate = Estimate::where('vehicle_id', $vehicleId)
-                ->whereIn('status', ['draft', 'pending', 'sent'])
-                ->whereNull('deleted_at')
-                ->first();
-            
-            if ($existingEstimate) {
-                return back()->withErrors([
-                    'vehicle_id' => 'This vehicle already has an active Estimate (' . ($existingEstimate->estimate_number ?? '#' . $existingEstimate->id) . ').'
-                ])->withInput();
+                $existingAppointment = Appointment::where('vehicle_id', $vehicleId)
+                    ->whereIn('appointment_status', ['scheduled', 'checked_in', 'in_progress'])
+                    ->whereNull('deleted_at')
+                    ->where(function($q) use ($archivedAppointmentIds) {
+                        if (!empty($archivedAppointmentIds)) {
+                            $q->whereNotIn('id', $archivedAppointmentIds);
+                        }
+                    })
+                    ->first();
+                
+                if ($existingAppointment) {
+                    return back()->withErrors([
+                        'vehicle_id' => 'This vehicle already has an active Appointment (' . $existingAppointment->appointment_number . ').'
+                    ])->withInput();
+                }
+                
+                // Exclude current work order if editing
+                $existingWorkOrder = WorkOrder::where('vehicle_id', $vehicleId)
+                    ->whereIn('work_order_status', ['pending', 'repairing', 'waiting_parts'])
+                    ->whereNull('deleted_at');
+                
+                if ($existingWorkOrder->exists()) {
+                    return back()->withErrors([
+                        'vehicle_id' => 'This vehicle already has an active Work Order (' . $existingWorkOrder->first()->work_order_number . ').'
+                    ])->withInput();
+                }
+                
+                $existingEstimate = Estimate::where('vehicle_id', $vehicleId)
+                    ->whereIn('status', ['draft', 'pending', 'sent'])
+                    ->whereNull('deleted_at')
+                    ->first();
+                
+                if ($existingEstimate) {
+                    return back()->withErrors([
+                        'vehicle_id' => 'This vehicle already has an active Estimate (' . ($existingEstimate->estimate_number ?? '#' . $existingEstimate->id) . ').'
+                    ])->withInput();
+                }
             }
         }
         
@@ -375,7 +397,8 @@ class WorkOrderController extends Controller
             'items',
             'tasks.assignedTechnician',
             'appointment',
-            'serviceProgress'
+            'serviceProgress',
+            'vehicleInspection.inspectionFindings'
         ]);
         
         // Get similar work orders for this customer

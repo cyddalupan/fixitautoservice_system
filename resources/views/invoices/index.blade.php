@@ -131,9 +131,20 @@
         <div class="main-card-body">
             @if($invoices->isNotEmpty())
                 <div class="table-responsive">
-                    <table class="table-fixit">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="text-muted">{{ $invoices->count() }} invoices</span>
+                        </div>
+                        @if($invoices->where('viewed_at', null)->count() > 0)
+                            <button class="btn-mark-all-read" id="markAllReadBtn" onclick="markAllAsRead('invoices', this)">
+                                <i class="fas fa-check-double"></i> Mark All as Read
+                            </button>
+                        @endif
+                    </div>
+                    <table class="table-fixit" id="invoicesTable">
                         <thead>
                             <tr>
+                                <th style="width:30px;"></th>
                                 <th>Invoice #</th>
                                 <th>Customer</th>
                                 <th>Work Order</th>
@@ -147,9 +158,19 @@
                         </thead>
                         <tbody>
                             @foreach($invoices as $invoice)
-                            <tr>
+                            <tr class="{{ $invoice->viewed_at === null ? 'tr-unread' : '' }}" data-id="{{ $invoice->id }}">
                                 <td>
-                                    <strong>{{ $invoice->invoice_number }}</strong>
+                                    @if($invoice->viewed_at === null)
+                                        <span class="unread-dot" title="New"></span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <span class="{{ $invoice->viewed_at === null ? 'unread-primary-text' : '' }}">
+                                        <strong>{{ $invoice->invoice_number }}</strong>
+                                        @if($invoice->viewed_at === null)
+                                            <span class="badge-new-record">NEW</span>
+                                        @endif
+                                    </span>
                                     <br>
                                     <small style="color:#94a3b8;font-size:0.75rem;">Created: {{ $invoice->created_at->format('M d, Y') }}</small>
                                 </td>
@@ -271,6 +292,12 @@
         const status = urlParams.get('status');
         if (status) {
             $('#status').val(status);
+        }
+
+        // Unread system initialization
+        const table = document.getElementById('invoicesTable');
+        if (table) {
+            initUnreadSystem(table, 'invoices', { dataAttr: 'data-id', markAllBtnId: 'markAllReadBtn' });
         }
     });
 </script>

@@ -226,8 +226,12 @@
             <div id="errorMessage" class="error-message"></div>
             <div id="successMessage" class="success-message">
                 <i class="fas fa-check-circle fa-3x mb-3"></i>
-                <h3>Thank You!</h3>
+                <h3 id="successTitle">Thank You!</h3>
                 <p id="successText">Your information has been submitted successfully.</p>
+                <div id="bookingDetails" style="display:none;" class="mt-3 p-3 bg-light text-dark rounded">
+                    <p class="mb-1"><strong>Reference Number:</strong> <span id="bookingRef"></span></p>
+                    <p class="mb-0"><strong>Scheduled:</strong> <span id="bookingDateTime"></span></p>
+                </div>
                 <button class="btn btn-light mt-3" onclick="resetForm()">Submit Another Response</button>
             </div>
 
@@ -351,6 +355,69 @@
                             </div> <!-- End of card-body for vehicle #1 -->
                         </div> <!-- End of vehicle-section for vehicle #1 -->
                     </div> <!-- End of vehicleFieldsContainer -->
+                </div>
+
+                <!-- Schedule Your Appointment -->
+                <div class="mb-4">
+                    <h3 class="section-title">
+                        <i class="fas fa-calendar-check me-2"></i>Schedule Your Appointment (Optional)
+                    </h3>
+                    
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="book_appointment" name="book_appointment" value="1">
+                        <label class="form-check-label" for="book_appointment">
+                            <strong>I want to book an appointment</strong>
+                        </label>
+                    </div>
+
+                    <div id="bookingFields" style="display: none;">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="preferred_date" class="form-label required">Preferred Date</label>
+                                <input type="date" class="form-control" id="preferred_date" name="preferred_date" 
+                                       min="{{ date('Y-m-d') }}">
+                                <small class="form-text text-muted">Select a date for your appointment</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="preferred_time" class="form-label required">Preferred Time</label>
+                                <input type="time" class="form-control" id="preferred_time" name="preferred_time">
+                                <small class="form-text text-muted">Select a preferred time slot</small>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="appointment_service_type" class="form-label">Service Type</label>
+                                <select class="form-select" id="appointment_service_type" name="appointment_service_type">
+                                    <option value="">Select a service type...</option>
+                                    <option value="preventive_maintenance">🔧 Preventive Maintenance</option>
+                                    <option value="auto_mechanical">⚙️ Auto-Mechanical</option>
+                                    <option value="auto_electrical">⚡ Auto-Electrical</option>
+                                    <option value="auto_electronics">🔌 Auto-Electronics</option>
+                                    <option value="auto_air_conditioning">❄️ Auto Air-Conditioning</option>
+                                    <option value="body_repair_painting">🎨 Body Repair and Painting</option>
+                                    <option value="auto_parts_sales">🔩 Auto Parts Sales</option>
+                                    <option value="home_service_request">🏠 Home Service Request</option>
+                                </select>
+                                <small class="form-text text-muted">What type of service do you need?</small>
+                            </div>
+                            <div class="col-md-6 mb-3" id="vehicleSelectionSection">
+                                <label class="form-label">Vehicle for Service</label>
+                                <div class="p-2 bg-light-subtle border rounded" id="vehicleInfoDisplay">
+                                    <small class="text-muted">Fill in vehicle details above to see them listed here</small>
+                                </div>
+                                <small class="form-text text-muted">The vehicle information you provided above will be used</small>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="appointment_notes" class="form-label">Additional Notes</label>
+                                <textarea class="form-control" id="appointment_notes" name="appointment_notes" 
+                                          rows="3" placeholder="Describe the issue or any additional information..."></textarea>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
@@ -572,6 +639,51 @@
             // Initialize autocomplete for the first vehicle (index 0)
             initializeAutocompleteForVehicle(0);
             
+            // ============================================
+            // APPOINTMENT BOOKING TOGGLE
+            // ============================================
+            
+            // Toggle booking fields visibility
+            $('#book_appointment').on('change', function() {
+                if ($(this).is(':checked')) {
+                    $('#bookingFields').slideDown(300);
+                } else {
+                    $('#bookingFields').slideUp(300);
+                }
+            });
+            
+            // Update vehicle info display whenever vehicle fields change
+            function updateVehicleInfoDisplay() {
+                var make = $('.vehicle-make').first().val();
+                var model = $('.vehicle-model').first().val();
+                var year = $('.vehicle-year').first().val();
+                var color = $('.vehicle-color').first().val();
+                var plate = $('.vehicle-plate').first().val();
+                
+                var parts = [];
+                if (year) parts.push(year);
+                if (make) parts.push(make);
+                if (model) parts.push(model);
+                if (color) parts.push('(' + color + ')');
+                if (plate) parts.push('[' + plate + ']');
+                
+                if (parts.length > 0) {
+                    $('#vehicleInfoDisplay').html('<strong>' + parts.join(' ') + '</strong>');
+                } else {
+                    $('#vehicleInfoDisplay').html('<small class="text-muted">Fill in vehicle details above to see them listed here</small>');
+                }
+            }
+            
+            // Listen for vehicle field changes
+            $(document).on('input change', '.vehicle-make, .vehicle-model, .vehicle-year, .vehicle-color, .vehicle-plate', function() {
+                updateVehicleInfoDisplay();
+            });
+            
+            // Update on autocomplete select
+            $(document).on('autocompleteselect', '.vehicle-make, .vehicle-model, .vehicle-color', function() {
+                setTimeout(updateVehicleInfoDisplay, 100);
+            });
+            
             // Add custom CSS for autocomplete
             $('head').append('<style>' +
                 '.ui-autocomplete {' +
@@ -620,6 +732,9 @@
             const formData = new FormData(form);
             const data = Object.fromEntries(formData.entries());
             
+            // Ensure book_appointment is included even when unchecked
+            data.book_appointment = document.getElementById('book_appointment').checked ? '1' : '0';
+            
             // Submit via AJAX
             fetch('{{ route("customers.form.submit", ["token" => $token]) }}', {
                 method: 'POST',
@@ -636,6 +751,13 @@
                     document.getElementById('customerForm').style.display = 'none';
                     document.getElementById('successMessage').style.display = 'block';
                     document.getElementById('successText').textContent = result.message;
+                    
+                    // Show booking details if appointment was made
+                    if (result.booking_made && result.booking_reference) {
+                        document.getElementById('successTitle').textContent = 'Appointment Booked!';
+                        document.getElementById('bookingRef').textContent = result.booking_reference;
+                        document.getElementById('bookingDetails').style.display = 'block';
+                    }
                 } else {
                     // Show error message
                     document.getElementById('submitBtn').style.display = 'block';

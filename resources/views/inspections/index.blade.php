@@ -140,10 +140,23 @@
     <div class="main-card">
         <div class="main-card-body">
             @if($inspections->count() > 0)
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <span class="text-muted">{{ $inspections->count() }} repair orders</span>
+                    </div>
+                    <div>
+                        @if($inspections->whereNull('viewed_at')->count() > 0)
+                            <button class="btn-mark-all-read" id="markAllReadBtn" onclick="markAllAsRead('inspections', this)">
+                                <i class="fas fa-check-double"></i> Mark All as Read
+                            </button>
+                        @endif
+                    </div>
+                </div>
                 <div class="table-responsive">
-                    <table class="table-fixit">
+                    <table class="table-fixit" id="inspectionsTable">
                         <thead>
                             <tr>
+                                <th style="width:30px;"></th>
                                 <th>#</th>
                                 <th>Customer</th>
                                 <th>Vehicle</th>
@@ -155,8 +168,20 @@
                         </thead>
                         <tbody>
                             @foreach($inspections as $inspection)
-                            <tr>
-                                <td><strong>{{ $inspection->id }}</strong></td>
+                            <tr class="{{ $inspection->viewed_at === null ? 'tr-unread' : '' }}" data-id="{{ $inspection->id }}">
+                                <td>
+                                    @if($inspection->viewed_at === null)
+                                        <span class="unread-dot" title="New"></span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <span class="{{ $inspection->viewed_at === null ? 'unread-primary-text' : '' }}">
+                                        <strong>{{ $inspection->id }}</strong>
+                                        @if($inspection->viewed_at === null)
+                                            <span class="badge-new-record">NEW</span>
+                                        @endif
+                                    </span>
+                                </td>
                                 <td>
                                     @if($inspection->customer)
                                         <strong>{{ $inspection->customer->full_name }}</strong>
@@ -270,7 +295,10 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Any inspection-specific JS
+    const table = document.getElementById('inspectionsTable');
+    if (table) {
+        initUnreadSystem(table, 'inspections', { dataAttr: 'data-id', markAllBtnId: 'markAllReadBtn' });
+    }
 });
 </script>
 @endpush

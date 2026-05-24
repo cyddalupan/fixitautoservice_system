@@ -122,11 +122,17 @@ class EstimateController extends Controller
                 $quotationData = $latestQuotation;
             }
         }
+        
+        // Check for active transactions on the selected vehicle
+        $activeTransaction = null;
+        if ($selectedVehicle) {
+            $activeTransaction = \App\Services\ActiveTransactionService::checkActiveTransaction($selectedVehicle->id);
+        }
 
         return view('estimates.create', compact(
             'customers', 'advisors', 'lastNum', 'inventoryItems', 'inventoryItemsJson',
             'selectedCustomer', 'selectedVehicle', 'customerVehicles', 'customerHistory',
-            'inspectionFindings', 'quotationData'
+            'inspectionFindings', 'quotationData', 'activeTransaction'
         ));
     }
 
@@ -154,6 +160,16 @@ class EstimateController extends Controller
             'deposit_required' => 'nullable|numeric|min:0',
             'items_json' => 'nullable|json',
         ]);
+
+        // Check for duplicate active transaction (skip if override_duplicate is set)
+        if (!$request->filled('override_duplicate') || $request->override_duplicate !== '1') {
+            if ($request->filled('vehicle_id')) {
+                $activeTransaction = \App\Services\ActiveTransactionService::checkActiveTransaction($request->vehicle_id);
+                if ($activeTransaction) {
+                    return back()->withErrors(['duplicate' => 'This vehicle already has an active ' . $activeTransaction['stage'] . ' (' . $activeTransaction['reference_number'] . ').'])->withInput();
+                }
+            }
+        }
 
         DB::beginTransaction();
         try {
@@ -684,6 +700,15 @@ class EstimateController extends Controller
             DB::rollBack();
             return back()->with('error', 'Conversion failed: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Print an estimate.
+     */
+    public function print(Estimate $estimate)
+    {
+        $estimate->load(['customer', 'vehicle', 'items']);
+        return view('estimates.show', compact('estimate'));
     }
 
     /**

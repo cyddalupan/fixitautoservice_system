@@ -59,7 +59,7 @@ class ServiceRecordService
         }
         // Show ALL vehicles with recent appointments (last 30 days)
         else {
-            // Show ALL vehicles with ANY appointments OR direct estimates (no date filter)
+            // Show ALL vehicles with ANY appointments, OR direct estimates, OR work orders
             // Get vehicles with appointments
             $vehicleIdsWithAppointments = Vehicle::whereHas('appointments')->pluck('id')->toArray();
             
@@ -70,14 +70,26 @@ class ServiceRecordService
                 ->unique()
                 ->toArray();
             
-            // Combine both
-            $vehicleIds = array_merge($vehicleIdsWithAppointments, $vehicleIdsWithEstimates);
+            // Get vehicles with work orders (no appointments and no estimates)
+            $vehicleIdsWithApptsOrEsts = array_unique(array_merge($vehicleIdsWithAppointments, $vehicleIdsWithEstimates));
+            $vehicleIdsWithWorkOrders = \App\Models\WorkOrder::whereNotNull('vehicle_id')
+                ->whereNotIn('vehicle_id', $vehicleIdsWithApptsOrEsts)
+                ->pluck('vehicle_id')
+                ->unique()
+                ->toArray();
+            
+            // Combine all three
+            $vehicleIds = array_merge($vehicleIdsWithAppointments, $vehicleIdsWithEstimates, $vehicleIdsWithWorkOrders);
             
             if (empty($vehicleIds)) {
-                return [];
+                // Still need to check for orphan records (null vehicle_id)
+                $hasOrphans = \App\Models\Appointment::whereNull('vehicle_id')->exists() || \App\Models\WorkOrder::whereNull('vehicle_id')->exists();
+                if (!$hasOrphans) {
+                    return [];
+                }
             }
             
-            $vehiclesWithAppointments = Vehicle::whereIn('id', $vehicleIds)
+            $vehicles = Vehicle::whereIn('id', $vehicleIds)
                 ->with(['customer', 'appointments' => function($query) {
                     $query->with(['vehicleInspection', 'estimate', 'workOrder']);
                     // REMOVED: ->orderBy('appointment_date', 'desc');
@@ -87,11 +99,11 @@ class ServiceRecordService
                 ->orderBy('model')
                 ->get();
 
-            foreach ($vehiclesWithAppointments as $vehicle) {
-                // Use the proper buildVehicleWorkflow method which handles ALL appointments
+            foreach ($vehicles as $vehicle) {
+                // Use the proper buildVehicleWorkflow method which handles ALL record types
                 $workflow = $this->buildVehicleWorkflow($vehicle);
 
-                // Add to workflows if it has any transaction (appointments count as transactions)
+                // Add to workflows if it has any transaction
                 if (!empty($workflow['has_any_transaction'])) {
                     $workflows[] = $workflow;
                 }
@@ -120,6 +132,7 @@ class ServiceRecordService
 
             $syntheticWorkflow['appointments'][] = [
                 'id' => $appointment->id,
+                'appointment_number' => $appointment->appointment_number,
                 'date' => $appointment->appointment_date,
                 'service_type' => $appointment->appointment_type,
                 'status' => $appointment->appointment_status,
@@ -207,6 +220,7 @@ class ServiceRecordService
         foreach ($appointments as $appointment) {
             $workflow['appointments'][] = [
                 'id' => $appointment->id,
+                'appointment_number' => $appointment->appointment_number,
                 'date' => $appointment->appointment_date,
                 'service_type' => $appointment->appointment_type,
                 'status' => $appointment->appointment_status,
@@ -284,6 +298,33 @@ class ServiceRecordService
             }
         }
 
+        // SPECIAL CASE: Check for work orders directly linked to vehicle (not through appointment)
+        $directWorkOrders = \App\Models\WorkOrder::where('vehicle_id', $vehicle->id)->get();
+        foreach ($directWorkOrders as $directWO) {
+            // Check if this work order is already in the workflow (linked to an appointment)
+            $alreadyAdded = false;
+            foreach ($workflow['work_orders'] as $existingWO) {
+                if ($existingWO['id'] == $directWO->id) {
+                    $alreadyAdded = true;
+                    break;
+                }
+            }
+            
+            if (!$alreadyAdded) {
+                $workflow['work_orders'][] = [
+                    'id' => $directWO->id,
+                    'date' => $directWO->created_at,
+                    'status' => $directWO->work_order_status ?? $directWO->status,
+                    'estimated_total' => $directWO->estimated_total ?? 0,
+                    'payment_status' => $directWO->payment_status ?? 'pending',
+                    'balance_due' => $directWO->balance_due ?? ($directWO->estimated_total ?? 0),
+                    'technician_id' => $directWO->technician_id,
+                    'technician_name' => $directWO->technician ? $directWO->technician->name : null
+                ];
+                $workflow['has_any_transaction'] = true;
+            }
+        }
+
         // ── Load archived inspections for this vehicle ──
         $archivedInspections = \App\Models\Archive::where('source_module', 'inspection')
             ->whereRaw('JSON_EXTRACT(original_data, "$.vehicle_id") = ?', [$vehicle->id])
@@ -313,34 +354,34 @@ class ServiceRecordService
 
     /**
      * Get summary counts for dashboard
+     *
+     * Uses MarX breakdown:
+     * - scheduledCount: appointments with status 'scheduled' or 'confirmed' (NO work order check)
+     * - repairOrderCount: vehicle_inspections linked to appointments that have NO work_order_id
+     * - estimateCount: all estimates
+     * - jobOrderCount: all work orders
      */
     public function getSummaryCounts()
     {
         $recentDate = now()->subDays(90);
 
-        // Get all recent appointments
-        $allAppointments = Appointment::with(['customer', 'vehicle'])
-            ->where('appointment_date', '>=', $recentDate)
-            // Include all appointments including cancelled
-            ->get();
+        // scheduledCount: ALL appointments with status 'scheduled' or 'confirmed'
+        $scheduledCount = Appointment::where('appointment_date', '>=', $recentDate)
+            ->whereIn('appointment_status', ['scheduled', 'confirmed'])
+            ->count();
 
-        // Count scheduled appointments (excluding those with repair orders)
-        $scheduledCount = 0;
-        foreach ($allAppointments as $appointment) {
-            $hasRepairOrder = WorkOrder::where('appointment_id', $appointment->id)->exists();
-            if (!$hasRepairOrder) {
-                $scheduledCount++;
-            }
-        }
+        // repairOrderCount: vehicle_inspections linked to appointments that have NO work_order_id
+        $repairOrderCount =
+            \App\Models\VehicleInspection::where('created_at', '>=', $recentDate)
+                ->whereNotNull('appointment_id')
+                ->whereNull('work_order_id')
+                ->count();
 
-        // Count repair orders (work orders)
-        $repairOrderCount = WorkOrder::where('created_at', '>=', $recentDate)->count();
-
-        // Count estimates
+        // estimateCount: all estimates
         $estimateCount = Estimate::where('created_at', '>=', $recentDate)->count();
 
-        // Count job orders (same as repair orders for now)
-        $jobOrderCount = $repairOrderCount;
+        // jobOrderCount: all work orders
+        $jobOrderCount = WorkOrder::where('created_at', '>=', $recentDate)->count();
 
         return [
             'scheduledCount' => $scheduledCount,

@@ -216,8 +216,8 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
             'customers' => \App\Models\Customer::count(),
             'vehicles' => \App\Models\Vehicle::count(),
             // Appointments: only 'scheduled' (upcoming) — matches default tab
-            'appointments_total' => \App\Models\Appointment::where('appointment_status', 'scheduled')->count(),
-            'appointments_new' => \App\Models\Appointment::where('appointment_status', 'scheduled')->whereNull('viewed_at')->count(),
+            'appointments_total' => \App\Models\Appointment::whereIn('appointment_status', ['scheduled', 'confirmed', 'customer_booked'])->count(),
+            'appointments_new' => \App\Models\Appointment::whereIn('appointment_status', ['scheduled', 'confirmed', 'customer_booked'])->whereNull('viewed_at')->count(),
             'quotations_total' => \App\Models\Quotation::count(),
             'quotations_new' => \App\Models\Quotation::where('status', 'new_lead')->count(),
             // Inspections: exclude completed & those with work orders — matches index page default
@@ -238,6 +238,75 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
         ];
         return response()->json($counts);
     })->name('sidebar-counters');
+
+    // ============================================================
+    // SETTINGS MODULE
+    // ============================================================
+    Route::prefix('settings')->name('settings.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\SettingsController::class, 'index'])->name('index');
+    });
+
+    // Settings API endpoints
+    Route::get('/api/settings/smtp', [\App\Http\Controllers\SettingsController::class, 'getSmtp'])->name('api.settings.smtp');
+    Route::post('/api/settings/smtp', [\App\Http\Controllers\SettingsController::class, 'saveSmtp'])->name('api.settings.smtp.save');
+    Route::post('/api/settings/test-email', [\App\Http\Controllers\SettingsController::class, 'sendTestEmail'])->name('api.settings.test-email');
+    Route::get('/api/magic-link/logs', [\App\Http\Controllers\SettingsController::class, 'getMagicLinkLogs'])->name('api.magic-link.logs');
+    Route::post('/api/magic-link/logs', [\App\Http\Controllers\SettingsController::class, 'saveMagicLinkLog'])->name('api.magic-link.logs.save');
+
+    // === Unread Record System AJAX Routes ===
+    Route::post('/mark-as-read', function (\Illuminate\Http\Request $request) {
+        $module = $request->input('module');
+        $id = $request->input('id');
+
+        $modelMap = [
+            'appointments'     => \App\Models\Appointment::class,
+            'inspections'      => \App\Models\VehicleInspection::class,
+            'estimates'        => \App\Models\Estimate::class,
+            'work-orders'      => \App\Models\WorkOrder::class,
+            'work_orders'      => \App\Models\WorkOrder::class,
+            'service-records'  => \App\Models\ServiceRecord::class,
+            'service_records'  => \App\Models\ServiceRecord::class,
+            'invoices'         => \App\Models\Invoice::class,
+            'quotations'       => null,
+        ];
+
+        $modelClass = $modelMap[$module] ?? null;
+        if (!$modelClass || !$id) {
+            return response()->json(['success' => false, 'error' => 'Invalid module or ID'], 400);
+        }
+
+        $record = $modelClass::find($id);
+        if ($record && $record->viewed_at === null) {
+            $record->update(['viewed_at' => now()]);
+        }
+
+        return response()->json(['success' => true]);
+    })->name('mark-as-read');
+
+    Route::post('/mark-all-as-read', function (\Illuminate\Http\Request $request) {
+        $module = $request->input('module');
+
+        $modelMap = [
+            'appointments'     => \App\Models\Appointment::class,
+            'inspections'      => \App\Models\VehicleInspection::class,
+            'estimates'        => \App\Models\Estimate::class,
+            'work-orders'      => \App\Models\WorkOrder::class,
+            'work_orders'      => \App\Models\WorkOrder::class,
+            'service-records'  => \App\Models\ServiceRecord::class,
+            'service_records'  => \App\Models\ServiceRecord::class,
+            'invoices'         => \App\Models\Invoice::class,
+            'quotations'       => null,
+        ];
+
+        $modelClass = $modelMap[$module] ?? null;
+        if (!$modelClass) {
+            return response()->json(['success' => false, 'error' => 'Invalid module'], 400);
+        }
+
+        $modelClass::whereNull('viewed_at')->update(['viewed_at' => now()]);
+
+        return response()->json(['success' => true, 'count' => 0]);
+    })->name('mark-all-as-read');
     // Route::get('/reports', [DashboardController::class, 'reports'])->name('dashboard.reports');
     // Route::post('/reports/generate', [DashboardController::class, 'generateReport'])->name('dashboard.reports.generate');
 
@@ -247,6 +316,7 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::post('/customers/generate-form', [CustomerController::class, 'generateForm'])->name('customers.generate-form');
     Route::get('/customers/generated-forms', [CustomerController::class, 'generatedForms'])->name('customers.generated-forms');
     Route::get('/api/customer-form/{token}/details', [CustomerController::class, 'formDetails'])->name('api.customers.form.details');
+    Route::put('/api/customer-form/{token}/email', [CustomerController::class, 'updateFormEmail'])->name('api.customers.form.update-email');
     Route::get('/api/customers/search', [\App\Http\Controllers\CustomerController::class, 'apiSearch'])->name('api.customers.search');
     Route::get('/api/customers/autocomplete', [\App\Http\Controllers\CustomerController::class, 'apiAutocomplete'])->name('api.customers.autocomplete');
     Route::get('/api/customers/filter-options', [\App\Http\Controllers\CustomerController::class, 'apiFilterOptions'])->name('api.customers.filter-options');
@@ -264,6 +334,10 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::post('/customers/{customer}/send-reminder/{vehicle?}', [CustomerController::class, 'sendReminder'])->name('customers.send-reminder');
     Route::post('/customers/{customer}/upload-profile-picture', [CustomerController::class, 'uploadProfilePicture'])->name('customers.upload-profile-picture');
     Route::delete('/customers/{customer}/remove-profile-picture', [CustomerController::class, 'removeProfilePicture'])->name('customers.remove-profile-picture');
+
+    // Portal Admin Routes (manage customer portal accounts)
+    Route::post('/portal-admin/{customer}/update', [CustomerController::class, 'updatePortal'])->name('portal-admin.update');
+    Route::post('/portal-admin/{customer}/create', [CustomerController::class, 'createPortal'])->name('portal-admin.create');
 
     // Vehicle Routes
     Route::resource('vehicles', VehicleController::class);
@@ -292,6 +366,7 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::post('/appointments/{appointment}/convert-waitlist', [AppointmentController::class, 'convertFromWaitlist'])->name('appointments.convert-waitlist');
     Route::post('/appointments/{appointment}/send-reminder', [AppointmentController::class, 'sendReminder'])->name('appointments.send-reminder');
     Route::post('/appointments/{appointment}/send-confirmation', [AppointmentController::class, 'sendConfirmation'])->name('appointments.send-confirmation');
+    Route::post('/appointments/{appointment}/confirm-booking', [AppointmentController::class, 'ajaxConfirmBooking'])->name('appointments.confirm-booking');
 
     // Work Order Routes
     Route::resource('work-orders', WorkOrderController::class);
@@ -1328,4 +1403,17 @@ Route::get('/debug-appointments-view', function() {
             'time' => now()
         ], 500);
     }
+});
+
+/* ========================================
+ * ONLINE BOOKING SYSTEM (Customer Portal)
+ * BLOCKED on app subdomain — accessible ONLY via fixitautoservices.com
+ * Backend booking APIs in routes/api.php remain active.
+ * Booking-related controllers and views are kept intact.
+ * ======================================== */
+Route::prefix('booking')->name('booking.')->group(function () {
+    // All booking frontend routes redirect to main site
+    Route::any('/{any?}', function () {
+        return redirect()->away('https://fixitautoservices.com/booking/dashboard');
+    })->where('any', '.*');
 });

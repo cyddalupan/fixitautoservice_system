@@ -12,7 +12,7 @@
             <p class="text-muted mb-0">
                 <i class="fas fa-calendar me-1"></i>
                 {{ $inspection->created_at ? $inspection->created_at->format('F j, Y g:i A') : 'N/A' }}
-                &middot; {{ ucfirst(str_replace('_', ' ', $inspection->inspection_type ?? 'Standard')) }}
+                &middot; {{ is_string($inspection->inspection_type) ? ucfirst(str_replace('_', ' ', $inspection->inspection_type)) : 'Multi-Type' }}
             </p>
         </div>
         <div class="d-flex gap-2">
@@ -102,7 +102,7 @@
                             <div class="row g-3">
                                 <div class="col-md-4">
                                     <label class="text-muted small text-uppercase">Type</label>
-                                    <p class="fw-semibold mb-0">{{ ucfirst(str_replace('_', ' ', $inspection->inspection_type ?? 'N/A')) }}</p>
+                                    <p class="fw-semibold mb-0">{{ is_string($inspection->inspection_type) ? ucfirst(str_replace('_', ' ', $inspection->inspection_type)) : 'Multi-Type' }}</p>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="text-muted small text-uppercase">Status</label>

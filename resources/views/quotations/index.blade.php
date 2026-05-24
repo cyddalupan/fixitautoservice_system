@@ -75,12 +75,12 @@
                                     <th>Concern</th>
                                     <th>Status</th>
                                     <th>Submitted</th>
-                                    <th>Actions</th>
+                                    <th style="width: 130px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @forelse($quotations as $quotation)
-                                    <tr data-status="{{ $quotation->status }}" data-name="{{ strtolower($quotation->name) }}" data-email="{{ strtolower($quotation->email) }}" data-phone="{{ $quotation->phone }}">
+                                    <tr data-status="{{ $quotation->status }}" data-name="{{ strtolower($quotation->name) }}" data-email="{{ strtolower($quotation->email) }}" data-phone="{{ $quotation->phone }}" class="cursor-pointer" onclick="window.location='{{ route('quotations.show', $quotation->id) }}'">
                                         <td>#{{ str_pad($quotation->id, 5, '0', STR_PAD_LEFT) }}</td>
                                         <td>
                                             <div class="fw-semibold">{{ $quotation->name }}</div>
@@ -138,77 +138,91 @@
                                             <div>{{ $quotation->created_at->format('M d, Y') }}</div>
                                             <small class="text-muted">{{ $quotation->created_at->format('h:i A') }}</small>
                                         </td>
-                                        <td>
-                                            <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                                    <i class="fas fa-cog"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end" style="min-width: 220px;">
-                                                    <!-- View / Edit -->
-                                                    <li><a class="dropdown-item" href="{{ route('quotations.show', $quotation->id) }}"><i class="fas fa-eye text-primary me-2"></i> View Details</a></li>
-                                                    <li><a class="dropdown-item" href="{{ route('quotations.edit', $quotation->id) }}"><i class="fas fa-edit text-warning me-2"></i> Edit</a></li>
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    
-                                                    <!-- CRM Actions -->
-                                                    @if(!$quotation->customer)
-                                                        <li>
-                                                            <form action="{{ route('quotations.convert-to-customer', $quotation->id) }}" method="POST" class="d-inline">
-                                                                @csrf
-                                                                <button type="submit" class="dropdown-item">
-                                                                    <i class="fas fa-user-plus text-success me-2"></i> Convert to Customer
-                                                                </button>
-                                                            </form>
-                                                        </li>
-                                                    @else
-                                                        <li><a class="dropdown-item" href="{{ route('customers.show', $quotation->customer_id) }}"><i class="fas fa-user text-success me-2"></i> View Customer Profile</a></li>
-                                                        <li><a class="dropdown-item" href="{{ route('appointments.create', ['customer_id' => $quotation->customer_id, 'quotation_id' => $quotation->id]) }}"><i class="fas fa-calendar-plus text-primary me-2"></i> Create Appointment</a></li>
-                                                        <li><a class="dropdown-item" href="{{ route('estimates.create', ['customer_id' => $quotation->customer_id, 'quotation_id' => $quotation->id]) }}"><i class="fas fa-file-invoice text-info me-2"></i> Create Estimate</a></li>
-                                                        <li><hr class="dropdown-divider"></li>
-                                                    @endif
-                                                    
-                                                    <!-- Status Updates -->
-                                                    @if($quotation->status === 'new_lead')
-                                                        <li>
-                                                            <form action="{{ route('quotations.update-status', $quotation->id) }}" method="POST" class="d-inline">
-                                                                @csrf @method('PATCH')
-                                                                <input type="hidden" name="status" value="contacted">
-                                                                <button type="submit" class="dropdown-item"><i class="fas fa-phone text-info me-2"></i> Mark Contacted</button>
-                                                            </form>
-                                                        </li>
-                                                    @endif
-                                                    @if(in_array($quotation->status, ['new_lead', 'contacted']))
-                                                        <li>
-                                                            <form action="{{ route('quotations.update-status', $quotation->id) }}" method="POST" class="d-inline">
-                                                                @csrf @method('PATCH')
-                                                                <input type="hidden" name="status" value="archived">
-                                                                <button type="submit" class="dropdown-item"><i class="fas fa-archive text-secondary me-2"></i> Archive Lead</button>
-                                                            </form>
-                                                        </li>
-                                                    @endif
-                                                    @if(in_array($quotation->status, ['converted_to_customer', 'appointment_booked']))
-                                                        <li>
-                                                            <form action="{{ route('quotations.update-status', $quotation->id) }}" method="POST" class="d-inline">
-                                                                @csrf @method('PATCH')
-                                                                <input type="hidden" name="status" value="won">
-                                                                <button type="submit" class="dropdown-item"><i class="fas fa-trophy text-success me-2"></i> Mark as Won</button>
-                                                            </form>
-                                                        </li>
-                                                        <li>
-                                                            <form action="{{ route('quotations.update-status', $quotation->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Mark this lead as Lost?');">
-                                                                @csrf @method('PATCH')
-                                                                <input type="hidden" name="status" value="lost">
-                                                                <button type="submit" class="dropdown-item"><i class="fas fa-times-circle text-danger me-2"></i> Mark as Lost</button>
-                                                            </form>
-                                                        </li>
-                                                    @endif
-                                                    <li><hr class="dropdown-divider"></li>
-                                                    <li>
-                                                        <form action="{{ route('quotations.destroy', $quotation->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this quotation?');">
-                                                            @csrf @method('DELETE')
-                                                            <button type="submit" class="dropdown-item text-danger"><i class="fas fa-trash me-2"></i> Delete</button>
-                                                        </form>
-                                                    </li>
-                                                </ul>
+                                        <td class="actions-cell" onclick="event.stopPropagation();">
+                                            <div class="d-flex gap-1 justify-content-center">
+                                                <!-- View -->
+                                                <a href="{{ route('quotations.show', $quotation->id) }}" class="btn btn-sm btn-outline-primary" title="View Details">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <!-- Edit -->
+                                                <a href="{{ route('quotations.edit', $quotation->id) }}" class="btn btn-sm btn-outline-warning" title="Edit">
+                                                    <i class="fas fa-edit"></i>
+                                                </a>
+                                                <!-- Convert to Customer / View Customer -->
+                                                @if(!$quotation->customer)
+                                                    <form action="{{ route('quotations.convert-to-customer', $quotation->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Convert this lead to a customer?')">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Convert to Customer">
+                                                            <i class="fas fa-user-plus"></i>
+                                                        </button>
+                                                    </form>
+                                                @else
+                                                    <a href="{{ route('customers.show', $quotation->customer_id) }}" class="btn btn-sm btn-outline-success" title="View Customer Profile">
+                                                        <i class="fas fa-user"></i>
+                                                    </a>
+                                                @endif
+
+                                                <!-- Create Appointment (only if customer exists) -->
+                                                @if($quotation->customer)
+                                                    <a href="{{ route('appointments.create', ['customer_id' => $quotation->customer_id, 'quotation_id' => $quotation->id]) }}" class="btn btn-sm btn-outline-primary" title="Create Appointment">
+                                                        <i class="fas fa-calendar-plus"></i>
+                                                    </a>
+                                                @endif
+
+                                                <!-- Create Estimate (only if customer exists) -->
+                                                @if($quotation->customer)
+                                                    <a href="{{ route('estimates.create', ['customer_id' => $quotation->customer_id, 'quotation_id' => $quotation->id]) }}" class="btn btn-sm btn-outline-info" title="Create Estimate">
+                                                        <i class="fas fa-file-invoice"></i>
+                                                    </a>
+                                                @endif
+
+                                                <!-- Status: Mark Contacted (new_lead only) -->
+                                                @if($quotation->status === 'new_lead')
+                                                    <form action="{{ route('quotations.update-status', $quotation->id) }}" method="POST" class="d-inline">
+                                                        @csrf @method('PATCH')
+                                                        <input type="hidden" name="status" value="contacted">
+                                                        <button type="submit" class="btn btn-sm btn-outline-info" title="Mark Contacted">
+                                                            <i class="fas fa-phone"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
+
+                                                <!-- Status: Won/Lost (converted/appointment only) -->
+                                                @if(in_array($quotation->status, ['converted_to_customer', 'appointment_booked']))
+                                                    <form action="{{ route('quotations.update-status', $quotation->id) }}" method="POST" class="d-inline">
+                                                        @csrf @method('PATCH')
+                                                        <input type="hidden" name="status" value="won">
+                                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Mark as Won">
+                                                            <i class="fas fa-trophy"></i>
+                                                        </button>
+                                                    </form>
+                                                    <form action="{{ route('quotations.update-status', $quotation->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Mark this lead as Lost?');">
+                                                        @csrf @method('PATCH')
+                                                        <input type="hidden" name="status" value="lost">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Mark as Lost">
+                                                            <i class="fas fa-times-circle"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
+
+                                                <!-- Archive (new_lead/contacted only) -->
+                                                @if(in_array($quotation->status, ['new_lead', 'contacted']))
+                                                    <form action="{{ route('quotations.update-status', $quotation->id) }}" method="POST" class="d-inline">
+                                                        @csrf @method('PATCH')
+                                                        <input type="hidden" name="status" value="archived">
+                                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Archive">
+                                                            <i class="fas fa-archive"></i>
+                                                        </button>
+                                                    </form>
+                                                @endif
+
+                                                <!-- Delete -->
+                                                <form action="{{ route('quotations.destroy', $quotation->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this quotation?');">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                </form>
                                             </div>
                                         </td>
                                     </tr>
@@ -293,7 +307,43 @@
         </div>
     </div>
 </div>
+@endsection
 
+@push('styles')
+<style>
+    .table tbody tr {
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+    }
+    .table tbody tr:hover {
+        background-color: rgba(0,0,0,0.03) !important;
+    }
+    .table tbody tr td.actions-cell .d-flex {
+        gap: 0.25rem !important;
+        flex-wrap: nowrap;
+    }
+    .table tbody tr td.actions-cell .btn {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        transition: all 0.15s ease;
+    }
+    .table tbody tr td.actions-cell .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .table tbody tr td.actions-cell form {
+        display: inline;
+    }
+</style>
+@endpush
+
+@push('scripts')
 <script>
     // Status filter tabs
     document.querySelectorAll('#statusTabs .nav-link').forEach(tab => {
@@ -331,4 +381,4 @@
         }
     });
 </script>
-@endsection
+@endpush

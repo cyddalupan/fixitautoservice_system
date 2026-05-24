@@ -34,29 +34,64 @@ class ServiceRecordController extends Controller
         // Get workflows from centralized service
         $workflows = $this->serviceRecordService->getWorkflows($customerId, $vehicleId);
         
-        // ── Apply filters ──
+        // ── Apply filters (enhanced multi-keyword search) ──
         if ($search) {
-            $workflows = array_filter($workflows, function($wf) use ($search) {
-                $q = strtolower($search);
+            $keywords = preg_split('/\s+/', trim($search));
+            $keywords = array_filter($keywords, fn($k) => strlen($k) > 0);
+            $keywords = array_map('strtolower', $keywords);
+
+            $workflows = array_filter($workflows, function($wf) use ($keywords) {
                 $customer = $wf['customer'] ?? null;
                 $vehicle = $wf['vehicle'] ?? null;
-                $match = false;
+
+                // Build a single searchable text block for this workflow
+                $haystackParts = [];
+
+                // Customer fields
                 if ($customer) {
-                    $match = $match || str_contains(strtolower($customer->first_name ?? ''), $q);
-                    $match = $match || str_contains(strtolower($customer->last_name ?? ''), $q);
-                    $match = $match || str_contains(strtolower($customer->phone ?? ''), $q);
+                    $haystackParts[] = $customer->first_name ?? '';
+                    $haystackParts[] = $customer->last_name ?? '';
+                    $haystackParts[] = $customer->phone ?? '';
                 }
+
+                // Vehicle fields
                 if ($vehicle) {
-                    $match = $match || str_contains(strtolower($vehicle->license_plate ?? ''), $q);
-                    $match = $match || str_contains(strtolower($vehicle->vin ?? ''), $q);
-                    $match = $match || str_contains(strtolower($vehicle->make ?? ''), $q);
-                    $match = $match || str_contains(strtolower($vehicle->model ?? ''), $q);
+                    $haystackParts[] = $vehicle->license_plate ?? '';
+                    $haystackParts[] = $vehicle->vin ?? '';
+                    $haystackParts[] = $vehicle->make ?? '';
+                    $haystackParts[] = $vehicle->model ?? '';
                 }
-                foreach ($wf['work_orders'] as $wo) {
-                    $invoice = $wo['invoice_number'] ?? '';
-                    $match = $match || str_contains(strtolower($invoice), $q);
+
+                // Appointments — service_type, status, appointment_number
+                foreach ($wf['appointments'] ?? [] as $a) {
+                    $haystackParts[] = $a['service_type'] ?? '';
+                    $haystackParts[] = $a['status'] ?? '';
+                    $haystackParts[] = $a['appointment_number'] ?? '';
+                    $haystackParts[] = $a['transaction_id'] ?? '';
+                    $haystackParts[] = $a['notes'] ?? '';
                 }
-                return $match;
+
+                // Estimates — estimate_number, status
+                foreach ($wf['estimates'] ?? [] as $e) {
+                    $haystackParts[] = $e['estimate_number'] ?? '';
+                    $haystackParts[] = $e['status'] ?? '';
+                }
+
+                // Work orders — status, invoice_number
+                foreach ($wf['work_orders'] ?? [] as $wo) {
+                    $haystackParts[] = $wo['status'] ?? '';
+                    $haystackParts[] = $wo['invoice_number'] ?? '';
+                }
+
+                $haystack = strtolower(implode(' ', $haystackParts));
+
+                // All keywords must match (AND logic)
+                foreach ($keywords as $kw) {
+                    if (!str_contains($haystack, $kw)) {
+                        return false;
+                    }
+                }
+                return true;
             });
         }
 
@@ -113,6 +148,10 @@ class ServiceRecordController extends Controller
         $vehicles = Vehicle::orderBy('make')->get();
         $technicians = User::whereHas('workOrders')->orWhere('role', 'technician')->orderBy('name')->get();
         $technicians = User::where(function($q) { $q->whereHas('workOrders')->orWhere('role', 'technician'); })->orderBy('name')->get();
+
+        // Compute total for sidebar
+        $serviceRecordsTotal = $scheduledCount + $repairOrderCount + $estimateCount + $jobOrderCount;
+        \Illuminate\Support\Facades\View::share('serviceRecordsTotal', $serviceRecordsTotal);
 
         // Empty collections for compatibility
         $appointments = collect([]);

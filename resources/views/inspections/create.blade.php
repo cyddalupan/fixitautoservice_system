@@ -28,7 +28,7 @@
         </button>
     </div>
     
-    <form action="{{ route('inspections.store') }}" method="POST" autocomplete="off">
+    <form id="creationForm" action="{{ route('inspections.store') }}" method="POST" autocomplete="off">
         @csrf
         <input type="hidden" name="customer_selection_mode" value="{{ $selectedCustomer ? 'from_url' : 'manual' }}">
         
@@ -394,7 +394,8 @@
                 </button>
             </div>
         </div>
-    </form>
+        <input type="hidden" name="override_duplicate" id="overrideDuplicate" value="">
+            </form>
 </div>
 
 <script>
@@ -425,4 +426,5 @@ $(document).ready(function() {
     });
 });
 </script>
+@include('partials.duplicate-transaction-modal')
 @endsection

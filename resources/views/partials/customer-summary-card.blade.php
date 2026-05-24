@@ -27,15 +27,15 @@
             <!-- Stats -->
             <div class="d-flex">
                 <div class="stat-item">
-                    <div class="stat-value">{{ $customerVehicles->count() ?? 0 }}</div>
+                    <div class="stat-value">{{ ($customerVehicles ?? collect())->count() }}</div>
                     <div class="stat-label">Vehicles</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value">{{ $selectedCustomer->total_service_count ?? $customerHistory->count() }}</div>
+                    <div class="stat-value">{{ $selectedCustomer->total_service_count ?? ($customerHistory ?? collect())->count() }}</div>
                     <div class="stat-label">Visits</div>
                 </div>
                 <div class="stat-item">
-                    <div class="stat-value">{{ $customerHistory->where('created_at', '>=', now()->subDays(30))->count() }}</div>
+                    <div class="stat-value">{{ ($customerHistory ?? collect())->where('created_at', '>=', now()->subDays(30))->count() }}</div>
                     <div class="stat-label">30d</div>
                 </div>
             </div>

@@ -9,10 +9,10 @@
     $sidebarCounts = [
         'customers'          => \App\Models\Customer::count(),
         'vehicles'           => \App\Models\Vehicle::count(),
-        // Appointments: only 'scheduled' (upcoming) — matches default "scheduled" tab
-        'appointments_total' => \App\Models\Appointment::where('appointment_status', 'scheduled')->count(),
-        // New appointments: scheduled ones not yet viewed
-        'appointments_new'   => \App\Models\Appointment::where('appointment_status', 'scheduled')->whereNull('viewed_at')->count(),
+        // Appointments: scheduled + confirmed — matches default "Scheduled" tab listing
+        'appointments_total' => \App\Models\Appointment::whereIn('appointment_status', ['scheduled', 'confirmed', 'customer_booked'])->count(),
+        // New appointments: unviewed scheduled + confirmed + customer_booked ones
+        'appointments_new'   => \App\Models\Appointment::whereIn('appointment_status', ['scheduled', 'confirmed', 'customer_booked'])->whereNull('viewed_at')->count(),
         'quotations_total'   => \App\Models\Quotation::count(),
         'quotations_new'     => \App\Models\Quotation::where('status', 'pending')->count(),
         // Inspections: excludes completed & those linked to work orders — matches default page filter
@@ -24,8 +24,8 @@
         'estimates_new'      => \App\Models\Estimate::whereNull('viewed_at')->count(),
         'work_orders_total'  => \App\Models\WorkOrder::count(),
         'work_orders_active' => \App\Models\WorkOrder::whereIn('work_order_status', ['pending', 'repairing', 'in_progress'])->whereNull('viewed_at')->count(),
-        // Service Records: counts workflows (vehicles with transactions) — matches the Service Records page
-        'service_records_total'   => count(app(\App\Services\ServiceRecordService::class)->getWorkflows()),
+        // Service Records: total of all source records (scheduled appts + repair orders + estimates + job orders)
+        'service_records_total'   => (function() { $s = app(\App\Services\ServiceRecordService::class)->getSummaryCounts(); return $s['scheduledCount'] + $s['repairOrderCount'] + $s['estimateCount'] + $s['jobOrderCount']; })(),
         'service_records_recent'  => \App\Models\ServiceRecord::whereNull('viewed_at')->count(),
         'invoices_total'     => \App\Models\Invoice::count(),
         'invoices_new'       => \App\Models\Invoice::whereNull('viewed_at')->count(),
@@ -233,7 +233,7 @@
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" href="#" data-tooltip="Settings">
+            <a class="nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}" data-tooltip="Settings" style="border-left-color:#6b7280 !important;">
                 <i class="fas fa-cog fa-fw"></i>
                 <span>Settings</span>
             </a>

@@ -37,7 +37,7 @@
         </button>
     </div>
     
-    <form action="{{ route('work-orders.store') }}" method="POST" autocomplete="off">
+    <form id="creationForm" action="{{ route('work-orders.store') }}" method="POST" autocomplete="off">
         @csrf
         <input type="hidden" name="customer_selection_mode" value="{{ $selectedCustomer ? 'from_url' : 'manual' }}">
         <input type="hidden" name="appointment_id" value="{{ old('appointment_id', $selectedAppointment->id ?? $selectedInspection->appointment_id ?? '') }}">
@@ -598,7 +598,8 @@
                 </button>
             </div>
         </div>
-    </form>
+        <input type="hidden" name="override_duplicate" id="overrideDuplicate" value="">
+            </form>
 </div>
 
 <script>
@@ -637,4 +638,5 @@ function appendNote(fieldId, text) {
     $field.trigger('input');
 }
 </script>
+@include('partials.duplicate-transaction-modal')
 @endsection

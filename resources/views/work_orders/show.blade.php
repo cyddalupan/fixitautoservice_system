@@ -597,12 +597,12 @@
         </div>
     </div>
 
-    @if($workOrder->vehicleInspection && $workOrder->vehicleInspection->findings->count() > 0)
+    @if($workOrder->vehicleInspection && $workOrder->vehicleInspection->inspectionFindings()->count() > 0)
     <!-- Inspection Findings Section -->
     <div class="form-section mt-4">
         <div class="form-section-header no-collapse">
             <h6><i class="fas fa-clipboard-list"></i>Inspection Findings</h6>
-            <span class="badge bg-primary ms-2">{{ $workOrder->vehicleInspection->findings->count() }} findings</span>
+            <span class="badge bg-primary ms-2">{{ $workOrder->vehicleInspection->inspectionFindings()->count() }} findings</span>
         </div>
         <div class="form-section-body p-0">
             <div class="table-responsive">
@@ -619,7 +619,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($workOrder->vehicleInspection->findings as $fIdx => $finding)
+                        @foreach($workOrder->vehicleInspection->inspectionFindings as $fIdx => $finding)
                         <tr>
                             <td class="text-muted">{{ $fIdx + 1 }}</td>
                             <td>

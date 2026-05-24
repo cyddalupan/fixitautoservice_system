@@ -146,12 +146,19 @@
                                     <div class="mb-3">
                                         <label class="form-label text-muted small mb-1">Service Type</label>
                                         <div>
-                                            @if($quotation->service_type && count($quotation->service_type) > 0)
-                                                <div class="d-flex flex-wrap gap-1">
-                                                    @foreach($quotation->service_type as $service)
-                                                        <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-3 py-2">{{ $service }}</span>
-                                                    @endforeach
-                                                </div>
+                                            @if($quotation->service_type)
+                                                @php
+                                                    $serviceTypes = is_array($quotation->service_type) ? $quotation->service_type : [$quotation->service_type];
+                                                @endphp
+                                                @if(count($serviceTypes) > 0)
+                                                    <div class="d-flex flex-wrap gap-1">
+                                                        @foreach($serviceTypes as $service)
+                                                            <span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-3 py-2">{{ $service }}</span>
+                                                        @endforeach
+                                                    </div>
+                                                @else
+                                                    <span class="text-muted">Not specified</span>
+                                                @endif
                                             @else
                                                 <span class="text-muted">Not specified</span>
                                             @endif
@@ -182,7 +189,7 @@
 
                                     <div class="mb-3">
                                         <label class="form-label text-muted small mb-1">Customer Concern / Service Description</label>
-                                        <div class="alert alert-warning border-start border-warning border-4 mb-0">
+                                        <div class="alert alert-warning border-start border-warning border-4 mb-0 no-auto-dismiss">
                                             <strong>Initial Complaint:</strong><br>
                                             {!! nl2br(e($quotation->service_description)) !!}
                                         </div>
@@ -191,23 +198,101 @@
                             </div>
 
                             @if($quotation->photos && is_array($quotation->photos) && count($quotation->photos) > 0)
+                                @php
+                                    $photoUrls = [];
+                                    foreach($quotation->photos as $photo) {
+                                        $photoUrls[] = \Storage::url($photo);
+                                    }
+                                @endphp
                                 <div class="card mb-4">
                                     <div class="card-header bg-light">
                                         <h6 class="mb-0"><i class="fas fa-images me-2"></i>Uploaded Photos</h6>
                                     </div>
                                     <div class="card-body">
                                         <div class="row">
-                                            @foreach($quotation->photos as $photo)
+                                            @foreach($photoUrls as $index => $url)
                                                 <div class="col-md-4 mb-3">
-                                                    <div class="border rounded p-2 text-center">
-                                                        <i class="fas fa-image fa-3x text-muted mb-2"></i>
-                                                        <div class="small text-truncate">{{ basename($photo) }}</div>
+                                                    <div class="border rounded p-2 text-center position-relative" style="height:160px;overflow:hidden;cursor:pointer;" onclick="openPhotoModal('{{ $url }}', {{ $index }})">
+                                                        <img src="{{ $url }}" alt="Photo {{ $index + 1 }}" style="width:100%;height:100%;object-fit:cover;" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+                                                        <div class="d-flex align-items-center justify-content-center text-muted" style="display:none;height:100%;">
+                                                            <i class="fas fa-image fa-3x me-2"></i>
+                                                            <small>{{ basename($quotation->photos[$index]) }}</small>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             @endforeach
                                         </div>
                                     </div>
                                 </div>
+
+                                <!-- Photo Lightbox Modal -->
+                                <div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg modal-dialog-centered">
+                                        <div class="modal-content bg-dark border-0">
+                                            <div class="modal-header border-0">
+                                                <span class="text-white small" id="photoCounter"></span>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body text-center p-0">
+                                                <img id="modalPhoto" src="" alt="Full size photo" style="max-width:100%;max-height:80vh;" class="img-fluid">
+                                            </div>
+                                            <div class="modal-footer border-0 justify-content-center gap-3">
+                                                <button type="button" class="btn btn-outline-light btn-sm" id="prevPhotoBtn" onclick="navigatePhoto(-1)"><i class="fas fa-chevron-left"></i> Prev</button>
+                                                <button type="button" class="btn btn-outline-light btn-sm" id="nextPhotoBtn" onclick="navigatePhoto(1)">Next <i class="fas fa-chevron-right"></i></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                @push('scripts')
+                                <script>
+                                    var photoViewer = {
+                                        urls: {!! json_encode($photoUrls) !!},
+                                        currentIndex: 0
+                                    };
+
+                                    function openPhotoModal(url, index) {
+                                        photoViewer.currentIndex = index;
+                                        document.getElementById('modalPhoto').src = url;
+                                        updatePhotoCounter();
+                                        updateNavButtons();
+                                        var modal = new bootstrap.Modal(document.getElementById('photoModal'));
+                                        modal.show();
+                                    }
+
+                                    function navigatePhoto(direction) {
+                                        var newIndex = photoViewer.currentIndex + direction;
+                                        if (newIndex >= 0 && newIndex < photoViewer.urls.length) {
+                                            photoViewer.currentIndex = newIndex;
+                                            document.getElementById('modalPhoto').src = photoViewer.urls[newIndex];
+                                            updatePhotoCounter();
+                                            updateNavButtons();
+                                        }
+                                    }
+
+                                    function updatePhotoCounter() {
+                                        document.getElementById('photoCounter').textContent =
+                                            'Photo ' + (photoViewer.currentIndex + 1) + ' of ' + photoViewer.urls.length;
+                                    }
+
+                                    function updateNavButtons() {
+                                        document.getElementById('prevPhotoBtn').disabled = photoViewer.currentIndex === 0;
+                                        document.getElementById('nextPhotoBtn').disabled = photoViewer.currentIndex === photoViewer.urls.length - 1;
+                                    }
+
+                                    // Keyboard navigation
+                                    document.addEventListener('keydown', function(e) {
+                                        if (!document.getElementById('photoModal').classList.contains('show')) return;
+                                        if (e.key === 'ArrowLeft') navigatePhoto(-1);
+                                        if (e.key === 'ArrowRight') navigatePhoto(1);
+                                        if (e.key === 'Escape') {
+                                            var modalEl = document.getElementById('photoModal');
+                                            var modal = bootstrap.Modal.getInstance(modalEl);
+                                            if (modal) modal.hide();
+                                        }
+                                    });
+                                </script>
+                                @endpush
                             @endif
 
                             <!-- Consent Footer -->

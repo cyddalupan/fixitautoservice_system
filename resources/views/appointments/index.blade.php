@@ -788,6 +788,72 @@ function cancelAppointment(appointmentId, appointmentNumber, customerName) {
     });
 }
 
+// Confirm appointment (from customer_booked to confirmed)
+function confirmAppointment(appointmentId, appointmentNumber, customerName) {
+    console.log('Confirm button clicked!', appointmentId, appointmentNumber, customerName);
+    
+    // Check if SweetAlert2 is loaded
+    if (typeof Swal === 'undefined') {
+        alert('Error: SweetAlert2 not loaded. Please refresh page.');
+        return;
+    }
+    
+    // Check if jQuery is loaded
+    if (typeof jQuery === 'undefined') {
+        alert('Error: jQuery not loaded. Please refresh page.');
+        return;
+    }
+    
+    Swal.fire({
+        title: 'Confirm Appointment',
+        html: 'Confirm appointment <strong>' + appointmentNumber + '</strong> for <strong>' + customerName + '</strong>?<br><br><small class="text-muted">This will set the status to Confirmed.</small>',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, Confirm',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#198754',
+        reverseButtons: true,
+        showLoaderOnConfirm: true,
+        preConfirm: () => {
+            return new Promise((resolve, reject) => {
+                $.ajax({
+                    url: '/appointments/' + appointmentId + '/confirm-booking',
+                    method: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        console.log('AJAX success:', response);
+                        resolve(response);
+                    },
+                    error: function(xhr) {
+                        console.error('AJAX error:', xhr);
+                        reject('Failed to confirm appointment. Please try again.');
+                    }
+                });
+            });
+        },
+        allowOutsideClick: () => !Swal.isLoading()
+    }).then((result) => {
+        if (result.isConfirmed) {
+            if (result.value && result.value.success) {
+                Swal.fire({
+                    title: 'Confirmed!',
+                    html: 'Appointment <strong>' + appointmentNumber + '</strong> has been confirmed.',
+                    icon: 'success',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#198754',
+                }).then(() => {
+                    // Reload the page to show updated status
+                    location.reload();
+                });
+            } else {
+                Swal.fire('Error', result.value?.message || 'Failed to confirm appointment.', 'error');
+            }
+        }
+    });
+}
+
 // Restore cancelled appointment function
 function restoreAppointment(appointmentId, appointmentNumber, customerName) {
     console.log('Restore button clicked!', appointmentId, appointmentNumber, customerName);
@@ -890,16 +956,34 @@ function restoreAppointment(appointmentId, appointmentNumber, customerName) {
                     <i class="fas fa-times-circle me-1"></i> Cancelled ({{ $stats['cancelled'] }})
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="online-tab" data-bs-toggle="tab" data-bs-target="#online" type="button" role="tab">
+                    <i class="fas fa-globe me-1"></i> Online Bookings ({{ $stats['online'] }})
+                </button>
+            </li>
         </ul>
         
         <div class="tab-content p-3" id="appointmentTabsContent">
             <!-- Scheduled Tab -->
             <div class="tab-pane fade show active" id="scheduled" role="tabpanel">
                 @if($scheduledAppointments->count() > 0)
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="text-muted">{{ $scheduledAppointments->count() }} appointments</span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            @if($scheduledAppointments->whereNull('viewed_at')->count() > 0 && $scheduledAppointments->count() > 0)
+                                <button class="btn-mark-all-read" id="markAllReadBtn" onclick="markAllAsRead('appointments', this)">
+                                    <i class="fas fa-check-double"></i> Mark All as Read
+                                </button>
+                            @endif
+                        </div>
+                    </div>
                     <div class="table-responsive">
-                        <table class="table table-hover">
+                        <table class="table table-hover" id="appointmentsTable">
                             <thead>
                                 <tr>
+                                    <th style="width:30px;"></th>
                                     <th>Appointment #</th>
                                     <th>Customer & Vehicle</th>
                                     <th>Date & Time</th>
@@ -910,9 +994,19 @@ function restoreAppointment(appointmentId, appointmentNumber, customerName) {
                             </thead>
                             <tbody>
                                 @foreach($scheduledAppointments as $appointment)
-                                <tr>
+                                <tr class="{{ $appointment->viewed_at === null ? 'tr-unread' : '' }}" data-id="{{ $appointment->id }}">
                                     <td>
-                                        <strong>{{ $appointment->appointment_number }}</strong>
+                                        @if($appointment->viewed_at === null)
+                                            <span class="unread-dot" title="New"></span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="{{ $appointment->viewed_at === null ? 'unread-primary-text' : '' }}">
+                                            <strong>{{ $appointment->appointment_number }}</strong>
+                                            @if($appointment->viewed_at === null)
+                                                <span class="badge-new-record">NEW</span>
+                                            @endif
+                                        </span>
                                         @if($appointment->is_waitlist)
                                             <br>
                                             <span class="badge bg-warning">Waitlist</span>
@@ -949,6 +1043,10 @@ function restoreAppointment(appointmentId, appointmentNumber, customerName) {
                                                         $nameIcon = '🚗 ';
                                                         $nameClass = 'text-teal';
                                                         break;
+                                                    case 'customer_booked':
+                                                        $nameIcon = '📋 ';
+                                                        $nameClass = 'text-purple';
+                                                        break;
                                                     case 'rescheduled':
                                                         $nameIcon = '🔄 ';
                                                         $nameClass = 'text-warning';
@@ -958,9 +1056,11 @@ function restoreAppointment(appointmentId, appointmentNumber, customerName) {
                                                         $nameClass = '';
                                                 }
                                             @endphp
-                                            <strong class="{{ $nameClass }}">
-                                                {!! $nameIcon !!}{{ $appointment->customer->full_name }}
-                                            </strong>
+                                            <span class="{{ $appointment->viewed_at === null ? 'unread-primary-text' : '' }}">
+                                                <strong class="{{ $nameClass }}">
+                                                    {!! $nameIcon !!}{{ $appointment->customer->full_name }}
+                                                </strong>
+                                            </span>
                                             <br>
                                             <small class="text-muted">
                                                 <i class="fas fa-car me-1"></i>
@@ -1004,6 +1104,9 @@ function restoreAppointment(appointmentId, appointmentNumber, customerName) {
                                                 case 'arrived':
                                                     $statusIcon = '🚗 ';
                                                     break;
+                                                case 'customer_booked':
+                                                    $statusIcon = '📋 ';
+                                                    break;
                                                 default:
                                                     $statusIcon = '📅 ';
                                             }
@@ -1011,17 +1114,35 @@ function restoreAppointment(appointmentId, appointmentNumber, customerName) {
                                         <span class="badge bg-{{ $appointment->status_color }}">
                                             {!! $statusIcon !!}{{ ucfirst(str_replace('_', ' ', $appointment->appointment_status)) }}
                                         </span>
+                                        @if(in_array($appointment->booking_source, ['website', 'online']))
+                                            <br><small class="badge bg-info mt-1" style="font-weight:400;font-size:10px;"><i class="fas fa-globe me-1"></i>Online Booking</small>
+                                        @endif
                                     </td>
                                     <td>
                                         <div class="btn-group" role="group">
-                                            <!-- PRIMARY ACTION: Check In Customer -->
-                                            <button type="button" class="btn btn-success btn-sm check-in-btn" 
-                                                    onclick="checkInCustomer({{ $appointment->id }}, '{{ $appointment->appointment_number }}', '{{ addslashes($appointment->customer->full_name) }}')"
-                                                    data-appointment-id="{{ $appointment->id }}"
-                                                    data-appointment-number="{{ $appointment->appointment_number }}"
-                                                    data-customer-name="{{ $appointment->customer->full_name }}">
-                                                <i class="fas fa-check-circle me-1"></i> Check In
-                                            </button>
+                                            @if($appointment->appointment_status === 'customer_booked')
+                                                <!-- QUICK ACTIONS for Customer Booked -->
+                                                <button type="button" class="btn btn-success btn-sm" 
+                                                        onclick="confirmAppointment({{ $appointment->id }}, '{{ $appointment->appointment_number }}', '{{ addslashes($appointment->customer->full_name) }}')">
+                                                    <i class="fas fa-check me-1"></i> Confirm
+                                                </button>
+                                                <a href="{{ route('appointments.edit', $appointment) }}" class="btn btn-warning btn-sm">
+                                                    <i class="fas fa-calendar-alt me-1"></i> Reschedule
+                                                </a>
+                                                <button type="button" class="btn btn-success btn-sm check-in-btn" 
+                                                        onclick="checkInCustomer({{ $appointment->id }}, '{{ $appointment->appointment_number }}', '{{ addslashes($appointment->customer->full_name) }}')">
+                                                    <i class="fas fa-check-circle me-1"></i> Check In
+                                                </button>
+                                            @else
+                                                <!-- PRIMARY ACTION: Check In Customer -->
+                                                <button type="button" class="btn btn-success btn-sm check-in-btn" 
+                                                        onclick="checkInCustomer({{ $appointment->id }}, '{{ $appointment->appointment_number }}', '{{ addslashes($appointment->customer->full_name) }}')"
+                                                        data-appointment-id="{{ $appointment->id }}"
+                                                        data-appointment-number="{{ $appointment->appointment_number }}"
+                                                        data-customer-name="{{ $appointment->customer->full_name }}">
+                                                    <i class="fas fa-check-circle me-1"></i> Check In
+                                                </button>
+                                            @endif
                                             
                                             <!-- Convert to Estimate -->
                                             @php
@@ -1245,7 +1366,89 @@ function restoreAppointment(appointmentId, appointmentNumber, customerName) {
                     </div>
                 @endif
             </div>
-            
+
+            <!-- Online Bookings Tab -->
+            <div class="tab-pane fade" id="online" role="tabpanel">
+                @if($onlineBookings->count() > 0)
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="text-muted">{{ $onlineBookings->count() }} online bookings</span>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Appointment #</th>
+                                    <th>Customer & Vehicle</th>
+                                    <th>Date & Time</th>
+                                    <th>Service Type</th>
+                                    <th>Status</th>
+                                    <th>Booked</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($onlineBookings as $appointment)
+                                <tr>
+                                    <td><strong>{{ $appointment->appointment_number }}</strong></td>
+                                    <td>
+                                        <strong>{{ $appointment->customer->full_name }}</strong>
+                                        <br>
+                                        <small class="text-muted"><i class="fas fa-car me-1"></i>{{ $appointment->vehicle_description }}</small>
+                                    </td>
+                                    <td>
+                                        <strong>{{ $appointment->appointment_date->format("M d, Y") }}</strong>
+                                        <br>
+                                        <span class="text-muted">{{ date("g:i A", strtotime($appointment->appointment_time)) }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ ucfirst(str_replace("_", " ", $appointment->appointment_type)) }}</span>
+                                    </td>
+                                    <td>
+                                        @php
+                                            $statusIcon = match($appointment->appointment_status) {
+                                                "customer_booked" => "\xF0\x9F\x93\x8B ",
+                                                "confirmed" => "\xE2\x9C\x85 ",
+                                                "scheduled" => "\xE2\x9C\x85 ",
+                                                "rescheduled" => "\xF0\x9F\x94\x84 ",
+                                                "cancelled" => "\xE2\x9D\x8C ",
+                                                default => "\xF0\x9F\x93\x85 ",
+                                            };
+                                        @endphp
+                                        <span class="badge bg-{{ $appointment->status_color }}">
+                                            {!! $statusIcon !!}{{ ucfirst(str_replace("_", " ", $appointment->appointment_status)) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small class="text-muted">{{ $appointment->created_at->diffForHumans() }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ route("appointments.show", $appointment) }}" class="btn btn-outline-primary btn-sm">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            @if($appointment->appointment_status === "customer_booked")
+                                                <button type="button" class="btn btn-success btn-sm" 
+                                                        onclick="confirmAppointment({{ $appointment->id }}, {{ json_encode($appointment->appointment_number) }}, {{ json_encode($appointment->customer->full_name) }})">
+                                                    <i class="fas fa-check me-1"></i> Confirm
+                                                </button>
+                                            @endif
+                                        </div>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-5">
+                        <i class="fas fa-globe fa-3x text-muted mb-3"></i>
+                        <h4 class="text-muted">No online bookings yet</h4>
+                        <p class="text-muted">Online bookings from the customer portal will appear here</p>
+                    </div>
+                @endif
+            </div>
 
         </div>
     </div>
@@ -1257,6 +1460,14 @@ function restoreAppointment(appointmentId, appointmentNumber, customerName) {
 
 @push('scripts')
 <script>
+// Unread system initialization for appointments table
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.getElementById('appointmentsTable');
+    if (table) {
+        initUnreadSystem(table, 'appointments', { dataAttr: 'data-id', markAllBtnId: 'markAllReadBtn' });
+    }
+});
+
 // Toggle functionality for calendar help card
 document.addEventListener('DOMContentLoaded', function() {
     const helpCard = document.getElementById('calendarHelpCard');

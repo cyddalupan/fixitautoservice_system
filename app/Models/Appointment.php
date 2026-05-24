@@ -266,6 +266,7 @@ class Appointment extends Model
             'cancelled' => 'danger',
             'no_show' => 'dark',
             'rescheduled' => 'secondary',
+            'customer_booked' => 'purple',
             default => 'secondary',
         };
     }

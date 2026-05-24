@@ -77,7 +77,7 @@ body{background:var(--ebg)}
 @include('partials.customer-process-assets')
 
 <div class="container-fluid py-3">
-<form method="POST" action="{{ route('estimates.store') }}" id="estimateForm" onsubmit="return serializeItems()">
+<form method="POST" action="{{ route('estimates.store') }}" id="creationForm" onsubmit="return serializeItems()">
     @csrf
     <input type="hidden" name="items_json" id="items_json">
 
@@ -296,7 +296,8 @@ Parts Warranty: As per manufacturer</textarea>
             @endif
         </div>
     </div>
-</form>
+    <input type="hidden" name="override_duplicate" id="overrideDuplicate" value="">
+            </form>
 </div>
 @endsection
 
@@ -638,7 +639,7 @@ function serializeItems(){
 }
 function save(s){
     document.getElementById('statusDD').value=s;
-    document.getElementById('estimateForm').submit();
+    document.getElementById('creationForm').submit();
 }
 document.addEventListener('DOMContentLoaded',function(){
     var cid=document.getElementById('customer_id');
@@ -649,4 +650,5 @@ document.addEventListener('DOMContentLoaded',function(){
     },100);
 });
 </script>
+@include('partials.duplicate-transaction-modal')
 @endpush
