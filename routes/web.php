@@ -879,6 +879,17 @@ Route::prefix('pricing')->name('pricing.')->middleware(['auth'])->group(function
     });
 });
 
+// Service Pricing Routes
+Route::prefix('service-pricings')->name('service-pricings.')->middleware(['auth'])->group(function () {
+    Route::get('/', [\App\Http\Controllers\ServicePricingController::class, 'index'])->name('index');
+    Route::get('/create', [\App\Http\Controllers\ServicePricingController::class, 'create'])->name('create');
+    Route::post('/', [\App\Http\Controllers\ServicePricingController::class, 'store'])->name('store');
+    Route::get('/{servicePricing}/edit', [\App\Http\Controllers\ServicePricingController::class, 'edit'])->name('edit');
+    Route::put('/{servicePricing}', [\App\Http\Controllers\ServicePricingController::class, 'update'])->name('update');
+    Route::delete('/{servicePricing}', [\App\Http\Controllers\ServicePricingController::class, 'destroy'])->name('destroy');
+    Route::post('/quick-update', [\App\Http\Controllers\ServicePricingController::class, 'quickUpdate'])->name('quick-update');
+});
+
 // Profit Analysis Routes
 Route::prefix('profit-analysis')->name('profit-analysis.')->middleware(['auth'])->group(function () {
     // Profit Analysis Dashboard

@@ -178,6 +178,14 @@
                         </a>
                     </li>
 
+                    {{-- Service Pricing --}}
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('service-pricings.*') ? 'active' : '' }}" href="{{ route('service-pricings.index') }}" style="border-left-color:#059669 !important;" data-tooltip="Service Pricing">
+                            <i class="fas fa-tags fa-fw"></i>
+                            <span>Service Pricing</span>
+                        </a>
+                    </li>
+
                     {{-- Archive --}}
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('archives.*') ? 'active' : '' }}" href="{{ route('archives.index') }}" style="border-left-color:#6b7280 !important;" data-tooltip="Archive">
