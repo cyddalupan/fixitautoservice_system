@@ -9,6 +9,8 @@ use App\Models\Customer;
 use App\Models\PortalUser;
 use App\Models\ServiceType;
 use App\Models\Vehicle;
+use App\Models\VehicleBrand;
+use App\Models\VehicleModel;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use App\Models\MagicLinkLog;
@@ -209,6 +211,50 @@ class BookingController extends Controller
             'customer', 'vehicles', 'services',
             'workingHours', 'slotDuration', 'maxDaysAhead'
         ));
+    }
+
+    /**
+     * API: Get active vehicle brands for the public booking form autocomplete.
+     */
+    public function apiVehicleBrands(Request $request)
+    {
+        $term = trim((string) $request->get('term', ''));
+
+        $brands = VehicleBrand::where('is_active', true)
+            ->when($term !== '', function ($q) use ($term) {
+                return $q->where('name', 'LIKE', '%' . $term . '%');
+            })
+            ->orderBy('name')
+            ->pluck('name')
+            ->values();
+
+        return response()->json($brands);
+    }
+
+    /**
+     * API: Get active vehicle models (optionally filtered by brand) for the
+     * public booking form autocomplete.
+     */
+    public function apiVehicleModels(Request $request)
+    {
+        $term = trim((string) $request->get('term', ''));
+        $brand = trim((string) $request->get('brand', ''));
+
+        $query = VehicleModel::where('is_active', true);
+
+        if ($brand !== '') {
+            $query->whereHas('brand', function ($q) use ($brand) {
+                return $q->where('name', $brand);
+            });
+        }
+
+        if ($term !== '') {
+            $query->where('name', 'LIKE', '%' . $term . '%');
+        }
+
+        $models = $query->orderBy('name')->pluck('name')->values();
+
+        return response()->json($models);
     }
 
     /**

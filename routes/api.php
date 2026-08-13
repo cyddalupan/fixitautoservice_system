@@ -18,6 +18,11 @@ Route::prefix('booking')->group(function () {
     // ===== No-auth endpoints =====
     Route::get('/available-slots', [BookingController::class, 'getAvailableSlots']);
 
+    // Vehicle brand/model autocomplete for the public booking form
+    // (fixitautoservices.com/booking/ static form)
+    Route::get('/vehicle-brands', [BookingController::class, 'apiVehicleBrands']);
+    Route::get('/vehicle-models', [BookingController::class, 'apiVehicleModels']);
+
     // ===== Auth endpoints =====
     Route::post('/login', [BookingController::class, 'apiLogin']);
     Route::post('/register', [BookingController::class, 'apiRegister']);

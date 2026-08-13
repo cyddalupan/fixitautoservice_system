@@ -30,7 +30,7 @@
     
     <form action="{{ route('appointments.store') }}" method="POST" autocomplete="off">
         @csrf
-        <input type="hidden" name="customer_selection_mode" value="{{ $selectedCustomer ? 'from_url' : 'manual' }}">
+        <input type="hidden" name="customer_selection_mode" id="customer_selection_mode" value="{{ $selectedCustomer ? 'from_url' : 'existing' }}">
         
                 <!-- ===== SECTION: Details ===== -->
         <div class="form-section" id="details">
@@ -61,6 +61,11 @@
                             </small>
                             @endif
                             @error('customer_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            <div class="mt-2">
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="add-new-customer-btn">
+                                    <i class="fas fa-user-plus me-1"></i> Add New Customer
+                                </button>
+                            </div>
                         </div>
                     </div>
                     
@@ -115,12 +120,12 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Manual Add (New Customer) -->
+                    <!-- Manual Add (New Customer) — hidden by default, shown via toggle -->
                     <div class="col-12">
-                        <div class="form-group manual-add-panel">
+                        <div class="form-group manual-add-panel d-none" id="manual-add-panel">
                             <label class="form-label fw-semibold"><i class="fas fa-user-plus me-1"></i> New Customer (Manual Add)</label>
                             <div class="row g-3">
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <div class="form-group">
                                         <label for="client_name" class="form-label field-required">Client Name</label>
                                         <input type="text" class="form-control @error('client_name') is-invalid @enderror"
@@ -130,7 +135,7 @@
                                         @error('client_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                     </div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <div class="form-group">
                                         <label for="contact_no" class="form-label field-required">Contact No.</label>
                                         <input type="text" class="form-control @error('contact_no') is-invalid @enderror"
@@ -140,19 +145,9 @@
                                         @error('contact_no')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                     </div>
                                 </div>
-                                <div class="col-md-4">
-                                    <div class="form-group">
-                                        <label for="plate_number_manual" class="form-label">Plate Number</label>
-                                        <input type="text" class="form-control @error('plate_number_manual') is-invalid @enderror"
-                                               id="plate_number_manual" name="plate_number_manual"
-                                               value="{{ old('plate_number_manual') }}"
-                                               placeholder="e.g. ABC-1234">
-                                        @error('plate_number_manual')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                    </div>
-                                </div>
                             </div>
                             <small class="form-text text-muted">
-                                Punuan lang ito kapag bagong customer (walang napiling customer sa dropdown).
+                                Pindutin ang "Add New Customer" kung hindi mahanap ang customer sa search.
                             </small>
                         </div>
                     </div>
@@ -499,6 +494,8 @@ $(document).ready(function() {
     // ===== CUSTOMER SEARCH -> HIDDEN ID SYNC =====
     var $customerSearch = $('#customer_search');
     var $customerId = $('#customer_id');
+    var $manualPanel = $('#manual-add-panel');
+    var $addNewBtn = $('#add-new-customer-btn');
 
     if ($customerSearch.length) {
         // Remember which full names map to which customer ids
@@ -507,14 +504,39 @@ $(document).ready(function() {
             customerIdMap[this.value.trim().toLowerCase()] = $(this).data('customer-id');
         });
 
+        function showManualPanel(show) {
+            if (show) {
+                $manualPanel.removeClass('d-none');
+                $addNewBtn.addClass('active');
+                $addNewBtn.html('<i class="fas fa-user-plus me-1"></i> Cancel New Customer');
+                $('#customer_selection_mode').val('manual');
+                $customerId.val('');
+            } else {
+                $manualPanel.addClass('d-none');
+                $addNewBtn.removeClass('active');
+                $addNewBtn.html('<i class="fas fa-user-plus me-1"></i> Add New Customer');
+                $('#customer_selection_mode').val('existing');
+            }
+        }
+
+        // Toggle button: explicit "Add New Customer" option (search-first UX)
+        $addNewBtn.on('click', function(e) {
+            e.preventDefault();
+            var showing = !$manualPanel.hasClass('d-none');
+            showManualPanel(!showing);
+        });
+
         // When a customer is picked from the datalist (or matches exactly), set the hidden id
         $customerSearch.on('change input', function() {
             var typed = $(this).val().trim().toLowerCase();
             var matchedId = customerIdMap[typed];
             if (matchedId) {
                 $customerId.val(matchedId);
-            } else if ($(this).val() === '' ) {
+                $('#customer_selection_mode').val('existing');
+                showManualPanel(false); // picking existing customer hides manual panel
+            } else if ($(this).val() === '') {
                 $customerId.val('');
+                showManualPanel(false);
             }
             // No match + non-empty text => new customer; keep customer_id empty
             // so the backend falls back to manual-add (client_name) mode.
