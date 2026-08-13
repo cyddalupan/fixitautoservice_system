@@ -1068,11 +1068,11 @@ class BookingController extends Controller
         }
 
         // Active work order check
-        $activeWorkOrder = \App\Models\WorkOrder::where('vehicle_id', $vehicleId)
-            ->whereNotIn('work_order_status', ['cancelled', 'completed', 'released'])
+        $activeJobOrder = \App\Models\JobOrder::where('vehicle_id', $vehicleId)
+            ->whereNotIn('job_order_status', ['cancelled', 'completed', 'released'])
             ->exists();
 
-        if ($activeWorkOrder) {
+        if ($activeJobOrder) {
             return response()->json([
                 'success' => false,
                 'message' => 'This vehicle is currently being serviced. Please contact the shop to schedule additional work.',
@@ -1093,13 +1093,19 @@ class BookingController extends Controller
 
         $vehicle = Vehicle::findOrFail($validated['vehicle_id']);
 
+        // Accept a single service_type string (backward compat) or an array of
+        // multiple services (like the appointment create page).
+        $serviceTypes = is_array($validated['service_type'])
+            ? array_values($validated['service_type'])
+            : [$validated['service_type']];
         $appointment = Appointment::create([
             'customer_id' => $customerId,
             'vehicle_id' => $validated['vehicle_id'],
             'appointment_number' => Appointment::generateAppointmentNumber(),
             'appointment_date' => $validated['appointment_date'],
             'appointment_time' => $validated['appointment_time'] . ':00',
-            'appointment_type' => $validated['service_type'],
+            'appointment_type'   => $serviceTypes[0],
+            'service_types'      => $serviceTypes,
             'appointment_status' => 'customer_booked',
             'customer_notes' => $validated['notes'] ?? null,
             'booking_source' => 'website',
