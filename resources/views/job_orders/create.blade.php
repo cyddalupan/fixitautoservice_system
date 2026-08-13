@@ -5,6 +5,7 @@
 @section('content')
 <div class="container-fluid py-3">
     @include('partials.customer-process-assets')
+    @include('partials.quick-note-btn-styles')
     @include('partials.customer-summary-card')
     
     <div class="auto-save-toast" style="display:none;"><i class="fas fa-check-circle"></i> <span></span></div>

@@ -202,37 +202,7 @@
                             'module' => 'appointments',
                         ])
                     </div>
-                    
-                    <!-- Estimated Cost -->
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            <label for="estimated_cost" class="form-label">Estimated Cost (₱)</label>
-                            <div class="input-group">
-                                <span class="input-group-text">₱</span>
-                                <input type="number" step="0.01" min="0"
-                                       class="form-control @error('estimated_cost') is-invalid @enderror"
-                                       id="estimated_cost" name="estimated_cost"
-                                       value="{{ old('estimated_cost') }}"
-                                       placeholder="0.00">
-                            </div>
-                            @error('estimated_cost')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-                    </div>
-                    
-                    <!-- Quick Cost Templates -->
-                    <div class="col-md-3">
-                        <div class="form-group">
-                            <label class="form-label">Quick Estimate</label>
-                            <div class="d-flex flex-wrap gap-1 pt-1">
-                                <span class="quick-note-btn" onclick="document.getElementById('estimated_cost').value='500'">₱500</span>
-                                <span class="quick-note-btn" onclick="document.getElementById('estimated_cost').value='1500'">₱1,500</span>
-                                <span class="quick-note-btn" onclick="document.getElementById('estimated_cost').value='3000'">₱3,000</span>
-                                <span class="quick-note-btn" onclick="document.getElementById('estimated_cost').value='5000'">₱5,000</span>
-                                <span class="quick-note-btn" onclick="document.getElementById('estimated_cost').value='10000'">₱10,000</span>
-                            </div>
-                        </div>
-                    </div>
-                    
+
                     <!-- Description -->
                     <div class="col-12">
                         <div class="form-group">
@@ -240,16 +210,41 @@
                             <textarea class="form-control @error('description') is-invalid @enderror"
                                       id="description" name="description" rows="3"
                                       placeholder="Describe the service needed...">{{ old('description') }}</textarea>
-                            
-                            <!-- Quick note templates -->
-                            <div class="d-flex flex-wrap gap-1 mt-2">
-                                <span class="quick-note-btn" onclick="appendNote('description', 'Check engine light is on')"><i class="fas fa-lightbulb"></i> Check Engine</span>
-                                <span class="quick-note-btn" onclick="appendNote('description', 'Unusual noise when braking')"><i class="fas fa-volume-up"></i> Brake Noise</span>
-                                <span class="quick-note-btn" onclick="appendNote('description', 'Car pulls to the left')"><i class="fas fa-arrows-alt-h"></i> Alignment</span>
-                                <span class="quick-note-btn" onclick="appendNote('description', 'Needs PMS - change oil and filters')"><i class="fas fa-oil-can"></i> PMS</span>
-                                <span class="quick-note-btn" onclick="appendNote('description', 'Aircon not cooling properly')"><i class="fas fa-snowflake"></i> A/C Issue</span>
+
+                            <!-- Quick suggestion chips: hidden until a main service is selected.
+                                 Only the branches of the selected service(s) are revealed. -->
+                            <div id="service-suggestions" class="d-none mt-2">
+                                <label class="form-label" style="font-size:0.8rem; color:#6c5ce7;">
+                                    <i class="fas fa-magic me-1"></i>Quick suggestions
+                                </label>
+                                <div class="d-flex flex-wrap gap-1">
+                                    <span class="quick-note-chip" data-service="preventive_maintenance" onclick="appendNote('description', 'Needs PMS - change oil and filters')"><i class="fas fa-oil-can"></i> PMS - Oil & Filters</span>
+                                    <span class="quick-note-chip" data-service="preventive_maintenance" onclick="appendNote('description', 'Check engine light is on')"><i class="fas fa-lightbulb"></i> Check Engine</span>
+                                    <span class="quick-note-chip" data-service="preventive_maintenance" onclick="appendNote('description', 'Needs brake fluid top up')"><i class="fas fa-tint"></i> Brake Fluid</span>
+                                    <span class="quick-note-chip" data-service="basic_tune_up" onclick="appendNote('description', 'General tune up - spark plugs and filters')"><i class="fas fa-cog"></i> Spark Plugs</span>
+                                    <span class="quick-note-chip" data-service="basic_tune_up" onclick="appendNote('description', 'Check engine light is on')"><i class="fas fa-lightbulb"></i> Check Engine</span>
+                                    <span class="quick-note-chip" data-service="basic_tune_up" onclick="appendNote('description', 'Needs ignition system check')"><i class="fas fa-bolt"></i> Ignition Check</span>
+                                    <span class="quick-note-chip" data-service="egr_service" onclick="appendNote('description', 'EGR valve cleaning needed')"><i class="fas fa-recycle"></i> EGR Cleaning</span>
+                                    <span class="quick-note-chip" data-service="egr_service" onclick="appendNote('description', 'Engine check light on due to EGR')"><i class="fas fa-lightbulb"></i> Check Engine</span>
+                                    <span class="quick-note-chip" data-service="egr_service" onclick="appendNote('description', 'Poor idle / rough running')"><i class="fas fa-tachometer-alt"></i> Rough Idle</span>
+                                    <span class="quick-note-chip" data-service="aircon_cleaning" onclick="appendNote('description', 'Aircon cleaning - evaporator and blower')"><i class="fas fa-wind"></i> Evaporator Clean</span>
+                                    <span class="quick-note-chip" data-service="aircon_cleaning" onclick="appendNote('description', 'Aircon not cooling properly')"><i class="fas fa-snowflake"></i> A/C Issue</span>
+                                    <span class="quick-note-chip" data-service="aircon_cleaning" onclick="appendNote('description', 'Bad smell from aircon vents')"><i class="fas fa-odor"></i> Bad Smell</span>
+                                    <span class="quick-note-chip" data-service="aircon_general_cleaning" onclick="appendNote('description', 'General aircon cleaning service')"><i class="fas fa-wind"></i> General Clean</span>
+                                    <span class="quick-note-chip" data-service="aircon_general_cleaning" onclick="appendNote('description', 'Aircon not cooling properly')"><i class="fas fa-snowflake"></i> A/C Issue</span>
+                                    <span class="quick-note-chip" data-service="aircon_general_cleaning" onclick="appendNote('description', 'Cabin filter replacement')"><i class="fas fa-filter"></i> Cabin Filter</span>
+                                    <span class="quick-note-chip" data-service="aircon_service" onclick="appendNote('description', 'Aircon not cooling properly')"><i class="fas fa-snowflake"></i> A/C Issue</span>
+                                    <span class="quick-note-chip" data-service="aircon_service" onclick="appendNote('description', 'Aircon recharging / refrigerant check')"><i class="fas fa-fill"></i> Recharge</span>
+                                    <span class="quick-note-chip" data-service="aircon_service" onclick="appendNote('description', 'Aircon compressor check')"><i class="fas fa-cog"></i> Compressor</span>
+                                    <span class="quick-note-chip" data-service="underchassis_service" onclick="appendNote('description', 'Unusual noise when braking')"><i class="fas fa-volume-up"></i> Brake Noise</span>
+                                    <span class="quick-note-chip" data-service="underchassis_service" onclick="appendNote('description', 'Car pulls to the left')"><i class="fas fa-arrows-alt-h"></i> Alignment</span>
+                                    <span class="quick-note-chip" data-service="underchassis_service" onclick="appendNote('description', 'Underchassis inspection needed')"><i class="fas fa-search"></i> Underchassis Check</span>
+                                    <span class="quick-note-chip" data-service="engine_service" onclick="appendNote('description', 'Check engine light is on')"><i class="fas fa-lightbulb"></i> Check Engine</span>
+                                    <span class="quick-note-chip" data-service="engine_service" onclick="appendNote('description', 'Engine noise / knocking')"><i class="fas fa-volume-up"></i> Engine Noise</span>
+                                    <span class="quick-note-chip" data-service="engine_service" onclick="appendNote('description', 'Engine overheating')"><i class="fas fa-temperature-high"></i> Overheating</span>
+                                </div>
                             </div>
-                            
+
                             @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
@@ -399,7 +394,33 @@ function fillVehicleDescription(vehicle) {
 
 $(document).ready(function() {
     initTechnicianMultiSelect(".technician-select-wrapper:not([data-tech-init])");
-    
+
+    // ===== SERVICE SUGGESTIONS =====
+    // The quick suggestion chips under Service Description only appear after
+    // the user selects a main service; only branches of the selected
+    // service(s) are revealed.
+    function refreshServiceSuggestions() {
+        var selected = [];
+        $('.service-card-grid input[name="service_type[]"]:checked').each(function() {
+            selected.push($(this).val());
+        });
+
+        var $container = $('#service-suggestions');
+        if (!$container.length) return;
+
+        var shown = false;
+        $container.find('.quick-note-chip').each(function() {
+            var service = $(this).data('service');
+            var match = selected.indexOf(service) > -1;
+            $(this).toggle(match);
+            if (match) shown = true;
+        });
+        $container.toggleClass('d-none', !shown);
+    }
+
+    $(document).on('change', '.service-card-grid input[name="service_type[]"]', refreshServiceSuggestions);
+    refreshServiceSuggestions();
+
     // ===== VEHICLE AUTOSUGGEST =====
     var $vehInput = $('#vehicle_description');
     var $suggestions = $('#vehicle-suggestions');

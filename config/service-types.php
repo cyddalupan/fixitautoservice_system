@@ -13,13 +13,13 @@ return [
     */
     'list' => [
         'preventive_maintenance' => 'PREVENTIVE MAINTENANCE',
-        'auto_mechanical' => 'AUTO-MECHANICAL',
-        'auto_electrical' => 'AUTO-ELECTRICAL',
-        'auto_electronics' => 'AUTO-ELECTRONICS',
-        'auto_air_conditioning' => 'AUTO AIR-CONDITIONING',
-        'body_repair_painting' => 'BODY REPAIR AND PAINTING',
-        'auto_parts_sales' => 'AUTO PARTS SALES',
-        'home_service_request' => 'HOME SERVICE REQUEST',
+        'basic_tune_up' => 'BASIC TUNE UP',
+        'egr_service' => 'EGR SERVICE',
+        'aircon_cleaning' => 'AIRCON CLEANING',
+        'aircon_general_cleaning' => 'AIRCON GENERAL CLEANING',
+        'aircon_service' => 'AIRCON SERVICE',
+        'underchassis_service' => 'UNDERCHASSIS SERVICE',
+        'engine_service' => 'ENGINE SERVICE',
     ],
 
     /*
@@ -33,7 +33,7 @@ return [
     'module_config' => [
         'appointments' => 'single',      // Single select
         'inspections'  => 'single',      // Single select
-        'work_orders'  => 'single',      // Single select for primary type
+        'job_orders'  => 'single',      // Single select for primary type
         'estimates'    => 'single',      // Single select
         'service_records' => 'single',   // Single select
     ],
@@ -45,12 +45,12 @@ return [
     */
     'icons' => [
         'preventive_maintenance' => '🔧',
-        'auto_mechanical' => '⚙️',
-        'auto_electrical' => '⚡',
-        'auto_electronics' => '🔌',
-        'auto_air_conditioning' => '❄️',
-        'body_repair_painting' => '🎨',
-        'auto_parts_sales' => '🔩',
-        'home_service_request' => '🏠',
+        'basic_tune_up' => '⚙️',
+        'egr_service' => '🔄',
+        'aircon_cleaning' => '❄️',
+        'aircon_general_cleaning' => '❄️',
+        'aircon_service' => '❄️',
+        'underchassis_service' => '🔩',
+        'engine_service' => '🔧',
     ],
 ];

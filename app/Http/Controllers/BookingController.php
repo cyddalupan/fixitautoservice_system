@@ -958,21 +958,85 @@ class BookingController extends Controller
     public function apiCreateBooking(Request $request)
     {
         $customerId = $this->resolveCustomerId();
-        if (!$customerId) {
-            return response()->json(['success' => false, 'message' => 'Not authenticated'], 401);
-        }
 
-        $validated = $request->validate([
-            'vehicle_id' => ['required', 'exists:vehicles,id', function ($attr, $value, $fail) use ($customerId) {
-                if (!\App\Models\Vehicle::where('id', $value)->where('customer_id', $customerId)->exists()) {
-                    $fail('The selected vehicle does not belong to you.');
-                }
-            }],
-            'service_type' => 'required|string',
-            'appointment_date' => 'required|date_format:Y-m-d',
-            'appointment_time' => 'required|date_format:H:i',
-            'notes' => 'nullable|string|max:500',
-        ]);
+        if ($customerId) {
+            // ---- Authenticated customer path (existing behavior) ----
+            $validated = $request->validate([
+                'vehicle_id' => ['required', 'exists:vehicles,id', function ($attr, $value, $fail) use ($customerId) {
+                    if (!\App\Models\Vehicle::where('id', $value)->where('customer_id', $customerId)->exists()) {
+                        $fail('The selected vehicle does not belong to you.');
+                    }
+                }],
+                'service_type' => ['required', function ($attr, $value, $fail) {
+                    $allowed = array_keys(config('service-types.list'));
+                    $values = is_array($value) ? $value : [$value];
+                    foreach ($values as $v) {
+                        if (!is_string($v) || !in_array($v, $allowed)) {
+                            $fail('The selected service type is invalid.');
+                            return;
+                        }
+                    }
+                }],
+                'appointment_date' => 'required|date_format:Y-m-d',
+                'appointment_time' => 'required|date_format:H:i',
+                'notes' => 'nullable|string|max:500',
+            ]);
+        } else {
+            // ---- Guest booking path (blueprint: email + phone, no account) ----
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|email|max:255',
+                'phone' => 'required|string|max:40',
+                'vehicle_make' => 'required|string|max:100',
+                'vehicle_model' => 'required|string|max:100',
+                'vehicle_year' => 'nullable|integer|min:1900|max:' . (date('Y') + 2),
+                'vehicle_plate' => 'required|string|max:40',
+                'service_type' => ['required', function ($attr, $value, $fail) {
+                    $allowed = array_keys(config('service-types.list'));
+                    $values = is_array($value) ? $value : [$value];
+                    foreach ($values as $v) {
+                        if (!is_string($v) || !in_array($v, $allowed)) {
+                            $fail('The selected service type is invalid.');
+                            return;
+                        }
+                    }
+                }],
+                'service_request' => 'nullable|string|max:2000',
+                'issue_description' => 'nullable|string|max:2000',
+                'appointment_date' => 'required|date_format:Y-m-d',
+                'appointment_time' => 'required|date_format:H:i',
+                'notes' => 'nullable|string|max:500',
+            ]);
+
+            // Reuse an existing customer by email, else create a guest lead.
+            $guestCustomer = \App\Models\Customer::where('email', $validated['email'])->first();
+            if (!$guestCustomer) {
+                $guestCustomer = \App\Models\Customer::create([
+                    'first_name' => trim($validated['name']),
+                    'last_name' => '',
+                    'email' => $validated['email'],
+                    'phone' => $validated['phone'] ?? null,
+                    'is_active' => true,
+                ]);
+            }
+            $customerId = $guestCustomer->id;
+
+            // Find existing vehicle by plate for this guest, else create one.
+            $vehicle = \App\Models\Vehicle::where('customer_id', $customerId)
+                ->where('license_plate', $validated['vehicle_plate'])
+                ->first();
+            if (!$vehicle) {
+                $vehicle = \App\Models\Vehicle::create([
+                    'customer_id' => $customerId,
+                    'vin' => 'GUEST-' . strtoupper(\Illuminate\Support\Str::random(12)),
+                    'make' => $validated['vehicle_make'],
+                    'model' => $validated['vehicle_model'],
+                    'year' => $validated['vehicle_year'] ?? date('Y'),
+                    'license_plate' => $validated['vehicle_plate'],
+                ]);
+            }
+            $validated['vehicle_id'] = $vehicle->id;
+        }
 
         // Check for duplicate booking (same time slot)
         $existing = Appointment::where('customer_id', $customerId)

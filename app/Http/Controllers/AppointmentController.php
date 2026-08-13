@@ -222,13 +222,13 @@ class AppointmentController extends Controller
         // Map service_type form values to database appointment_type values
         $serviceTypeMapping = [
             'preventive_maintenance' => 'maintenance',
-            'auto_mechanical' => 'repair',
-            'auto_electrical' => 'repair',
-            'auto_electronics' => 'repair',
-            'auto_air_conditioning' => 'repair',
-            'body_repair_painting' => 'repair',
-            'auto_parts_sales' => 'regular_service',
-            'home_service_request' => 'regular_service',
+            'basic_tune_up' => 'maintenance',
+            'egr_service' => 'repair',
+            'aircon_cleaning' => 'repair',
+            'aircon_general_cleaning' => 'repair',
+            'aircon_service' => 'repair',
+            'underchassis_service' => 'repair',
+            'engine_service' => 'repair',
         ];
 
         // Handle multi-select service types
@@ -574,15 +574,15 @@ class AppointmentController extends Controller
         // Fallback: map appointment_type back to a service-types.list key
         $serviceTypeLookup = [
             'maintenance' => 'preventive_maintenance',
-            'repair' => 'auto_mechanical',
-            'emergency' => 'auto_mechanical',
-            'inspection' => 'auto_mechanical',
-            'diagnostic' => 'auto_electrical',
-            'tire_service' => 'auto_mechanical',
+            'repair' => 'engine_service',
+            'emergency' => 'engine_service',
+            'inspection' => 'preventive_maintenance',
+            'diagnostic' => 'engine_service',
+            'tire_service' => 'underchassis_service',
             'oil_change' => 'preventive_maintenance',
-            'brake_service' => 'auto_mechanical',
-            'regular_service' => 'auto_parts_sales',
-            'other' => 'auto_mechanical',
+            'brake_service' => 'underchassis_service',
+            'regular_service' => 'preventive_maintenance',
+            'other' => 'engine_service',
         ];
         $serviceType = $appointment->service_types 
             ?? ($serviceTypeLookup[$appointment->appointment_type] ?? null);
@@ -927,15 +927,15 @@ class AppointmentController extends Controller
             
             $serviceTypeLookup = [
                 'maintenance' => 'preventive_maintenance',
-                'repair' => 'auto_mechanical',
-                'emergency' => 'auto_mechanical',
-                'inspection' => 'auto_mechanical',
-                'diagnostic' => 'auto_electrical',
-                'tire_service' => 'auto_mechanical',
+                'repair' => 'engine_service',
+                'emergency' => 'engine_service',
+                'inspection' => 'preventive_maintenance',
+                'diagnostic' => 'engine_service',
+                'tire_service' => 'underchassis_service',
                 'oil_change' => 'preventive_maintenance',
-                'brake_service' => 'auto_mechanical',
-                'regular_service' => 'auto_parts_sales',
-                'other' => 'auto_mechanical',
+                'brake_service' => 'underchassis_service',
+                'regular_service' => 'preventive_maintenance',
+                'other' => 'engine_service',
             ];
             $serviceType = $appointment->service_types 
                 ?? ($serviceTypeLookup[$appointment->appointment_type] ?? null);

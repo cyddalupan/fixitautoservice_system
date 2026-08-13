@@ -5,6 +5,7 @@
 @section('content')
 <div class="container-fluid py-3">
     @include('partials.customer-process-assets')
+    @include('partials.quick-note-btn-styles')
     @include('partials.customer-summary-card')
     
     <div class="auto-save-toast" style="display:none;"><i class="fas fa-check-circle"></i> <span></span></div>
@@ -223,7 +224,7 @@
                             <label for="customer_concerns" class="form-label">Customer Concerns</label>
                             <textarea class="form-control @error('customer_concerns') is-invalid @enderror"
                                       id="customer_concerns" name="customer_concerns" rows="3"
-                                      placeholder="What did the customer report? ...">{{ old('customer_concerns', $selectedAppointment->service_request ?? $selectedWorkOrder->customer_concerns ?? ($quotationData->service_description ?? '')) }}</textarea>
+                                      placeholder="What did the customer report? ...">{{ old('customer_concerns', $selectedAppointment->service_request ?? $selectedJobOrder->customer_concerns ?? ($quotationData->service_description ?? '')) }}</textarea>
                             @error('customer_concerns')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
