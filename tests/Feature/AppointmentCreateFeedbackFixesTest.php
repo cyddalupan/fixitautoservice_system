@@ -153,4 +153,50 @@ class AppointmentCreateFeedbackFixesTest extends TestCase
             'models must be filtered by brand (order-independent)'
         );
     }
+
+    // ===================================================================
+    // ITEM 3b: Visible (clickable) brand/model dropdowns on the create page
+    // Toybits: "it should be easy to find a car type" — a plain datalist
+    // only appears while typing and is often invisible on mobile.
+    // ===================================================================
+
+    /** @test */
+    public function create_page_renders_visible_brand_and_model_dropdowns()
+    {
+        $toyota = VehicleBrand::create(['name' => 'Toyota', 'is_active' => true]);
+        $honda = VehicleBrand::create(['name' => 'Honda', 'is_active' => true]);
+        VehicleModel::create(['vehicle_brand_id' => $toyota->id, 'name' => 'Vios', 'is_active' => true]);
+        VehicleModel::create(['vehicle_brand_id' => $toyota->id, 'name' => 'Fortuner', 'is_active' => true]);
+
+        $html = $this->actingAs($this->admin)
+            ->get('/appointments/create')
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString(
+            'id="brand-suggestions"',
+            $html,
+            'Brand input must have a visible suggestions dropdown container.'
+        );
+        $this->assertStringContainsString(
+            'id="model-suggestions"',
+            $html,
+            'Model input must have a visible suggestions dropdown container.'
+        );
+        $this->assertStringContainsString(
+            'data-value="Toyota"',
+            $html,
+            'Brand dropdown must include Toyota as a clickable option.'
+        );
+        $this->assertStringContainsString(
+            'data-value="Honda"',
+            $html,
+            'Brand dropdown must include Honda as a clickable option.'
+        );
+        $this->assertStringContainsString(
+            'modelsByBrand',
+            $html,
+            'Model suggestions must be wired to per-brand model data.'
+        );
+    }
 }

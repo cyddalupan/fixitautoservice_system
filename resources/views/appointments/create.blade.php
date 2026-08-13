@@ -73,10 +73,10 @@
                     <div class="col-md-6">
                         <div class="row g-2">
                             <div class="col-md-5">
-                                <div class="form-group">
+                                <div class="form-group position-relative">
                                     <label for="vehicle_brand" class="form-label field-required">Car Brand</label>
                                     <input type="text" class="form-control @error('vehicle_brand') is-invalid @enderror"
-                                           id="vehicle_brand" name="vehicle_brand" list="brand-list"
+                                           id="vehicle_brand" name="vehicle_brand" list="brand-list" autocomplete="off"
                                            value="{{ old('vehicle_brand', $selectedVehicle->make ?? '') }}"
                                            required placeholder="e.g. Toyota">
                                     <datalist id="brand-list">
@@ -84,17 +84,23 @@
                                             <option value="{{ $brand }}"></option>
                                         @endforeach
                                     </datalist>
+                                    <div id="brand-suggestions" class="vehicle-suggestions-dropdown" style="display:none;">
+                                        @foreach($brands as $brand)
+                                            <div class="vehicle-suggestion-item" data-value="{{ $brand }}">{{ $brand }}</div>
+                                        @endforeach
+                                    </div>
                                     @error('vehicle_brand')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                             </div>
                             <div class="col-md-4">
-                                <div class="form-group">
+                                <div class="form-group position-relative">
                                     <label for="vehicle_model" class="form-label field-required">Model</label>
                                     <input type="text" class="form-control @error('vehicle_model') is-invalid @enderror"
-                                           id="vehicle_model" name="vehicle_model" list="model-list"
+                                           id="vehicle_model" name="vehicle_model" list="model-list" autocomplete="off"
                                            value="{{ old('vehicle_model', $selectedVehicle->model ?? '') }}"
                                            required placeholder="e.g. Vios">
                                     <datalist id="model-list"></datalist>
+                                    <div id="model-suggestions" class="vehicle-suggestions-dropdown" style="display:none;"></div>
                                     @error('vehicle_model')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                             </div>
@@ -543,11 +549,13 @@ $(document).ready(function() {
         });
     }
 
-    // ===== BRAND/MODEL DEPENDENT DATALIST =====
+    // ===== BRAND/MODEL DEPENDENT DATALIST + VISIBLE DROPDOWNS =====
     var modelsByBrand = {!! json_encode($modelsByBrand ?? (object)[]) !!};
     var $brandInput = $('#vehicle_brand');
     var $modelInput = $('#vehicle_model');
     var $modelList = $('#model-list');
+    var $brandSuggestions = $('#brand-suggestions');
+    var $modelSuggestions = $('#model-suggestions');
 
     function updateModelDatalist() {
         if (!$modelInput.length) return;
@@ -571,12 +579,55 @@ $(document).ready(function() {
         (models || []).forEach(function(m) {
             $modelList.append($('<option>').attr('value', m));
         });
+        return models || [];
     }
 
-    if ($brandInput.length && $modelList.length) {
-        $brandInput.on('input change', updateModelDatalist);
-        updateModelDatalist(); // populate on load (e.g. edit with pre-filled brand)
+    function showSuggestions($dd, items) {
+        if (!$dd.length) return;
+        $dd.empty();
+        (items || []).slice(0, 50).forEach(function(v) {
+            var $item = $('<div class="vehicle-suggestion-item" data-value="' + v + '"></div>').text(v);
+            $item.on('mousedown', function(e) {
+                e.preventDefault();
+                $dd.hide();
+                var $input = $dd.is($brandSuggestions) ? $brandInput : $modelInput;
+                $input.val(v).trigger('input');
+            });
+            $dd.append($item);
+        });
+        $dd.show();
     }
+
+    function filterBrandSuggestions() {
+        var term = ($brandInput.val() || '').trim().toLowerCase();
+        var items = $brandSuggestions.find('.vehicle-suggestion-item').map(function() {
+            return $(this).attr('data-value');
+        }).get().filter(function(b) {
+            return !term || b.toLowerCase().indexOf(term) > -1;
+        });
+        showSuggestions($brandSuggestions, items);
+    }
+
+    function filterModelSuggestions() {
+        var term = ($modelInput.val() || '').trim().toLowerCase();
+        var all = updateModelDatalist() || [];
+        var items = all.filter(function(m) {
+            return !term || m.toLowerCase().indexOf(term) > -1;
+        });
+        showSuggestions($modelSuggestions, items);
+    }
+
+    if ($brandInput.length) {
+        $brandInput.on('focus input', filterBrandSuggestions);
+        $brandInput.on('blur', function() { setTimeout(function() { $brandSuggestions.hide(); }, 200); });
+        $brandInput.on('input change', updateModelDatalist);
+    }
+    if ($modelInput.length) {
+        $modelInput.on('focus input', filterModelSuggestions);
+        $modelInput.on('blur', function() { setTimeout(function() { $modelSuggestions.hide(); }, 200); });
+    }
+
+    updateModelDatalist(); // populate on load (e.g. edit with pre-filled brand)
 });
 </script>
 
