@@ -37,12 +37,55 @@
         </button>
     </div>
     
-    <form id="creationForm" action="{{ route('work-orders.store') }}" method="POST" autocomplete="off">
+    <form id="creationForm" action="{{ route('job-orders.store') }}" method="POST" autocomplete="off">
         @csrf
         <input type="hidden" name="customer_selection_mode" value="{{ $selectedCustomer ? 'from_url' : 'manual' }}">
         <input type="hidden" name="appointment_id" value="{{ old('appointment_id', $selectedAppointment->id ?? $selectedInspection->appointment_id ?? '') }}">
         <input type="hidden" name="inspection_id" value="{{ old('inspection_id', $selectedInspection->id ?? '') }}">
-        
+
+        <!-- ===== SECTION: WORK ORDER DETAILS ===== -->
+        <div class="form-section" id="detailsSection">
+            <div class="form-section-header">
+                <h6><i class="fas fa-clipboard-list"></i> Work Order Details</h6>
+                <div class="collapse-icon"><i class="fas fa-chevron-down"></i></div>
+            </div>
+            <div class="form-section-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="job_order_date" class="form-label field-required">Work Order Date</label>
+                            <input type="date" name="job_order_date" id="job_order_date" class="form-control @error('job_order_date') is-invalid @enderror" value="{{ old('job_order_date', now()->toDateString()) }}" required>
+                            @error('job_order_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="job_order_type" class="form-label field-required">Work Order Type</label>
+                            <select name="job_order_type" id="job_order_type" class="form-select @error('job_order_type') is-invalid @enderror" required>
+                                <option value="">Select Type</option>
+                                @foreach(['repair', 'maintenance', 'inspection', 'diagnostic', 'recall', 'other'] as $type)
+                                    <option value="{{ $type }}" {{ old('job_order_type') == $type ? 'selected' : '' }}>{{ ucfirst($type) }}</option>
+                                @endforeach
+                            </select>
+                            @error('job_order_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="priority" class="form-label field-required">Priority</label>
+                            <select name="priority" id="priority" class="form-select @error('priority') is-invalid @enderror" required>
+                                <option value="">Select Priority</option>
+                                @foreach(['low', 'normal', 'high', 'emergency'] as $priority)
+                                    <option value="{{ $priority }}" {{ old('priority') == $priority ? 'selected' : '' }}>{{ ucfirst($priority) }}</option>
+                                @endforeach
+                            </select>
+                            @error('priority')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ===== SECTION: CUSTOMER ===== -->
         <div class="form-section" id="customerSection">
             <div class="form-section-header">
@@ -200,7 +243,7 @@
                                 <span class="quick-note-btn" onclick="appendNote('customer_concerns', 'Change oil, replace oil filter, top up fluids (PMS)')"><i class="fas fa-oil-can"></i> PMS</span>
                                 <span class="quick-note-btn" onclick="appendNote('customer_concerns', 'Vibrations when braking - inspect brake pads and rotors')"><i class="fas fa-car-side"></i> Brake Issue</span>
                                 <span class="quick-note-btn" onclick="appendNote('customer_concerns', 'Replace 4 tires, alignment, and balancing')"><i class="fas fa-circle"></i> Tires</span>
-                                <span class="quick-note-btn" onclick="appendNote('customer_concerns', "A/C not blowing cold air - check refrigerant and compressor")"><i class="fas fa-snowflake"></i> A/C Issue</span>
+                                <span class="quick-note-btn" onclick="appendNote('customer_concerns', 'A/C not blowing cold air - check refrigerant and compressor')"><i class="fas fa-snowflake"></i> A/C Issue</span>
                             </div>
                             @error('customer_concerns')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
@@ -226,14 +269,14 @@
                     <div class="col-md-4">
                         <div class="form-group">
                             @include('partials.service-type-selector', [
-                                'selected' => old('service_type', $workOrder->service_type ?? ''),
+                                'selected' => old('service_type', $jobOrder->service_type ?? ''),
                                 'name' => 'service_type',
                                 'label' => 'SERVICE TYPE',
                                 'required' => true,
                                 'showIcons' => true,
                                 'multiple' => true,
                                 'placeholder' => 'Select Service Type',
-                                'module' => 'work_orders',
+                                'module' => 'job_orders',
                             ])
                         </div>
                     </div>
@@ -262,18 +305,6 @@
                         <div class="form-group">
                             <label class="form-label">Work Options</label>
                             <div class="d-flex flex-wrap gap-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="is_warranty_work" name="is_warranty_work" value="1"
-                                        {{ old('is_warranty_work') ? 'checked' : '' }}
-                                        onchange="$('#warrantyFields').toggle(this.checked)">
-                                    <label class="form-check-label" for="is_warranty_work">Warranty Work</label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="is_insurance_work" name="is_insurance_work" value="1"
-                                        {{ old('is_insurance_work') ? 'checked' : '' }}
-                                        onchange="$('#insuranceFields').toggle(this.checked)">
-                                    <label class="form-check-label" for="is_insurance_work">Insurance Work</label>
-                                </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="is_complex_job" name="is_complex_job" value="1"
                                         {{ old('is_complex_job') ? 'checked' : '' }}>
@@ -363,6 +394,22 @@
                 <div class="mt-1"><button type="button" class="btn btn-sm btn-outline-primary" onclick="addItem()"><i class="fas fa-plus me-1"></i> Add Item</button></div>
             </div>
             <div class="form-section-body">
+                <div class="catalog-quick-add mb-3">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label small mb-1">Add from Service Catalog</label>
+                            <select class="form-select form-select-sm" id="catalogItemSelect">
+                                <option value="">— Select a catalog service —</option>
+                                @foreach($serviceItems as $item)
+                                    <option value="{{ $item->id }}" data-name="{{ $item->name }}" data-price="{{ $item->retail_price }}">{{ $item->name }} (₱{{ number_format($item->retail_price, 2) }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-sm btn-primary" onclick="addCatalogItem()"><i class="fas fa-plus me-1"></i> Add from Catalog</button>
+                        </div>
+                    </div>
+                </div>
                 <div class="items-container" id="itemsContainer">
                     <p class="text-muted mb-0"><i class="fas fa-info-circle me-1"></i> Add labor, parts, sublet, or other charges below. You can also add them later after creating the work order.</p>
                 </div>
@@ -465,6 +512,20 @@
                 <div class="collapse-icon"><i class="fas fa-chevron-down"></i></div>
             </div>
             <div class="form-section-body">
+                <div class="d-flex flex-wrap gap-3 mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="is_warranty_work" name="is_warranty_work" value="1"
+                            {{ old('is_warranty_work') ? 'checked' : '' }}
+                            onchange="$('#warrantyFields').toggle(this.checked)">
+                        <label class="form-check-label" for="is_warranty_work"><i class="fas fa-shield-alt text-info me-1"></i> Warranty Work</label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="is_insurance_work" name="is_insurance_work" value="1"
+                            {{ old('is_insurance_work') ? 'checked' : '' }}
+                            onchange="$('#insuranceFields').toggle(this.checked)">
+                        <label class="form-check-label" for="is_insurance_work"><i class="fas fa-file-invoice text-warning me-1"></i> Insurance Work</label>
+                    </div>
+                </div>
                 <div id="warrantyFields" style="{{ old('is_warranty_work') ? '' : 'display:none' }}">
                     <h6 class="text-primary mb-3"><i class="fas fa-shield-alt me-1"></i> Warranty Information</h6>
                     <div class="row g-3">
@@ -553,8 +614,8 @@
             @php
                 $woHistory = $customerHistory ?? collect([]);
                 $processedWO = $woHistory->map(function($record) {
-                    $record->historyTitle = $record->work_order_number ?? 'WO #'.$record->id;
-                    $record->iconClass = match($record->work_order_status ?? '') {
+                    $record->historyTitle = $record->job_order_number ?? 'WO #'.$record->id;
+                    $record->iconClass = match($record->job_order_status ?? '') {
                         'completed', 'closed' => 'fas fa-check-circle',
                         'cancelled' => 'fas fa-times-circle',
                         'pending', 'pending_approval' => 'fas fa-clock',
@@ -562,21 +623,21 @@
                         'in_progress' => 'fas fa-cog fa-spin',
                         default => 'fas fa-file-invoice',
                     };
-                    $record->statusClass = match($record->work_order_status ?? '') {
+                    $record->statusClass = match($record->job_order_status ?? '') {
                         'completed', 'closed' => 'completed',
                         'cancelled' => 'cancelled',
                         'pending', 'pending_approval' => 'pending',
                         'in_progress', 'approved' => 'progress',
                         default => 'info',
                     };
-                    $record->statusLabel = $record->work_order_status ? ucfirst(str_replace('_', ' ', $record->work_order_status)) : '';
+                    $record->statusLabel = $record->job_order_status ? ucfirst(str_replace('_', ' ', $record->job_order_status)) : '';
                     return $record;
                 });
             @endphp
             @include('partials.customer-history', [
                 'customerHistory' => $processedWO,
                 'historyTitle' => 'Work Order History',
-                'historyType' => 'work-order',
+                'historyType' => 'job-order',
                 'historyRoute' => '#',
             ])
         </div>
@@ -590,7 +651,7 @@
                 <span class="auto-save-indicator">• Auto-save active</span>
             </div>
             <div class="d-flex gap-2">
-                <a href="{{ route('work-orders.index') }}" class="btn btn-outline-secondary btn-sm">
+                <a href="{{ route('job-orders.index') }}" class="btn btn-outline-secondary btn-sm">
                     <i class="fas fa-times me-1"></i> Cancel
                 </a>
                 <button type="submit" class="btn btn-primary btn-sm px-4">

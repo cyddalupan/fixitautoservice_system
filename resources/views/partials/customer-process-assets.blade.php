@@ -201,6 +201,7 @@
     align-items: center;
     gap: 6px;
     animation: tagIn 0.2s ease;
+    color: #212529;
 }
 
 .technician-tag .tag-role {
@@ -262,6 +263,7 @@
     padding: 10px 14px;
     font-size: 0.85rem;
     outline: none;
+    color: #212529;
 }
 
 .technician-dropdown .search-input:focus {
@@ -277,6 +279,7 @@
     font-size: 0.85rem;
     transition: background 0.1s;
     border-bottom: 1px solid #f5f5f5;
+    color: #212529;
 }
 
 .technician-dropdown .tech-option:hover {
@@ -389,7 +392,7 @@
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-    color: #666;
+    color: #1f2937;
     background: transparent;
     border: none;
     white-space: nowrap;
@@ -664,6 +667,153 @@
         display: none;
     }
 }
+
+/* ===== DARK MODE COVERAGE ===== */
+[data-theme="dark"] .form-section {
+    background: var(--dark-card);
+    border-color: var(--dark-border);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .form-section-header {
+    background: var(--dark-surface);
+    border-bottom-color: var(--dark-border);
+}
+
+[data-theme="dark"] .form-section-header:hover {
+    background: var(--dark-hover);
+}
+
+[data-theme="dark"] .form-section-header h6 {
+    color: var(--dark-text);
+}
+
+[data-theme="dark"] .form-section-header h6 i {
+    color: #818cf8;
+}
+
+[data-theme="dark"] .section-nav {
+    background: var(--dark-surface);
+}
+
+[data-theme="dark"] .section-nav .nav-pill {
+    color: var(--dark-text);
+}
+
+[data-theme="dark"] .section-nav .nav-pill:hover {
+    background: rgba(129, 140, 248, 0.12);
+    color: #a5b4fc;
+}
+
+[data-theme="dark"] .section-nav .nav-pill.active {
+    background: #3949ab;
+    color: #fff;
+}
+
+[data-theme="dark"] .technician-tag {
+    background: var(--dark-hover);
+    border-color: var(--dark-border);
+    color: var(--dark-text);
+}
+
+[data-theme="dark"] .technician-tag .tag-role {
+    color: #a5b4fc;
+}
+
+[data-theme="dark"] .technician-dropdown {
+    background: var(--dark-card);
+    border-color: var(--dark-border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .technician-dropdown .search-input {
+    background: var(--dark-input-bg);
+    color: var(--dark-text);
+    border-bottom-color: var(--dark-border);
+}
+
+[data-theme="dark"] .technician-dropdown .tech-option {
+    color: var(--dark-text);
+    border-bottom-color: var(--dark-border);
+}
+
+[data-theme="dark"] .technician-dropdown .tech-option:hover {
+    background: var(--dark-hover);
+}
+
+[data-theme="dark"] .technician-dropdown .tech-option .tech-role-tag {
+    background: var(--dark-surface);
+    color: var(--dark-text-secondary);
+}
+
+[data-theme="dark"] .technician-dropdown .role-select-wrapper .role-tag {
+    color: var(--dark-text-secondary);
+    background: var(--dark-surface);
+    border-color: var(--dark-border);
+}
+
+[data-theme="dark"] .sticky-save-bar {
+    background: var(--dark-card);
+    border-top-color: var(--dark-border);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.45);
+}
+
+[data-theme="dark"] .sticky-save-bar .save-info {
+    color: var(--dark-text-secondary);
+}
+
+[data-theme="dark"] .history-card {
+    background: var(--dark-card);
+    border-color: var(--dark-border);
+}
+
+[data-theme="dark"] .history-card-header {
+    background: var(--dark-surface);
+    border-bottom-color: var(--dark-border);
+}
+
+[data-theme="dark"] .history-card-header h6 {
+    color: var(--dark-text);
+}
+
+[data-theme="dark"] .history-item {
+    border-bottom-color: var(--dark-border);
+}
+
+[data-theme="dark"] .history-item:hover {
+    background: var(--dark-hover);
+}
+
+[data-theme="dark"] .history-item .history-title {
+    color: var(--dark-text);
+}
+
+[data-theme="dark"] .history-item .history-meta {
+    color: var(--dark-text-secondary);
+}
+
+[data-theme="dark"] .blank-slate {
+    color: var(--dark-text-secondary);
+}
+
+[data-theme="dark"] .quick-note-btn {
+    background: var(--dark-hover);
+    border-color: var(--dark-border);
+    color: #a5b4fc;
+}
+
+[data-theme="dark"] .tech-mode-switcher {
+    background: var(--dark-surface);
+}
+
+[data-theme="dark"] .tech-mode-btn {
+    color: var(--dark-text-secondary);
+}
+
+[data-theme="dark"] .tech-mode-btn.active {
+    background: #3949ab;
+    color: #fff;
+}
 </style>
 
 <script>
@@ -702,19 +852,10 @@ function initStickySaveBar() {
     var formBottom = $('form').height() + $('form').offset().top;
     
     function checkSticky() {
-        var scrollY = $(window).scrollTop();
-        var windowHeight = $(window).height();
-        
-        if (formBottom > scrollY + windowHeight) {
-            $saveBar.addClass('visible');
-        } else {
-            // Only hide if we're near the bottom of the page
-            if (scrollY + windowHeight >= $(document).height() - 50) {
-                $saveBar.removeClass('visible');
-            } else {
-                $saveBar.addClass('visible');
-            }
-        }
+        // The save button lives INSIDE this bar, so it must never disappear.
+        // (Old logic hid it at the bottom of the page — exactly where you
+        // scroll to click Save.)
+        $saveBar.addClass('visible');
     }
     
     $(window).on('scroll resize', checkSticky);
@@ -1199,15 +1340,15 @@ var itemCounter = 0;
 function addItem(type) {
     itemCounter++;
     var $container = $('#itemsContainer');
-    var html = '<div class="work-order-item border rounded p-3 mb-2" style="background:#f8f9fa;">' +
+    var html = '<div class="job-order-item border rounded p-3 mb-2" style="background:#f8f9fa;">' +
         '<div class="row g-2 align-items-end">' +
         '<div class="col-md-3">' +
         '<label class="form-label small mb-1">Item Type</label>' +
-        '<select class="form-select form-select-sm" name="items[' + itemCounter + '][type]">' +
+        '<select class="form-select form-select-sm" name="items[' + itemCounter + '][item_type]">' +
         '<option value="labor">Labor</option>' +
         '<option value="part">Part</option>' +
         '<option value="sublet">Sublet</option>' +
-        '<option value="other">Other</option>' +
+        '<option value="fee">Fee</option>' +
         '</select></div>' +
         '<div class="col-md-4">' +
         '<label class="form-label small mb-1">Description</label>' +
@@ -1218,14 +1359,30 @@ function addItem(type) {
         '<input type="number" class="form-control form-control-sm" name="items[' + itemCounter + '][quantity]" value="1" min="1" step="1">' +
         '</div>' +
         '<div class="col-md-2">' +
-        '<label class="form-label small mb-1">Unit Price (₱)</label>' +
-        '<input type="number" class="form-control form-control-sm" name="items[' + itemCounter + '][unit_price]" value="0" min="0" step="0.01">' +
+        '<label class="form-label small mb-1">Unit Cost (₱)</label>' +
+        '<input type="number" class="form-control form-control-sm" name="items[' + itemCounter + '][unit_cost]" value="0" min="0" step="0.01">' +
         '</div>' +
         '<div class="col-md-1">' +
-        '<button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'.work-order-item\').remove()"><i class="fas fa-trash"></i></button>' +
+        '<button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest(\'.job-order-item\').remove()"><i class="fas fa-trash"></i></button>' +
         '</div></div></div>';
     $container.prepend(html);
     $container.find('p.text-muted').remove();
+}
+
+// Add a line item from the service catalog (populated from $serviceItems)
+function addCatalogItem() {
+    var $select = $('#catalogItemSelect');
+    var $opt = $select.find('option:selected');
+    if (!$opt.val()) {
+        alert('Please select a service from the catalog first.');
+        return;
+    }
+    addItem('part');
+    var $row = $('#itemsContainer .job-order-item').first();
+    $row.find('select[name*="[item_type]"]').val('part');
+    $row.find('input[name*="[description]"]').val($opt.data('name'));
+    $row.find('input[name*="[unit_cost]"]').val($opt.data('price'));
+    $select.val('');
 }
 
 // ===== TECHNICIAN ASSIGNMENTS (Work Order JSON) =====

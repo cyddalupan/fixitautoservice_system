@@ -6,16 +6,6 @@
 <div class="container-fluid py-3">
     @include('partials.customer-process-assets')
     @include('partials.customer-summary-card')
-
-    @if(session("error") || (session("errors") && session("errors")->has("vehicle_description")))
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <i class="fas fa-exclamation-triangle me-2"></i>
-        <strong>Duplicate Vehicle Detected</strong>
-        <p class="mb-0 mt-1">{{ session("errors")->first("vehicle_description") ?? session("error") }}</p>
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-    @endif
-
     
     <div class="auto-save-toast" style="display:none;"><i class="fas fa-check-circle"></i> <span></span></div>
     
@@ -38,11 +28,11 @@
         </button>
     </div>
     
-    <form id="creationForm" action="{{ route('appointments.store') }}" method="POST" autocomplete="off">
+    <form action="{{ route('appointments.store') }}" method="POST" autocomplete="off">
         @csrf
         <input type="hidden" name="customer_selection_mode" value="{{ $selectedCustomer ? 'from_url' : 'manual' }}">
         
-        <!-- ===== SECTION: Details ===== -->
+                <!-- ===== SECTION: Details ===== -->
         <div class="form-section" id="details">
             <div class="form-section-header">
                 <h6><i class="fas fa-info-circle"></i> Appointment Details</h6>
@@ -50,44 +40,104 @@
             </div>
             <div class="form-section-body">
                 <div class="row g-3">
-                    <!-- Customer -->
+                    <!-- Customer (select2 or autocomplete) -->
                     <div class="col-md-6">
                         <div class="form-group">
                             <label for="customer_id" class="form-label field-required">Customer</label>
-                            @if($selectedCustomer)
-                                <input type="hidden" name="customer_id" value="{{ $selectedCustomer->id }}">
-                                <div class="form-control-plaintext fw-bold" style="padding: 6px 0;">
-                                    <i class="fas fa-user text-primary me-1"></i>
-                                    {{ $selectedCustomer->name }}
-                                    <small class="text-muted ms-2">({{ $selectedCustomer->phone ?? '' }})</small>
-                                </div>
-                            @else
-                                <select class="form-select @error('customer_id') is-invalid @enderror"
-                                        id="customer_id" name="customer_id" required>
-                                    <option value="">Select Customer</option>
-                                    @foreach($customers as $c)
-                                        <option value="{{ $c->id }}" 
-                                            {{ old('customer_id', $selectedCustomer->id ?? '') == $c->id ? 'selected' : '' }}>
-                                            {{ $c->name }} {{ $c->phone ? '- '.$c->phone : '' }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('customer_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            <select class="form-select @error('customer_id') is-invalid @enderror" 
+                                    id="customer_id" name="customer_id"
+                                    {{ isset($selectedCustomer) && $selectedCustomer ? 'disabled' : '' }}>
+                                <option value="">Select Customer</option>
+                                @foreach($customers as $customer)
+                                    <option value="{{ $customer->id }}" {{ (old('customer_id') == $customer->id || (isset($selectedCustomer) && $selectedCustomer && $selectedCustomer->id == $customer->id)) ? 'selected' : '' }}>
+                                        {{ $customer->first_name }} {{ $customer->last_name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @if(isset($selectedCustomer) && $selectedCustomer)
+                            <input type="hidden" name="customer_id" value="{{ $selectedCustomer->id }}">
+                            <small class="form-text text-muted">
+                                <i class="fas fa-lock me-1"></i> {{ $selectedCustomer->first_name }} {{ $selectedCustomer->last_name }}
+                            </small>
                             @endif
+                            @error('customer_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
                     
-                    <!-- Vehicle Description -->
+                    <!-- Vehicle: Make + Model + Year -->
                     <div class="col-md-6">
-                        <div class="form-group" style="position:relative;">
-                            <label for="vehicle_description" class="form-label field-required">Vehicle Description</label>
-                            <input type="text" class="form-control @error('vehicle_description') is-invalid @enderror"
-                                   id="vehicle_description" name="vehicle_description" autocomplete="off"
-                                   value="{{ old('vehicle_description', $selectedVehicle ? $selectedVehicle->year.' '.$selectedVehicle->make.' '.$selectedVehicle->model.($selectedVehicle->license_plate ? ' - '.$selectedVehicle->license_plate : '') : '') }}"
-                                   required placeholder="e.g. 2023 Toyota Vios">
-                            <input type="hidden" name="vehicle_id" id="vehicle_id" value="{{ $selectedVehicle->id ?? '' }}">
-                            <div id="vehicle-suggestions" class="vehicle-suggestions-dropdown" style="display:none;"></div>
-                            @error('vehicle_description')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        <div class="row g-2">
+                            <div class="col-md-5">
+                                <div class="form-group">
+                                    <label for="vehicle_brand" class="form-label field-required">Car Brand</label>
+                                    <input type="text" class="form-control @error('vehicle_brand') is-invalid @enderror"
+                                           id="vehicle_brand" name="vehicle_brand"
+                                           value="{{ old('vehicle_brand', $selectedVehicle->make ?? '') }}"
+                                           required placeholder="e.g. Toyota">
+                                    @error('vehicle_brand')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="vehicle_model" class="form-label field-required">Model</label>
+                                    <input type="text" class="form-control @error('vehicle_model') is-invalid @enderror"
+                                           id="vehicle_model" name="vehicle_model"
+                                           value="{{ old('vehicle_model', $selectedVehicle->model ?? '') }}"
+                                           required placeholder="e.g. Vios">
+                                    @error('vehicle_model')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="vehicle_year" class="form-label field-required">Year</label>
+                                    <input type="text" class="form-control @error('vehicle_year') is-invalid @enderror"
+                                           id="vehicle_year" name="vehicle_year"
+                                           value="{{ old('vehicle_year', $selectedVehicle->year ?? '') }}"
+                                           required placeholder="e.g. 2023" maxlength="4">
+                                    @error('vehicle_year')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Manual Add (New Customer) -->
+                    <div class="col-12">
+                        <div class="form-group manual-add-panel">
+                            <label class="form-label fw-semibold"><i class="fas fa-user-plus me-1"></i> New Customer (Manual Add)</label>
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="client_name" class="form-label field-required">Client Name</label>
+                                        <input type="text" class="form-control @error('client_name') is-invalid @enderror"
+                                               id="client_name" name="client_name"
+                                               value="{{ old('client_name') }}"
+                                               placeholder="e.g. Juan Dela Cruz">
+                                        @error('client_name')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="contact_no" class="form-label field-required">Contact No.</label>
+                                        <input type="text" class="form-control @error('contact_no') is-invalid @enderror"
+                                               id="contact_no" name="contact_no"
+                                               value="{{ old('contact_no') }}"
+                                               placeholder="e.g. 09171234567">
+                                        @error('contact_no')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label for="plate_number" class="form-label">Plate Number</label>
+                                        <input type="text" class="form-control @error('plate_number') is-invalid @enderror"
+                                               id="plate_number" name="plate_number"
+                                               value="{{ old('plate_number') }}"
+                                               placeholder="e.g. ABC-1234">
+                                        @error('plate_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="form-text text-muted">
+                                Punuan lang ito kapag bagong customer (walang napiling customer sa dropdown).
+                            </small>
                         </div>
                     </div>
                     
@@ -129,9 +179,7 @@
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- ===== SECTION: Service ===== -->
+        </div><!-- ===== SECTION: Service ===== -->
         <div class="form-section" id="service">
             <div class="form-section-header">
                 <h6><i class="fas fa-wrench"></i> Service Information</h6>
@@ -313,42 +361,7 @@
                 </button>
             </div>
         </div>
-            <input type="hidden" name="override_duplicate" id="overrideDuplicate" value="">
-            </form>
-</div>
-
-<!-- Duplicate Vehicle Transaction Modal -->
-<div class="modal fade" id="vehicleTransactionModal" tabindex="-1" aria-labelledby="vehicleTransactionModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="vehicleTransactionModalLabel">
-                    <i class="fas fa-exclamation-triangle me-2"></i>Duplicate Vehicle Detected
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body text-center py-4">
-                <div class="mb-3">
-                    <i class="fas fa-car" style="font-size: 3rem; color: #dc3545;"></i>
-                    <i class="fas fa-ban" style="font-size: 2rem; color: #dc3545; margin-left: -10px;"></i>
-                </div>
-                <h5 class="mb-2">This vehicle cannot be used for a new appointment.</h5>
-                <p class="text-muted mb-0">
-                    It already has an active <strong class="transaction-type">Appointment</strong>
-                    (<strong class="transaction-number">APTXXXXXX</strong>).
-                </p>
-                <p class="text-muted">Please complete the existing transaction first before creating a new one.</p>
-            </div>
-            <div class="modal-footer justify-content-center">
-                <a href="#" class="transaction-link btn btn-danger" target="_blank">
-                    <i class="fas fa-external-link-alt me-1"></i> View Active Transaction
-                </a>
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i> Close
-                </button>
-            </div>
-        </div>
-    </div>
+    </form>
 </div>
 
 <script>
@@ -380,113 +393,10 @@ function fillVehicleDescription(vehicle) {
     $('#vehicle_description').val(desc);
     $('#vehicle_id').val(vehicle.id);
     $('#vehicle-suggestions').hide();
-    checkVehicleTransactions(vehicle.id);
 }
-
-// Track whether vehicle has an active transaction
-var vehicleHasActiveTransaction = false;
-
-function checkVehicleTransactions(vehicleId) {
-    if (!vehicleId) return;
-    // Reset flag
-    vehicleHasActiveTransaction = false;
-    // Remove any existing error first
-    $('.vehicle-transaction-error').remove();
-    $('#vehicleTransactionModal').modal('hide');
-    
-    $.get('/api/vehicle-transactions/' + vehicleId, function(data) {
-        if (data.has_active_transaction) {
-            vehicleHasActiveTransaction = true;
-            var tx = data.transactions[0];
-            // Show error alert below vehicle field
-            var errMsg = '<div class="vehicle-transaction-error alert alert-danger alert-dismissible fade show mt-2" role="alert">' +
-                '<i class="fas fa-exclamation-triangle me-2"></i>' +
-                '<strong>Duplicate Vehicle Detected</strong>' +
-                '<p class="mb-0 mt-1">This vehicle already has an active <strong>' + tx.type + ' (' + tx.number + ').</strong></p>' +
-                '<div class="mt-2">' +
-                '<a href="' + tx.url + '" class="btn btn-sm btn-outline-danger" target="_blank">' +
-                '<i class="fas fa-external-link-alt me-1"></i> View ' + tx.type + '</a>' +
-                '</div>' +
-                '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
-                '</div>';
-            $('#vehicle_description').closest('.form-group').after(errMsg);
-            
-            // Also show a professional modal
-            $('#vehicleTransactionModal .transaction-type').text(tx.type);
-            $('#vehicleTransactionModal .transaction-number').text(tx.number);
-            $('#vehicleTransactionModal .transaction-link').attr('href', tx.url);
-            $('#vehicleTransactionModal').modal('show');
-        }
-    }).fail(function() {
-        // Fallback: if AJAX fails, show server-side error will catch it
-        console.warn('Vehicle transaction check failed');
-    });
-}
-
-// Intercept form submission if duplicate vehicle
-$(document).ready(function() {
-    $('form').on('submit', function(e) {
-        if (vehicleHasActiveTransaction) {
-            e.preventDefault();
-            // Scroll to the error
-            $('html, body').animate({
-                scrollTop: $('.vehicle-transaction-error').first().offset().top - 100
-            }, 500);
-            return false;
-        }
-    });
-});
 
 $(document).ready(function() {
     initTechnicianMultiSelect(".technician-select-wrapper:not([data-tech-init])");
-    
-    // ===== PREVENT DUPLICATE TECHNICIAN =====
-    // When primary technician is selected, hide them from the
-    // "Additional Technicians" multi-select dropdown
-    var $techWrapper = $('.technician-select-wrapper');
-    var $techOptions = $techWrapper.find('.tech-option');
-    
-    function syncPrimaryTechExclusion() {
-        var primaryId = String($('#assigned_to').val() || '');
-        
-        // Remove primary tech from additional list if present
-        $techWrapper.find('.technician-tag[data-id="' + primaryId + '"] .remove-tech-btn').each(function() {
-            $(this).trigger('click');
-        });
-        
-        // Store & immediately apply exclusion
-        $techWrapper.data('exclude-primary', primaryId);
-        applyExclusions();
-    }
-    
-    function applyExclusions() {
-        var excludePrimary = $techWrapper.data('exclude-primary') || '';
-        var q = $techWrapper.find('.search-input').val().toLowerCase().trim();
-        
-        $techOptions.each(function() {
-            var techId = String($(this).data('id'));
-            var isSelected = $(this).hasClass('selected');
-            
-            if (isSelected) { $(this).hide(); return; }
-            if (techId === excludePrimary) { $(this).hide(); return; }
-            
-            var name = $(this).data('name').toLowerCase();
-            $(this).toggle(!q || name.indexOf(q) !== -1);
-        });
-    }
-    
-    // Replace the search handler with our extended version
-    $techWrapper.off('input', '.search-input')
-        .on('input.search-tech', '.search-input', applyExclusions);
-    
-    // Re-apply exclusions whenever the dropdown opens (rebuild may have reset visibility)
-    $techWrapper.find('.tech-add-btn').on('click', function() {
-        setTimeout(applyExclusions, 50);
-    });
-    
-    // Run on load and when primary tech changes
-    $('#assigned_to').on('change', syncPrimaryTechExclusion);
-    syncPrimaryTechExclusion();
     
     // ===== VEHICLE AUTOSUGGEST =====
     var $vehInput = $('#vehicle_description');
@@ -554,15 +464,6 @@ $(document).ready(function() {
                 fillVehicleDescription(matched);
             }
         }
-        
-        // ===== QUOTATION AUTO-FILL =====
-        @if($quotationData && $quotationData->service_description)
-        // Auto-fill service description from latest quotation
-        var qDesc = $('#description').val();
-        if (!qDesc || qDesc.trim() === '') {
-            $('#description').val('{{ addslashes($quotationData->service_description) }}');
-        }
-        @endif
     }
     
     // ===== VEHICLE PILL HANDLER =====
@@ -579,7 +480,6 @@ $(document).ready(function() {
             }
             $('#vehicle_description').val(desc);
         }
-        checkVehicleTransactions(vehId);
     });
     
     // Also handle manual typing clearing the vehicle_id link
@@ -593,37 +493,6 @@ $(document).ready(function() {
                 // Don't clear immediately - let them choose from suggestions
             }
         }
-    });
-    
-    // Check vehicle transactions on blur (when user types and leaves field)
-    $vehInput.on('blur.checkVehicle', function() {
-        var val = $(this).val().toLowerCase().trim();
-        if (!val) return;
-        
-        // Try to match typed text to a known vehicle
-        var matched = customerVehiclesData.find(function(v) {
-            var label = (v.year + ' ' + v.make + ' ' + v.model + (v.license_plate ? ' - ' + v.license_plate : '')).toLowerCase();
-            return label === val || v.license_plate && val.indexOf(v.license_plate.toLowerCase()) >= 0;
-        });
-        
-        if (matched) {
-            checkVehicleTransactions(matched.id);
-        }
-    });
-
-    // ===== QUOTATION AUTO-FILL ON CUSTOMER CHANGE =====
-    $(document).on('change', '#customer_id', function() {
-        var customerId = parseInt($(this).val());
-        if (!customerId) return;
-        
-        $.get('{{ route("api.customer-latest-quotation", ["customer" => "__CUSTOMER_ID__"]) }}'.replace('__CUSTOMER_ID__', customerId), function(data) {
-            if (data && data.service_description) {
-                var descField = $('#description');
-                if (!descField.val() || descField.val().trim() === '') {
-                    descField.val(data.service_description);
-                }
-            }
-        });
     });
 });
 </script>
@@ -664,6 +533,27 @@ $(document).ready(function() {
     color: #6c757d;
     margin-top: 1px;
 }
+
+[data-theme="dark"] .vehicle-suggestions-dropdown {
+    background: var(--dark-card);
+    border-color: var(--dark-border);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.45);
+}
+
+[data-theme="dark"] .vehicle-suggestion-item {
+    border-bottom-color: var(--dark-border);
+}
+
+[data-theme="dark"] .vehicle-suggestion-item:hover {
+    background: var(--dark-hover);
+}
+
+[data-theme="dark"] .suggestion-main {
+    color: var(--dark-text);
+}
+
+[data-theme="dark"] .suggestion-sub {
+    color: var(--dark-text-secondary);
+}
 </style>
-@include('partials.duplicate-transaction-modal')
 @endsection

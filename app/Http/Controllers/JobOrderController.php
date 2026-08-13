@@ -2,33 +2,34 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\WorkOrder;
-use App\Models\WorkOrderItem;
-use App\Models\WorkOrderTask;
+use App\Models\JobOrder;
+use App\Models\JobOrderItem;
+use App\Models\JobOrderTask;
 use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\User;
 use App\Models\Appointment;
 use App\Models\Estimate;
+use App\Models\ServiceItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
-class WorkOrderController extends Controller
+class JobOrderController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        $query = WorkOrder::with(['customer', 'vehicle', 'technician', 'serviceAdvisor', 'invoice'])
+        $query = JobOrder::with(['customer', 'vehicle', 'technician', 'serviceAdvisor', 'invoice'])
             ->latest();
         
         // Search filter
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
-                $q->where('work_order_number', 'like', "%{$search}%")
+                $q->where('job_order_number', 'like', "%{$search}%")
                   ->orWhereHas('customer', function($q) use ($search) {
                       $q->where('first_name', 'like', "%{$search}%")
                         ->orWhere('last_name', 'like', "%{$search}%")
@@ -45,7 +46,7 @@ class WorkOrderController extends Controller
         
         // Status filter
         if ($request->filled('status')) {
-            $query->where('work_order_status', $request->status);
+            $query->where('job_order_status', $request->status);
         }
         
         // Priority filter
@@ -55,11 +56,11 @@ class WorkOrderController extends Controller
         
         // Date filter
         if ($request->filled('date')) {
-            $query->whereDate('work_order_date', $request->date);
+            $query->whereDate('job_order_date', $request->date);
         } elseif ($request->filled('date_range')) {
             $dates = explode(' to ', $request->date_range);
             if (count($dates) == 2) {
-                $query->whereBetween('work_order_date', [$dates[0], $dates[1]]);
+                $query->whereBetween('job_order_date', [$dates[0], $dates[1]]);
             }
         }
         
@@ -99,7 +100,7 @@ class WorkOrderController extends Controller
             });
         }
         
-        $workOrders = $query->paginate(20);
+        $jobOrders = $query->paginate(20);
         
         // Get technicians and advisors for filter dropdowns
         $technicians = User::where('role', 'technician')->where('is_active', true)->get();
@@ -107,19 +108,19 @@ class WorkOrderController extends Controller
         
         // Get statistics
         $stats = [
-            'total' => WorkOrder::count(),
-            'today' => WorkOrder::today()->count(),
-            'repairing' => WorkOrder::repairing()->count(),
-            'pending' => WorkOrder::pending()->count(),
-            'waiting_parts' => WorkOrder::waitingParts()->count(),
-            'completed' => WorkOrder::completed()->count(),
-            'released' => WorkOrder::released()->count(),
-            'overdue' => WorkOrder::overdue()->count(),
-            'warranty' => WorkOrder::warranty()->count(),
-            'insurance' => WorkOrder::insurance()->count(),
+            'total' => JobOrder::count(),
+            'today' => JobOrder::today()->count(),
+            'repairing' => JobOrder::repairing()->count(),
+            'pending' => JobOrder::pending()->count(),
+            'waiting_parts' => JobOrder::waitingParts()->count(),
+            'completed' => JobOrder::completed()->count(),
+            'released' => JobOrder::released()->count(),
+            'overdue' => JobOrder::overdue()->count(),
+            'warranty' => JobOrder::warranty()->count(),
+            'insurance' => JobOrder::insurance()->count(),
         ];
         
-        return view('work_orders.index', compact('workOrders', 'technicians', 'advisors', 'stats'));
+        return view('job_orders.index', compact('jobOrders', 'technicians', 'advisors', 'stats'));
     }
 
     /**
@@ -179,7 +180,10 @@ class WorkOrderController extends Controller
             $activeTransaction = \App\Services\ActiveTransactionService::checkActiveTransaction($selectedVehicle->id);
         }
         
-        return view('work_orders.create', compact(
+        // Service catalog items for line items
+        $serviceItems = ServiceItem::where('is_active', true)->orderBy('name')->get();
+        
+        return view('job_orders.create', compact(
             'customers', 
             'vehicles', 
             'technicians', 
@@ -191,7 +195,8 @@ class WorkOrderController extends Controller
             'customerVehicles',
             'customerHistory',
             'serviceTemplates',
-            'activeTransaction'
+            'activeTransaction',
+            'serviceItems'
         ));
     }
 
@@ -204,10 +209,10 @@ class WorkOrderController extends Controller
             'appointment_id' => 'nullable|exists:appointments,id',
             'customer_id' => 'required|exists:customers,id',
             'vehicle_id' => 'required|exists:vehicles,id',
-            'service_advisor_id' => 'required|exists:users,id',
+            'service_advisor_id' => 'nullable|exists:users,id',
             'technician_id' => 'nullable|exists:users,id',
-            'work_order_date' => 'required|date',
-            'work_order_type' => 'required|in:repair,maintenance,inspection,diagnostic,recall,other',
+            'job_order_date' => 'required|date',
+            'job_order_type' => 'required|in:repair,maintenance,inspection,diagnostic,recall,other',
             'priority' => 'required|in:low,normal,high,emergency',
             'odometer_in' => 'nullable|integer|min:0',
             'fuel_level' => 'nullable|in:full,3/4,1/2,1/4,empty',
@@ -286,13 +291,13 @@ class WorkOrderController extends Controller
                 }
                 
                 // Exclude current work order if editing
-                $existingWorkOrder = WorkOrder::where('vehicle_id', $vehicleId)
-                    ->whereIn('work_order_status', ['pending', 'repairing', 'waiting_parts'])
+                $existingJobOrder = JobOrder::where('vehicle_id', $vehicleId)
+                    ->whereIn('job_order_status', ['pending', 'repairing', 'waiting_parts'])
                     ->whereNull('deleted_at');
                 
-                if ($existingWorkOrder->exists()) {
+                if ($existingJobOrder->exists()) {
                     return back()->withErrors([
-                        'vehicle_id' => 'This vehicle already has an active Work Order (' . $existingWorkOrder->first()->work_order_number . ').'
+                        'vehicle_id' => 'This vehicle already has an active Work Order (' . $existingJobOrder->first()->job_order_number . ').'
                     ])->withInput();
                 }
                 
@@ -310,12 +315,12 @@ class WorkOrderController extends Controller
         }
         
         // Generate work order number
-        $validated['work_order_number'] = WorkOrder::generateWorkOrderNumber();
+        $validated['job_order_number'] = JobOrder::generateJobOrderNumber();
         
         // Set initial status
-        $validated['work_order_status'] = 'pending';
+        $validated['job_order_status'] = 'pending';
         if ($validated['requires_customer_approval'] ?? false) {
-            $validated['work_order_status'] = 'pending';
+            $validated['job_order_status'] = 'pending';
         }
         
         // Set check-in time
@@ -330,13 +335,13 @@ class WorkOrderController extends Controller
         $validated['payment_due_date'] = Carbon::today()->addDays(30);
         
         // Create work order
-        $workOrder = WorkOrder::create($validated);
+        $jobOrder = JobOrder::create($validated);
         
         // Create items if provided
         if (isset($validated['items'])) {
             foreach ($validated['items'] as $itemData) {
-                WorkOrderItem::create([
-                    'work_order_id' => $workOrder->id,
+                JobOrderItem::create([
+                    'job_order_id' => $jobOrder->id,
                     'item_type' => $itemData['item_type'],
                     'description' => $itemData['description'],
                     'part_number' => $itemData['part_number'] ?? null,
@@ -353,19 +358,19 @@ class WorkOrderController extends Controller
         
         // Apply service template if selected
         if ($request->filled('service_template')) {
-            $this->applyServiceTemplate($workOrder, $request->service_template);
+            $this->applyServiceTemplate($jobOrder, $request->service_template);
         }
         
         // Handle multi-select service types
         if ($request->filled('service_type')) {
             $serviceTypes = $request->service_type;
-            $workOrder->service_type = is_array($serviceTypes) ? json_encode($serviceTypes) : $serviceTypes;
-            $workOrder->save();
+            $jobOrder->service_type = is_array($serviceTypes) ? json_encode($serviceTypes) : $serviceTypes;
+            $jobOrder->save();
         }
         
         // Update appointment status if linked
-        if ($workOrder->appointment_id) {
-            $appointment = Appointment::find($workOrder->appointment_id);
+        if ($jobOrder->appointment_id) {
+            $appointment = Appointment::find($jobOrder->appointment_id);
             if ($appointment) {
                 $appointment->update([
                     'appointment_status' => 'checked_in',
@@ -374,21 +379,21 @@ class WorkOrderController extends Controller
             }
         }
         
-        return redirect()->route('work-orders.show', $workOrder)
+        return redirect()->route('job-orders.show', $jobOrder)
             ->with('success', 'Work order created successfully.');
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(WorkOrder $workOrder)
+    public function show(JobOrder $jobOrder)
     {
         // Mark as viewed if not yet viewed
-        if ($workOrder->viewed_at === null) {
-            $workOrder->update(['viewed_at' => now()]);
+        if ($jobOrder->viewed_at === null) {
+            $jobOrder->update(['viewed_at' => now()]);
         }
         
-        $workOrder->load([
+        $jobOrder->load([
             'customer', 
             'vehicle', 
             'technician', 
@@ -402,21 +407,21 @@ class WorkOrderController extends Controller
         ]);
         
         // Get similar work orders for this customer
-        $customerWorkOrders = WorkOrder::where('customer_id', $workOrder->customer_id)
-            ->where('id', '!=', $workOrder->id)
-            ->orderBy('work_order_date', 'desc')
+        $customerJobOrders = JobOrder::where('customer_id', $jobOrder->customer_id)
+            ->where('id', '!=', $jobOrder->id)
+            ->orderBy('job_order_date', 'desc')
             ->limit(5)
             ->get();
         
         // Get timeline
-        $timeline = $workOrder->getTimeline();
+        $timeline = $jobOrder->getTimeline();
         
         // Get technicians for task assignment
         $technicians = User::where('role', 'technician')->where('is_active', true)->get();
         
-        return view('work_orders.show', compact(
-            'workOrder', 
-            'customerWorkOrders', 
+        return view('job_orders.show', compact(
+            'jobOrder', 
+            'customerJobOrders', 
             'timeline',
             'technicians'
         ));
@@ -425,14 +430,14 @@ class WorkOrderController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(WorkOrder $workOrder)
+    public function edit(JobOrder $jobOrder)
     {
         // Mark as viewed if not yet viewed
-        if ($workOrder->viewed_at === null) {
-            $workOrder->update(['viewed_at' => now()]);
+        if ($jobOrder->viewed_at === null) {
+            $jobOrder->update(['viewed_at' => now()]);
         }
         
-        $workOrder->load(['customer', 'vehicle', 'items', 'tasks']);
+        $jobOrder->load(['customer', 'vehicle', 'items', 'tasks']);
         
         $customers = Customer::where('is_active', true)->orderBy('first_name')->get();
         $vehicles = Vehicle::with('customer')->get();
@@ -443,8 +448,8 @@ class WorkOrderController extends Controller
             ->with(['customer', 'vehicle'])
             ->get();
         
-        return view('work_orders.edit', compact(
-            'workOrder', 
+        return view('job_orders.edit', compact(
+            'jobOrder', 
             'customers', 
             'vehicles', 
             'technicians', 
@@ -456,35 +461,63 @@ class WorkOrderController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, WorkOrder $workOrder)
+    public function update(Request $request, JobOrder $jobOrder)
     {
-        \Log::info('WorkOrder update attempt', [
-            'work_order_id' => $workOrder->id,
+        \Log::info('JobOrder update attempt', [
+            'job_order_id' => $jobOrder->id,
             'request_data' => $request->all(),
-            'current_status' => $workOrder->work_order_status,
+            'current_status' => $jobOrder->job_order_status,
         ]);
         
         $validated = $request->validate([
+            'appointment_id' => 'nullable|exists:appointments,id',
             'customer_id' => 'required|exists:customers,id',
             'vehicle_id' => 'required|exists:vehicles,id',
-            'work_order_date' => 'required|date',
-            'work_order_status' => 'required|in:pending,repairing,waiting_parts,completed,released,cancelled',
-            'priority' => 'required|in:low,normal,high,emergency',
             'service_advisor_id' => 'nullable|exists:users,id',
             'technician_id' => 'nullable|exists:users,id',
+            'job_order_date' => 'required|date',
+            'job_order_status' => 'required|in:pending,repairing,waiting_parts,completed,released,cancelled,draft',
+            'priority' => 'required|in:low,normal,high,emergency',
+            'job_order_type' => 'nullable|in:repair,maintenance,inspection,diagnostic,recall,other',
+            'odometer_in' => 'nullable|integer|min:0',
+            'fuel_level' => 'nullable|in:full,3/4,1/2,1/4,empty',
+            'vehicle_condition' => 'nullable|string|max:1000',
+            'customer_concerns' => 'nullable|string|max:2000',
+            'customer_complaints' => 'nullable|string|max:2000',
+            'initial_diagnosis' => 'nullable|string|max:2000',
+            'recommended_services' => 'nullable|string|max:2000',
+            'additional_notes' => 'nullable|string|max:1000',
+            'estimated_labor_hours' => 'nullable|numeric|min:0',
+            'estimated_labor_cost' => 'nullable|numeric|min:0',
+            'estimated_parts_cost' => 'nullable|numeric|min:0',
+            'estimated_tax' => 'nullable|numeric|min:0',
+            'estimate_notes' => 'nullable|string|max:1000',
+            'is_warranty_work' => 'boolean',
+            'warranty_type' => 'nullable|string|max:100',
+            'warranty_number' => 'nullable|string|max:100',
+            'warranty_expiry' => 'nullable|date',
+            'warranty_coverage' => 'nullable|numeric|min:0',
+            'is_insurance_work' => 'boolean',
+            'insurance_company' => 'nullable|string|max:100',
+            'insurance_claim_number' => 'nullable|string|max:100',
+            'insurance_adjuster' => 'nullable|string|max:100',
+            'insurance_deductible' => 'nullable|numeric|min:0',
+            'bay_number' => 'nullable|integer|min:1|max:20',
+            'requires_customer_approval' => 'boolean',
+            'technician_assignments' => 'nullable|json',
             'description' => 'nullable|string',
             'notes' => 'nullable|string',
         ]);
         
-        \Log::info('WorkOrder validation passed', [
-            'work_order_id' => $workOrder->id,
+        \Log::info('JobOrder validation passed', [
+            'job_order_id' => $jobOrder->id,
             'validated_data' => $validated,
         ]);
         
         // Update status timestamps
-        if ($validated['work_order_status'] !== $workOrder->work_order_status) {
+        if ($validated['job_order_status'] !== $jobOrder->job_order_status) {
             $statusField = null;
-            switch ($validated['work_order_status']) {
+            switch ($validated['job_order_status']) {
                 case 'repairing':
                     $statusField = 'work_start_time';
                     break;
@@ -504,36 +537,36 @@ class WorkOrderController extends Controller
             }
         }
         
-        $workOrder->update($validated);
+        $jobOrder->update($validated);
         
-        \Log::info('WorkOrder update successful', [
-            'work_order_id' => $workOrder->id,
-            'new_status' => $workOrder->work_order_status,
-            'new_technician_id' => $workOrder->technician_id,
-            'new_service_advisor_id' => $workOrder->service_advisor_id,
+        \Log::info('JobOrder update successful', [
+            'job_order_id' => $jobOrder->id,
+            'new_status' => $jobOrder->job_order_status,
+            'new_technician_id' => $jobOrder->technician_id,
+            'new_service_advisor_id' => $jobOrder->service_advisor_id,
         ]);
         
-        return redirect()->route('work-orders.show', $workOrder)
+        return redirect()->route('job-orders.show', $jobOrder)
             ->with('success', 'Work order updated successfully.');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(WorkOrder $workOrder)
+    public function destroy(JobOrder $jobOrder)
     {
-        $workOrder->delete();
+        $jobOrder->delete();
         
-        return redirect()->route('work-orders.index')
+        return redirect()->route('job-orders.index')
             ->with('success', 'Work order deleted successfully.');
     }
     
     /**
      * Approve work order estimate.
      */
-    public function approveEstimate(WorkOrder $workOrder)
+    public function approveEstimate(JobOrder $jobOrder)
     {
-        if ($workOrder->approveEstimate()) {
+        if ($jobOrder->approveEstimate()) {
             return redirect()->back()->with('success', 'Work order estimate approved.');
         }
         
@@ -543,9 +576,9 @@ class WorkOrderController extends Controller
     /**
      * Start work on work order.
      */
-    public function startWork(WorkOrder $workOrder)
+    public function startWork(JobOrder $jobOrder)
     {
-        if ($workOrder->startWork()) {
+        if ($jobOrder->startWork()) {
             return redirect()->back()->with('success', 'Work started on work order.');
         }
         
@@ -555,9 +588,9 @@ class WorkOrderController extends Controller
     /**
      * Complete work on work order.
      */
-    public function completeWork(WorkOrder $workOrder)
+    public function completeWork(JobOrder $jobOrder)
     {
-        if ($workOrder->completeWork()) {
+        if ($jobOrder->completeWork()) {
             return redirect()->back()->with('success', 'Work completed on work order.');
         }
         
@@ -567,9 +600,9 @@ class WorkOrderController extends Controller
     /**
      * Mark work order as invoiced.
      */
-    public function markAsReleased(WorkOrder $workOrder)
+    public function markAsReleased(JobOrder $jobOrder)
     {
-        if ($workOrder->markAsReleased()) {
+        if ($jobOrder->markAsReleased()) {
             return redirect()->back()->with('success', 'Work order marked as released.');
         }
         
@@ -579,7 +612,7 @@ class WorkOrderController extends Controller
     /**
      * Add payment to work order.
      */
-    public function addPayment(WorkOrder $workOrder, Request $request)
+    public function addPayment(JobOrder $jobOrder, Request $request)
     {
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
@@ -587,7 +620,7 @@ class WorkOrderController extends Controller
             'payment_notes' => 'nullable|string|max:500',
         ]);
         
-        if ($workOrder->addPayment($validated['amount'])) {
+        if ($jobOrder->addPayment($validated['amount'])) {
             // In production, you would create a Payment record here
             return redirect()->back()->with('success', 'Payment added successfully.');
         }
@@ -598,13 +631,13 @@ class WorkOrderController extends Controller
     /**
      * Print work order.
      */
-    public function print(WorkOrder $workOrder)
+    public function print(JobOrder $jobOrder)
     {
-        $workOrder->load(['customer', 'vehicle', 'technician', 'serviceAdvisor', 'items']);
+        $jobOrder->load(['customer', 'vehicle', 'technician', 'serviceAdvisor', 'items']);
         
         // In production, you would generate a PDF here
         // For now, return a view that can be printed
-        return view('work_orders.print', compact('workOrder'));
+        return view('job_orders.print', compact('jobOrder'));
     }
     
     /**
@@ -620,67 +653,67 @@ class WorkOrderController extends Controller
         
         // Daily statistics
         $dailyStats = [
-            'total' => WorkOrder::whereDate('work_order_date', $today)->count(),
-            'pending' => WorkOrder::whereDate('work_order_date', $today)->where('work_order_status', 'pending')->count(),
-            'repairing' => WorkOrder::whereDate('work_order_date', $today)->where('work_order_status', 'repairing')->count(),
-            'waiting_parts' => WorkOrder::whereDate('work_order_date', $today)->where('work_order_status', 'waiting_parts')->count(),
-            'completed' => WorkOrder::whereDate('work_order_date', $today)->where('work_order_status', 'completed')->count(),
-            'released' => WorkOrder::whereDate('work_order_date', $today)->where('work_order_status', 'released')->count(),
-            'revenue' => WorkOrder::whereDate('work_order_date', $today)->where('work_order_status', 'completed')->sum('final_amount'),
+            'total' => JobOrder::whereDate('job_order_date', $today)->count(),
+            'pending' => JobOrder::whereDate('job_order_date', $today)->where('job_order_status', 'pending')->count(),
+            'repairing' => JobOrder::whereDate('job_order_date', $today)->where('job_order_status', 'repairing')->count(),
+            'waiting_parts' => JobOrder::whereDate('job_order_date', $today)->where('job_order_status', 'waiting_parts')->count(),
+            'completed' => JobOrder::whereDate('job_order_date', $today)->where('job_order_status', 'completed')->count(),
+            'released' => JobOrder::whereDate('job_order_date', $today)->where('job_order_status', 'released')->count(),
+            'revenue' => JobOrder::whereDate('job_order_date', $today)->where('job_order_status', 'completed')->sum('final_amount'),
         ];
         
         // Weekly statistics
         $weeklyStats = [
-            'total' => WorkOrder::whereBetween('work_order_date', [$weekStart, $weekEnd])->count(),
-            'by_type' => WorkOrder::whereBetween('work_order_date', [$weekStart, $weekEnd])
-                ->groupBy('work_order_type')
-                ->selectRaw('work_order_type, count(*) as count')
-                ->pluck('count', 'work_order_type'),
-            'by_status' => WorkOrder::whereBetween('work_order_date', [$weekStart, $weekEnd])
-                ->groupBy('work_order_status')
-                ->selectRaw('work_order_status, count(*) as count')
-                ->pluck('count', 'work_order_status'),
-            'revenue' => WorkOrder::whereBetween('work_order_date', [$weekStart, $weekEnd])
-                ->where('work_order_status', 'completed')
+            'total' => JobOrder::whereBetween('job_order_date', [$weekStart, $weekEnd])->count(),
+            'by_type' => JobOrder::whereBetween('job_order_date', [$weekStart, $weekEnd])
+                ->groupBy('job_order_type')
+                ->selectRaw('job_order_type, count(*) as count')
+                ->pluck('count', 'job_order_type'),
+            'by_status' => JobOrder::whereBetween('job_order_date', [$weekStart, $weekEnd])
+                ->groupBy('job_order_status')
+                ->selectRaw('job_order_status, count(*) as count')
+                ->pluck('count', 'job_order_status'),
+            'revenue' => JobOrder::whereBetween('job_order_date', [$weekStart, $weekEnd])
+                ->where('job_order_status', 'completed')
                 ->sum('final_amount'),
         ];
         
         // Monthly statistics
         $monthlyStats = [
-            'total' => WorkOrder::whereBetween('work_order_date', [$monthStart, $monthEnd])->count(),
-            'revenue' => WorkOrder::whereBetween('work_order_date', [$monthStart, $monthEnd])
-                ->where('work_order_status', 'completed')
+            'total' => JobOrder::whereBetween('job_order_date', [$monthStart, $monthEnd])->count(),
+            'revenue' => JobOrder::whereBetween('job_order_date', [$monthStart, $monthEnd])
+                ->where('job_order_status', 'completed')
                 ->sum('final_amount'),
-            'avg_turnaround' => WorkOrder::whereBetween('work_order_date', [$monthStart, $monthEnd])
-                ->where('work_order_status', 'completed')
+            'avg_turnaround' => JobOrder::whereBetween('job_order_date', [$monthStart, $monthEnd])
+                ->where('job_order_status', 'completed')
                 ->whereNotNull('work_complete_time')
                 ->whereNotNull('check_in_time')
                 ->avg(DB::raw('TIMESTAMPDIFF(HOUR, check_in_time, work_complete_time)')),
-            'profit_margin' => WorkOrder::whereBetween('work_order_date', [$monthStart, $monthEnd])
-                ->where('work_order_status', 'completed')
+            'profit_margin' => JobOrder::whereBetween('job_order_date', [$monthStart, $monthEnd])
+                ->where('job_order_status', 'completed')
                 ->avg('profit_margin'),
         ];
         
         // Technician performance
         $technicianStats = User::where('role', 'technician')
             ->where('is_active', true)
-            ->withCount(['workOrders as completed_work_orders' => function($query) use ($monthStart, $monthEnd) {
-                $query->whereBetween('work_order_date', [$monthStart, $monthEnd])
-                      ->where('work_order_status', 'completed');
+            ->withCount(['jobOrders as completed_job_orders' => function($query) use ($monthStart, $monthEnd) {
+                $query->whereBetween('job_order_date', [$monthStart, $monthEnd])
+                      ->where('job_order_status', 'completed');
             }])
-            ->withSum(['workOrders as total_revenue' => function($query) use ($monthStart, $monthEnd) {
-                $query->whereBetween('work_order_date', [$monthStart, $monthEnd])
-                      ->where('work_order_status', 'completed');
+            ->withSum(['jobOrders as total_revenue' => function($query) use ($monthStart, $monthEnd) {
+                $query->whereBetween('job_order_date', [$monthStart, $monthEnd])
+                      ->where('job_order_status', 'completed');
             }], 'final_amount')
-            ->withAvg(['workOrders as avg_turnaround' => function($query) use ($monthStart, $monthEnd) {
-                $query->whereBetween('work_order_date', [$monthStart, $monthEnd])
-                      ->where('work_order_status', 'completed')
+            ->withAvg(['jobOrders as avg_turnaround' => function($query) use ($monthStart, $monthEnd) {
+                $query->whereBetween('job_order_date', [$monthStart, $monthEnd])
+                      ->where('job_order_status', 'completed')
                       ->whereNotNull('work_complete_time')
                       ->whereNotNull('check_in_time');
             }], DB::raw('TIMESTAMPDIFF(HOUR, check_in_time, work_complete_time)'))
             ->get();
         
-        return view('work_orders.statistics', compact('dailyStats', 'weeklyStats', 'monthlyStats', 'technicianStats'));
+        return view('job_orders.statistics', compact('dailyStats', 'weeklyStats', 'monthlyStats', 'technicianStats'));
     }
     
     /**
@@ -713,7 +746,7 @@ class WorkOrderController extends Controller
     /**
      * Apply service template to work order.
      */
-    private function applyServiceTemplate(WorkOrder $workOrder, string $templateKey): void
+    private function applyServiceTemplate(JobOrder $jobOrder, string $templateKey): void
     {
         $templates = $this->getServiceTemplates();
         
@@ -724,19 +757,19 @@ class WorkOrderController extends Controller
         $template = $templates[$templateKey];
         
         // Set service_type from template
-        $workOrder->service_type = json_encode([$templateKey]);
-        $workOrder->save();
+        $jobOrder->service_type = json_encode([$templateKey]);
+        $jobOrder->save();
         
         // Update work order description
-        $workOrder->update([
+        $jobOrder->update([
             'customer_concerns' => $template['description'],
-            'work_order_type' => 'maintenance',
+            'job_order_type' => 'maintenance',
         ]);
         
         // Create template items
         foreach ($template['items'] as $itemData) {
-            WorkOrderItem::create([
-                'work_order_id' => $workOrder->id,
+            JobOrderItem::create([
+                'job_order_id' => $jobOrder->id,
                 'item_type' => $itemData['item_type'],
                 'description' => $itemData['description'],
                 'part_number' => $itemData['part_number'] ?? null,
@@ -748,13 +781,13 @@ class WorkOrderController extends Controller
         }
         
         // Calculate estimated totals
-        $workOrder->calculateTotals();
+        $jobOrder->calculateTotals();
     }
     
     /**
      * Update repair approval status via AJAX.
      */
-    public function updateRepairApproval(Request $request, WorkOrder $workOrder)
+    public function updateRepairApproval(Request $request, JobOrder $jobOrder)
     {
         // Validate request
         $request->validate([
@@ -781,16 +814,16 @@ class WorkOrderController extends Controller
         }
         
         // Update the status
-        $workOrder->update([
+        $jobOrder->update([
             'repair_approval_status' => $request->repair_approval_status
         ]);
         
         // Log the action (commented out for now - activity log package might not be installed)
         // activity()
         //     ->causedBy(auth()->user())
-        //     ->performedOn($workOrder)
+        //     ->performedOn($jobOrder)
         //     ->withProperties([
-        //         'old_status' => $workOrder->getOriginal('repair_approval_status'),
+        //         'old_status' => $jobOrder->getOriginal('repair_approval_status'),
         //         'new_status' => $request->repair_approval_status
         //     ])
         //     ->log('updated repair approval status');
@@ -799,10 +832,10 @@ class WorkOrderController extends Controller
             'success' => true,
             'message' => 'Repair approval status updated successfully.',
             'data' => [
-                'id' => $workOrder->id,
-                'repair_approval_status' => $workOrder->repair_approval_status,
-                'status_text' => $workOrder->repair_approval_status == 'go' ? 'Authorized (GO)' : 
-                                ($workOrder->repair_approval_status == 'no_go' ? 'Not Cleared (NO GO)' : 'Pending Review')
+                'id' => $jobOrder->id,
+                'repair_approval_status' => $jobOrder->repair_approval_status,
+                'status_text' => $jobOrder->repair_approval_status == 'go' ? 'Authorized (GO)' : 
+                                ($jobOrder->repair_approval_status == 'no_go' ? 'Not Cleared (NO GO)' : 'Pending Review')
             ]
         ]);
     }
