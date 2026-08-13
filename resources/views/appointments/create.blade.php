@@ -40,22 +40,22 @@
             </div>
             <div class="form-section-body">
                 <div class="row g-3">
-                    <!-- Customer (select2 or autocomplete) -->
+                    <!-- Customer (typeable: pick existing OR type new name) -->
                     <div class="col-md-6">
                         <div class="form-group">
-                            <label for="customer_id" class="form-label field-required">Customer</label>
-                            <select class="form-select @error('customer_id') is-invalid @enderror" 
-                                    id="customer_id" name="customer_id"
-                                    {{ isset($selectedCustomer) && $selectedCustomer ? 'disabled' : '' }}>
-                                <option value="">Select Customer</option>
+                            <label for="customer_search" class="form-label field-required">Customer</label>
+                            <input type="text" class="form-control @error('customer_id') is-invalid @enderror"
+                                   id="customer_search" name="customer_search" list="customer-list"
+                                   value="{{ old('customer_search', (isset($selectedCustomer) && $selectedCustomer) ? $selectedCustomer->first_name.' '.$selectedCustomer->last_name : '') }}"
+                                   placeholder="Type to search or enter a new customer name">
+                            <input type="hidden" name="customer_id" id="customer_id"
+                                   value="{{ old('customer_id', (isset($selectedCustomer) && $selectedCustomer) ? $selectedCustomer->id : '') }}">
+                            <datalist id="customer-list">
                                 @foreach($customers as $customer)
-                                    <option value="{{ $customer->id }}" {{ (old('customer_id') == $customer->id || (isset($selectedCustomer) && $selectedCustomer && $selectedCustomer->id == $customer->id)) ? 'selected' : '' }}>
-                                        {{ $customer->first_name }} {{ $customer->last_name }}
-                                    </option>
+                                    <option value="{{ $customer->first_name }} {{ $customer->last_name }}" data-customer-id="{{ $customer->id }}"></option>
                                 @endforeach
-                            </select>
+                            </datalist>
                             @if(isset($selectedCustomer) && $selectedCustomer)
-                            <input type="hidden" name="customer_id" value="{{ $selectedCustomer->id }}">
                             <small class="form-text text-muted">
                                 <i class="fas fa-lock me-1"></i> {{ $selectedCustomer->first_name }} {{ $selectedCustomer->last_name }}
                             </small>
@@ -71,9 +71,14 @@
                                 <div class="form-group">
                                     <label for="vehicle_brand" class="form-label field-required">Car Brand</label>
                                     <input type="text" class="form-control @error('vehicle_brand') is-invalid @enderror"
-                                           id="vehicle_brand" name="vehicle_brand"
+                                           id="vehicle_brand" name="vehicle_brand" list="brand-list"
                                            value="{{ old('vehicle_brand', $selectedVehicle->make ?? '') }}"
                                            required placeholder="e.g. Toyota">
+                                    <datalist id="brand-list">
+                                        @foreach($brands as $brand)
+                                            <option value="{{ $brand }}"></option>
+                                        @endforeach
+                                    </datalist>
                                     @error('vehicle_brand')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                             </div>
@@ -81,9 +86,10 @@
                                 <div class="form-group">
                                     <label for="vehicle_model" class="form-label field-required">Model</label>
                                     <input type="text" class="form-control @error('vehicle_model') is-invalid @enderror"
-                                           id="vehicle_model" name="vehicle_model"
+                                           id="vehicle_model" name="vehicle_model" list="model-list"
                                            value="{{ old('vehicle_model', $selectedVehicle->model ?? '') }}"
                                            required placeholder="e.g. Vios">
+                                    <datalist id="model-list"></datalist>
                                     @error('vehicle_model')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                             </div>
@@ -95,6 +101,16 @@
                                            value="{{ old('vehicle_year', $selectedVehicle->year ?? '') }}"
                                            required placeholder="e.g. 2023" maxlength="4">
                                     @error('vehicle_year')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-group">
+                                    <label for="plate_number" class="form-label">Plate Number</label>
+                                    <input type="text" class="form-control @error('plate_number') is-invalid @enderror"
+                                           id="plate_number" name="plate_number"
+                                           value="{{ old('plate_number', $selectedVehicle->license_plate ?? '') }}"
+                                           placeholder="e.g. ABC-1234">
+                                    @error('plate_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                             </div>
                         </div>
@@ -126,12 +142,12 @@
                                 </div>
                                 <div class="col-md-4">
                                     <div class="form-group">
-                                        <label for="plate_number" class="form-label">Plate Number</label>
-                                        <input type="text" class="form-control @error('plate_number') is-invalid @enderror"
-                                               id="plate_number" name="plate_number"
-                                               value="{{ old('plate_number') }}"
+                                        <label for="plate_number_manual" class="form-label">Plate Number</label>
+                                        <input type="text" class="form-control @error('plate_number_manual') is-invalid @enderror"
+                                               id="plate_number_manual" name="plate_number_manual"
+                                               value="{{ old('plate_number_manual') }}"
                                                placeholder="e.g. ABC-1234">
-                                        @error('plate_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                        @error('plate_number_manual')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                     </div>
                                 </div>
                             </div>
@@ -160,21 +176,6 @@
                                    id="appointment_time" name="appointment_time"
                                    value="{{ old('appointment_time', '09:00') }}" required>
                             @error('appointment_time')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-                    </div>
-                    
-                    <!-- Priority -->
-                    <div class="col-md-4">
-                        <div class="form-group">
-                            <label for="priority" class="form-label field-required">Priority</label>
-                            <select class="form-select @error('priority') is-invalid @enderror"
-                                    id="priority" name="priority" required>
-                                <option value="low" {{ old('priority') == 'low' ? 'selected' : '' }}>🔵 Low</option>
-                                <option value="normal" {{ old('priority', 'normal') == 'normal' ? 'selected' : '' }}>🟢 Normal</option>
-                                <option value="high" {{ old('priority') == 'high' ? 'selected' : '' }}>🟠 High</option>
-                                <option value="urgent" {{ old('priority') == 'urgent' ? 'selected' : '' }}>🔴 Urgent</option>
-                            </select>
-                            @error('priority')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
                     </div>
                 </div>
@@ -494,6 +495,66 @@ $(document).ready(function() {
             }
         }
     });
+
+    // ===== CUSTOMER SEARCH -> HIDDEN ID SYNC =====
+    var $customerSearch = $('#customer_search');
+    var $customerId = $('#customer_id');
+
+    if ($customerSearch.length) {
+        // Remember which full names map to which customer ids
+        var customerIdMap = {};
+        $('#customer-list option').each(function() {
+            customerIdMap[this.value.trim().toLowerCase()] = $(this).data('customer-id');
+        });
+
+        // When a customer is picked from the datalist (or matches exactly), set the hidden id
+        $customerSearch.on('change input', function() {
+            var typed = $(this).val().trim().toLowerCase();
+            var matchedId = customerIdMap[typed];
+            if (matchedId) {
+                $customerId.val(matchedId);
+            } else if ($(this).val() === '' ) {
+                $customerId.val('');
+            }
+            // No match + non-empty text => new customer; keep customer_id empty
+            // so the backend falls back to manual-add (client_name) mode.
+        });
+    }
+
+    // ===== BRAND/MODEL DEPENDENT DATALIST =====
+    var modelsByBrand = {!! json_encode($modelsByBrand ?? (object)[]) !!};
+    var $brandInput = $('#vehicle_brand');
+    var $modelInput = $('#vehicle_model');
+    var $modelList = $('#model-list');
+
+    function updateModelDatalist() {
+        if (!$modelInput.length) return;
+        var brand = ($brandInput.val() || '').trim().toLowerCase();
+        var models = [];
+        // Normalize brand keys for case-insensitive lookup
+        Object.keys(modelsByBrand).forEach(function(key) {
+            if (key.toLowerCase() === brand) {
+                models = modelsByBrand[key];
+            }
+        });
+        // Also match if user typed a prefix of a known brand
+        if (!models.length && brand) {
+            Object.keys(modelsByBrand).forEach(function(key) {
+                if (key.toLowerCase().indexOf(brand) > -1) {
+                    models = modelsByBrand[key];
+                }
+            });
+        }
+        $modelList.empty();
+        (models || []).forEach(function(m) {
+            $modelList.append($('<option>').attr('value', m));
+        });
+    }
+
+    if ($brandInput.length && $modelList.length) {
+        $brandInput.on('input change', updateModelDatalist);
+        updateModelDatalist(); // populate on load (e.g. edit with pre-filled brand)
+    }
 });
 </script>
 

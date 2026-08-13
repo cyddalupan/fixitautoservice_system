@@ -7,7 +7,10 @@ use App\Models\Customer;
 use App\Models\Estimate;
 use App\Models\User;
 use App\Models\Vehicle;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
+use App\Models\ServicePricing;
+use App\Models\VehicleBrand;
+use App\Models\VehicleModel;
 use App\Services\ServiceRecordService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -148,7 +151,16 @@ class AppointmentController extends Controller
             $activeTransaction = \App\Services\ActiveTransactionService::checkActiveTransaction($selectedVehicle->id);
         }
         
-        return view('appointments.create', compact('customers', 'vehicles', 'technicians', 'advisors', 'selectedCustomer', 'selectedVehicle', 'customerVehicles', 'customerHistory', 'allTechnicians', 'quotationData', 'activeTransaction'));
+        // Get brands and models from vehicle_brands and vehicle_models tables
+        $brands = VehicleBrand::where('is_active', true)->orderBy('name')->pluck('name');
+        $models = VehicleModel::where('is_active', true)->with('brand')->get()->groupBy(function($m) {
+            return $m->brand->name ?? '';
+        })->map(function($items) {
+            return $items->pluck('name')->sort()->values();
+        });
+        $modelsByBrand = $models;
+        
+        return view('appointments.create', compact('customers', 'vehicles', 'technicians', 'advisors', 'selectedCustomer', 'selectedVehicle', 'customerVehicles', 'customerHistory', 'allTechnicians', 'quotationData', 'activeTransaction', 'brands', 'models', 'modelsByBrand'));
     }
 
     /**
@@ -156,33 +168,57 @@ class AppointmentController extends Controller
      */
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'customer_id' => 'required|exists:customers,id',
-            'vehicle_description' => 'required|string|max:255',
+        // Support both form schemas:
+        //  - Admin create form: customer_id + vehicle_make/model/year + priority + assigned_to
+        //  - Guest/manual add booking: client_name + contact_no + vehicle_brand + plate_number
+        //
+        // Normalize the brand field so both schemas (vehicle_make / vehicle_brand)
+        // are accepted interchangeably.
+        $request->merge([
+            'vehicle_make' => $request->input('vehicle_make') ?: $request->input('vehicle_brand'),
+            'vehicle_brand' => $request->input('vehicle_brand') ?: $request->input('vehicle_make'),
+            // Accept plate from either the main vehicle section or the manual-add panel
+            'plate_number' => $request->input('plate_number') ?: $request->input('plate_number_manual'),
+        ]);
+
+        $isAdminForm = $request->filled('customer_id');
+
+        $baseRules = [
             'appointment_date' => 'required|date|after_or_equal:today',
             'appointment_time' => 'required|date_format:H:i',
-            'service_type' => 'nullable|array',
+            'service_type' => 'required|array|min:1',
             'service_type.*' => 'string|in:' . implode(',', array_keys(config('service-types.list'))),
             'description' => 'nullable|string|max:1000',
             'estimated_cost' => 'nullable|numeric|min:0',
-            'priority' => 'required|in:low,normal,high,urgent',
-            'assigned_to' => 'nullable|exists:users,id',
-            'technicians' => 'nullable|array',
-            'technicians.*' => 'exists:users,id',
-        ]);
-        
-        // Generate appointment number
-        $validated['appointment_number'] = Appointment::generateAppointmentNumber();
-        
-        // Set default status
-        $validated['appointment_status'] = 'scheduled';
-        
-        // Set scheduled timestamp
-        $validated['scheduled_at'] = now();
-        
-        // Set booking source
-        $validated['booking_source'] = 'admin_panel';
-        
+        ];
+
+        if ($isAdminForm) {
+            $rules = array_merge($baseRules, [
+                'customer_id' => 'required|exists:customers,id',
+                'vehicle_brand' => 'required|string|max:50',
+                'vehicle_model' => 'required|string|max:50',
+                'vehicle_year' => 'required|numeric|min:1900|max:2030',
+                'priority' => 'nullable|in:low,normal,high,urgent',
+                'plate_number' => 'nullable|string|max:20',
+                'assigned_to' => 'nullable|exists:users,id',
+                'notes' => 'nullable|string|max:2000',
+            ]);
+        } else {
+            $rules = array_merge($baseRules, [
+                'client_name' => 'required|string|max:100',
+                'contact_no' => 'required|string|max:20',
+                'vehicle_brand' => 'required|string|max:50',
+                'vehicle_model' => 'required|string|max:50',
+                'vehicle_year' => 'required|numeric|min:1900|max:2030',
+                'plate_number' => 'nullable|string|max:20',
+                'priority' => 'nullable|in:low,normal,high,urgent',
+                'assigned_to' => 'nullable|exists:users,id',
+                'notes' => 'nullable|string|max:2000',
+            ]);
+        }
+
+        $validated = $request->validate($rules);
+
         // Map service_type form values to database appointment_type values
         $serviceTypeMapping = [
             'preventive_maintenance' => 'maintenance',
@@ -194,129 +230,142 @@ class AppointmentController extends Controller
             'auto_parts_sales' => 'regular_service',
             'home_service_request' => 'regular_service',
         ];
-        
+
         // Handle multi-select service types
         $selectedServiceTypes = $validated['service_type'] ?? [];
-        // Store as JSON in service_types (plural) column, use first type for appointment_type
-        $serviceTypesJson = json_encode($selectedServiceTypes);
         $appointmentType = count($selectedServiceTypes) > 0
             ? ($serviceTypeMapping[$selectedServiceTypes[0]] ?? 'regular_service')
             : 'regular_service';
-        
-        // Check for duplicate vehicle in active transactions (skip if override_duplicate is set)
-        if (!$request->filled('override_duplicate') || $request->override_duplicate !== '1') {
-            $vehicleId = $request->filled('vehicle_id') ? $request->integer('vehicle_id') : null;
-            
-            // If no vehicle_id, try to match by vehicle_description text
-            if (!$vehicleId && $request->filled('vehicle_description')) {
-                $vehicleDesc = $request->input('vehicle_description');
-                $vehicle = Vehicle::whereRaw("CONCAT(year, ' ', make, ' ', model, IFNULL(CONCAT(' - ', license_plate), '')) = ?", [$vehicleDesc])
-                    ->orWhere('license_plate', $vehicleDesc)
+
+        DB::beginTransaction();
+        try {
+            if ($isAdminForm) {
+                // Admin flow: customer already exists, vehicle by make/model/year
+                $customer = Customer::findOrFail($validated['customer_id']);
+
+                // Find or create vehicle for this customer
+                $vehicle = Vehicle::where('customer_id', $customer->id)
+                    ->where('make', $validated['vehicle_brand'])
+                    ->where('model', $validated['vehicle_model'])
+                    ->where('year', $validated['vehicle_year'])
                     ->first();
-                if ($vehicle) {
-                    $vehicleId = $vehicle->id;
-                }
-            }
-            
-            if ($vehicleId) {
-                // Get IDs of appointments whose inspections have been archived (exclude from active check)
-                $archivedInspectionIds = \App\Models\Archive::where('archivable_type', 'App\\Models\\VehicleInspection')
-                    ->pluck('archivable_id')->toArray();
-                $archivedAppointmentIds = [];
-                if (!empty($archivedInspectionIds)) {
-                    $archivedAppointmentIds = \App\Models\VehicleInspection::withTrashed()->whereIn('id', $archivedInspectionIds)
-                        ->where('vehicle_id', $vehicleId)
-                        ->whereNotNull('appointment_id')
-                        ->pluck('appointment_id')->toArray();
+
+                if (!$vehicle) {
+                    $vehicle = Vehicle::create([
+                        'customer_id' => $customer->id,
+                        'make' => $validated['vehicle_brand'],
+                        'model' => $validated['vehicle_model'],
+                        'year' => $validated['vehicle_year'],
+                        'license_plate' => strtoupper($validated['plate_number'] ?? ''),
+                        'is_active' => true,
+                    ]);
                 }
 
-                $existingAppointment = Appointment::where('vehicle_id', $vehicleId)
-                    ->whereIn('appointment_status', ['scheduled', 'checked_in', 'in_progress'])
-                    ->whereNull('deleted_at')
-                    ->where(function($q) use ($archivedAppointmentIds) {
-                        if (!empty($archivedAppointmentIds)) {
-                            $q->whereNotIn('id', $archivedAppointmentIds);
-                        }
-                    })
-                    ->first();
-                
-                if ($existingAppointment) {
-                    return back()->withErrors([
-                        'vehicle_description' => 'This vehicle already has an active Appointment (' . $existingAppointment->appointment_number . ').'
-                    ])->withInput();
+                $plateNumber = $vehicle->license_plate ?? '';
+                $customerName = $customer->first_name . ' ' . $customer->last_name;
+            } else {
+                // Guest/legacy flow: find or create customer by phone
+                $customer = Customer::where('phone', $validated['contact_no'])->first();
+                if (!$customer) {
+                    $nameParts = explode(' ', $validated['client_name'], 2);
+                    $firstName = $nameParts[0];
+                    $lastName = $nameParts[1] ?? '';
+
+                    $customer = Customer::create([
+                        'first_name' => $firstName,
+                        'last_name' => $lastName,
+                        'phone' => $validated['contact_no'],
+                        'email' => $request->filled('email')
+                            ? $request->get('email')
+                            : 'guest_' . preg_replace('/\D/', '', $validated['contact_no']) . '@guest.local',
+                        'is_active' => true,
+                    ]);
+                } else {
+                    // Update name if different
+                    $nameParts = explode(' ', $validated['client_name'], 2);
+                    $firstName = $nameParts[0];
+                    $lastName = $nameParts[1] ?? '';
+                    $customer->update([
+                        'first_name' => $firstName,
+                        'last_name' => $lastName,
+                    ]);
                 }
-                
-                $existingWorkOrder = WorkOrder::where('vehicle_id', $vehicleId)
-                    ->whereIn('work_order_status', ['pending', 'repairing', 'waiting_parts'])
-                    ->whereNull('deleted_at')
-                    ->first();
-                
-                if ($existingWorkOrder) {
-                    return back()->withErrors([
-                        'vehicle_description' => 'This vehicle already has an active Work Order (' . ($existingWorkOrder->work_order_number ?? '#' . $existingWorkOrder->id) . ').'
-                    ])->withInput();
+
+                // Find or create vehicle
+                $plateNumber = strtoupper($validated['plate_number'] ?? '');
+                $vehicle = Vehicle::where('license_plate', $plateNumber)->first();
+                if (!$vehicle) {
+                    $vehicle = Vehicle::create([
+                        'customer_id' => $customer->id,
+                        'make' => $validated['vehicle_brand'],
+                        'model' => $validated['vehicle_model'],
+                        'year' => $validated['vehicle_year'],
+                        'license_plate' => $plateNumber,
+                    ]);
+                } else {
+                    // Update vehicle details if plate exists
+                    $vehicle->update([
+                        'customer_id' => $customer->id,
+                        'make' => $validated['vehicle_brand'],
+                        'model' => $validated['vehicle_model'],
+                        'year' => $validated['vehicle_year'],
+                    ]);
                 }
-                
-                $existingEstimate = Estimate::where('vehicle_id', $vehicleId)
-                    ->whereIn('status', ['draft', 'pending', 'sent'])
-                    ->whereNull('deleted_at')
-                    ->first();
-                
-                if ($existingEstimate) {
-                    return back()->withErrors([
-                        'vehicle_description' => 'This vehicle already has an active Estimate (' . ($existingEstimate->estimate_number ?? '#' . $existingEstimate->id) . ').'
-                    ])->withInput();
-                }
+
+                $customerName = $validated['client_name'];
             }
-        }
-        
-        // Map form fields to database fields
-        $appointmentData = [
-            'customer_id' => $validated['customer_id'],
-            'vehicle_id' => $request->filled('vehicle_id') ? $request->integer('vehicle_id') : null,
-            'vehicle_description' => $validated['vehicle_description'],
-            'appointment_date' => $validated['appointment_date'],
-            'appointment_time' => $validated['appointment_time'],
-            'appointment_type' => $appointmentType,
-            'service_request' => $validated['description'] ?? null,
-            'estimated_cost' => $validated['estimated_cost'] ?? null,
-            'priority' => $validated['priority'],
-            'assigned_technician_id' => $validated['assigned_to'] ?? null,
-            'appointment_number' => $validated['appointment_number'],
-            'appointment_status' => $validated['appointment_status'],
-            'scheduled_at' => $validated['scheduled_at'],
-            'booking_source' => $validated['booking_source'],
-        ];
-        
-        // Create appointment
-        $appointment = Appointment::create($appointmentData);
-        
-        // Sync multi-technician assignments
-        if ($request->filled('technicians')) {
-            $technicianIds = array_filter($request->input('technicians', []));
-            if (!empty($technicianIds)) {
-                $syncData = [];
-                foreach ($technicianIds as $techId) {
-                    $syncData[$techId] = ['role' => 'technician'];
-                }
-                $appointment->technicians()->sync($syncData);
+
+            // Generate appointment number
+            $appointmentNumber = Appointment::generateAppointmentNumber();
+
+            // Build vehicle description string
+            $vehicleMake = $validated['vehicle_brand'];
+            $vehicleDescription = $validated['vehicle_year'] . ' ' . $vehicleMake . ' ' . $validated['vehicle_model'];
+            if ($plateNumber) {
+                $vehicleDescription .= ' - ' . $plateNumber;
             }
+
+            // Create appointment
+            $appointment = Appointment::create([
+                'customer_id' => $customer->id,
+                'vehicle_id' => $vehicle->id,
+                'vehicle_description' => $vehicleDescription,
+                'appointment_date' => $validated['appointment_date'],
+                'appointment_time' => $validated['appointment_time'],
+                'appointment_type' => $appointmentType,
+                'service_types' => $selectedServiceTypes,
+                'service_request' => $validated['description'] ?? null,
+                'estimated_cost' => $validated['estimated_cost'] ?? null,
+                'priority' => $validated['priority'] ?? 'normal',
+                'assigned_technician_id' => $validated['assigned_to'] ?? null,
+                'customer_notes' => $validated['notes'] ?? null,
+                'appointment_number' => $appointmentNumber,
+                'appointment_status' => 'scheduled',
+                'scheduled_at' => now(),
+                'booking_source' => 'admin_panel',
+            ]);
+
+            // Record vehicle description in history
+            if (!empty($vehicleDescription)) {
+                \App\Models\VehicleHistory::findOrCreate($vehicleDescription)->incrementUse();
+            }
+
+            // Update service progress
+            \App\Services\ServiceProgressService::updateFromAppointment($appointment);
+
+            // Check for conflicts
+            $this->checkForConflicts($appointment);
+
+            DB::commit();
+
+            return redirect()->route('appointments.index')
+                ->with('success', 'Appointment created successfully for ' . $customerName . '.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Failed to create appointment: ' . $e->getMessage()])->withInput();
         }
-        
-        // Record vehicle description in history
-        if (!empty($validated['vehicle_description'])) {
-            \App\Models\VehicleHistory::findOrCreate($validated['vehicle_description'])->incrementUse();
-        }
-        
-        // Update service progress
-        \App\Services\ServiceProgressService::updateFromAppointment($appointment);
-        
-        // Check for conflicts
-        $this->checkForConflicts($appointment);
-        
-        return redirect()->route('appointments.show', $appointment)
-            ->with('success', 'Appointment created successfully.');
     }
+
 
     /**
      * Display the specified resource.
