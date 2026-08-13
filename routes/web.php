@@ -252,6 +252,15 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     // ============================================================
     Route::prefix('settings')->name('settings.')->group(function () {
         Route::get('/', [\App\Http\Controllers\SettingsController::class, 'index'])->name('index');
+
+        // Service Types CRUD (editable services list — single source of truth)
+        Route::get('/service-types', [\App\Http\Controllers\SettingsServiceTypeController::class, 'index'])->name('service-types.index');
+        Route::get('/service-types/create', [\App\Http\Controllers\SettingsServiceTypeController::class, 'create'])->name('service-types.create');
+        Route::post('/service-types', [\App\Http\Controllers\SettingsServiceTypeController::class, 'store'])->name('service-types.store');
+        Route::get('/service-types/{serviceType}/edit', [\App\Http\Controllers\SettingsServiceTypeController::class, 'edit'])->name('service-types.edit');
+        Route::put('/service-types/{serviceType}', [\App\Http\Controllers\SettingsServiceTypeController::class, 'update'])->name('service-types.update');
+        Route::post('/service-types/{serviceType}/toggle', [\App\Http\Controllers\SettingsServiceTypeController::class, 'toggle'])->name('service-types.toggle');
+        Route::delete('/service-types/{serviceType}', [\App\Http\Controllers\SettingsServiceTypeController::class, 'destroy'])->name('service-types.destroy');
     });
 
     // Settings API endpoints

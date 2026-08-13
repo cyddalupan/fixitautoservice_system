@@ -968,7 +968,7 @@ class BookingController extends Controller
                     }
                 }],
                 'service_type' => ['required', function ($attr, $value, $fail) {
-                    $allowed = array_keys(config('service-types.list'));
+                    $allowed = \App\Models\ServiceType::keys();
                     $values = is_array($value) ? $value : [$value];
                     foreach ($values as $v) {
                         if (!is_string($v) || !in_array($v, $allowed)) {
@@ -992,7 +992,7 @@ class BookingController extends Controller
                 'vehicle_year' => 'nullable|integer|min:1900|max:' . (date('Y') + 2),
                 'vehicle_plate' => 'required|string|max:40',
                 'service_type' => ['required', function ($attr, $value, $fail) {
-                    $allowed = array_keys(config('service-types.list'));
+                    $allowed = \App\Models\ServiceType::keys();
                     $values = is_array($value) ? $value : [$value];
                     foreach ($values as $v) {
                         if (!is_string($v) || !in_array($v, $allowed)) {

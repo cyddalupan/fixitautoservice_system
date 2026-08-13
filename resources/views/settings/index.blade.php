@@ -300,6 +300,21 @@
         </div>
     </div>
 
+    {{-- SERVICE TYPES CARD --}}
+    <div class="settings-card mt-2">
+        <div class="card-header">
+            <i class="fas fa-tools"></i> Service Types
+        </div>
+        <div class="card-body d-flex justify-content-between align-items-center">
+            <div>
+                <p class="mb-0 small text-muted">Manage the services offered in the booking form and appointment create page.</p>
+            </div>
+            <a href="{{ route('settings.service-types.index') }}" class="btn btn-primary btn-sm">
+                <i class="fas fa-edit me-1"></i> Manage Services
+            </a>
+        </div>
+    </div>
+
     {{-- MAGIC LINK LOGS SECTION --}}
     <div class="settings-card mt-2">
         <div class="card-header">

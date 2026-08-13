@@ -242,7 +242,7 @@ class VehicleInspectionController extends Controller
             'vehicle_mileage' => 'nullable|integer|min:0',
         
             'service_type' => 'nullable|array',
-            'service_type.*' => 'string|in:' . implode(',', array_keys(config('service-types.list'))),
+            'service_type.*' => 'string|in:' . implode(',', \App\Models\ServiceType::keys()),
             'categories' => 'nullable|array',
             'categories.*' => 'string',]);
         

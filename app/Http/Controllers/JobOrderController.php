@@ -245,7 +245,7 @@ class JobOrderController extends Controller
             'has_safety_concerns' => 'boolean',
             'service_template' => 'nullable|string',
             'service_type' => 'nullable|array',
-            'service_type.*' => 'string|in:' . implode(',', array_keys(config('service-types.list'))),
+            'service_type.*' => 'string|in:' . implode(',', \App\Models\ServiceType::keys()),
             'items' => 'nullable|array',
             'items.*.item_type' => 'required|in:labor,part,sublet,fee,tax,discount',
             'items.*.description' => 'required|string|max:500',
@@ -723,7 +723,7 @@ class JobOrderController extends Controller
     {
         // Use the centralized service types config
         $templates = [];
-        $list = config('service-types.list', []);
+        $list = \App\Models\ServiceType::list();
         foreach ($list as $key => $info) {
             $name = is_array($info) ? ($info['name'] ?? ucfirst(str_replace('_', ' ', $key))) : $info;
             $templates[$key] = [

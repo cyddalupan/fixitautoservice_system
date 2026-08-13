@@ -110,7 +110,7 @@
                             <div class="info-label">Type</div>
                             <div class="info-value">
                                 <span class="badge bg-soft-primary text-primary">
-                                    {{ config('service-types.list.' . $appointment->appointment_type . '.name', ucfirst(str_replace('_', ' ', $appointment->appointment_type))) }}
+                                    {{ \App\Models\ServiceType::name($appointment->appointment_type) }}
                                 </span>
                             </div>
                         </div>
@@ -448,7 +448,7 @@
                             <tr>
                                 <td class="ps-3">{{ $pastAppointment->appointment_date ? $pastAppointment->appointment_date->format('M d, Y') : 'N/A' }}</td>
                                 <td>{{ $pastAppointment->appointment_time ?? '—' }}</td>
-                                <td>{{ config('service-types.list.' . $pastAppointment->appointment_type . '.name', ucfirst(str_replace('_', ' ', $pastAppointment->appointment_type))) }}</td>
+                                <td>{{ \App\Models\ServiceType::name($pastAppointment->appointment_type) }}</td>
                                 <td>
                                     @if($pastAppointment->vehicle)
                                         {{ $pastAppointment->vehicle->make }} {{ $pastAppointment->vehicle->model }}

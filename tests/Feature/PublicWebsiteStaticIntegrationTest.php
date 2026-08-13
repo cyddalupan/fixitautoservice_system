@@ -168,7 +168,7 @@ class PublicWebsiteStaticIntegrationTest extends TestCase
             'vehicle_model' => 'Civic',
             'vehicle_year' => 2020,
             'vehicle_plate' => 'XYZ-9876',
-            'service_type' => 'general_checkup',
+            'service_type' => 'preventive_maintenance',
             'service_request' => 'Annual checkup',
             'appointment_date' => now()->addDays(4)->toDateString(),
             'appointment_time' => '10:00',

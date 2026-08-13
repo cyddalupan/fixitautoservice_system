@@ -17,8 +17,8 @@
 --}}
 
 @php
-    $serviceTypes = config('service-types.list', []);
-    $serviceIcons = config('service-types.icons', []);
+    $serviceTypes = \App\Models\ServiceType::list();
+    $serviceIcons = \App\Models\ServiceType::icons();
     $name = $name ?? 'service_type';
     $label = $label ?? 'SERVICE TYPE';
     $required = $required ?? false;

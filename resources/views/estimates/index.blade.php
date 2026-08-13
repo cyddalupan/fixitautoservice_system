@@ -214,7 +214,7 @@
                                         @endphp
                                         @foreach($serviceTypes as $st)
                                             <span class="status-badge status-badge-info" style="margin-bottom:2px;display:inline-block;">
-                                                {{ config('service-types.list.' . $st . '.name', ucfirst($st)) }}
+                                                {{ \App\Models\ServiceType::name($st) }}
                                             </span>
                                             @if(!$loop->last)<br>@endif
                                         @endforeach

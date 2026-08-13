@@ -132,7 +132,7 @@
                                                 @if(!empty($stArr))
                                                     @foreach($stArr as $stItem)
                                                         <span class="badge bg-soft-primary text-primary me-1" style="font-weight:500;font-size:.75rem">
-                                                            {{ config('service-types.list.' . $stItem . '.name', ucfirst(str_replace('_', ' ', $stItem))) }}
+                                                            {{ \App\Models\ServiceType::name($stItem) }}
                                                         </span>
                                                     @endforeach
                                                 @else

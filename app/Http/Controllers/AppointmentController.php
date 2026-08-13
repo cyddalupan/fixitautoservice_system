@@ -187,7 +187,7 @@ class AppointmentController extends Controller
             'appointment_date' => 'required|date|after_or_equal:today',
             'appointment_time' => 'required|date_format:H:i',
             'service_type' => 'required|array|min:1',
-            'service_type.*' => 'string|in:' . implode(',', array_keys(config('service-types.list'))),
+            'service_type.*' => 'string|in:' . implode(',', \App\Models\ServiceType::keys()),
             'description' => 'nullable|string|max:1000',
             'estimated_cost' => 'nullable|numeric|min:0',
         ];
