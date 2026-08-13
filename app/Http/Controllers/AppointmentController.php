@@ -24,23 +24,49 @@ class AppointmentController extends Controller
      */
     public function index(Request $request)
     {
+        // Shared filters: status, date range, customer, vehicle
+        $statusFilter = $request->filled('status') ? $request->get('status') : null;
+        $dateFrom = $request->filled('date_from') ? $request->get('date_from') : null;
+        $dateTo = $request->filled('date_to') ? $request->get('date_to') : null;
+        $customerFilter = $request->filled('customer_id') ? $request->get('customer_id') : null;
+        $vehicleFilter = $request->filled('vehicle_id') ? $request->get('vehicle_id') : null;
+
+        $applyFilters = function ($query) use ($statusFilter, $dateFrom, $dateTo, $customerFilter, $vehicleFilter) {
+            if ($statusFilter) {
+                $query->where('appointment_status', $statusFilter);
+            }
+            if ($dateFrom) {
+                $query->whereDate('appointment_date', '>=', $dateFrom);
+            }
+            if ($dateTo) {
+                $query->whereDate('appointment_date', '<=', $dateTo);
+            }
+            if ($customerFilter) {
+                $query->where('customer_id', $customerFilter);
+            }
+            if ($vehicleFilter) {
+                $query->where('vehicle_id', $vehicleFilter);
+            }
+            return $query;
+        };
+
         // Get appointments by status for tabs
-        $scheduledAppointments = Appointment::with(['customer', 'technician'])
+        $scheduledAppointments = $applyFilters(Appointment::with(['customer', 'technician'])
             ->whereIn('appointment_status', ['scheduled', 'confirmed', 'customer_booked'])
-            ->whereDate('appointment_date', '>=', Carbon::today()->subDays(7))
+            ->whereDate('appointment_date', '>=', Carbon::today()->subDays(7)))
             ->orderBy('appointment_date')
             ->orderBy('appointment_time')
             ->get();
         
-        $arrivedAppointments = Appointment::with(['customer', 'technician'])
+        $arrivedAppointments = $applyFilters(Appointment::with(['customer', 'technician'])
             ->where('appointment_status', 'checked_in')
-            ->whereDate('appointment_date', '>=', Carbon::today()->subDays(7))
+            ->whereDate('appointment_date', '>=', Carbon::today()->subDays(7)))
             ->orderBy('checked_in_at', 'desc')
             ->get();
         
-        $cancelledAppointments = Appointment::with(['customer'])
+        $cancelledAppointments = $applyFilters(Appointment::with(['customer'])
             ->where('appointment_status', 'cancelled')
-            ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30))
+            ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30)))
             ->orderBy('cancelled_at', 'desc')
             ->get();
         
@@ -50,16 +76,17 @@ class AppointmentController extends Controller
         try {
             // Check if the estimates table has appointment_id column
             if (\Schema::hasColumn('estimates', 'appointment_id')) {
-                $convertedAppointments = Appointment::with(['customer', 'estimate', 'workOrder'])
-                    ->whereHas('estimate')
-                    ->orWhereHas('workOrder')
-                    ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30))
+                $convertedAppointments = $applyFilters(Appointment::with(['customer', 'estimate', 'jobOrder'])
+                    ->where(function ($q) {
+                        $q->whereHas('estimate')->orWhereHas('jobOrder');
+                    })
+                    ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30)))
                     ->orderBy('appointment_date', 'desc')
                     ->get();
             } else {
                 // If column doesn't exist, just get appointments with date filter
-                $convertedAppointments = Appointment::with(['customer', 'estimate', 'workOrder'])
-                    ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30))
+                $convertedAppointments = $applyFilters(Appointment::with(['customer', 'estimate', 'jobOrder'])
+                    ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30)))
                     ->orderBy('appointment_date', 'desc')
                     ->get();
             }
@@ -69,9 +96,9 @@ class AppointmentController extends Controller
         }
         
         // Get online bookings (sourced from website or online)
-        $onlineBookings = Appointment::with(['customer', 'technician'])
+        $onlineBookings = $applyFilters(Appointment::with(['customer', 'technician'])
             ->whereIn('booking_source', ['website', 'online'])
-            ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30))
+            ->whereDate('appointment_date', '>=', Carbon::today()->subDays(30)))
             ->orderBy('appointment_date', 'desc')
             ->orderBy('appointment_time', 'desc')
             ->get();
@@ -85,13 +112,27 @@ class AppointmentController extends Controller
             'online' => $onlineBookings->count(),
         ];
         
+        // Data for the filter bar
+        $customers = Customer::where('is_active', true)->orderBy('first_name')->get();
+        $vehicles = Vehicle::with('customer')->orderBy('make')->get();
+        $filters = [
+            'status' => $statusFilter,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
+            'customer_id' => $customerFilter,
+            'vehicle_id' => $vehicleFilter,
+        ];
+        
         return view('appointments.index', compact(
             'scheduledAppointments',
             'arrivedAppointments',
             'cancelledAppointments',
             'convertedAppointments',
             'onlineBookings',
-            'stats'
+            'stats',
+            'customers',
+            'vehicles',
+            'filters'
         ));
     }
 
@@ -206,7 +247,7 @@ class AppointmentController extends Controller
         } else {
             $rules = array_merge($baseRules, [
                 'client_name' => 'required|string|max:100',
-                'contact_no' => 'required|string|max:20',
+                'contact_no' => 'nullable|string|max:20',
                 'vehicle_brand' => 'required|string|max:50',
                 'vehicle_model' => 'required|string|max:50',
                 'vehicle_year' => 'required|numeric|min:1900|max:2030',
@@ -265,7 +306,8 @@ class AppointmentController extends Controller
                 $customerName = $customer->first_name . ' ' . $customer->last_name;
             } else {
                 // Guest/legacy flow: find or create customer by phone
-                $customer = Customer::where('phone', $validated['contact_no'])->first();
+                $contactNo = $validated['contact_no'] ?? null;
+                $customer = $contactNo ? Customer::where('phone', $contactNo)->first() : null;
                 if (!$customer) {
                     $nameParts = explode(' ', $validated['client_name'], 2);
                     $firstName = $nameParts[0];
@@ -274,10 +316,12 @@ class AppointmentController extends Controller
                     $customer = Customer::create([
                         'first_name' => $firstName,
                         'last_name' => $lastName,
-                        'phone' => $validated['contact_no'],
+                        'phone' => $contactNo,
                         'email' => $request->filled('email')
                             ? $request->get('email')
-                            : 'guest_' . preg_replace('/\D/', '', $validated['contact_no']) . '@guest.local',
+                            : ($contactNo
+                                ? 'guest_' . preg_replace('/\D/', '', $contactNo) . '@guest.local'
+                                : 'guest_' . strtolower(str_replace(' ', '', $validated['client_name'])) . '_' . substr(md5($validated['client_name'] . microtime()), 0, 6) . '@guest.local'),
                         'is_active' => true,
                     ]);
                 } else {
@@ -378,7 +422,7 @@ class AppointmentController extends Controller
         }
         
         // Load relationships with error handling for serviceProgress
-        $appointment->load(['customer', 'technician', 'advisor', 'workOrder']);
+        $appointment->load(['customer', 'technician', 'advisor', 'jobOrder']);
         
         // Try to load serviceProgress, but handle case where table might not exist
         try {
@@ -406,7 +450,7 @@ class AppointmentController extends Controller
         
         // Get customer history for summary card display
         $customerHistory = $appointment->customer ? 
-            \App\Models\WorkOrder::where('customer_id', $appointment->customer_id)->count() : 0;
+            \App\Models\JobOrder::where('customer_id', $appointment->customer_id)->count() : 0;
         
         // Get available time slots for rescheduling
         $availableSlots = $this->getAvailableTimeSlots($appointment->appointment_date);
@@ -1185,7 +1229,7 @@ class AppointmentController extends Controller
         // ONLY show appointments that appear in Scheduled or Cancelled tabs (per user request)
         // Scheduled tab shows: scheduled OR confirmed status
         // Cancelled tab shows: cancelled status
-        $appointments = Appointment::with(["customer", "technician", "vehicle", "estimate", "workOrder", "invoice", "payments"])
+        $appointments = Appointment::with(["customer", "technician", "vehicle", "estimate", "jobOrder", "invoice", "payments"])
             ->whereBetween("appointment_date", [$start, $end])
             ->whereIn("appointment_status", ["scheduled", "confirmed", "cancelled"])
             ->orderBy("appointment_date")
@@ -1201,7 +1245,7 @@ class AppointmentController extends Controller
             // DEBUG: Log workflow status
             \Log::debug("Appointment #{$appointment->id} workflow status: {$workflowStatus}", [
                 'has_estimate' => $appointment->estimate ? 'YES' : 'NO',
-                'has_work_order' => $appointment->workOrder ? 'YES' : 'NO',
+                'has_job_order' => $appointment->jobOrder ? 'YES' : 'NO',
                 'has_invoice' => $appointment->invoice ? 'YES' : 'NO',
                 'payment_count' => $appointment->payments ? $appointment->payments->count() : 0,
             ]);
@@ -1252,7 +1296,7 @@ class AppointmentController extends Controller
     private function getWorkflowStatus($appointment)
     {
         // Check if has work order (repair order)
-        if ($appointment->workOrder) {
+        if ($appointment->jobOrder) {
             // Check if has invoice AND payments (GREEN)
             if ($appointment->invoice && $appointment->payments && $appointment->payments->count() > 0) {
                 return "fc-event-job-order-paid"; // GREEN (repair order with invoices & payments)

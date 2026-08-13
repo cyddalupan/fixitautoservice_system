@@ -17,9 +17,6 @@
         <button class="nav-pill" data-section="service" onclick="scrollToSection('service')">
             <i class="fas fa-wrench"></i> Service
         </button>
-        <button class="nav-pill" data-section="team" onclick="scrollToSection('team')">
-            <i class="fas fa-users"></i> Team
-        </button>
         <button class="nav-pill" data-section="notes" onclick="scrollToSection('notes')">
             <i class="fas fa-sticky-note"></i> Notes
         </button>
@@ -143,7 +140,7 @@
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-group">
-                                        <label for="contact_no" class="form-label field-required">Contact No.</label>
+                                        <label for="contact_no" class="form-label">Contact No.</label>
                                         <input type="text" class="form-control @error('contact_no') is-invalid @enderror"
                                                id="contact_no" name="contact_no"
                                                value="{{ old('contact_no') }}"
@@ -247,44 +244,6 @@
 
                             @error('description')<div class="invalid-feedback">{{ $message }}</div>@enderror
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- ===== SECTION: Team ===== -->
-        <div class="form-section" id="team">
-            <div class="form-section-header">
-                <h6><i class="fas fa-users"></i> Team Assignment</h6>
-                <div class="collapse-icon"><i class="fas fa-chevron-down"></i></div>
-            </div>
-            <div class="form-section-body">
-                <div class="row g-3">
-                    <!-- Single Technician (existing field) -->
-                    <div class="col-md-6">
-                        <div class="form-group">
-                            <label for="assigned_to" class="form-label">Primary Technician</label>
-                            <select class="form-select @error('assigned_to') is-invalid @enderror"
-                                    id="assigned_to" name="assigned_to">
-                                <option value="">-- Not Assigned --</option>
-                                @foreach($technicians as $tech)
-                                    <option value="{{ $tech->id }}" {{ old('assigned_to', $selectedCustomer->technician_id ?? '') == $tech->id ? 'selected' : '' }}>
-                                        {{ $tech->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('assigned_to')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                        </div>
-                    </div>
-                    
-                    <!-- Multi-Technician Assignment -->
-                    <div class="col-md-6">
-                        @include('partials.technician-selector', [
-                            'technicians' => $allTechnicians,
-                            'selectedIds' => old('technicians', []),
-                            'label' => 'Additional Technicians',
-                            'helpText' => 'Assign additional technicians to this appointment',
-                        ])
                     </div>
                 </div>
             </div>
