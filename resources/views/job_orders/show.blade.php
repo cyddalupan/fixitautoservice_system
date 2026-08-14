@@ -8,17 +8,20 @@
         <div class="d-flex align-items-center gap-3">
             <h4 class="mb-0 fw-bold">
                 <i class="fas fa-clipboard-list me-2" style="color: var(--primary-color);"></i>
-                Work Order #{{ $workOrder->work_order_number ?? $workOrder->id }}
+                Work Order #{{ $jobOrder->job_order_number ?? $jobOrder->id }}
             </h4>
-            <span class="badge bg-{{ $workOrder->status_badge ?? 'secondary' }}">
-                {{ ucfirst(str_replace('_', ' ', $workOrder->work_order_status ?? 'draft')) }}
+            <span class="badge bg-{{ $jobOrder->status_badge ?? 'secondary' }}">
+                {{ ucfirst(str_replace('_', ' ', $jobOrder->job_order_status ?? 'draft')) }}
             </span>
         </div>
         <div class="d-flex gap-2 mt-2 mt-md-0">
-            <a href="{{ route('work-orders.edit', $workOrder) }}" class="btn btn-warning btn-sm">
+            <a href="{{ route('job-orders.edit', $jobOrder) }}" class="btn btn-warning btn-sm">
                 <i class="fas fa-edit me-1"></i> Edit
             </a>
-            <a href="{{ route('work-orders.index') }}" class="btn btn-outline-secondary btn-sm">
+            <a href="{{ route('job-orders.print', $jobOrder) }}" class="btn btn-outline-primary btn-sm" target="_blank">
+                <i class="fas fa-print me-1"></i> Print
+            </a>
+            <a href="{{ route('job-orders.index') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="fas fa-arrow-left me-1"></i> Back
             </a>
         </div>
@@ -32,30 +35,30 @@
     @endif
 
     <!-- Customer Summary -->
-    @if($workOrder->customer)
+    @if($jobOrder->customer)
     <div class="customer-summary-card mb-4">
         <div class="card-body">
             <div class="d-flex align-items-start gap-3 flex-wrap">
                 <div class="customer-avatar">
-                    {{ strtoupper(substr($workOrder->customer->first_name, 0, 1)) }}{{ strtoupper(substr($workOrder->customer->last_name, 0, 1)) }}
+                    {{ strtoupper(substr($jobOrder->customer->first_name, 0, 1)) }}{{ strtoupper(substr($jobOrder->customer->last_name, 0, 1)) }}
                 </div>
                 <div class="flex-grow-1" style="min-width: 200px;">
-                    <div class="customer-name">{{ $workOrder->customer->first_name }} {{ $workOrder->customer->last_name }}</div>
+                    <div class="customer-name">{{ $jobOrder->customer->first_name }} {{ $jobOrder->customer->last_name }}</div>
                     <div class="customer-subtitle">
-                        <i class="fas fa-phone-alt me-1"></i> {{ $workOrder->customer->phone ?? 'No phone' }}
-                        @if($workOrder->customer->email)
-                            &nbsp;·&nbsp; <i class="fas fa-envelope me-1"></i>{{ $workOrder->customer->email }}
+                        <i class="fas fa-phone-alt me-1"></i> {{ $jobOrder->customer->phone ?? 'No phone' }}
+                        @if($jobOrder->customer->email)
+                            &nbsp;·&nbsp; <i class="fas fa-envelope me-1"></i>{{ $jobOrder->customer->email }}
                         @endif
                     </div>
                 </div>
                 <div class="d-flex">
                     <div class="stat-item">
-                        <div class="stat-value">{{ $workOrder->vehicle->year ?? '' }} {{ $workOrder->vehicle->make ?? '' }}</div>
-                        <div class="stat-label">{{ $workOrder->vehicle->model ?? 'Vehicle' }}</div>
+                        <div class="stat-value">{{ $jobOrder->vehicle->year ?? '' }} {{ $jobOrder->vehicle->make ?? '' }}</div>
+                        <div class="stat-label">{{ $jobOrder->vehicle->model ?? 'Vehicle' }}</div>
                     </div>
-                    @if($workOrder->vehicle && $workOrder->vehicle->license_plate)
+                    @if($jobOrder->vehicle && $jobOrder->vehicle->license_plate)
                     <div class="stat-item">
-                        <div class="stat-value">{{ $workOrder->vehicle->license_plate }}</div>
+                        <div class="stat-value">{{ $jobOrder->vehicle->license_plate }}</div>
                         <div class="stat-label">Plate</div>
                     </div>
                     @endif
@@ -104,8 +107,8 @@
                     <div class="form-section">
                         <div class="form-section-header no-collapse">
                             <h6><i class="fas fa-clipboard-list"></i>Work Order Details</h6>
-                            <span class="badge bg-{{ $workOrder->status_badge ?? 'secondary' }}">
-                                {{ ucfirst(str_replace('_', ' ', $workOrder->work_order_status ?? 'draft')) }}
+                            <span class="badge bg-{{ $jobOrder->status_badge ?? 'secondary' }}">
+                                {{ ucfirst(str_replace('_', ' ', $jobOrder->job_order_status ?? 'draft')) }}
                             </span>
                         </div>
                         <div class="form-section-body">
@@ -113,8 +116,8 @@
                                 <div class="col-md-4">
                                     <label class="text-muted small text-uppercase">Status</label>
                                     <p class="fw-semibold mb-0">
-                                        <span class="badge bg-{{ $workOrder->status_badge ?? 'secondary' }}">
-                                            {{ ucfirst(str_replace('_', ' ', $workOrder->work_order_status ?? 'draft')) }}
+                                        <span class="badge bg-{{ $jobOrder->status_badge ?? 'secondary' }}">
+                                            {{ ucfirst(str_replace('_', ' ', $jobOrder->job_order_status ?? 'draft')) }}
                                         </span>
                                     </p>
                                 </div>
@@ -122,22 +125,22 @@
                                     <label class="text-muted small text-uppercase">Priority</label>
                                     <p class="fw-semibold mb-0">
                                         @php $priorityColors = ['low' => 'success', 'normal' => 'info', 'high' => 'warning', 'urgent' => 'danger']; @endphp
-                                        <span class="badge bg-{{ $priorityColors[$workOrder->priority ?? 'normal'] ?? 'secondary' }}">
-                                            {{ ucfirst($workOrder->priority ?? 'normal') }}
+                                        <span class="badge bg-{{ $priorityColors[$jobOrder->priority ?? 'normal'] ?? 'secondary' }}">
+                                            {{ ucfirst($jobOrder->priority ?? 'normal') }}
                                         </span>
                                     </p>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="text-muted small text-uppercase">Type</label>
-                                    <p class="fw-semibold mb-0">{{ ucfirst($workOrder->work_order_type ?? 'N/A') }}</p>
+                                    <p class="fw-semibold mb-0">{{ ucfirst($jobOrder->job_order_type ?? 'N/A') }}</p>
                                 </div>
                                 <div class="col-md-4">
                                     <label class="text-muted small text-uppercase">Service Type</label>
                                     <p class="fw-semibold mb-0">
-                                        @if($workOrder->service_type)
+                                        @if($jobOrder->service_type)
                                             <span class="badge bg-soft-primary text-primary">
                                                 @php
-                                                    $st = $workOrder->service_type;
+                                                    $st = $jobOrder->service_type;
                                                     $stArr = is_string($st) && str_starts_with($st, '[') ? json_decode($st, true) : (is_array($st) ? $st : [$st]);
                                                     $stArr = array_filter((array)$stArr);
                                                 @endphp
@@ -161,19 +164,19 @@
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="text-muted small text-uppercase">Created</label>
-                                    <p class="fw-semibold mb-0">{{ $workOrder->created_at ? $workOrder->created_at->format('M j, Y g:i A') : 'N/A' }}</p>
+                                    <p class="fw-semibold mb-0">{{ $jobOrder->created_at ? $jobOrder->created_at->format('M j, Y g:i A') : 'N/A' }}</p>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="text-muted small text-uppercase">Last Updated</label>
-                                    <p class="fw-semibold mb-0">{{ $workOrder->updated_at ? $workOrder->updated_at->format('M j, Y g:i A') : 'N/A' }}</p>
+                                    <p class="fw-semibold mb-0">{{ $jobOrder->updated_at ? $jobOrder->updated_at->format('M j, Y g:i A') : 'N/A' }}</p>
                                 </div>
                             </div>
-                            @if($workOrder->bay_number)
+                            @if($jobOrder->bay_number)
                             <hr>
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="text-muted small text-uppercase">Bay</label>
-                                    <p class="fw-semibold mb-0"><span class="badge bg-secondary">Bay #{{ $workOrder->bay_number }}</span></p>
+                                    <p class="fw-semibold mb-0"><span class="badge bg-secondary">Bay #{{ $jobOrder->bay_number }}</span></p>
                                 </div>
                             </div>
                             @endif
@@ -186,23 +189,23 @@
                             <h6><i class="fas fa-car"></i>Vehicle Information</h6>
                         </div>
                         <div class="form-section-body">
-                            @if($workOrder->vehicle)
+                            @if($jobOrder->vehicle)
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label class="text-muted small text-uppercase">Vehicle</label>
-                                        <p class="fw-semibold mb-0">{{ $workOrder->vehicle->year }} {{ $workOrder->vehicle->make }} {{ $workOrder->vehicle->model }}</p>
+                                        <p class="fw-semibold mb-0">{{ $jobOrder->vehicle->year }} {{ $jobOrder->vehicle->make }} {{ $jobOrder->vehicle->model }}</p>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="text-muted small text-uppercase">License Plate</label>
-                                        <p class="fw-semibold mb-0">{{ $workOrder->vehicle->license_plate ?? 'N/A' }}</p>
+                                        <p class="fw-semibold mb-0">{{ $jobOrder->vehicle->license_plate ?? 'N/A' }}</p>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="text-muted small text-uppercase">VIN</label>
-                                        <p class="fw-semibold mb-0 text-monospace">{{ $workOrder->vehicle->vin ?? 'N/A' }}</p>
+                                        <p class="fw-semibold mb-0 text-monospace">{{ $jobOrder->vehicle->vin ?? 'N/A' }}</p>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="text-muted small text-uppercase">Color</label>
-                                        <p class="fw-semibold mb-0">{{ $workOrder->vehicle->color ?? 'N/A' }}</p>
+                                        <p class="fw-semibold mb-0">{{ $jobOrder->vehicle->color ?? 'N/A' }}</p>
                                     </div>
                                 </div>
                             @else
@@ -212,25 +215,25 @@
                     </div>
 
                     <!-- Customer Concerns -->
-                    @if($workOrder->customer_concerns)
+                    @if($jobOrder->customer_concerns)
                     <div class="form-section">
                         <div class="form-section-header no-collapse">
                             <h6><i class="fas fa-question-circle text-warning"></i>Customer Concerns</h6>
                         </div>
                         <div class="form-section-body">
-                            <p class="mb-0" style="white-space: pre-wrap;">{{ $workOrder->customer_concerns }}</p>
+                            <p class="mb-0" style="white-space: pre-wrap;">{{ $jobOrder->customer_concerns }}</p>
                         </div>
                     </div>
                     @endif
 
                     <!-- Diagnosis -->
-                    @if($workOrder->diagnosis || $workOrder->initial_diagnosis)
+                    @if($jobOrder->diagnosis || $jobOrder->initial_diagnosis)
                     <div class="form-section">
                         <div class="form-section-header no-collapse">
                             <h6><i class="fas fa-stethoscope text-info"></i>Diagnosis</h6>
                         </div>
                         <div class="form-section-body">
-                            <p class="mb-0" style="white-space: pre-wrap;">{{ $workOrder->diagnosis ?? $workOrder->initial_diagnosis }}</p>
+                            <p class="mb-0" style="white-space: pre-wrap;">{{ $jobOrder->diagnosis ?? $jobOrder->initial_diagnosis }}</p>
                         </div>
                     </div>
                     @endif
@@ -247,31 +250,31 @@
                             <div class="mb-2">
                                 <div class="d-flex justify-content-between">
                                     <small class="text-muted">Estimated Total</small>
-                                    <span class="fw-bold">₱{{ number_format($workOrder->estimated_total ?? 0, 2) }}</span>
+                                    <span class="fw-bold">₱{{ number_format($jobOrder->estimated_total ?? 0, 2) }}</span>
                                 </div>
                             </div>
                             <div class="mb-2">
                                 <div class="d-flex justify-content-between">
                                     <small class="text-muted">Actual Total</small>
-                                    <span class="fw-bold">₱{{ number_format($workOrder->actual_total ?? 0, 2) }}</span>
+                                    <span class="fw-bold">₱{{ number_format($jobOrder->actual_total ?? 0, 2) }}</span>
                                 </div>
                             </div>
-                            @if(($workOrder->estimated_total ?? 0) > 0)
+                            @if(($jobOrder->estimated_total ?? 0) > 0)
                             <div class="mt-2 pt-2 border-top">
                                 <div class="d-flex justify-content-between">
                                     <small class="text-muted">Variance</small>
-                                    @php $variance = ($workOrder->actual_total ?? 0) - ($workOrder->estimated_total ?? 0); @endphp
+                                    @php $variance = ($jobOrder->actual_total ?? 0) - ($jobOrder->estimated_total ?? 0); @endphp
                                     <span class="fw-bold {{ $variance > 0 ? 'text-danger' : 'text-success' }}">
                                         @if($variance > 0)+@endif₱{{ number_format($variance, 2) }}
                                     </span>
                                 </div>
                             </div>
                             @endif
-                            @if($workOrder->estimated_labor_hours)
+                            @if($jobOrder->estimated_labor_hours)
                             <div class="mt-2 pt-2 border-top">
                                 <div class="d-flex justify-content-between">
                                     <small class="text-muted">Labor Hours</small>
-                                    <span class="fw-bold">{{ $workOrder->estimated_labor_hours }} hrs</span>
+                                    <span class="fw-bold">{{ $jobOrder->estimated_labor_hours }} hrs</span>
                                 </div>
                             </div>
                             @endif
@@ -285,9 +288,9 @@
                         </div>
                         <div class="form-section-body">
                             @php
-                                $assignments = is_array($workOrder->technician_assignments)
-                                    ? $workOrder->technician_assignments
-                                    : (json_decode($workOrder->technician_assignments ?? '[]', true) ?? []);
+                                $assignments = is_array($jobOrder->technician_assignments)
+                                    ? $jobOrder->technician_assignments
+                                    : (json_decode($jobOrder->technician_assignments ?? '[]', true) ?? []);
                             @endphp
                             @if(count($assignments) > 0)
                                 @foreach($assignments as $assignment)
@@ -301,19 +304,19 @@
                                         </div>
                                     </div>
                                 @endforeach
-                            @elseif($workOrder->technician)
+                            @elseif($jobOrder->technician)
                                 <div class="d-flex align-items-center">
                                     <i class="fas fa-user-cog text-primary me-2"></i>
-                                    <strong>{{ $workOrder->technician->name }}</strong>
+                                    <strong>{{ $jobOrder->technician->name }}</strong>
                                 </div>
                             @else
                                 <p class="text-muted mb-0 small">No technicians assigned</p>
                             @endif
-                            @if($workOrder->advisor ?? $workOrder->serviceAdvisor)
+                            @if($jobOrder->advisor ?? $jobOrder->serviceAdvisor)
                                 <hr class="my-2">
                                 <div class="d-flex align-items-center">
                                     <i class="fas fa-user-tie text-info me-2"></i>
-                                    <strong>{{ ($workOrder->advisor ?? $workOrder->serviceAdvisor)->name }}</strong>
+                                    <strong>{{ ($jobOrder->advisor ?? $jobOrder->serviceAdvisor)->name }}</strong>
                                     <small class="text-muted ms-2">(Advisor)</small>
                                 </div>
                             @endif
@@ -321,24 +324,24 @@
                     </div>
 
                     <!-- Vehicle Condition -->
-                    @if($workOrder->odometer_in || $workOrder->fuel_level || $workOrder->vehicle_condition)
+                    @if($jobOrder->odometer_in || $jobOrder->fuel_level || $jobOrder->vehicle_condition)
                     <div class="form-section">
                         <div class="form-section-header no-collapse">
                             <h6><i class="fas fa-clipboard-check"></i>Vehicle Condition</h6>
                         </div>
                         <div class="form-section-body">
                             <div class="row g-2 small">
-                                @if($workOrder->odometer_in)
+                                @if($jobOrder->odometer_in)
                                 <div class="col-6"><span class="text-muted">Odometer:</span></div>
-                                <div class="col-6 text-end">{{ number_format($workOrder->odometer_in) }} km</div>
+                                <div class="col-6 text-end">{{ number_format($jobOrder->odometer_in) }} km</div>
                                 @endif
-                                @if($workOrder->fuel_level)
+                                @if($jobOrder->fuel_level)
                                 <div class="col-6"><span class="text-muted">Fuel:</span></div>
-                                <div class="col-6 text-end">{{ $workOrder->fuel_level }}/4</div>
+                                <div class="col-6 text-end">{{ $jobOrder->fuel_level }}/4</div>
                                 @endif
-                                @if($workOrder->vehicle_condition)
+                                @if($jobOrder->vehicle_condition)
                                 <div class="col-12 mt-2"><span class="text-muted">Condition:</span></div>
-                                <div class="col-12"><p class="mb-0 small">{{ $workOrder->vehicle_condition }}</p></div>
+                                <div class="col-12"><p class="mb-0 small">{{ $jobOrder->vehicle_condition }}</p></div>
                                 @endif
                             </div>
                         </div>
@@ -353,9 +356,9 @@
                         <div class="form-section-body">
                             @php
                                 $relations = [];
-                                if($workOrder->appointment) $relations[] = ['name' => 'Appointment', 'icon' => 'fa-calendar-check', 'route' => route('appointments.show', $workOrder->appointment), 'color' => 'info'];
-                                if($workOrder->vehicleInspection) $relations[] = ['name' => 'Inspection', 'icon' => 'fa-search', 'route' => route('inspections.show', $workOrder->vehicleInspection), 'color' => 'primary'];
-                                if($workOrder->estimate) $relations[] = ['name' => 'Estimate', 'icon' => 'fa-file-invoice-dollar', 'route' => route('estimates.show', $workOrder->estimate), 'color' => 'success'];
+                                if($jobOrder->appointment) $relations[] = ['name' => 'Appointment', 'icon' => 'fa-calendar-check', 'route' => route('appointments.show', $jobOrder->appointment), 'color' => 'info'];
+                                if($jobOrder->vehicleInspection) $relations[] = ['name' => 'Inspection', 'icon' => 'fa-search', 'route' => route('inspections.show', $jobOrder->vehicleInspection), 'color' => 'primary'];
+                                if($jobOrder->estimate) $relations[] = ['name' => 'Estimate', 'icon' => 'fa-file-invoice-dollar', 'route' => route('estimates.show', $jobOrder->estimate), 'color' => 'success'];
                             @endphp
                             @if(count($relations) > 0)
                                 @foreach($relations as $rel)
@@ -374,7 +377,7 @@
 
         <!-- === SERVICES & ITEMS TAB === -->
         <div class="tab-pane fade" id="services" role="tabpanel">
-            @php $items = $workOrder->items ?? collect(); @endphp
+            @php $items = $jobOrder->items ?? collect(); @endphp
             @if($items->count() > 0)
                 <div class="form-section">
                     <div class="form-section-header no-collapse">
@@ -437,9 +440,9 @@
         <!-- === TECHNICIANS TAB === -->
         <div class="tab-pane fade" id="techs" role="tabpanel">
             @php
-                $assignments = is_array($workOrder->technician_assignments)
-                    ? $workOrder->technician_assignments
-                    : (json_decode($workOrder->technician_assignments ?? '[]', true) ?? []);
+                $assignments = is_array($jobOrder->technician_assignments)
+                    ? $jobOrder->technician_assignments
+                    : (json_decode($jobOrder->technician_assignments ?? '[]', true) ?? []);
             @endphp
             @if(count($assignments) > 0)
                 <div class="row g-3">
@@ -466,7 +469,7 @@
                         </div>
                     @endforeach
                 </div>
-            @elseif($workOrder->technician)
+            @elseif($jobOrder->technician)
                 <div class="col-md-6">
                     <div class="form-section">
                         <div class="form-section-body">
@@ -475,7 +478,7 @@
                                     <i class="fas fa-user-cog"></i>
                                 </div>
                                 <div>
-                                    <strong>{{ $workOrder->technician->name }}</strong>
+                                    <strong>{{ $jobOrder->technician->name }}</strong>
                                 </div>
                             </div>
                         </div>
@@ -503,11 +506,11 @@
                 <div class="form-section-body">
                     @php
                         $events = [];
-                        if($workOrder->created_at) $events[] = ['event' => 'Created', 'time' => $workOrder->created_at, 'icon' => 'fa-plus-circle', 'color' => 'primary'];
-                        if($workOrder->started_at) $events[] = ['event' => 'Work Started', 'time' => $workOrder->started_at, 'icon' => 'fa-play', 'color' => 'info'];
-                        if($workOrder->completed_at) $events[] = ['event' => 'Completed', 'time' => $workOrder->completed_at, 'icon' => 'fa-check-circle', 'color' => 'success'];
-                        if(method_exists($workOrder, 'checkedInAt') && $workOrder->checked_in_at) $events[] = ['event' => 'Checked In', 'time' => $workOrder->checked_in_at, 'icon' => 'fa-sign-in-alt', 'color' => 'primary'];
-                        if(method_exists($workOrder, 'pickedUpAt') && $workOrder->picked_up_at) $events[] = ['event' => 'Picked Up', 'time' => $workOrder->picked_up_at, 'icon' => 'fa-car', 'color' => 'success'];
+                        if($jobOrder->created_at) $events[] = ['event' => 'Created', 'time' => $jobOrder->created_at, 'icon' => 'fa-plus-circle', 'color' => 'primary'];
+                        if($jobOrder->started_at) $events[] = ['event' => 'Work Started', 'time' => $jobOrder->started_at, 'icon' => 'fa-play', 'color' => 'info'];
+                        if($jobOrder->completed_at) $events[] = ['event' => 'Completed', 'time' => $jobOrder->completed_at, 'icon' => 'fa-check-circle', 'color' => 'success'];
+                        if(method_exists($jobOrder, 'checkedInAt') && $jobOrder->checked_in_at) $events[] = ['event' => 'Checked In', 'time' => $jobOrder->checked_in_at, 'icon' => 'fa-sign-in-alt', 'color' => 'primary'];
+                        if(method_exists($jobOrder, 'pickedUpAt') && $jobOrder->picked_up_at) $events[] = ['event' => 'Picked Up', 'time' => $jobOrder->picked_up_at, 'icon' => 'fa-car', 'color' => 'success'];
                     @endphp
                     @if(count($events) > 0)
                         <div class="timeline-vertical">
@@ -533,19 +536,19 @@
         <!-- === RELATED TAB === -->
         <div class="tab-pane fade" id="related" role="tabpanel">
             <div class="row g-3">
-                @if($workOrder->appointment)
+                @if($jobOrder->appointment)
                 <div class="col-md-6 col-lg-4">
                     <div class="form-section">
                         <div class="form-section-header no-collapse">
                             <h6><i class="fas fa-calendar-check"></i>Appointment</h6>
                         </div>
                         <div class="form-section-body">
-                            <strong>#{{ $workOrder->appointment->id }}</strong>
-                            <span class="badge bg-{{ $workOrder->appointment->status_badge ?? 'secondary' }} ms-2">
-                                {{ $workOrder->appointment->appointment_status ?? '' }}
+                            <strong>#{{ $jobOrder->appointment->id }}</strong>
+                            <span class="badge bg-{{ $jobOrder->appointment->status_badge ?? 'secondary' }} ms-2">
+                                {{ $jobOrder->appointment->appointment_status ?? '' }}
                             </span>
                             <div class="mt-2">
-                                <a href="{{ route('appointments.show', $workOrder->appointment) }}" class="btn btn-sm btn-outline-info">
+                                <a href="{{ route('appointments.show', $jobOrder->appointment) }}" class="btn btn-sm btn-outline-info">
                                     <i class="fas fa-eye me-1"></i>View
                                 </a>
                             </div>
@@ -553,19 +556,19 @@
                     </div>
                 </div>
                 @endif
-                @if($workOrder->vehicleInspection)
+                @if($jobOrder->vehicleInspection)
                 <div class="col-md-6 col-lg-4">
                     <div class="form-section">
                         <div class="form-section-header no-collapse">
                             <h6><i class="fas fa-search"></i>Inspection</h6>
                         </div>
                         <div class="form-section-body">
-                            <strong>{{ $workOrder->vehicleInspection->inspection_name ?? 'Inspection #'.$workOrder->vehicleInspection->id }}</strong>
-                            <span class="badge bg-{{ $workOrder->vehicleInspection->status_badge ?? 'secondary' }} ms-2">
-                                {{ ucfirst(str_replace('_', ' ', $workOrder->vehicleInspection->inspection_status ?? '')) }}
+                            <strong>{{ $jobOrder->vehicleInspection->inspection_name ?? 'Inspection #'.$jobOrder->vehicleInspection->id }}</strong>
+                            <span class="badge bg-{{ $jobOrder->vehicleInspection->status_badge ?? 'secondary' }} ms-2">
+                                {{ ucfirst(str_replace('_', ' ', $jobOrder->vehicleInspection->inspection_status ?? '')) }}
                             </span>
                             <div class="mt-2">
-                                <a href="{{ route('inspections.show', $workOrder->vehicleInspection) }}" class="btn btn-sm btn-outline-primary">
+                                <a href="{{ route('inspections.show', $jobOrder->vehicleInspection) }}" class="btn btn-sm btn-outline-primary">
                                     <i class="fas fa-eye me-1"></i>View
                                 </a>
                             </div>
@@ -573,19 +576,19 @@
                     </div>
                 </div>
                 @endif
-                @if($workOrder->estimate)
+                @if($jobOrder->estimate)
                 <div class="col-md-6 col-lg-4">
                     <div class="form-section">
                         <div class="form-section-header no-collapse">
                             <h6><i class="fas fa-file-invoice-dollar"></i>Estimate</h6>
                         </div>
                         <div class="form-section-body">
-                            <strong>{{ $workOrder->estimate->estimate_number ?? 'Estimate #'.$workOrder->estimate->id }}</strong>
-                            <span class="badge bg-{{ $workOrder->estimate->status_badge ?? 'secondary' }} ms-2">
-                                {{ ucfirst($workOrder->estimate->status ?? 'draft') }}
+                            <strong>{{ $jobOrder->estimate->estimate_number ?? 'Estimate #'.$jobOrder->estimate->id }}</strong>
+                            <span class="badge bg-{{ $jobOrder->estimate->status_badge ?? 'secondary' }} ms-2">
+                                {{ ucfirst($jobOrder->estimate->status ?? 'draft') }}
                             </span>
                             <div class="mt-2">
-                                <a href="{{ route('estimates.show', $workOrder->estimate) }}" class="btn btn-sm btn-outline-success">
+                                <a href="{{ route('estimates.show', $jobOrder->estimate) }}" class="btn btn-sm btn-outline-success">
                                     <i class="fas fa-eye me-1"></i>View
                                 </a>
                             </div>
@@ -597,12 +600,12 @@
         </div>
     </div>
 
-    @if($workOrder->vehicleInspection && $workOrder->vehicleInspection->inspectionFindings()->count() > 0)
+    @if($jobOrder->vehicleInspection && $jobOrder->vehicleInspection->inspectionFindings()->count() > 0)
     <!-- Inspection Findings Section -->
     <div class="form-section mt-4">
         <div class="form-section-header no-collapse">
             <h6><i class="fas fa-clipboard-list"></i>Inspection Findings</h6>
-            <span class="badge bg-primary ms-2">{{ $workOrder->vehicleInspection->inspectionFindings()->count() }} findings</span>
+            <span class="badge bg-primary ms-2">{{ $jobOrder->vehicleInspection->inspectionFindings()->count() }} findings</span>
         </div>
         <div class="form-section-body p-0">
             <div class="table-responsive">
@@ -619,7 +622,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($workOrder->vehicleInspection->inspectionFindings as $fIdx => $finding)
+                        @foreach($jobOrder->vehicleInspection->inspectionFindings as $fIdx => $finding)
                         <tr>
                             <td class="text-muted">{{ $fIdx + 1 }}</td>
                             <td>

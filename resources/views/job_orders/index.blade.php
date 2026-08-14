@@ -4,7 +4,7 @@
 
 @push('styles')
 <style>
-.module-work-orders { --module-primary: #f97316; --module-primary-dark: #ea580c; --module-primary-light: #fff7ed; --module-primary-subtle: #fffbeb; }
+.module-job-orders { --module-primary: #f97316; --module-primary-dark: #ea580c; --module-primary-light: #fff7ed; --module-primary-subtle: #fffbeb; }
 
 /* Progress bar styles for work orders */
 .progress-fixit {
@@ -87,7 +87,7 @@
 @endpush
 
 @section('content')
-<div class="container-fluid module-work-orders">
+<div class="container-fluid module-job-orders">
     <!-- Page Header -->
     <div class="page-module-header">
         <div class="d-flex flex-wrap justify-content-between align-items-center">
@@ -99,10 +99,10 @@
                 </div>
             </div>
             <div class="d-flex gap-2 mt-2 mt-sm-0">
-                <a href="{{ route('work-orders.create') }}" class="btn-create">
+                <a href="{{ route('job-orders.create') }}" class="btn-create">
                     <i class="fas fa-plus"></i> Create Job Order
                 </a>
-                <a href="{{ route('work-orders.statistics') }}" class="btn-secondary-action">
+                <a href="{{ route('job-orders.statistics') }}" class="btn-secondary-action">
                     <i class="fas fa-chart-bar"></i> Statistics
                 </a>
             </div>
@@ -179,7 +179,7 @@
 
     <!-- Filters -->
     <div class="filter-bar">
-        <form method="GET" action="{{ route('work-orders.index') }}" class="row g-2 align-items-end">
+        <form method="GET" action="{{ route('job-orders.index') }}" class="row g-2 align-items-end">
             <div class="col-md-3">
                 <label class="form-label">Search</label>
                 <input type="text" name="search" class="form-control" placeholder="Search work orders..." 
@@ -222,7 +222,7 @@
                 <button type="submit" class="btn-filter-primary">
                     <i class="fas fa-filter"></i> Filter
                 </button>
-                <a href="{{ route('work-orders.index') }}" class="btn-filter-outline">
+                <a href="{{ route('job-orders.index') }}" class="btn-filter-outline">
                     <i class="fas fa-redo"></i> Reset
                 </a>
             </div>
@@ -232,21 +232,21 @@
     <!-- Work Orders Table -->
     <div class="main-card">
         <div class="main-card-body">
-            @if($workOrders->count() > 0)
+            @if($jobOrders->count() > 0)
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
-                        <span class="text-muted">{{ $workOrders->count() }} job orders</span>
+                        <span class="text-muted">{{ $jobOrders->count() }} job orders</span>
                     </div>
                     <div>
-                        @if($workOrders->whereNull('viewed_at')->count() > 0)
-                            <button class="btn-mark-all-read" id="markAllReadBtn" onclick="markAllAsRead('work-orders', this)">
+                        @if($jobOrders->whereNull('viewed_at')->count() > 0)
+                            <button class="btn-mark-all-read" id="markAllReadBtn" onclick="markAllAsRead('job-orders', this)">
                                 <i class="fas fa-check-double"></i> Mark All as Read
                             </button>
                         @endif
                     </div>
                 </div>
                 <div class="table-responsive">
-                    <table class="table-fixit" id="workOrdersTable">
+                    <table class="table-fixit" id="jobOrdersTable">
                         <thead>
                             <tr>
                                 <th style="width:30px;"></th>
@@ -262,68 +262,68 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($workOrders as $workOrder)
-                            <tr class="{{ $workOrder->viewed_at === null ? 'tr-unread' : '' }}" data-id="{{ $workOrder->id }}">
+                            @foreach($jobOrders as $jobOrder)
+                            <tr class="{{ $jobOrder->viewed_at === null ? 'tr-unread' : '' }}" data-id="{{ $jobOrder->id }}">
                                 <td>
-                                    @if($workOrder->viewed_at === null)
+                                    @if($jobOrder->viewed_at === null)
                                         <span class="unread-dot" title="New"></span>
                                     @endif
                                 </td>
                                 <td>
-                                    <span class="{{ $workOrder->viewed_at === null ? 'unread-primary-text' : '' }}">
-                                        <strong>{{ $workOrder->work_order_number }}</strong>
-                                        @if($workOrder->viewed_at === null)
+                                    <span class="{{ $jobOrder->viewed_at === null ? 'unread-primary-text' : '' }}">
+                                        <strong>{{ $jobOrder->job_order_number }}</strong>
+                                        @if($jobOrder->viewed_at === null)
                                             <span class="badge-new-record">NEW</span>
                                         @endif
                                     </span>
-                                    @if($workOrder->is_warranty_work)
+                                    @if($jobOrder->is_warranty_work)
                                         <br><span class="status-badge status-badge-info" style="margin-top:4px;">Warranty</span>
                                     @endif
-                                    @if($workOrder->is_insurance_work)
+                                    @if($jobOrder->is_insurance_work)
                                         <br><span class="status-badge status-badge-warning" style="margin-top:4px;">Insurance</span>
                                     @endif
                                 </td>
                                 <td>
                                     <div>
-                                        <strong>{{ $workOrder->customer->full_name }}</strong>
+                                        <strong>{{ $jobOrder->customer->full_name }}</strong>
                                         <br>
                                         <small style="color:#94a3b8;font-size:0.775rem;">
                                             <i class="fas fa-car me-1"></i>
-                                            {{ $workOrder->vehicle->year }} {{ $workOrder->vehicle->make }} {{ $workOrder->vehicle->model }}
+                                            {{ $jobOrder->vehicle->year }} {{ $jobOrder->vehicle->make }} {{ $jobOrder->vehicle->model }}
                                         </small>
                                         <br>
-                                        <small style="color:#94a3b8;font-size:0.775rem;">{{ $workOrder->vehicle->license_plate }}</small>
+                                        <small style="color:#94a3b8;font-size:0.775rem;">{{ $jobOrder->vehicle->license_plate }}</small>
                                     </div>
                                 </td>
                                 <td>
-                                    <strong>{{ $workOrder->work_order_date->format('M d, Y') }}</strong>
+                                    <strong>{{ $jobOrder->job_order_date->format('M d, Y') }}</strong>
                                     <br>
-                                    <span style="color:#94a3b8;font-size:0.8rem;">{{ ucfirst($workOrder->work_order_type) }}</span>
-                                    @if($workOrder->bay_number)
+                                    <span style="color:#94a3b8;font-size:0.8rem;">{{ ucfirst($jobOrder->job_order_type) }}</span>
+                                    @if($jobOrder->bay_number)
                                         <br>
-                                        <span class="bay-chip"><i class="fas fa-car-side"></i> Bay #{{ $workOrder->bay_number }}</span>
+                                        <span class="bay-chip"><i class="fas fa-car-side"></i> Bay #{{ $jobOrder->bay_number }}</span>
                                     @endif
                                 </td>
                                 <td>
-                                    <span class="status-badge status-badge-{{ $workOrder->priority_color === 'warning' ? 'warning' : ($workOrder->priority_color === 'danger' ? 'danger' : 'secondary') }}" style="margin-bottom:4px;">
-                                        {{ ucfirst($workOrder->priority) }}
+                                    <span class="status-badge status-badge-{{ $jobOrder->priority_color === 'warning' ? 'warning' : ($jobOrder->priority_color === 'danger' ? 'danger' : 'secondary') }}" style="margin-bottom:4px;">
+                                        {{ ucfirst($jobOrder->priority) }}
                                     </span>
                                     <br>
-                                    <span class="status-badge status-badge-{{ $workOrder->status_color === 'success' ? 'success' : ($workOrder->status_color === 'info' ? 'info' : ($workOrder->status_color === 'warning' ? 'warning' : ($workOrder->status_color === 'danger' ? 'danger' : 'secondary'))) }}">
+                                    <span class="status-badge status-badge-{{ $jobOrder->status_color === 'success' ? 'success' : ($jobOrder->status_color === 'info' ? 'info' : ($jobOrder->status_color === 'warning' ? 'warning' : ($jobOrder->status_color === 'danger' ? 'danger' : 'secondary'))) }}">
                                         <i class="fas fa-circle" style="font-size:0.5rem;"></i>
-                                        {{ ucfirst(str_replace('_', ' ', $workOrder->work_order_status)) }}
+                                        {{ ucfirst(str_replace('_', ' ', $jobOrder->job_order_status)) }}
                                     </span>
-                                    @if($workOrder->is_overdue)
+                                    @if($jobOrder->is_overdue)
                                         <br>
-                                        <small style="color:#dc2626;font-size:0.75rem;">Overdue {{ $workOrder->days_overdue }} days</small>
+                                        <small style="color:#dc2626;font-size:0.75rem;">Overdue {{ $jobOrder->days_overdue }} days</small>
                                     @endif
                                 </td>
                                 <td>
-                                    @if($workOrder->technician)
+                                    @if($jobOrder->technician)
                                         <div class="d-flex align-items-center gap-2">
-                                            <div class="tech-avatar">{{ substr($workOrder->technician->name, 0, 1) }}</div>
+                                            <div class="tech-avatar">{{ substr($jobOrder->technician->name, 0, 1) }}</div>
                                             <div>
-                                                <strong style="font-size:0.85rem;">{{ $workOrder->technician->name }}</strong>
+                                                <strong style="font-size:0.85rem;">{{ $jobOrder->technician->name }}</strong>
                                                 <br>
                                                 <small style="color:#94a3b8;font-size:0.7rem;">Technician</small>
                                             </div>
@@ -333,38 +333,38 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <strong>{{ $workOrder->formatted_final_amount }}</strong>
+                                    <strong>{{ $jobOrder->formatted_final_amount }}</strong>
                                     <br>
-                                    <small style="color:{{ $workOrder->payment_status_color === 'success' ? '#059669' : ($workOrder->payment_status_color === 'warning' ? '#d97706' : '#dc2626') }};font-size:0.75rem;">
-                                        {{ ucfirst($workOrder->payment_status) }}
+                                    <small style="color:{{ $jobOrder->payment_status_color === 'success' ? '#059669' : ($jobOrder->payment_status_color === 'warning' ? '#d97706' : '#dc2626') }};font-size:0.75rem;">
+                                        {{ ucfirst($jobOrder->payment_status) }}
                                     </small>
-                                    @if($workOrder->balance_due > 0)
+                                    @if($jobOrder->balance_due > 0)
                                         <br>
-                                        <small style="color:#dc2626;font-size:0.75rem;">Due: {{ $workOrder->formatted_balance_due }}</small>
+                                        <small style="color:#dc2626;font-size:0.75rem;">Due: {{ $jobOrder->formatted_balance_due }}</small>
                                     @endif
                                 </td>
                                 <td>
-                                    @if($workOrder->invoice)
+                                    @if($jobOrder->invoice)
                                         <span class="status-badge status-badge-success" style="margin-bottom:4px;">
                                             <i class="fas fa-file-invoice-dollar"></i> Invoiced
                                         </span>
                                         <br>
                                         <small style="color:#94a3b8;font-size:0.75rem;">
-                                            <a href="{{ route('invoices.show', $workOrder->invoice) }}" style="text-decoration:none;color:#6366f1;">
-                                                {{ $workOrder->invoice->invoice_number }}
+                                            <a href="{{ route('invoices.show', $jobOrder->invoice) }}" style="text-decoration:none;color:#6366f1;">
+                                                {{ $jobOrder->invoice->invoice_number }}
                                             </a>
                                         </small>
                                         <br>
-                                        <small style="color:{{ $workOrder->invoice->status_color === 'success' ? '#059669' : '#475569' }};font-size:0.7rem;">
-                                            {{ ucfirst($workOrder->invoice->status) }}
+                                        <small style="color:{{ $jobOrder->invoice->status_color === 'success' ? '#059669' : '#475569' }};font-size:0.7rem;">
+                                            {{ ucfirst($jobOrder->invoice->status) }}
                                         </small>
                                     @else
                                         <span class="status-badge status-badge-secondary" style="margin-bottom:4px;">
                                             <i class="fas fa-clock"></i> No Invoice
                                         </span>
                                         <br>
-                                        @if(in_array($workOrder->work_order_status, ['completed', 'released']))
-                                            <a href="{{ route('invoices.create', ['work_order_id' => $workOrder->id]) }}" 
+                                        @if(in_array($jobOrder->job_order_status, ['completed', 'released']))
+                                            <a href="{{ route('invoices.create', ['job_order_id' => $jobOrder->id]) }}" 
                                                class="btn-repair-small" style="color:#059669;border-color:#10b981;background:#d1fae5;">
                                                 <i class="fas fa-plus"></i> Create Invoice
                                             </a>
@@ -374,22 +374,22 @@
                                     @endif
                                 </td>
                                 <td class="repair-approval-column" 
-                                    style="background:{{ $workOrder->repair_approval_status == 'go' ? '#d1fae5' : ($workOrder->repair_approval_status == 'no_go' ? '#fee2e2' : '#f8fafc') }};">
+                                    style="background:{{ $jobOrder->repair_approval_status == 'go' ? '#d1fae5' : ($jobOrder->repair_approval_status == 'no_go' ? '#fee2e2' : '#f8fafc') }};">
                                     <div style="display:flex;flex-direction:column;align-items:center;gap:6px;min-height:80px;">
-                                        @if($workOrder->repair_approval_status == 'pending')
+                                        @if($jobOrder->repair_approval_status == 'pending')
                                             <span class="status-badge status-badge-secondary" style="margin-bottom:4px;">
                                                 <i class="fas fa-clock"></i> PENDING REVIEW
                                             </span>
                                             <div class="dropdown">
                                                 <button class="btn-repair-small dropdown-toggle" 
-                                                        type="button" id="repairApprovalDropdown{{ $workOrder->id }}" 
+                                                        type="button" id="repairApprovalDropdown{{ $jobOrder->id }}" 
                                                         data-bs-toggle="dropdown" aria-expanded="false">
                                                     <i class="fas fa-cog"></i> Set Status
                                                 </button>
-                                                <ul class="dropdown-menu" aria-labelledby="repairApprovalDropdown{{ $workOrder->id }}">
+                                                <ul class="dropdown-menu" aria-labelledby="repairApprovalDropdown{{ $jobOrder->id }}">
                                                     <li>
                                                         <a class="dropdown-item text-success repair-approval-btn" 
-                                                           href="#" data-id="{{ $workOrder->id }}" data-status="go">
+                                                           href="#" data-id="{{ $jobOrder->id }}" data-status="go">
                                                             <i class="fas fa-check-circle me-2"></i> <strong>Authorize</strong>
                                                             <small class="text-muted d-block mt-1">GO for Repair</small>
                                                         </a>
@@ -397,31 +397,31 @@
                                                     <li><hr class="dropdown-divider"></li>
                                                     <li>
                                                         <a class="dropdown-item text-danger repair-approval-btn" 
-                                                           href="#" data-id="{{ $workOrder->id }}" data-status="no_go">
+                                                           href="#" data-id="{{ $jobOrder->id }}" data-status="no_go">
                                                             <i class="fas fa-times-circle me-2"></i> <strong>Not Cleared</strong>
                                                             <small class="text-muted d-block mt-1">NO GO for Repair</small>
                                                         </a>
                                                     </li>
                                                 </ul>
                                             </div>
-                                        @elseif($workOrder->repair_approval_status == 'go')
+                                        @elseif($jobOrder->repair_approval_status == 'go')
                                             <i class="fas fa-check-circle" style="color:#059669;font-size:1.4rem;"></i>
                                             <span class="status-badge status-badge-success" style="margin-bottom:2px;">
                                                 <i class="fas fa-check"></i> AUTHORIZED
                                             </span>
                                             <small style="color:#64748b;font-size:0.7rem;">GO for Repair</small>
                                             <button type="button" class="btn-repair-small repair-reset-btn" 
-                                                    data-id="{{ $workOrder->id }}">
+                                                    data-id="{{ $jobOrder->id }}">
                                                 <i class="fas fa-redo"></i> Change
                                             </button>
-                                        @elseif($workOrder->repair_approval_status == 'no_go')
+                                        @elseif($jobOrder->repair_approval_status == 'no_go')
                                             <i class="fas fa-times-circle" style="color:#dc2626;font-size:1.4rem;"></i>
                                             <span class="status-badge status-badge-danger" style="margin-bottom:2px;">
                                                 <i class="fas fa-times"></i> NOT CLEARED
                                             </span>
                                             <small style="color:#64748b;font-size:0.7rem;">NO GO for Repair</small>
                                             <button type="button" class="btn-repair-small repair-reset-btn" 
-                                                    data-id="{{ $workOrder->id }}">
+                                                    data-id="{{ $jobOrder->id }}">
                                                 <i class="fas fa-redo"></i> Change
                                             </button>
                                         @endif
@@ -429,18 +429,21 @@
                                 </td>
                                 <td>
                                     <div class="action-group">
-                                        <a href="{{ route('work-orders.show', $workOrder) }}" class="btn-action" title="View" onclick="markRecordAsRead('work-orders', {{ $workOrder->id }}, this.closest('tr'))">
+                                        <a href="{{ route('job-orders.show', $jobOrder) }}" class="btn-action" title="View" onclick="markRecordAsRead('job-orders', {{ $jobOrder->id }}, this.closest('tr'))">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{{ route('work-orders.edit', $workOrder) }}" class="btn-action" title="Edit" onclick="markRecordAsRead('work-orders', {{ $workOrder->id }}, this.closest('tr'))">
+                                        <a href="{{ route('job-orders.edit', $jobOrder) }}" class="btn-action" title="Edit" onclick="markRecordAsRead('job-orders', {{ $jobOrder->id }}, this.closest('tr'))">
                                             <i class="fas fa-edit"></i>
                                         </a>
+                                        <a href="{{ route('job-orders.print', $jobOrder) }}" class="btn-action" title="Print Work Order" target="_blank">
+                                            <i class="fas fa-print"></i>
+                                        </a>
                                         
-                                        @if($workOrder->work_order_status === 'pending')
-                                        <form action="{{ route('work-orders.start-work', $workOrder) }}" method="POST" class="d-inline">
+                                        @if($jobOrder->job_order_status === 'pending')
+                                        <form action="{{ route('job-orders.start-work', $jobOrder) }}" method="POST" class="d-inline">
                                             @csrf
                                             <button type="button" class="btn-action btn-start-repair-list" 
-                                                    data-workorder-id="{{ $workOrder->id }}" 
+                                                    data-workorder-id="{{ $jobOrder->id }}" 
                                                     title="Start Repair"
                                                     style="color:#d97706;border-color:#fde68a;">
                                                 <i class="fas fa-play"></i>
@@ -448,11 +451,11 @@
                                         </form>
                                         @endif
                                         
-                                        @if($workOrder->work_order_status === 'repairing')
-                                        <form action="{{ route('work-orders.complete-work', $workOrder) }}" method="POST" class="d-inline">
+                                        @if($jobOrder->job_order_status === 'repairing')
+                                        <form action="{{ route('job-orders.complete-work', $jobOrder) }}" method="POST" class="d-inline">
                                             @csrf
                                             <button type="button" class="btn-action btn-complete-repair-list" 
-                                                    data-workorder-id="{{ $workOrder->id }}" 
+                                                    data-workorder-id="{{ $jobOrder->id }}" 
                                                     title="Complete Repair"
                                                     style="color:#059669;border-color:#d1fae5;">
                                                 <i class="fas fa-flag-checkered"></i>
@@ -460,11 +463,11 @@
                                         </form>
                                         @endif
                                         
-                                        @if($workOrder->work_order_status === 'completed')
-                                        <form action="{{ route('work-orders.mark-released', $workOrder) }}" method="POST" class="d-inline">
+                                        @if($jobOrder->job_order_status === 'completed')
+                                        <form action="{{ route('job-orders.mark-released', $jobOrder) }}" method="POST" class="d-inline">
                                             @csrf
                                             <button type="button" class="btn-action btn-mark-released-list" 
-                                                    data-workorder-id="{{ $workOrder->id }}" 
+                                                    data-workorder-id="{{ $jobOrder->id }}" 
                                                     title="Mark as Released"
                                                     style="color:#0891b2;border-color:#cffafe;">
                                                 <i class="fas fa-truck"></i>
@@ -472,7 +475,7 @@
                                         </form>
                                         @endif
                                         @if(auth()->user() && in_array(auth()->user()->role, ['super_admin', 'admin', 'office_staff', 'technician']))
-                                        <form action="{{ route('work-orders.destroy', $workOrder) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to move this work order to archive?')">
+                                        <form action="{{ route('job-orders.destroy', $jobOrder) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to move this work order to archive?')">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn-action" style="border-color:#fde68a;color:#d97706;" title="Archive">
@@ -491,10 +494,10 @@
                 <!-- Pagination -->
                 <div class="d-flex justify-content-between align-items-center px-3 py-3 border-top">
                     <div class="pagination-info">
-                        Showing {{ $workOrders->firstItem() }} to {{ $workOrders->lastItem() }} of {{ $workOrders->total() }} work orders
+                        Showing {{ $jobOrders->firstItem() }} to {{ $jobOrders->lastItem() }} of {{ $jobOrders->total() }} work orders
                     </div>
                     <div>
-                        {{ $workOrders->links() }}
+                        {{ $jobOrders->links() }}
                     </div>
                 </div>
             @else
@@ -504,7 +507,7 @@
                     </div>
                     <h4>No work orders found</h4>
                     <p>Try adjusting your filters or create a new work order to get started.</p>
-                    <a href="{{ route('work-orders.create') }}" class="btn-create">
+                    <a href="{{ route('job-orders.create') }}" class="btn-create">
                         <i class="fas fa-plus"></i> Create First Work Order
                     </a>
                 </div>
@@ -519,27 +522,27 @@
         </div>
         <div class="sub-card-body">
             @php
-                $todayWorkOrders = \App\Models\WorkOrder::with(['customer', 'vehicle', 'technician'])
-                    ->whereDate('work_order_date', \Carbon\Carbon::today())
-                    ->whereIn('work_order_status', ['in_progress', 'approved'])
+                $todayJobOrders = \App\Models\JobOrder::with(['customer', 'vehicle', 'technician'])
+                    ->whereDate('job_order_date', \Carbon\Carbon::today())
+                    ->whereIn('job_order_status', ['in_progress', 'approved'])
                     ->orderBy('priority', 'desc')
                     ->orderBy('created_at')
                     ->get();
             @endphp
             
-            @if($todayWorkOrders->count() > 0)
+            @if($todayJobOrders->count() > 0)
                 <div class="row">
-                    @foreach($todayWorkOrders as $wo)
+                    @foreach($todayJobOrders as $wo)
                     <div class="col-md-6 mb-3">
                         <div class="today-card">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <div>
-                                    <h6 style="font-size:0.9rem;font-weight:600;margin:0 0 4px 0;">{{ $wo->work_order_number }}</h6>
+                                    <h6 style="font-size:0.9rem;font-weight:600;margin:0 0 4px 0;">{{ $wo->job_order_number }}</h6>
                                     <div>
                                         <strong style="font-size:0.85rem;">{{ $wo->customer->full_name }}</strong>
                                         <br>
                                         <small style="color:#94a3b8;font-size:0.75rem;">
-                                            {{ $wo->vehicle->year }} {{ $wo->vehicle->make }} • {{ $wo->work_order_type }}
+                                            {{ $wo->vehicle->year }} {{ $wo->vehicle->make }} • {{ $wo->job_order_type }}
                                         </small>
                                     </div>
                                 </div>
@@ -548,7 +551,7 @@
                                         {{ ucfirst($wo->priority) }}
                                     </span>
                                     <span class="status-badge status-badge-{{ $wo->status_color === 'success' ? 'success' : ($wo->status_color === 'info' ? 'info' : ($wo->status_color === 'warning' ? 'warning' : 'secondary')) }}">
-                                        {{ ucfirst(str_replace('_', ' ', $wo->work_order_status)) }}
+                                        {{ ucfirst(str_replace('_', ' ', $wo->job_order_status)) }}
                                     </span>
                                 </div>
                             </div>
@@ -577,9 +580,9 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Unread system initialization
-    const table = document.getElementById('workOrdersTable');
+    const table = document.getElementById('jobOrdersTable');
     if (table) {
-        initUnreadSystem(table, 'work-orders', { dataAttr: 'data-id', markAllBtnId: 'markAllReadBtn' });
+        initUnreadSystem(table, 'job-orders', { dataAttr: 'data-id', markAllBtnId: 'markAllReadBtn' });
     }
 
     // Re-check unread status on page show (browser back/forward)
@@ -594,7 +597,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         's-appointments-new': 'appointments_new',
                         's-inspections-new': 'inspections_new',
                         's-estimates-new': 'estimates_new',
-                        's-work-orders-active': 'work_orders_active',
+                        's-job-orders-active': 'job_orders_active',
                         's-invoices-new': 'invoices_new',
                     };
                     for (const [elId, key] of Object.entries(map)) {
@@ -614,7 +617,7 @@ document.addEventListener('DOMContentLoaded', function() {
     startRepairListButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            const workOrderId = this.getAttribute('data-workorder-id');
+            const jobOrderId = this.getAttribute('data-workorder-id');
             
             Swal.fire({
                 title: 'Start Repair?',
@@ -639,7 +642,7 @@ document.addEventListener('DOMContentLoaded', function() {
     completeRepairListButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            const workOrderId = this.getAttribute('data-workorder-id');
+            const jobOrderId = this.getAttribute('data-workorder-id');
             
             Swal.fire({
                 title: 'Complete Repair?',
@@ -664,7 +667,7 @@ document.addEventListener('DOMContentLoaded', function() {
     markReleasedListButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            const workOrderId = this.getAttribute('data-workorder-id');
+            const jobOrderId = this.getAttribute('data-workorder-id');
             
             Swal.fire({
                 title: 'Mark as Released?',
@@ -695,7 +698,7 @@ document.addEventListener('DOMContentLoaded', function() {
     repairApprovalButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            const workOrderId = this.getAttribute('data-id');
+            const jobOrderId = this.getAttribute('data-id');
             const status = this.getAttribute('data-status');
             const actionText = status === 'go' ? 'Authorize' : 'Mark as Not Cleared';
             
@@ -719,7 +722,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     });
                     
-                    fetch(`/work-orders/${workOrderId}/update-repair-approval`, {
+                    fetch(`/job-orders/${jobOrderId}/update-repair-approval`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -778,7 +781,7 @@ document.addEventListener('DOMContentLoaded', function() {
     repairResetButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            const workOrderId = this.getAttribute('data-id');
+            const jobOrderId = this.getAttribute('data-id');
             
             Swal.fire({
                 title: 'Reset Approval Status?',
@@ -800,7 +803,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         }
                     });
                     
-                    fetch(`/work-orders/${workOrderId}/update-repair-approval`, {
+                    fetch(`/job-orders/${jobOrderId}/update-repair-approval`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

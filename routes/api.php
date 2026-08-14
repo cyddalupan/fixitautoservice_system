@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\BookingController;
+use App\Http\Controllers\ContactController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -39,5 +40,10 @@ Route::prefix('booking')->group(function () {
     // ===== Customer Appointment Tracking =====
     Route::get('/track/{appointment}', [BookingController::class, 'apiTrackAppointment']);
     Route::get('/track/{appointment}/messages', [BookingController::class, 'apiTrackAppointmentMessages']);
+    Route::post('/track/{appointment}/proceed', [BookingController::class, 'apiProceedAppointment']);
     Route::post('/track/{appointment}/cancel', [BookingController::class, 'apiCancelAppointment']);
+    Route::post('/track/{appointment}/reschedule', [BookingController::class, 'apiRescheduleAppointment']);
 });
+
+// ===== Contact Us public lead endpoint (posts from fixitautoservices.com) =====
+Route::post('/contact/save', [ContactController::class, 'store']);
