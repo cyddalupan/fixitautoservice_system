@@ -538,7 +538,7 @@ body.dark-mode .service-status-badge {
                         @foreach($activeWO as $wo)
                             <div class="d-flex align-items-center justify-content-between mb-2">
                                 <div>
-                                    <strong style="font-size:.8rem;">{{ $wo->work_order_number ?? 'Work Order #'.$wo->id }}</strong>
+                                    <strong style="font-size:.8rem;">{{ $wo->job_order_number ?? 'Work Order #'.$wo->id }}</strong>
                                     <div class="text-muted" style="font-size:.72rem;">
                                         {{ $wo->description ?? 'General' }}
                                     </div>
@@ -569,7 +569,7 @@ body.dark-mode .service-status-badge {
                             <i class="fas fa-file-invoice-dollar" style="color: #0ea5e9;"></i>
                             <span>Estimate</span>
                         </a>
-                        <a href="{{ route('work-orders.create') }}?vehicle_id={{ $vehicle->id }}" class="quick-action-btn" style="border-left-color: #ef4444;">
+                        <a href="{{ route('job-orders.create') }}?vehicle_id={{ $vehicle->id }}" class="quick-action-btn" style="border-left-color: #ef4444;">
                             <i class="fas fa-wrench" style="color: #ef4444;"></i>
                             <span>Work Order</span>
                         </a>
@@ -768,7 +768,7 @@ body.dark-mode .service-status-badge {
                                                         @switch($tx->type)
                                                             @case('appointment') <i class="fas fa-calendar"></i> Appt @break
                                                             @case('inspection') <i class="fas fa-clipboard-check"></i> Inspection @break
-                                                            @case('work_order') <i class="fas fa-wrench"></i> Work Order @break
+                                                            @case('job_order') <i class="fas fa-wrench"></i> Work Order @break
                                                             @case('estimate') <i class="fas fa-file-invoice-dollar"></i> Estimate @break
                                                             @case('invoice') <i class="fas fa-receipt"></i> Invoice @break
                                                             @case('archived_inspection') <i class="fas fa-archive"></i> Archived @break

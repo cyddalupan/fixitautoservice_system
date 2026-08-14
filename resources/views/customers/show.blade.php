@@ -46,7 +46,7 @@
                                  id="profile-picture-img">
                         @else
                             <div class="profile-avatar profile-avatar-initials" id="profile-picture-initials">
-                                {{ $customer->avatar }}
+                                {{ strtoupper(substr($customer->first_name, 0, 1) . substr($customer->last_name, 0, 1)) }}
                             </div>
                         @endif
                         <button type="button" 
@@ -166,7 +166,7 @@
                             <i class="fas fa-file-invoice-dollar" style="color: #0ea5e9;"></i>
                             <span>Estimate</span>
                         </a>
-                        <a href="{{ route('work-orders.create') }}?customer_id={{ $customer->id }}" class="quick-action-btn" style="border-left-color: #ef4444;">
+                        <a href="{{ route('job-orders.create') }}?customer_id={{ $customer->id }}" class="quick-action-btn" style="border-left-color: #ef4444;">
                             <i class="fas fa-wrench" style="color: #ef4444;"></i>
                             <span>Work Order</span>
                         </a>
@@ -208,8 +208,8 @@
                         <li class="tab-item" role="presentation">
                             <button class="tab-link" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes" type="button" role="tab" aria-selected="false">
                                 <i class="fas fa-sticky-note me-1"></i> Notes
-                                @if($customer->notes && $customer->notes->count() > 0)
-                                    <span class="badge-tab">{{ $customer->notes->count() }}</span>
+                                @if($customer->customerNotes && $customer->customerNotes->count() > 0)
+                                    <span class="badge-tab">{{ $customer->customerNotes->count() }}</span>
                                 @endif
                             </button>
                         </li>
@@ -333,7 +333,7 @@
                                                         @switch($tx->type)
                                                             @case('appointment') <i class="fas fa-calendar"></i> Appt @break
                                                             @case('inspection') <i class="fas fa-clipboard-check"></i> Inspection @break
-                                                            @case('work_order') <i class="fas fa-wrench"></i> Work Order @break
+                                                            @case('job_order') <i class="fas fa-wrench"></i> Work Order @break
                                                             @case('estimate') <i class="fas fa-file-invoice-dollar"></i> Estimate @break
                                                             @case('invoice') <i class="fas fa-receipt"></i> Invoice @break
                                                             @case('archived_inspection') <i class="fas fa-archive"></i> Archived @break
@@ -523,9 +523,9 @@
 
                     <!-- Notes Tab -->
                     <div class="tab-pane fade" id="notes" role="tabpanel">
-                        @if($customer->notes && $customer->notes->count() > 0)
+                        @if($customer->customerNotes && $customer->customerNotes->count() > 0)
                             <div class="px-3 py-3">
-                                @foreach($customer->notes->take(10) as $note)
+                                @foreach($customer->customerNotes->take(10) as $note)
                                     <div class="note-card">
                                         <div class="note-card-header">
                                             <div class="d-flex align-items-center gap-2">
@@ -539,10 +539,10 @@
                                     </div>
                                 @endforeach
                             </div>
-                            @if($customer->notes->count() > 5)
+                            @if($customer->customerNotes->count() > 5)
                                 <div class="text-center py-3 border-top">
                                     <span class="text-muted" style="font-size: 0.85rem;">
-                                        Showing {{ min(10, $customer->notes->count()) }} of {{ $customer->notes->count() }} notes
+                                        Showing {{ min(10, $customer->customerNotes->count()) }} of {{ $customer->customerNotes->count() }} notes
                                     </span>
                                 </div>
                             @endif
