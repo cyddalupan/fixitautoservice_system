@@ -611,6 +611,9 @@
 
     </style>
 
+    {{-- Unread Record System Styles (used by job-orders, appointments, estimates, inspections, invoices) --}}
+    @include('partials.unread.unread-styles')
+
     <!-- Page-specific styles -->
     @stack('styles')
 
@@ -1088,6 +1091,9 @@
 
     <!-- Vite-built JS (app bundle with Cropper.js, etc.) -->
     @vite('resources/js/app.js')
+
+    {{-- Unread Record System JS (initUnreadSystem / markRecordAsRead / markAllAsRead) --}}
+    @include('partials.unread.unread-scripts')
 
     @stack('scripts')
 </body>
