@@ -258,6 +258,14 @@ class JobOrderController extends Controller
             'items.*.notes' => 'nullable|string|max:500',
         ]);
         
+        // Normalize empty optional numeric fields to their DB defaults (0).
+        // The create form submits empty strings for these; ConvertEmptyStringsToNull
+        // turns them into null, and the columns are NOT NULL DEFAULT 0 -> insert 500s
+        // ("after saving nothing happens").
+        foreach (['estimated_labor_hours', 'estimated_labor_cost', 'estimated_parts_cost', 'estimated_tax', 'warranty_coverage', 'insurance_deductible'] as $numericField) {
+            $validated[$numericField] = (float) ($validated[$numericField] ?? 0);
+        }
+        
         // Check for duplicate vehicle in active transactions (skip if override_duplicate is set)
         if (!$request->filled('override_duplicate') || $request->override_duplicate !== '1') {
             if ($request->filled('vehicle_id')) {
@@ -513,6 +521,13 @@ class JobOrderController extends Controller
             'job_order_id' => $jobOrder->id,
             'validated_data' => $validated,
         ]);
+        
+        // Normalize empty optional numeric fields to their DB defaults (0) so the
+        // update does not 500 on NOT NULL DEFAULT 0 columns when the form leaves
+        // optional estimate/warranty/insurance fields blank.
+        foreach (['estimated_labor_hours', 'estimated_labor_cost', 'estimated_parts_cost', 'estimated_tax', 'warranty_coverage', 'insurance_deductible'] as $numericField) {
+            $validated[$numericField] = (float) ($validated[$numericField] ?? 0);
+        }
         
         // Update status timestamps
         if ($validated['job_order_status'] !== $jobOrder->job_order_status) {

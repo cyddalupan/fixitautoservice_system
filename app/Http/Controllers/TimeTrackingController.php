@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\TimeLog;
 use App\Models\User;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,7 +17,7 @@ class TimeTrackingController extends Controller
      */
     public function index(Request $request)
     {
-        $query = TimeLog::with(['technician', 'workOrder', 'appointment', 'approver'])
+        $query = TimeLog::with(['technician', 'jobOrder', 'appointment', 'approver'])
             ->orderBy('log_time', 'desc');
 
         // Filter by technician
@@ -45,8 +45,8 @@ class TimeTrackingController extends Controller
         }
 
         // Filter by work order
-        if ($request->has('work_order_id')) {
-            $query->where('work_order_id', $request->work_order_id);
+        if ($request->has('job_order_id')) {
+            $query->where('job_order_id', $request->job_order_id);
         }
 
         $timeLogs = $query->paginate(20);
@@ -64,7 +64,7 @@ class TimeTrackingController extends Controller
             ->orderBy('name')
             ->get();
 
-        $workOrders = WorkOrder::whereIn('status', ['in_progress', 'scheduled'])
+        $jobOrders = JobOrder::whereIn('status', ['in_progress', 'scheduled'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -74,7 +74,7 @@ class TimeTrackingController extends Controller
 
         $logTypes = TimeLog::getLogTypes();
 
-        return view('time-tracking.create', compact('technicians', 'workOrders', 'appointments', 'logTypes'));
+        return view('time-tracking.create', compact('technicians', 'jobOrders', 'appointments', 'logTypes'));
     }
 
     /**
@@ -86,7 +86,7 @@ class TimeTrackingController extends Controller
             'technician_id' => 'required|exists:users,id',
             'log_type' => 'required|in:' . implode(',', array_keys(TimeLog::getLogTypes())),
             'log_time' => 'required|date',
-            'work_order_id' => 'nullable|exists:work_orders,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
             'appointment_id' => 'nullable|exists:appointments,id',
             'location' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
@@ -123,7 +123,7 @@ class TimeTrackingController extends Controller
      */
     public function show(TimeLog $timeLog)
     {
-        $timeLog->load(['technician', 'workOrder', 'appointment', 'approver']);
+        $timeLog->load(['technician', 'jobOrder', 'appointment', 'approver']);
         
         return view('time-tracking.show', compact('timeLog'));
     }
@@ -144,7 +144,7 @@ class TimeTrackingController extends Controller
             ->orderBy('name')
             ->get();
 
-        $workOrders = WorkOrder::whereIn('status', ['in_progress', 'scheduled'])
+        $jobOrders = JobOrder::whereIn('status', ['in_progress', 'scheduled'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -154,7 +154,7 @@ class TimeTrackingController extends Controller
 
         $logTypes = TimeLog::getLogTypes();
 
-        return view('time-tracking.edit', compact('timeLog', 'technicians', 'workOrders', 'appointments', 'logTypes'));
+        return view('time-tracking.edit', compact('timeLog', 'technicians', 'jobOrders', 'appointments', 'logTypes'));
     }
 
     /**
@@ -172,7 +172,7 @@ class TimeTrackingController extends Controller
             'technician_id' => 'required|exists:users,id',
             'log_type' => 'required|in:' . implode(',', array_keys(TimeLog::getLogTypes())),
             'log_time' => 'required|date',
-            'work_order_id' => 'nullable|exists:work_orders,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
             'appointment_id' => 'nullable|exists:appointments,id',
             'location' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
@@ -214,7 +214,7 @@ class TimeTrackingController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'technician_id' => 'required|exists:users,id',
-            'work_order_id' => 'nullable|exists:work_orders,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
             'appointment_id' => 'nullable|exists:appointments,id',
             'location' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
@@ -232,7 +232,7 @@ class TimeTrackingController extends Controller
                 'technician_id' => $request->technician_id,
                 'log_type' => TimeLog::LOG_TYPE_CLOCK_IN,
                 'log_time' => now(),
-                'work_order_id' => $request->work_order_id,
+                'job_order_id' => $request->job_order_id,
                 'appointment_id' => $request->appointment_id,
                 'location' => $request->location,
                 'notes' => $request->notes,
@@ -262,7 +262,7 @@ class TimeTrackingController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'technician_id' => 'required|exists:users,id',
-            'work_order_id' => 'nullable|exists:work_orders,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
             'appointment_id' => 'nullable|exists:appointments,id',
             'location' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
@@ -280,7 +280,7 @@ class TimeTrackingController extends Controller
                 'technician_id' => $request->technician_id,
                 'log_type' => TimeLog::LOG_TYPE_CLOCK_OUT,
                 'log_time' => now(),
-                'work_order_id' => $request->work_order_id,
+                'job_order_id' => $request->job_order_id,
                 'appointment_id' => $request->appointment_id,
                 'location' => $request->location,
                 'notes' => $request->notes,

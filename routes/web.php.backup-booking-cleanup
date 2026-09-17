@@ -3,7 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\AppointmentController;
-use App\Http\Controllers\WorkOrderController;
+use App\Http\Controllers\JobOrderController;
 use App\Http\Controllers\EstimateController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
@@ -157,8 +157,8 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
             })
             ->first();
         
-        $activeWorkOrder = \App\Models\WorkOrder::where('vehicle_id', $vehicle->id)
-            ->whereIn('work_order_status', ['pending', 'repairing', 'waiting_parts'])
+        $activeJobOrder = \App\Models\JobOrder::where('vehicle_id', $vehicle->id)
+            ->whereIn('job_order_status', ['pending', 'repairing', 'waiting_parts'])
             ->whereNull('deleted_at')
             ->first();
         
@@ -178,12 +178,12 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
             ];
         }
         
-        if ($activeWorkOrder) {
+        if ($activeJobOrder) {
             $transactions[] = [
                 'type' => 'Work Order',
-                'number' => $activeWorkOrder->work_order_number ?? '#' . $activeWorkOrder->id,
-                'id' => $activeWorkOrder->id,
-                'url' => route('work-orders.edit', $activeWorkOrder->id),
+                'number' => $activeJobOrder->job_order_number ?? '#' . $activeJobOrder->id,
+                'id' => $activeJobOrder->id,
+                'url' => route('job-orders.edit', $activeJobOrder->id),
             ];
         }
         
@@ -222,12 +222,12 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
             'quotations_new' => \App\Models\Quotation::where('status', 'new_lead')->count(),
             // Inspections: exclude completed & those with work orders — matches index page default
             'inspections_total' => \App\Models\VehicleInspection::whereNotIn('inspection_status', ['completed'])
-                                        ->whereNull('work_order_id')->count(),
-            'inspections_new' => \App\Models\VehicleInspection::whereNotIn('inspection_status', ['completed'])->whereNull('work_order_id')->whereNull('viewed_at')->count(),
+                                        ->whereNull('job_order_id')->count(),
+            'inspections_new' => \App\Models\VehicleInspection::whereNotIn('inspection_status', ['completed'])->whereNull('job_order_id')->whereNull('viewed_at')->count(),
             'estimates_total' => \App\Models\Estimate::count(),
             'estimates_new' => \App\Models\Estimate::whereNull('viewed_at')->count(),
-            'work_orders_total' => \App\Models\WorkOrder::count(),
-            'work_orders_active' => \App\Models\WorkOrder::whereIn('work_order_status', ['pending', 'repairing', 'in_progress'])->whereNull('viewed_at')->count(),
+            'job_orders_total' => \App\Models\JobOrder::count(),
+            'job_orders_active' => \App\Models\JobOrder::whereIn('job_order_status', ['pending', 'repairing', 'in_progress'])->whereNull('viewed_at')->count(),
             // Service Records: count workflows (matches Service Records page listings)
             'service_records_total' => count(app(\App\Services\ServiceRecordService::class)->getWorkflows()),
             'service_records_recent' => \App\Models\ServiceRecord::whereNull('viewed_at')->count(),
@@ -262,8 +262,8 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
             'appointments'     => \App\Models\Appointment::class,
             'inspections'      => \App\Models\VehicleInspection::class,
             'estimates'        => \App\Models\Estimate::class,
-            'work-orders'      => \App\Models\WorkOrder::class,
-            'work_orders'      => \App\Models\WorkOrder::class,
+            'job-orders'      => \App\Models\JobOrder::class,
+            'job_orders'      => \App\Models\JobOrder::class,
             'service-records'  => \App\Models\ServiceRecord::class,
             'service_records'  => \App\Models\ServiceRecord::class,
             'invoices'         => \App\Models\Invoice::class,
@@ -290,8 +290,8 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
             'appointments'     => \App\Models\Appointment::class,
             'inspections'      => \App\Models\VehicleInspection::class,
             'estimates'        => \App\Models\Estimate::class,
-            'work-orders'      => \App\Models\WorkOrder::class,
-            'work_orders'      => \App\Models\WorkOrder::class,
+            'job-orders'      => \App\Models\JobOrder::class,
+            'job_orders'      => \App\Models\JobOrder::class,
             'service-records'  => \App\Models\ServiceRecord::class,
             'service_records'  => \App\Models\ServiceRecord::class,
             'invoices'         => \App\Models\Invoice::class,
@@ -369,15 +369,15 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::post('/appointments/{appointment}/confirm-booking', [AppointmentController::class, 'ajaxConfirmBooking'])->name('appointments.confirm-booking');
 
     // Work Order Routes
-    Route::resource('work-orders', WorkOrderController::class);
-    Route::get('/work-orders/statistics', [WorkOrderController::class, 'statistics'])->name('work-orders.statistics');
-    Route::post('/work-orders/{work_order}/approve-estimate', [WorkOrderController::class, 'approveEstimate'])->name('work-orders.approve-estimate');
-    Route::post('/work-orders/{work_order}/start-work', [WorkOrderController::class, 'startWork'])->name('work-orders.start-work');
-    Route::post('/work-orders/{work_order}/complete-work', [WorkOrderController::class, 'completeWork'])->name('work-orders.complete-work');
-    Route::post('/work-orders/{work_order}/mark-released', [WorkOrderController::class, 'markAsReleased'])->name('work-orders.mark-released');
-    Route::post('/work-orders/{work_order}/add-payment', [WorkOrderController::class, 'addPayment'])->name('work-orders.add-payment');
-    Route::get('/work-orders/{work_order}/print', [WorkOrderController::class, 'print'])->name('work-orders.print');
-    Route::post('/work-orders/{work_order}/update-repair-approval', [WorkOrderController::class, 'updateRepairApproval'])->name('work-orders.update-repair-approval');
+    Route::resource('job-orders', JobOrderController::class);
+    Route::get('/job-orders/statistics', [JobOrderController::class, 'statistics'])->name('job-orders.statistics');
+    Route::post('/job-orders/{job_order}/approve-estimate', [JobOrderController::class, 'approveEstimate'])->name('job-orders.approve-estimate');
+    Route::post('/job-orders/{job_order}/start-work', [JobOrderController::class, 'startWork'])->name('job-orders.start-work');
+    Route::post('/job-orders/{job_order}/complete-work', [JobOrderController::class, 'completeWork'])->name('job-orders.complete-work');
+    Route::post('/job-orders/{job_order}/mark-released', [JobOrderController::class, 'markAsReleased'])->name('job-orders.mark-released');
+    Route::post('/job-orders/{job_order}/add-payment', [JobOrderController::class, 'addPayment'])->name('job-orders.add-payment');
+    Route::get('/job-orders/{job_order}/print', [JobOrderController::class, 'print'])->name('job-orders.print');
+    Route::post('/job-orders/{job_order}/update-repair-approval', [JobOrderController::class, 'updateRepairApproval'])->name('job-orders.update-repair-approval');
 
     // Estimate Routes
     Route::get('/estimates/statistics', [EstimateController::class, 'statistics'])->name('estimates.statistics');
@@ -390,7 +390,7 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::post('/estimates/{estimate}/approve', [EstimateController::class, 'approve'])->name('estimates.approve');
     Route::post('/estimates/{estimate}/reject', [EstimateController::class, 'reject'])->name('estimates.reject');
     Route::patch('/estimates/{estimate}/update-status', [EstimateController::class, 'updateStatus'])->name('estimates.update-status');
-    Route::post('/estimates/{estimate}/convert-to-work-order', [EstimateController::class, 'convertToWorkOrder'])->name('estimates.convert-to-work-order');
+    Route::post('/estimates/{estimate}/convert-to-job-order', [EstimateController::class, 'convertToJobOrder'])->name('estimates.convert-to-job-order');
     Route::post('/estimates/{estimate}/send', [EstimateController::class, 'send'])->name('estimates.send');
     Route::get('/estimates/{estimate}/print', [EstimateController::class, 'print'])->name('estimates.print');
 
@@ -405,7 +405,7 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     
     // AJAX endpoints for invoice creation
     Route::get('/invoices/get-vehicles/{customerId}', [InvoiceController::class, 'getVehiclesByCustomer'])->name('invoices.get-vehicles');
-    Route::get('/invoices/get-work-orders/{customerId}', [InvoiceController::class, 'getWorkOrdersByCustomer'])->name('invoices.get-work-orders');
+    Route::get('/invoices/get-job-orders/{customerId}', [InvoiceController::class, 'getJobOrdersByCustomer'])->name('invoices.get-job-orders');
 
     // Payment Routes
     // Payments have been integrated into Invoices interface
@@ -541,10 +541,10 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
             Route::post('/appointments', [\App\Http\Controllers\CustomerPortalController::class, 'storeAppointment'])->name('appointments.store');
             
             // Work orders
-            Route::get('/work-orders', [\App\Http\Controllers\CustomerPortalController::class, 'workOrders'])->name('work-orders');
-            Route::get('/work-orders/{workOrder}', [\App\Http\Controllers\CustomerPortalController::class, 'showWorkOrder'])->name('work-orders.show');
-            Route::post('/work-orders/{workOrder}/approve-estimate', [\App\Http\Controllers\CustomerPortalController::class, 'approveWorkOrderEstimate'])->name('work-orders.approve-estimate');
-            Route::get('/work-orders/{workOrder}/invoice', [\App\Http\Controllers\CustomerPortalController::class, 'showInvoice'])->name('work-orders.invoice');
+            Route::get('/job-orders', [\App\Http\Controllers\CustomerPortalController::class, 'jobOrders'])->name('job-orders');
+            Route::get('/job-orders/{jobOrder}', [\App\Http\Controllers\CustomerPortalController::class, 'showJobOrder'])->name('job-orders.show');
+            Route::post('/job-orders/{jobOrder}/approve-estimate', [\App\Http\Controllers\CustomerPortalController::class, 'approveJobOrderEstimate'])->name('job-orders.approve-estimate');
+            Route::get('/job-orders/{jobOrder}/invoice', [\App\Http\Controllers\CustomerPortalController::class, 'showInvoice'])->name('job-orders.invoice');
             
             // Inspections
             Route::get('/inspections', [\App\Http\Controllers\CustomerPortalController::class, 'inspections'])->name('inspections');
@@ -692,15 +692,15 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
         Route::post('/quality-checks/bulk-update', [\App\Http\Controllers\QualityCheckController::class, 'bulkUpdate'])->name('quality-checks.bulk-update');
         
         // Work Order Quality Checks
-        Route::resource('work-order-quality', \App\Http\Controllers\WorkOrderQualityController::class);
-        Route::post('/work-order-quality/{id}/approve', [\App\Http\Controllers\WorkOrderQualityController::class, 'approve'])->name('work-order-quality.approve');
-        Route::post('/work-order-quality/{id}/reject', [\App\Http\Controllers\WorkOrderQualityController::class, 'reject'])->name('work-order-quality.reject');
-        Route::post('/work-order-quality/bulk-approve', [\App\Http\Controllers\WorkOrderQualityController::class, 'bulkApprove'])->name('work-order-quality.bulk-approve');
-        Route::post('/work-order-quality/bulk-reject', [\App\Http\Controllers\WorkOrderQualityController::class, 'bulkReject'])->name('work-order-quality.bulk-reject');
-        Route::post('/work-order-quality/bulk-delete', [\App\Http\Controllers\WorkOrderQualityController::class, 'bulkDelete'])->name('work-order-quality.bulk-delete');
-        Route::get('/work-order-quality/{id}/duplicate', [\App\Http\Controllers\WorkOrderQualityController::class, 'duplicate'])->name('work-order-quality.duplicate');
-        Route::get('/work-order-quality/{id}/export-pdf', [\App\Http\Controllers\WorkOrderQualityController::class, 'exportPdf'])->name('work-order-quality.export-pdf');
-        Route::get('/work-order-quality/export', [\App\Http\Controllers\WorkOrderQualityController::class, 'export'])->name('work-order-quality.export');
+        Route::resource('job-order-quality', \App\Http\Controllers\JobOrderQualityController::class);
+        Route::post('/job-order-quality/{id}/approve', [\App\Http\Controllers\JobOrderQualityController::class, 'approve'])->name('job-order-quality.approve');
+        Route::post('/job-order-quality/{id}/reject', [\App\Http\Controllers\JobOrderQualityController::class, 'reject'])->name('job-order-quality.reject');
+        Route::post('/job-order-quality/bulk-approve', [\App\Http\Controllers\JobOrderQualityController::class, 'bulkApprove'])->name('job-order-quality.bulk-approve');
+        Route::post('/job-order-quality/bulk-reject', [\App\Http\Controllers\JobOrderQualityController::class, 'bulkReject'])->name('job-order-quality.bulk-reject');
+        Route::post('/job-order-quality/bulk-delete', [\App\Http\Controllers\JobOrderQualityController::class, 'bulkDelete'])->name('job-order-quality.bulk-delete');
+        Route::get('/job-order-quality/{id}/duplicate', [\App\Http\Controllers\JobOrderQualityController::class, 'duplicate'])->name('job-order-quality.duplicate');
+        Route::get('/job-order-quality/{id}/export-pdf', [\App\Http\Controllers\JobOrderQualityController::class, 'exportPdf'])->name('job-order-quality.export-pdf');
+        Route::get('/job-order-quality/export', [\App\Http\Controllers\JobOrderQualityController::class, 'export'])->name('job-order-quality.export');
         
         // Compliance Documents
         Route::resource('compliance', \App\Http\Controllers\ComplianceController::class);
@@ -898,7 +898,7 @@ Route::prefix('profit-analysis')->name('profit-analysis.')->middleware(['auth'])
     // Analysis Actions
     Route::post('/{profitAnalysis}/finalize', [\App\Http\Controllers\ProfitAnalysisController::class, 'finalize'])->name('finalize');
     Route::post('/{profitAnalysis}/recalculate', [\App\Http\Controllers\ProfitAnalysisController::class, 'recalculate'])->name('recalculate');
-    Route::post('/{profitAnalysis}/generate-from-work-order/{workOrder}', [\App\Http\Controllers\ProfitAnalysisController::class, 'generateFromWorkOrder'])->name('generate-from-work-order');
+    Route::post('/{profitAnalysis}/generate-from-job-order/{jobOrder}', [\App\Http\Controllers\ProfitAnalysisController::class, 'generateFromJobOrder'])->name('generate-from-job-order');
     
     // Data Export
     Route::get('/export', [\App\Http\Controllers\ProfitAnalysisController::class, 'export'])->name('export');
@@ -981,10 +981,10 @@ Route::prefix('profit-analysis')->name('profit-analysis.')->middleware(['auth'])
 //     Route::post('/corrective-actions/{action}/verify', [\App\Http\Controllers\QualityControlController::class, 'verifyCorrectiveAction'])->name('corrective-actions.verify');
 //     
 //     // Work Order Quality
-//     Route::get('/work-order-quality', [\App\Http\Controllers\QualityControlController::class, 'workOrderQuality'])->name('work-order-quality.index');
-//     Route::get('/work-order-quality/create', [\App\Http\Controllers\QualityControlController::class, 'createWorkOrderQuality'])->name('work-order-quality.create');
-//     Route::post('/work-order-quality', [\App\Http\Controllers\QualityControlController::class, 'storeWorkOrderQuality'])->name('work-order-quality.store');
-//     Route::get('/work-order-quality/{quality}', [\App\Http\Controllers\QualityControlController::class, 'showWorkOrderQuality'])->name('work-order-quality.show');
+//     Route::get('/job-order-quality', [\App\Http\Controllers\QualityControlController::class, 'jobOrderQuality'])->name('job-order-quality.index');
+//     Route::get('/job-order-quality/create', [\App\Http\Controllers\QualityControlController::class, 'createJobOrderQuality'])->name('job-order-quality.create');
+//     Route::post('/job-order-quality', [\App\Http\Controllers\QualityControlController::class, 'storeJobOrderQuality'])->name('job-order-quality.store');
+//     Route::get('/job-order-quality/{quality}', [\App\Http\Controllers\QualityControlController::class, 'showJobOrderQuality'])->name('job-order-quality.show');
 //     
 //     // Export APIs
 //     Route::prefix('export')->name('export.')->group(function () {

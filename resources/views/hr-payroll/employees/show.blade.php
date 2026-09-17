@@ -803,6 +803,29 @@
 * {
     transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
+
+    /* ===== Dark mode overrides ===== */
+    [data-theme="dark"] .card.shadow.mb-4 {
+        background: var(--dark-card) !important;
+    }
+    [data-theme="dark"] .calendar-container .table td,
+    [data-theme="dark"] .calendar-container .table th {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .calendar-container .table td:hover {
+        background-color: var(--dark-hover) !important;
+    }
+    [data-theme="dark"] .month-navigation .btn-light {
+        background: var(--dark-input-bg) !important;
+        border-color: var(--dark-border) !important;
+        color: var(--dark-text) !important;
+    }
+    [data-theme="dark"] .month-navigation .btn-light:hover {
+        background: var(--dark-hover) !important;
+        color: var(--dark-text) !important;
+    }
 </style>
 @endpush
 

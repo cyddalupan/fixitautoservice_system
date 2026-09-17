@@ -55,7 +55,7 @@
             <!-- Quick Actions Buttons -->
             <div class="btn-group ms-2" role="group">
                 <!-- Create Estimate Button -->
-                @if($inspection->inspection_status === 'completed' && !$inspection->workOrder)
+                @if($inspection->inspection_status === 'completed' && !$inspection->jobOrder)
                     <a href="{{ route('estimates.create', ['inspection_id' => $inspection->id]) }}" class="btn btn-success">
                         <i class="fas fa-file-invoice-dollar me-1"></i> Create Estimate
                     </a>
@@ -71,8 +71,8 @@
                 </a>
                 
                 <!-- View Work Order Button -->
-                @if($inspection->workOrder)
-                    <a href="{{ route('work-orders.show', $inspection->workOrder->id) }}" class="btn btn-info">
+                @if($inspection->jobOrder)
+                    <a href="{{ route('job-orders.show', $inspection->jobOrder->id) }}" class="btn btn-info">
                         <i class="fas fa-wrench me-1"></i> Work Order
                     </a>
                 @endif

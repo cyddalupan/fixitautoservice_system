@@ -8,10 +8,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class ProfitAnalysis extends Model
 {
+    protected $table = 'profit_analysis';
+
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'work_order_id',
+        'job_order_id',
         'invoice_id',
         'analysis_date',
         'total_revenue',
@@ -68,9 +70,9 @@ class ProfitAnalysis extends Model
     /**
      * Relationship with work order
      */
-    public function workOrder()
+    public function jobOrder()
     {
-        return $this->belongsTo(WorkOrder::class);
+        return $this->belongsTo(JobOrder::class);
     }
 
     /**
@@ -112,16 +114,16 @@ class ProfitAnalysis extends Model
     /**
      * Generate analysis from work order
      */
-    public static function generateFromWorkOrder(WorkOrder $workOrder)
+    public static function generateFromJobOrder(JobOrder $jobOrder)
     {
         $analysis = new self();
-        $analysis->work_order_id = $workOrder->id;
-        $analysis->invoice_id = $workOrder->invoice_id ?? null;
+        $analysis->job_order_id = $jobOrder->id;
+        $analysis->invoice_id = $jobOrder->invoice_id ?? null;
         $analysis->analysis_date = now();
         
         // Calculate revenue and costs
-        $analysis->labor_revenue = $workOrder->actual_labor_cost ?? $workOrder->estimated_labor_cost ?? 0;
-        $analysis->parts_revenue = $workOrder->actual_parts_cost ?? $workOrder->estimated_parts_cost ?? 0;
+        $analysis->labor_revenue = $jobOrder->actual_labor_cost ?? $jobOrder->estimated_labor_cost ?? 0;
+        $analysis->parts_revenue = $jobOrder->actual_parts_cost ?? $jobOrder->estimated_parts_cost ?? 0;
         $analysis->other_revenue = 0; // Could be fees, shipping, etc.
         
         $analysis->total_revenue = $analysis->labor_revenue + $analysis->parts_revenue + $analysis->other_revenue;

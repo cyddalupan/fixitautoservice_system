@@ -15,7 +15,7 @@ class QualityAudit extends Model
         'title',
         'description',
         'checklist_id',
-        'work_order_id',
+        'job_order_id',
         'vehicle_id',
         'technician_id',
         'auditor_id',
@@ -55,9 +55,9 @@ class QualityAudit extends Model
     /**
      * Get the work order associated with this audit
      */
-    public function workOrder()
+    public function jobOrder()
     {
-        return $this->belongsTo(WorkOrder::class, 'work_order_id');
+        return $this->belongsTo(JobOrder::class, 'job_order_id');
     }
 
     /**
@@ -197,7 +197,7 @@ class QualityAudit extends Model
                 'auditor' => $this->auditor->name ?? 'Unknown',
                 'technician' => $this->technician->name ?? 'N/A',
                 'vehicle' => $this->vehicle ? $this->vehicle->make . ' ' . $this->vehicle->model . ' (' . $this->vehicle->license_plate . ')' : 'N/A',
-                'work_order' => $this->workOrder ? $this->workOrder->work_order_number : 'N/A'
+                'job_order' => $this->jobOrder ? $this->jobOrder->job_order_number : 'N/A'
             ],
             'results' => $detailedResults['results'],
             'summary' => $detailedResults['summary'],
@@ -245,7 +245,7 @@ class QualityAudit extends Model
             'type' => 'internal',
             'severity' => $this->percentage_score < 50 ? 'critical' : ($this->percentage_score < 70 ? 'major' : 'minor'),
             'audit_id' => $this->id,
-            'work_order_id' => $this->work_order_id,
+            'job_order_id' => $this->job_order_id,
             'vehicle_id' => $this->vehicle_id,
             'technician_id' => $this->technician_id,
             'reported_by' => $this->auditor_id,

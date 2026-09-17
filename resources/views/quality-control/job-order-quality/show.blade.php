@@ -12,19 +12,19 @@
                     <i class="fas fa-clipboard-check text-primary me-2"></i>
                     Quality Check Details
                 </h1>
-                <p class="text-muted mb-0">Quality check for work order WO-{{ str_pad($qualityCheck->work_order_id, 6, '0', STR_PAD_LEFT) }}</p>
+                <p class="text-muted mb-0">Quality check for work order WO-{{ str_pad($qualityCheck->job_order_id, 6, '0', STR_PAD_LEFT) }}</p>
             </div>
             <div class="col-auto">
-                <a href="{{ route('work-order-quality.index') }}" class="btn btn-outline-secondary">
+                <a href="{{ route('quality-control.job-order-quality.index') }}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-1"></i> Back to List
                 </a>
                 @if($qualityCheck->status === 'pending' && auth()->user()->can('approve', $qualityCheck))
                     <div class="btn-group">
-                        <a href="{{ route('work-order-quality.approve', $qualityCheck->id) }}" 
+                        <a href="{{ route('quality-control.job-order-quality.approve', $qualityCheck->id) }}" 
                            class="btn btn-success" onclick="return confirm('Approve this quality check?')">
                             <i class="fas fa-check me-1"></i> Approve
                         </a>
-                        <a href="{{ route('work-order-quality.reject', $qualityCheck->id) }}" 
+                        <a href="{{ route('quality-control.job-order-quality.reject', $qualityCheck->id) }}" 
                            class="btn btn-danger" onclick="return confirm('Reject this quality check?')">
                             <i class="fas fa-times me-1"></i> Reject
                         </a>
@@ -77,17 +77,17 @@
                         <div class="col-md-6">
                             <p class="mb-2">
                                 <strong>Work Order:</strong>
-                                <span class="float-end">WO-{{ str_pad($qualityCheck->work_order_id, 6, '0', STR_PAD_LEFT) }}</span>
+                                <span class="float-end">WO-{{ str_pad($qualityCheck->job_order_id, 6, '0', STR_PAD_LEFT) }}</span>
                             </p>
                             <p class="mb-2">
                                 <strong>Customer:</strong>
-                                <span class="float-end">{{ $qualityCheck->workOrder->customer->name ?? 'Unknown' }}</span>
+                                <span class="float-end">{{ $qualityCheck->jobOrder->customer->name ?? 'Unknown' }}</span>
                             </p>
                             <p class="mb-2">
                                 <strong>Vehicle:</strong>
                                 <span class="float-end">
-                                    {{ $qualityCheck->workOrder->vehicle->make ?? 'Unknown' }} 
-                                    {{ $qualityCheck->workOrder->vehicle->model ?? '' }}
+                                    {{ $qualityCheck->jobOrder->vehicle->make ?? 'Unknown' }} 
+                                    {{ $qualityCheck->jobOrder->vehicle->model ?? '' }}
                                 </span>
                             </p>
                         </div>
@@ -98,12 +98,12 @@
                             </p>
                             <p class="mb-2">
                                 <strong>Service Type:</strong>
-                                <span class="float-end">{{ $qualityCheck->workOrder->service_type ?? 'N/A' }}</span>
+                                <span class="float-end">{{ $qualityCheck->jobOrder->service_type ?? 'N/A' }}</span>
                             </p>
                             <p class="mb-2">
                                 <strong>Service Date:</strong>
                                 <span class="float-end">
-                                    {{ $qualityCheck->workOrder->created_at->format('M d, Y') ?? 'N/A' }}
+                                    {{ $qualityCheck->jobOrder->created_at->format('M d, Y') ?? 'N/A' }}
                                 </span>
                             </p>
                         </div>
@@ -353,19 +353,19 @@
                 <div class="card-body">
                     <div class="d-grid gap-2">
                         @if($qualityCheck->status === 'pending' && auth()->id() == $qualityCheck->technician_id)
-                            <a href="{{ route('work-order-quality.edit', $qualityCheck->id) }}" 
+                            <a href="{{ route('quality-control.job-order-quality.edit', $qualityCheck->id) }}" 
                                class="btn btn-outline-primary">
                                 <i class="fas fa-edit me-1"></i> Edit Quality Check
                             </a>
                         @endif
                         
-                        <a href="{{ route('work-order-quality.duplicate', $qualityCheck->id) }}" 
+                        <a href="{{ route('quality-control.job-order-quality.duplicate', $qualityCheck->id) }}" 
                            class="btn btn-outline-info">
                             <i class="fas fa-copy me-1"></i> Duplicate for Another WO
                         </a>
                         
                         @if(auth()->user()->can('delete', $qualityCheck))
-                            <form action="{{ route('work-order-quality.destroy', $qualityCheck->id) }}" 
+                            <form action="{{ route('quality-control.job-order-quality.destroy', $qualityCheck->id) }}" 
                                   method="POST" class="d-grid">
                                 @csrf
                                 @method('DELETE')
@@ -376,7 +376,7 @@
                             </form>
                         @endif
                         
-                        <a href="{{ route('work-order-quality.export-pdf', $qualityCheck->id) }}" 
+                        <a href="{{ route('quality-control.job-order-quality.export-pdf', $qualityCheck->id) }}" 
                            class="btn btn-outline-secondary">
                             <i class="fas fa-file-pdf me-1"></i> Export as PDF
                         </a>

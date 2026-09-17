@@ -15,10 +15,10 @@
                 <p class="text-muted mb-0">Monitor quality metrics and compliance across the organization</p>
             </div>
             <div class="col-auto">
-                <a href="{{ route('dashboard.export') }}" class="btn btn-outline-secondary">
+                <a href="{{ route('quality-control.dashboard.export') }}" class="btn btn-outline-secondary">
                     <i class="fas fa-download me-1"></i> Export Report
                 </a>
-                <a href="{{ route('dashboard.alerts') }}" class="btn btn-outline-danger">
+                <a href="{{ route('quality-control.dashboard.alerts') }}" class="btn btn-outline-danger">
                     <i class="fas fa-bell me-1"></i> View Alerts
                 </a>
             </div>
@@ -223,7 +223,7 @@
     <div class="row">
         <div class="col-md-3">
             <div class="card card-link">
-                <a href="{{ route('quality-checks.index') }}" class="text-decoration-none">
+                <a href="{{ route('quality-control.quality-checks.index') }}" class="text-decoration-none">
                     <div class="card-body text-center">
                         <div class="mb-3">
                             <i class="fas fa-clipboard-check fa-2x text-primary"></i>
@@ -236,7 +236,7 @@
         </div>
         <div class="col-md-3">
             <div class="card card-link">
-                <a href="{{ route('work-order-quality.index') }}" class="text-decoration-none">
+                <a href="{{ route('quality-control.job-order-quality.index') }}" class="text-decoration-none">
                     <div class="card-body text-center">
                         <div class="mb-3">
                             <i class="fas fa-clipboard-list fa-2x text-success"></i>
@@ -249,7 +249,7 @@
         </div>
         <div class="col-md-3">
             <div class="card card-link">
-                <a href="{{ route('compliance.index') }}" class="text-decoration-none">
+                <a href="{{ route('compliance.dashboard') }}" class="text-decoration-none">
                     <div class="card-body text-center">
                         <div class="mb-3">
                             <i class="fas fa-file-contract fa-2x text-warning"></i>
@@ -262,7 +262,7 @@
         </div>
         <div class="col-md-3">
             <div class="card card-link">
-                <a href="{{ route('customer-satisfaction.index') }}" class="text-decoration-none">
+                <a href="{{ route('quality-control.customer-satisfaction.index') }}" class="text-decoration-none">
                     <div class="card-body text-center">
                         <div class="mb-3">
                             <i class="fas fa-smile fa-2x text-info"></i>

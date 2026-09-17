@@ -8,6 +8,8 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <meta http-equiv="Cache-Control" content="no-store">
+    <meta name="version" content="v20260722-1">
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ asset('favicon.png') }}">
@@ -142,16 +144,16 @@
         .sidebar .nav-link.active[href*="appointments"] { border-left-color: #3b82f6 !important; }
         .sidebar .nav-link.active[href*="inspections"] { border-left-color: #0ea5e9 !important; }
         .sidebar .nav-link.active[href*="estimates"] { border-left-color: #8b5cf6 !important; }
-        .sidebar .nav-link.active[href*="work-orders"] { border-left-color: #f97316 !important; }
+        .sidebar .nav-link.active[href*="job-orders"] { border-left-color: #f97316 !important; }
         .sidebar .nav-link.active[href*="service-records"] { border-left-color: #6366f1 !important; }
         .sidebar .nav-link.active[href*="archives"] { border-left-color: #6b7280 !important; }
         .sidebar .nav-link.active[href*="invoices"] { border-left-color: #10b981 !important; }
         .sidebar .nav-link.active[href*="payments"] { border-left-color: #10b981 !important; }
 
         :root {
-            --primary-color: #2c3e50;
-            --secondary-color: #3498db;
-            --accent-color: #e74c3c;
+            --primary-color: #0b0d12;
+            --secondary-color: #dc2626;
+            --accent-color: #dc2626;
             --success-color: #27ae60;
             --warning-color: #f39c12;
             --light-bg: #f8f9fa;
@@ -175,13 +177,13 @@
 
         /* ENSURE CONSISTENT NAVBAR ACROSS ALL PAGES */
         .navbar {
-            background-color: #343a40 !important; /* Bootstrap bg-dark color */
+            background-color: #0d0f14 !important; /* Near-black to match website navbar */
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
             z-index: 1030 !important;
         }
 
         .navbar-brand {
-            color: #3498db !important; /* Consistent brand color */
+            color: #dc2626 !important; /* Brand red to match website */
             font-size: 1.25rem !important;
         }
 
@@ -195,7 +197,7 @@
 
         /* ENSURE CONSISTENT SIDEBAR ACROSS ALL PAGES */
         .sidebar {
-            background-color: #2c3e50 !important; /* Consistent sidebar color */
+            background-color: #0b0d12 !important; /* Near-black sidebar to match website */
             /* Remove fixed height to prevent flex stretching */
             /* min-height: calc(100vh - 56px) !important; */
             position: sticky !important;
@@ -339,19 +341,19 @@
         .sidebar .nav-link.active {
             color: #ffffff !important;
             background-color: rgba(255, 255, 255, 0.1) !important;
-            border-left: 3px solid #3498db !important;
+            border-left: 3px solid #dc2626 !important;
         }
 
         .sidebar .nav-link:hover {
             color: #ffffff !important;
             background-color: rgba(255, 255, 255, 0.1) !important;
-            border-left: 3px solid #3498db !important;
+            border-left: 3px solid #dc2626 !important;
         }
 
         .sidebar .nav-link.active {
             color: #ffffff !important;
             background-color: rgba(255, 255, 255, 0.15) !important;
-            border-left: 3px solid #3498db !important;
+            border-left: 3px solid #dc2626 !important;
         }
 
         .sidebar .nav-link i {
@@ -376,7 +378,7 @@
             opacity: 0.8;
         }
 
-        .stat-card.bg-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .stat-card.bg-primary { background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); }
         .stat-card.bg-success { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
         .stat-card.bg-warning { background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%); }
         .stat-card.bg-danger { background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%); }
@@ -387,6 +389,10 @@
             border-top: none;
             font-weight: 600;
             color: var(--primary-color);
+        }
+        .table-dark th,
+        .table-dark td {
+            color: var(--bs-table-color, #fff);
         }
 
         .badge {
@@ -401,7 +407,7 @@
         }
 
         .btn-primary:hover {
-            background: #2980b9;
+            background: #b91c1c;
         }
 
         .page-header {
@@ -652,44 +658,36 @@
                 <ul class="navbar-nav ms-auto">
                     <!-- Quality Control & Compliance -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="qualityDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle" href="#" id="qualityDropdown" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <i class="fas fa-clipboard-check"></i>
                             <span>Quality & Compliance</span>
                         </a>
                         <div class="dropdown-menu" aria-labelledby="qualityDropdown">
-                            <a class="dropdown-item" href="{{ route("quality-control.work-order-quality.index") }}">
+                            <a class="dropdown-item" href="{{ route('quality-control.dashboard.index') }}">
+                                <i class="fas fa-tachometer-alt"></i> Dashboard
+                            </a>
+                            <a class="dropdown-item" href="{{ route('quality-control.checklists.index') }}">
+                                <i class="fas fa-clipboard-list"></i> Checklists
+                            </a>
+                            <a class="dropdown-item" href="{{ route('quality-control.job-order-quality.index') }}">
                                 <i class="fas fa-clipboard-check"></i> Work Order Quality
                             </a>
-                            <!-- Temporarily commented out - routes not yet implemented
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-tachometer-alt"></i> Quality Dashboard
+                            <a class="dropdown-item" href="{{ route('quality-control.quality-checks.index') }}">
+                                <i class="fas fa-check-double"></i> Quality Checks
                             </a>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-list-check"></i> Checklists
+                            <a class="dropdown-item" href="{{ route('quality-control.audits.index') }}">
+                                <i class="fas fa-search"></i> Quality Audits
                             </a>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-clipboard-list"></i> Quality Audits
+                            <a class="dropdown-item" href="{{ route('quality-control.ncrs.index') }}">
+                                <i class="fas fa-exclamation-triangle"></i> Non-Conformance
                             </a>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-exclamation-triangle"></i> NCRs
-                            </a>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-wrench"></i> Corrective Actions
+                            <a class="dropdown-item" href="{{ route('quality-control.corrective-actions.index') }}">
+                                <i class="fas fa-tools"></i> Corrective Actions
                             </a>
                             <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-shield-alt"></i> Compliance Dashboard
+                            <a class="dropdown-item" href="{{ route('compliance.dashboard') }}">
+                                <i class="fas fa-file-contract"></i> Compliance
                             </a>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-book"></i> Standards
-                            </a>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-file-alt"></i> Documents
-                            </a>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-search"></i> Audit Management
-                            </a>
-                            -->
                         </div>
                     </li>
                     
@@ -702,65 +700,24 @@
 
                     <!-- Notification Bell -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link position-relative" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" data-bs-display="static" aria-expanded="false" title="Notifications">
                             <i class="fas fa-bell"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationCount">
-                                3
-                            </span>
+                            <span class="badge rounded-pill" id="notificationCount">0</span>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end" style="width: 300px;">
+                        <ul class="dropdown-menu dropdown-menu-end" id="notificationDropdown">
                             <li class="dropdown-header">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <span class="fw-bold">Notifications</span>
-                                    <a href="#" class="small text-decoration-none">Mark all as read</a>
+                                    <a href="#" class="small" id="markAllRead">Mark all as read</a>
                                 </div>
                             </li>
                             <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <a class="dropdown-item" href="#">
-                                    <div class="d-flex">
-                                        <div class="flex-shrink-0">
-                                            <i class="fas fa-calendar-check text-success"></i>
-                                        </div>
-                                        <div class="flex-grow-1 ms-3">
-                                            <div class="fw-semibold">Appointment Reminder</div>
-                                            <div class="small text-gray-600">Your service appointment is tomorrow at 10:00 AM</div>
-                                            <div class="small text-gray-600">2 hours ago</div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="#">
-                                    <div class="d-flex">
-                                        <div class="flex-shrink-0">
-                                            <i class="fas fa-file-invoice-dollar text-primary"></i>
-                                        </div>
-                                        <div class="flex-grow-1 ms-3">
-                                            <div class="fw-semibold">Invoice Ready</div>
-                                            <div class="small text-gray-600">Your invoice #INV-2026-00123 is ready for payment</div>
-                                            <div class="small text-gray-600">1 day ago</div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item" href="#">
-                                    <div class="d-flex">
-                                        <div class="flex-shrink-0">
-                                            <i class="fas fa-gift text-warning"></i>
-                                        </div>
-                                        <div class="flex-grow-1 ms-3">
-                                            <div class="fw-semibold">Loyalty Reward</div>
-                                            <div class="small text-gray-600">You've earned enough points for a free oil change!</div>
-                                            <div class="small text-gray-600">3 days ago</div>
-                                        </div>
-                                    </div>
-                                </a>
+                            <li id="notificationItems">
+                                <div class="dropdown-item text-muted">Loading…</div>
                             </li>
                             <li><hr class="dropdown-divider"></li>
-                            <li class="dropdown-item text-center">
-                                <a href="#" class="text-decoration-none">View all notifications</a>
+                            <li class="dropdown-item view-all">
+                                <a href="{{ route('appointments.index') }}" class="text-decoration-none">View all notifications</a>
                             </li>
                         </ul>
                     </li>
@@ -768,7 +725,7 @@
                     <!-- User Profile Dropdown -->
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-user-circle"></i>
+                            <i class="fas fa-car"></i>
                             <span>{{ Auth::user()->name ?? 'User' }}</span>
                         </a>
                         <div class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
@@ -784,17 +741,8 @@
                                 <button type="submit" class="dropdown-item">
                                     <i class="fas fa-sign-out-alt me-2"></i> Logout
                                 </button>
-
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <form method="POST" action="{{ route('logout') }}">
-                                    @csrf
-                                    <button type="submit" class="dropdown-item">
-                                        <i class="fas fa-sign-out-alt me-2"></i>Logout
-                                    </button>
-                                </form>
-                            </li>
-                        </ul>
+                            </form>
+                        </div>
                     </li>
                 </ul>
             </div>
@@ -1085,6 +1033,77 @@
                         toggleTheme();
                     }
                 });
+            });
+        })();
+    </script>
+
+        <!-- Notification bell behavior: real data from /api/notifications + mark-all-read -->
+    <script>
+        (function () {
+            var itemsEl = document.getElementById('notificationItems');
+            var badge = document.getElementById('notificationCount');
+
+            function renderCount(n) {
+                if (badge) {
+                    badge.textContent = n > 0 ? n : '';
+                    badge.style.display = n > 0 ? '' : 'none';
+                }
+            }
+
+            function renderItems(items) {
+                if (!itemsEl) return;
+                if (!items || items.length === 0) {
+                    itemsEl.innerHTML = '<div class="dropdown-item text-muted">No notifications yet.</div>';
+                    return;
+                }
+                itemsEl.innerHTML = items.map(function (n) {
+                    var icon = '<i class="fas fa-calendar-check text-success"></i>';
+                    var tag = n.read ? '' : '<span class="badge bg-primary ms-1">new</span>';
+                    var time = n.time ? '<div class="small text-gray-600">' + n.time + '</div>' : '';
+                    return '<a class="dropdown-item" href="' + (n.link || '/appointments') + '">' +
+                        '<div class="flex-shrink-0 pe-3">' + icon + '</div>' +
+                        '<div class="flex-grow-1 min-w-0">' +
+                            '<div class="fw-semibold">' + (n.message || 'Notification') + tag + '</div>' +
+                            time +
+                        '</div>' +
+                    '</a>';
+                }).join('');
+            }
+
+            function loadNotifications() {
+                fetch('/api/notifications', {
+                    headers: { 'Accept': 'application/json' }
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    renderCount(data.unread_count || 0);
+                    renderItems(data.items || []);
+                })
+                .catch(function () {});
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                loadNotifications();
+
+                var mark = document.getElementById('markAllRead');
+                if (mark) {
+                    mark.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        fetch('/api/notifications/read-all', {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]') ? document.querySelector('meta[name="csrf-token"]').content : ''
+                            }
+                        })
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            renderCount(data.unread_count || 0);
+                            loadNotifications();
+                        })
+                        .catch(function () {});
+                    });
+                }
             });
         })();
     </script>

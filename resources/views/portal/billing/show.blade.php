@@ -140,12 +140,12 @@
                                             @endif
                                         </td>
                                     </tr>
-                                    @if($invoice->work_order)
+                                    @if($invoice->job_order)
                                     <tr>
                                         <th class="text-start">Work Order:</th>
                                         <td class="text-end">
-                                            <a href="{{ route('portal.service-requests.show', $invoice->work_order->id) }}" class="text-decoration-none">
-                                                #{{ $invoice->work_order->work_order_number }}
+                                            <a href="{{ route('portal.service-requests.show', $invoice->job_order->id) }}" class="text-decoration-none">
+                                                #{{ $invoice->job_order->job_order_number }}
                                             </a>
                                         </td>
                                     </tr>

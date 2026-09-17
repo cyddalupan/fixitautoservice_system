@@ -8,16 +8,16 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (!Schema::hasColumn('work_orders', 'service_type')) {
-            Schema::table('work_orders', function (Blueprint $table) {
-                $table->string('service_type', 50)->nullable()->after('work_order_type');
+        if (!Schema::hasColumn('job_orders', 'service_type')) {
+            Schema::table('job_orders', function (Blueprint $table) {
+                $table->string('service_type', 50)->nullable()->after('job_order_type');
             });
         }
     }
 
     public function down(): void
     {
-        Schema::table('work_orders', function (Blueprint $table) {
+        Schema::table('job_orders', function (Blueprint $table) {
             $table->dropColumn('service_type');
         });
     }

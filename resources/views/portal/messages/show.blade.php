@@ -222,13 +222,13 @@
                                         </div>
                                     @endif
 
-                                    @if($message->work_order)
+                                    @if($message->job_order)
                                         <div class="mb-3">
                                             <h6><i class="fas fa-wrench me-2"></i>Related Work Order</h6>
                                             <div class="p-2 border rounded bg-light">
-                                                <p class="mb-1"><strong>WO-{{ $message->work_order->id }}</strong></p>
-                                                <p class="mb-0 text-muted small">Status: {{ ucfirst($message->work_order->status) }}</p>
-                                                <p class="mb-0 text-muted small">Created: {{ $message->work_order->created_at->format('M j, Y') }}</p>
+                                                <p class="mb-1"><strong>WO-{{ $message->job_order->id }}</strong></p>
+                                                <p class="mb-0 text-muted small">Status: {{ ucfirst($message->job_order->status) }}</p>
+                                                <p class="mb-0 text-muted small">Created: {{ $message->job_order->created_at->format('M j, Y') }}</p>
                                             </div>
                                         </div>
                                     @endif

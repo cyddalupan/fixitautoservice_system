@@ -91,9 +91,9 @@ class Estimate extends Model
         return $this->hasMany(EstimateItem::class)->orderBy('sort_order');
     }
 
-    public function workOrder(): HasOne
+    public function jobOrder(): HasOne
     {
-        return $this->hasOne(WorkOrder::class);
+        return $this->hasOne(JobOrder::class);
     }
 
         public function user(): BelongsTo
@@ -141,7 +141,7 @@ public function serviceAdvisor(): BelongsTo
         'approved'            => 'Approved',
         'rejected'            => 'Rejected',
         'expired'             => 'Expired',
-        'converted_to_work_order' => 'Converted to Work Order',
+        'converted_to_job_order' => 'Converted to Work Order',
         'converted_to_repair_order' => 'Converted to Repair Order',
     ];
 
@@ -153,7 +153,7 @@ public function serviceAdvisor(): BelongsTo
         'approved'            => 'badge-approved',
         'rejected'            => 'badge-rejected',
         'expired'             => 'badge-expired',
-        'converted_to_work_order' => 'badge-converted',
+        'converted_to_job_order' => 'badge-converted',
         'converted_to_repair_order' => 'badge-converted',
     ];
 
@@ -177,9 +177,9 @@ public function serviceAdvisor(): BelongsTo
         return $this->expiry_date < now();
     }
 
-    public function canConvertToWorkOrder(): bool
+    public function canConvertToJobOrder(): bool
     {
-        return $this->status === 'approved' && !$this->isExpired() && !$this->workOrder;
+        return $this->status === 'approved' && !$this->isExpired() && !$this->jobOrder;
     }
 
     public function getFormattedTotalAttribute(): string
@@ -242,7 +242,7 @@ public function serviceAdvisor(): BelongsTo
             'approved'            => 'bg-success',
             'rejected'            => 'bg-danger',
             'expired'             => 'bg-dark',
-            'converted_to_work_order'  => 'bg-primary',
+            'converted_to_job_order'  => 'bg-primary',
             'converted_to_repair_order' => 'bg-primary',
         ];
         return $map[$this->status] ?? 'bg-secondary';

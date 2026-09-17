@@ -32,21 +32,30 @@
                             <h5 class="mb-3 border-bottom pb-2">Required Information</h5>
                             
                             <div class="form-group mb-3">
-                                <label for="full_name" class="form-label">Full Name *</label>
-                                <input type="text" class="form-control @error('full_name') is-invalid @enderror" 
-                                       id="full_name" name="full_name" value="{{ old('full_name') }}" required>
-                                @error('full_name')
+                                <label for="first_name" class="form-label">First Name *</label>
+                                <input type="text" class="form-control @error('first_name') is-invalid @enderror" 
+                                       id="first_name" name="first_name" value="{{ old('first_name') }}" required>
+                                @error('first_name')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                            
+
+                            <div class="form-group mb-3">
+                                <label for="last_name" class="form-label">Last Name *</label>
+                                <input type="text" class="form-control @error('last_name') is-invalid @enderror" 
+                                       id="last_name" name="last_name" value="{{ old('last_name') }}" required>
+                                @error('last_name')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+
                             <div class="form-group mb-3">
                                 <label for="phone" class="form-label">Mobile Number *</label>
                                 <input type="tel" class="form-control @error('phone') is-invalid @enderror" 
                                        id="phone" name="phone" value="{{ old('phone') }}" required>
                                 @error('phone')
                                     <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror>
+                                @enderror
                             </div>
                             
                         </div>
@@ -77,7 +86,7 @@
                                        id="facebook_profile" name="facebook_profile" value="{{ old('facebook_profile') }}">
                                 @error('facebook_profile')
                                     <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror>
+                                @enderror
                                 <small class="form-text text-muted">Facebook profile URL or Messenger username</small>
                             </div>
                             
@@ -87,7 +96,7 @@
                                        id="email" name="email" value="{{ old('email') }}">
                                 @error('email')
                                     <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror>
+                                @enderror
                             </div>
                             
                             <div class="form-group mb-3">
@@ -96,7 +105,107 @@
                                        id="address" name="address" value="{{ old('address') }}">
                                 @error('address')
                                     <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror>
+                                @enderror
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label for="city" class="form-label">City</label>
+                                        <input type="text" class="form-control @error('city') is-invalid @enderror" 
+                                               id="city" name="city" value="{{ old('city') }}">
+                                        @error('city')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label for="state" class="form-label">State / Province</label>
+                                        <input type="text" class="form-control @error('state') is-invalid @enderror" 
+                                               id="state" name="state" value="{{ old('state') }}">
+                                        @error('state')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label for="zip_code" class="form-label">Zip Code</label>
+                                        <input type="text" class="form-control @error('zip_code') is-invalid @enderror" 
+                                               id="zip_code" name="zip_code" value="{{ old('zip_code') }}">
+                                        @error('zip_code')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label for="customer_type" class="form-label">Customer Type</label>
+                                        <select class="form-select @error('customer_type') is-invalid @enderror" 
+                                                id="customer_type" name="customer_type">
+                                            <option value="">Select Type</option>
+                                            <option value="individual" {{ old('customer_type') == 'individual' ? 'selected' : '' }}>Individual</option>
+                                            <option value="commercial" {{ old('customer_type') == 'commercial' ? 'selected' : '' }}>Commercial</option>
+                                            <option value="fleet" {{ old('customer_type') == 'fleet' ? 'selected' : '' }}>Fleet</option>
+                                        </select>
+                                        @error('customer_type')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label for="segment" class="form-label">Segment</label>
+                                        <select class="form-select @error('segment') is-invalid @enderror" 
+                                                id="segment" name="segment">
+                                            <option value="">Select Segment</option>
+                                            <option value="standard" {{ old('segment') == 'standard' ? 'selected' : '' }}>Standard</option>
+                                            <option value="premium" {{ old('segment') == 'premium' ? 'selected' : '' }}>Premium</option>
+                                            <option value="vip" {{ old('segment') == 'vip' ? 'selected' : '' }}>VIP</option>
+                                            <option value="fleet" {{ old('segment') == 'fleet' ? 'selected' : '' }}>Fleet</option>
+                                        </select>
+                                        @error('segment')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group mb-3">
+                                        <label for="is_active" class="form-label">Status</label>
+                                        <select class="form-select @error('is_active') is-invalid @enderror" 
+                                                id="is_active" name="is_active">
+                                            <option value="1" {{ old('is_active', '1') == '1' ? 'selected' : '' }}>Active</option>
+                                            <option value="0" {{ old('is_active') == '0' ? 'selected' : '' }}>Inactive</option>
+                                        </select>
+                                        @error('is_active')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label for="preferred_contact_method" class="form-label">Preferred Contact Method</label>
+                                <select class="form-select" id="preferred_contact_method" name="preferred_contact_method">
+                                    <option value="">Select</option>
+                                    <option value="phone" {{ old('preferred_contact_method') == 'phone' ? 'selected' : '' }}>Phone Call</option>
+                                    <option value="sms" {{ old('preferred_contact_method') == 'sms' ? 'selected' : '' }}>SMS / Text</option>
+                                    <option value="email" {{ old('preferred_contact_method') == 'email' ? 'selected' : '' }}>Email</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group mb-3">
+                                <label for="notes" class="form-label">Notes (Internal)</label>
+                                <textarea class="form-control @error('notes') is-invalid @enderror" 
+                                          id="notes" name="notes" rows="3"
+                                          placeholder="Any additional notes about this customer">{{ old('notes') }}</textarea>
+                                @error('notes')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
                             </div>
                             
                             <!-- Vehicle Information - Add Vehicle Immediately -->

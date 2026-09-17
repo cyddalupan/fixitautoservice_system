@@ -291,18 +291,18 @@
                     <div class="form-section-body">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label for="work_order_id" class="form-label fw-medium">
+                                <label for="job_order_id" class="form-label fw-medium">
                                     <i class="fas fa-clipboard-list me-1 text-primary"></i>Work Order
                                 </label>
-                                <select class="form-select @error('work_order_id') is-invalid @enderror" id="work_order_id" name="work_order_id">
+                                <select class="form-select @error('job_order_id') is-invalid @enderror" id="job_order_id" name="job_order_id">
                                     <option value="">None</option>
-                                    @foreach($workOrders as $wo)
-                                        <option value="{{ $wo->id }}" {{ old('work_order_id', $inspection->work_order_id) == $wo->id ? 'selected' : '' }}>
+                                    @foreach($jobOrders as $wo)
+                                        <option value="{{ $wo->id }}" {{ old('job_order_id', $inspection->job_order_id) == $wo->id ? 'selected' : '' }}>
                                             #{{ $wo->id }} - {{ $wo->customer->full_name ?? $wo->customer->first_name ?? 'N/A' }} ({{ $wo->vehicle->make ?? '' }} {{ $wo->vehicle->model ?? '' }})
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('work_order_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                @error('job_order_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="col-md-6">
                                 <label for="appointment_id" class="form-label fw-medium">

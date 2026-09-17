@@ -191,12 +191,12 @@
                                 <tr>
                                     <th>Work Order:</th>
                                     <td>
-                                        @if($partsOrder->workOrder)
-                                            <a href="{{ route('work-orders.show', $partsOrder->workOrder) }}" class="text-decoration-none">
-                                                #{{ $partsOrder->workOrder->work_order_number }}
+                                        @if($partsOrder->jobOrder)
+                                            <a href="{{ route('job-orders.show', $partsOrder->jobOrder) }}" class="text-decoration-none">
+                                                #{{ $partsOrder->jobOrder->job_order_number }}
                                             </a>
                                             <div class="small text-muted">
-                                                {{ $partsOrder->workOrder->customer->name ?? 'Unknown Customer' }}
+                                                {{ $partsOrder->jobOrder->customer->name ?? 'Unknown Customer' }}
                                             </div>
                                         @else
                                             <span class="text-muted">Not linked</span>

@@ -8,14 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('work_orders', function (Blueprint $table) {
+        Schema::table('job_orders', function (Blueprint $table) {
             $table->timestamp('viewed_at')->nullable()->after('tags');
         });
     }
 
     public function down(): void
     {
-        Schema::table('work_orders', function (Blueprint $table) {
+        Schema::table('job_orders', function (Blueprint $table) {
             $table->dropColumn('viewed_at');
         });
     }

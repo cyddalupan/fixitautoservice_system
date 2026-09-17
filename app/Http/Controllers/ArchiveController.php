@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Archive;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Estimate;
 use App\Models\Payment;
 use App\Models\Invoice;
@@ -69,17 +69,17 @@ class ArchiveController extends Controller
             DB::beginTransaction();
 
             switch ($archive->source_module) {
-                case 'work_order':
+                case 'job_order':
                     // Remove archived-specific fields before restoring
                     unset($data['deleted_at']);
                     unset($data['id']);
                     $data['updated_at'] = now();
-                    $model = WorkOrder::withTrashed()->find($archive->archivable_id);
+                    $model = JobOrder::withTrashed()->find($archive->archivable_id);
                     if ($model) {
                         $model->restore();
                         $model->update($data);
                     } else {
-                        $model = WorkOrder::create($data);
+                        $model = JobOrder::create($data);
                     }
                     break;
 
@@ -291,11 +291,11 @@ class ArchiveController extends Controller
                 $data = $archive->original_data;
                 
                 switch ($archive->source_module) {
-                    case 'work_order':
+                    case 'job_order':
                         unset($data['deleted_at'], $data['id']);
-                        $model = WorkOrder::withTrashed()->find($archive->archivable_id);
+                        $model = JobOrder::withTrashed()->find($archive->archivable_id);
                         if ($model) { $model->restore(); $model->update($data); }
-                        else { WorkOrder::create($data); }
+                        else { JobOrder::create($data); }
                         break;
 
                     case 'estimate':

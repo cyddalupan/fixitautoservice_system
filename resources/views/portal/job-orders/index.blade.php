@@ -34,7 +34,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="text-white-50 mb-0">Total Work Orders</h6>
-                        <h3 class="mb-0">{{ $workOrders->total() }}</h3>
+                        <h3 class="mb-0">{{ $jobOrders->total() }}</h3>
                     </div>
                     <i class="fas fa-clipboard-list fa-2x opacity-50"></i>
                 </div>
@@ -48,7 +48,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="text-white-50 mb-0">Completed</h6>
-                        <h3 class="mb-0">{{ $workOrders->where('status', 'completed')->count() }}</h3>
+                        <h3 class="mb-0">{{ $jobOrders->where('status', 'completed')->count() }}</h3>
                     </div>
                     <i class="fas fa-check-circle fa-2x opacity-50"></i>
                 </div>
@@ -62,7 +62,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="text-white-50 mb-0">In Progress</h6>
-                        <h3 class="mb-0">{{ $workOrders->where('status', 'in_progress')->count() }}</h3>
+                        <h3 class="mb-0">{{ $jobOrders->where('status', 'in_progress')->count() }}</h3>
                     </div>
                     <i class="fas fa-tools fa-2x opacity-50"></i>
                 </div>
@@ -76,7 +76,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h6 class="text-white-50 mb-0">Total Spent</h6>
-                        <h3 class="mb-0">${{ number_format($workOrders->sum('total_cost'), 2) }}</h3>
+                        <h3 class="mb-0">${{ number_format($jobOrders->sum('total_cost'), 2) }}</h3>
                     </div>
                     <i class="fas fa-dollar-sign fa-2x opacity-50"></i>
                 </div>
@@ -100,7 +100,7 @@
     </div>
     
     <div class="card-body">
-        @if($workOrders->count() > 0)
+        @if($jobOrders->count() > 0)
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead>
@@ -115,61 +115,61 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($workOrders as $workOrder)
-                            <tr class="work-order-row" data-status="{{ $workOrder->status }}">
+                        @foreach($jobOrders as $jobOrder)
+                            <tr class="job-order-row" data-status="{{ $jobOrder->status }}">
                                 <td>
-                                    <strong>WO-{{ $workOrder->id }}</strong>
-                                    @if($workOrder->is_urgent)
+                                    <strong>WO-{{ $jobOrder->id }}</strong>
+                                    @if($jobOrder->is_urgent)
                                         <span class="badge bg-danger ms-1">Urgent</span>
                                     @endif
                                 </td>
                                 <td>
-                                    {{ $workOrder->vehicle->year }} {{ $workOrder->vehicle->make }} {{ $workOrder->vehicle->model }}
+                                    {{ $jobOrder->vehicle->year }} {{ $jobOrder->vehicle->make }} {{ $jobOrder->vehicle->model }}
                                     <br>
-                                    <small class="text-muted">{{ $workOrder->vehicle->license_plate ?? 'No Plate' }}</small>
+                                    <small class="text-muted">{{ $jobOrder->vehicle->license_plate ?? 'No Plate' }}</small>
                                 </td>
-                                <td>{{ $workOrder->service_type }}</td>
+                                <td>{{ $jobOrder->service_type }}</td>
                                 <td>
-                                    {{ $workOrder->created_at->format('M j, Y') }}
+                                    {{ $jobOrder->created_at->format('M j, Y') }}
                                     <br>
-                                    <small class="text-muted">{{ $workOrder->created_at->format('g:i A') }}</small>
+                                    <small class="text-muted">{{ $jobOrder->created_at->format('g:i A') }}</small>
                                 </td>
                                 <td>
-                                    <span class="badge bg-{{ $workOrder->status === 'completed' ? 'success' : 
-                                                              ($workOrder->status === 'in_progress' ? 'warning' : 
-                                                              ($workOrder->status === 'pending_approval' ? 'info' : 'secondary')) }}">
-                                        {{ ucfirst(str_replace('_', ' ', $workOrder->status)) }}
+                                    <span class="badge bg-{{ $jobOrder->status === 'completed' ? 'success' : 
+                                                              ($jobOrder->status === 'in_progress' ? 'warning' : 
+                                                              ($jobOrder->status === 'pending_approval' ? 'info' : 'secondary')) }}">
+                                        {{ ucfirst(str_replace('_', ' ', $jobOrder->status)) }}
                                     </span>
-                                    @if($workOrder->status === 'pending_approval')
+                                    @if($jobOrder->status === 'pending_approval')
                                         <br>
                                         <small class="text-muted">Awaiting approval</small>
                                     @endif
                                 </td>
                                 <td>
-                                    <strong>${{ number_format($workOrder->total_cost, 2) }}</strong>
-                                    @if($workOrder->status === 'pending_approval')
+                                    <strong>${{ number_format($jobOrder->total_cost, 2) }}</strong>
+                                    @if($jobOrder->status === 'pending_approval')
                                         <br>
                                         <small class="text-muted">Estimate</small>
                                     @endif
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
-                                        <a href="{{ route('portal.work-orders.show', $workOrder) }}" 
+                                        <a href="{{ route('portal.job-orders.show', $jobOrder) }}" 
                                            class="btn btn-outline-primary" title="View Details">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         
-                                        @if($workOrder->status === 'pending_approval')
+                                        @if($jobOrder->status === 'pending_approval')
                                             <button type="button" class="btn btn-outline-success" 
                                                     data-bs-toggle="modal" 
-                                                    data-bs-target="#approveModal{{ $workOrder->id }}"
+                                                    data-bs-target="#approveModal{{ $jobOrder->id }}"
                                                     title="Approve Estimate">
                                                 <i class="fas fa-check"></i>
                                             </button>
                                         @endif
                                         
-                                        @if($workOrder->status === 'completed')
-                                            <a href="{{ route('portal.work-orders.invoice', $workOrder) }}" 
+                                        @if($jobOrder->status === 'completed')
+                                            <a href="{{ route('portal.job-orders.invoice', $jobOrder) }}" 
                                                class="btn btn-outline-info" title="View Invoice">
                                                 <i class="fas fa-file-invoice-dollar"></i>
                                             </a>
@@ -177,8 +177,8 @@
                                     </div>
                                     
                                     <!-- Approve Modal -->
-                                    @if($workOrder->status === 'pending_approval')
-                                        <div class="modal fade" id="approveModal{{ $workOrder->id }}" tabindex="-1">
+                                    @if($jobOrder->status === 'pending_approval')
+                                        <div class="modal fade" id="approveModal{{ $jobOrder->id }}" tabindex="-1">
                                             <div class="modal-dialog">
                                                 <div class="modal-content">
                                                     <div class="modal-header">
@@ -192,29 +192,29 @@
                                                         </div>
                                                         
                                                         <h6>Work Order Details</h6>
-                                                        <p><strong>WO-{{ $workOrder->id }}</strong></p>
-                                                        <p><strong>Vehicle:</strong> {{ $workOrder->vehicle->year }} {{ $workOrder->vehicle->make }} {{ $workOrder->vehicle->model }}</p>
-                                                        <p><strong>Service Type:</strong> {{ $workOrder->service_type }}</p>
-                                                        <p><strong>Estimated Total:</strong> ${{ number_format($workOrder->total_cost, 2) }}</p>
+                                                        <p><strong>WO-{{ $jobOrder->id }}</strong></p>
+                                                        <p><strong>Vehicle:</strong> {{ $jobOrder->vehicle->year }} {{ $jobOrder->vehicle->make }} {{ $jobOrder->vehicle->model }}</p>
+                                                        <p><strong>Service Type:</strong> {{ $jobOrder->service_type }}</p>
+                                                        <p><strong>Estimated Total:</strong> ${{ number_format($jobOrder->total_cost, 2) }}</p>
                                                         
                                                         <hr>
                                                         
-                                                        <form id="approveForm{{ $workOrder->id }}" 
-                                                              action="{{ route('portal.work-orders.approve', $workOrder) }}" 
+                                                        <form id="approveForm{{ $jobOrder->id }}" 
+                                                              action="{{ route('portal.job-orders.approve', $jobOrder) }}" 
                                                               method="POST">
                                                             @csrf
                                                             <div class="mb-3">
                                                                 <label class="form-label">Digital Signature</label>
                                                                 <div class="signature-pad border rounded p-3 mb-3" 
                                                                      style="height: 150px; background: white;">
-                                                                    <canvas id="signatureCanvas{{ $workOrder->id }}" 
+                                                                    <canvas id="signatureCanvas{{ $jobOrder->id }}" 
                                                                             style="width: 100%; height: 100%;"></canvas>
                                                                 </div>
                                                                 <input type="hidden" name="signature_data" 
-                                                                       id="signatureData{{ $workOrder->id }}">
+                                                                       id="signatureData{{ $jobOrder->id }}">
                                                                 <div class="d-flex gap-2">
                                                                     <button type="button" class="btn btn-sm btn-outline-secondary" 
-                                                                            onclick="clearSignature({{ $workOrder->id }})">
+                                                                            onclick="clearSignature({{ $jobOrder->id }})">
                                                                         Clear
                                                                     </button>
                                                                     <small class="text-muted ms-auto">
@@ -225,8 +225,8 @@
                                                             
                                                             <div class="form-check mb-3">
                                                                 <input class="form-check-input" type="checkbox" 
-                                                                       id="terms{{ $workOrder->id }}" name="terms" required>
-                                                                <label class="form-check-label" for="terms{{ $workOrder->id }}">
+                                                                       id="terms{{ $jobOrder->id }}" name="terms" required>
+                                                                <label class="form-check-label" for="terms{{ $jobOrder->id }}">
                                                                     I authorize the work described above and agree to pay the estimated amount upon completion.
                                                                 </label>
                                                             </div>
@@ -234,7 +234,7 @@
                                                     </div>
                                                     <div class="modal-footer">
                                                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                        <button type="submit" form="approveForm{{ $workOrder->id }}" 
+                                                        <button type="submit" form="approveForm{{ $jobOrder->id }}" 
                                                                 class="btn btn-success">Approve & Authorize</button>
                                                     </div>
                                                 </div>
@@ -249,9 +249,9 @@
             </div>
             
             <!-- Pagination -->
-            @if($workOrders->hasPages())
+            @if($jobOrders->hasPages())
                 <div class="mt-4">
-                    {{ $workOrders->links() }}
+                    {{ $jobOrders->links() }}
                 </div>
             @endif
         @else
@@ -270,7 +270,7 @@
 </div>
 
 <style>
-    .work-order-row:hover {
+    .job-order-row:hover {
         background-color: #f8f9fa;
     }
     
@@ -287,10 +287,10 @@
         const pendingBtn = document.getElementById('pendingBtn');
         const inProgressBtn = document.getElementById('inProgressBtn');
         const completedBtn = document.getElementById('completedBtn');
-        const workOrderRows = document.querySelectorAll('.work-order-row');
+        const jobOrderRows = document.querySelectorAll('.job-order-row');
         
-        function filterWorkOrders(status) {
-            workOrderRows.forEach(row => {
+        function filterJobOrders(status) {
+            jobOrderRows.forEach(row => {
                 if (status === 'all' || row.dataset.status === status) {
                     row.style.display = '';
                 } else {
@@ -309,17 +309,17 @@
             if (status === 'completed') completedBtn.classList.add('active');
         }
         
-        allBtn.addEventListener('click', () => filterWorkOrders('all'));
-        pendingBtn.addEventListener('click', () => filterWorkOrders('pending_approval'));
-        inProgressBtn.addEventListener('click', () => filterWorkOrders('in_progress'));
-        completedBtn.addEventListener('click', () => filterWorkOrders('completed'));
+        allBtn.addEventListener('click', () => filterJobOrders('all'));
+        pendingBtn.addEventListener('click', () => filterJobOrders('pending_approval'));
+        inProgressBtn.addEventListener('click', () => filterJobOrders('in_progress'));
+        completedBtn.addEventListener('click', () => filterJobOrders('completed'));
         
         // Signature pad functionality
         const signatureCanvases = {};
         const signaturePads = {};
         
-        function initSignaturePad(workOrderId) {
-            const canvas = document.getElementById(`signatureCanvas${workOrderId}`);
+        function initSignaturePad(jobOrderId) {
+            const canvas = document.getElementById(`signatureCanvas${jobOrderId}`);
             if (!canvas) return;
             
             const ctx = canvas.getContext('2d');
@@ -356,12 +356,12 @@
                 [lastX, lastY] = [x, y];
                 
                 // Save signature data
-                saveSignature(workOrderId);
+                saveSignature(jobOrderId);
             }
             
             function stopDrawing() {
                 isDrawing = false;
-                saveSignature(workOrderId);
+                saveSignature(jobOrderId);
             }
             
             function getCoordinates(e) {
@@ -393,32 +393,32 @@
                 stopDrawing();
             });
             
-            signatureCanvases[workOrderId] = canvas;
-            signaturePads[workOrderId] = { ctx, canvas };
+            signatureCanvases[jobOrderId] = canvas;
+            signaturePads[jobOrderId] = { ctx, canvas };
         }
         
-        function saveSignature(workOrderId) {
-            const canvas = signatureCanvases[workOrderId];
+        function saveSignature(jobOrderId) {
+            const canvas = signatureCanvases[jobOrderId];
             if (!canvas) return;
             
             const dataUrl = canvas.toDataURL();
-            document.getElementById(`signatureData${workOrderId}`).value = dataUrl;
+            document.getElementById(`signatureData${jobOrderId}`).value = dataUrl;
         }
         
-        window.clearSignature = function(workOrderId) {
-            const pad = signaturePads[workOrderId];
+        window.clearSignature = function(jobOrderId) {
+            const pad = signaturePads[jobOrderId];
             if (!pad) return;
             
             pad.ctx.clearRect(0, 0, pad.canvas.width, pad.canvas.height);
-            document.getElementById(`signatureData${workOrderId}`).value = '';
+            document.getElementById(`signatureData${jobOrderId}`).value = '';
         };
         
         // Initialize signature pads when modals are shown
         document.querySelectorAll('[id^="approveModal"]').forEach(modal => {
             const modalEl = new bootstrap.Modal(modal);
             modal.addEventListener('shown.bs.modal', function() {
-                const workOrderId = this.id.replace('approveModal', '');
-                initSignaturePad(workOrderId);
+                const jobOrderId = this.id.replace('approveModal', '');
+                initSignaturePad(jobOrderId);
             });
         });
     });

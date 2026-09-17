@@ -20,7 +20,7 @@ return new class extends Migration
         // Add estimate_id to invoices table if it doesn't exist
         if (!Schema::hasColumn('invoices', 'estimate_id')) {
             Schema::table('invoices', function (Blueprint $table) {
-                $table->foreignId('estimate_id')->nullable()->after('work_order_id')->constrained()->onDelete('set null');
+                $table->foreignId('estimate_id')->nullable()->after('job_order_id')->constrained()->onDelete('set null');
             });
         }
 

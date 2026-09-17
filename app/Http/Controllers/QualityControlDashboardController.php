@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\QualityCheck;
-use App\Models\WorkOrderQualityCheck;
+use App\Models\JobOrderQualityCheck;
 use App\Models\ComplianceDocument;
 use App\Models\CustomerSatisfactionSurvey;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\User;
 use App\Models\Customer;
 use Illuminate\Http\Request;
@@ -23,7 +23,7 @@ class QualityControlDashboardController extends Controller
         $qualityCheckStats = $this->getQualityCheckStats();
         
         // Work Order Quality Statistics
-        $workOrderQualityStats = $this->getWorkOrderQualityStats();
+        $jobOrderQualityStats = $this->getJobOrderQualityStats();
         
         // Compliance Statistics
         $complianceStats = $this->getComplianceStats();
@@ -40,14 +40,38 @@ class QualityControlDashboardController extends Controller
         // Critical Alerts
         $criticalAlerts = $this->getCriticalAlerts();
 
-        return view('quality-control.dashboard', compact(
+        // Metrics summary (view expects $metrics with these keys)
+        $qualityCheckStats = $this->getQualityCheckStats();
+        $jobOrderQualityStats = $this->getJobOrderQualityStats();
+        $complianceStats = $this->getComplianceStats();
+        $customerSatisfactionStats = $this->getCustomerSatisfactionStats();
+
+        $metrics = [
+            'quality_pass_rate' => $jobOrderQualityStats['avg_pass_rate'] ?? 0,
+            'quality_pass_rate_trend' => $jobOrderQualityStats['pass_rate_trend'] ?? 0,
+            'compliance_rate' => $complianceStats['compliance_rate'] ?? 0,
+            'customer_satisfaction' => $customerSatisfactionStats['avg_rating'] ?? 0,
+            'recommendation_rate' => $customerSatisfactionStats['recommendation_rate'] ?? 0,
+            'avg_approval_time' => $jobOrderQualityStats['avg_approval_hours'] ?? 0,
+            'pending_approvals' => $jobOrderQualityStats['pending_count'] ?? 0,
+            'expiring_documents' => $complianceStats['expiring_count'] ?? 0,
+        ];
+
+        // View also expects $alerts and $topTechnicians (collections)
+        $alerts = collect($criticalAlerts);
+        $topTechnicians = collect($topPerformers);
+
+        return view('quality-control.dashboard.index', compact(
             'qualityCheckStats',
-            'workOrderQualityStats',
+            'jobOrderQualityStats',
             'complianceStats',
             'customerSatisfactionStats',
             'recentActivity',
             'topPerformers',
-            'criticalAlerts'
+            'criticalAlerts',
+            'metrics',
+            'alerts',
+            'topTechnicians'
         ));
     }
 
@@ -67,8 +91,8 @@ class QualityControlDashboardController extends Controller
             ->toArray();
         
         // Most used checks
-        $mostUsedChecks = QualityCheck::withCount('workOrderQualityChecks')
-            ->orderBy('work_order_quality_checks_count', 'desc')
+        $mostUsedChecks = QualityCheck::withCount('jobOrderQualityChecks')
+            ->orderBy('job_order_quality_checks_count', 'desc')
             ->limit(5)
             ->get();
 
@@ -84,36 +108,46 @@ class QualityControlDashboardController extends Controller
     /**
      * Get work order quality statistics.
      */
-    private function getWorkOrderQualityStats(): array
+    private function getJobOrderQualityStats(): array
     {
-        $totalQualityChecks = WorkOrderQualityCheck::count();
-        $pendingChecks = WorkOrderQualityCheck::where('status', 'pending')->count();
-        $inProgressChecks = WorkOrderQualityCheck::where('status', 'in_progress')->count();
-        $completedChecks = WorkOrderQualityCheck::where('status', 'completed')->count();
-        $approvedChecks = WorkOrderQualityCheck::where('status', 'approved')->count();
-        $rejectedChecks = WorkOrderQualityCheck::where('status', 'rejected')->count();
+        $totalQualityChecks = JobOrderQualityCheck::count();
+        $pendingChecks = JobOrderQualityCheck::where('status', 'pending')->count();
+        $inProgressChecks = JobOrderQualityCheck::where('status', 'in_progress')->count();
+        $completedChecks = JobOrderQualityCheck::where('status', 'completed')->count();
+        $approvedChecks = JobOrderQualityCheck::where('status', 'approved')->count();
+        $rejectedChecks = JobOrderQualityCheck::where('status', 'rejected')->count();
         
         // Pass rate statistics
-        $passedChecks = WorkOrderQualityCheck::where('status', 'approved')->count();
-        $failedChecks = WorkOrderQualityCheck::where('status', 'rejected')->count();
-        $needsReworkChecks = WorkOrderQualityCheck::where('status', 'needs_rework')->count();
+        $passedChecks = JobOrderQualityCheck::where('status', 'approved')->count();
+        $failedChecks = JobOrderQualityCheck::where('status', 'rejected')->count();
+        $needsReworkChecks = JobOrderQualityCheck::where('status', 'needs_rework')->count();
         
         $passRate = $totalQualityChecks > 0 
             ? round($passedChecks / $totalQualityChecks * 100, 2)
             : 0;
         
-        // Average pass rate
-        $averagePassRate = WorkOrderQualityCheck::whereNotNull('pass_rate')
-            ->avg('pass_rate') ?? 0;
-        
-        // Quality checks by technician
-        $qualityByTechnician = WorkOrderQualityCheck::select('technician_id', DB::raw('count(*) as total'), DB::raw('avg(pass_rate) as avg_pass_rate'))
-            ->whereNotNull('technician_id')
-            ->groupBy('technician_id')
+        // Average pass rate (computed in PHP — pass_rate is derived from results JSON, not a column)
+        $allChecks = JobOrderQualityCheck::whereIn('status', ['passed', 'failed', 'needs_rework'])->get();
+        $averagePassRate = $allChecks->count() > 0
+            ? round($allChecks->avg(fn ($c) => $c->calculatePassRate()), 2)
+            : 0;
+
+        // Quality checks by technician (computed in PHP)
+        $qualityByTechnician = JobOrderQualityCheck::whereNotNull('technician_id')
+            ->whereIn('status', ['passed', 'failed', 'needs_rework'])
             ->with('technician')
-            ->orderBy('avg_pass_rate', 'desc')
-            ->limit(5)
-            ->get();
+            ->get()
+            ->groupBy('technician_id')
+            ->map(function ($checks) {
+                return (object) [
+                    'technician' => $checks->first()->technician,
+                    'total' => $checks->count(),
+                    'avg_pass_rate' => round($checks->avg(fn ($c) => $c->calculatePassRate()), 2),
+                ];
+            })
+            ->sortByDesc('avg_pass_rate')
+            ->take(5)
+            ->values();
 
         return [
             'total_checks' => $totalQualityChecks,
@@ -140,7 +174,7 @@ class QualityControlDashboardController extends Controller
         $activeDocuments = ComplianceDocument::active()->count();
         $expiredDocuments = ComplianceDocument::expired()->count();
         $expiringSoonDocuments = ComplianceDocument::expiringSoon()->count();
-        $documentsNeedingRenewal = ComplianceDocument::needsRenewal()->count();
+        $documentsNeedingRenewal = ComplianceDocument::dueForRenewal()->count();
         
         // Documents by type
         $documentsByType = ComplianceDocument::select('document_type', DB::raw('count(*) as count'))
@@ -203,7 +237,7 @@ class QualityControlDashboardController extends Controller
             : 0;
         
         // Surveys needing follow-up
-        $surveysNeedingFollowUp = CustomerSatisfactionSurvey::needsFollowUp()
+        $surveysNeedingFollowUp = CustomerSatisfactionSurvey::requiresFollowUp()
             ->with(['customer', 'technician'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
@@ -234,7 +268,7 @@ class QualityControlDashboardController extends Controller
         $recentActivity = [];
         
         // Recent quality checks
-        $recentQualityChecks = WorkOrderQualityCheck::with(['workOrder', 'qualityCheck', 'technician'])
+        $recentQualityChecks = JobOrderQualityCheck::with(['jobOrder', 'qualityCheck', 'technician'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get()
@@ -242,7 +276,7 @@ class QualityControlDashboardController extends Controller
                 return [
                     'type' => 'quality_check',
                     'title' => 'Quality Check: ' . ($check->qualityCheck->name ?? 'Unknown'),
-                    'description' => 'Work Order: ' . ($check->workOrder->work_order_number ?? 'N/A'),
+                    'description' => 'Work Order: ' . ($check->jobOrder->job_order_number ?? 'N/A'),
                     'status' => $check->status,
                     'status_color' => $check->getStatusColor(),
                     'created_at' => $check->created_at,
@@ -305,21 +339,25 @@ class QualityControlDashboardController extends Controller
     private function getTopPerformers(): array
     {
         $topPerformers = User::where('role', 'technician')
-            ->whereHas('workOrderQualityChecks')
-            ->withCount(['workOrderQualityChecks as total_checks'])
-            ->withCount(['workOrderQualityChecks as approved_checks' => function ($query) {
+            ->whereHas('jobOrderQualityChecks')
+            ->withCount(['jobOrderQualityChecks as total_checks'])
+            ->withCount(['jobOrderQualityChecks as approved_checks' => function ($query) {
                 $query->where('status', 'approved');
             }])
-            ->with(['workOrderQualityChecks' => function ($query) {
-                $query->select('technician_id', DB::raw('avg(pass_rate) as avg_pass_rate'))
-                    ->whereNotNull('pass_rate')
-                    ->groupBy('technician_id');
+            ->with(['jobOrderQualityChecks' => function ($query) {
+                $query->whereIn('status', ['passed', 'approved', 'failed', 'needs_rework']);
             }])
             ->orderBy('approved_checks', 'desc')
             ->limit(5)
             ->get()
             ->map(function ($technician) {
-                $avgPassRate = $technician->workOrderQualityChecks->first()->avg_pass_rate ?? 0;
+                // pass_rate is computed from results JSON — no DB column
+                $passRates = $technician->jobOrderQualityChecks
+                    ->map(fn ($c) => $c->calculatePassRate())
+                    ->filter(fn ($v) => $v > 0);
+                $avgPassRate = $passRates->count() > 0
+                    ? round($passRates->avg(), 2)
+                    : 0;
                 $approvalRate = $technician->total_checks > 0 
                     ? round($technician->approved_checks / $technician->total_checks * 100, 2)
                     : 0;
@@ -329,7 +367,7 @@ class QualityControlDashboardController extends Controller
                     'name' => $technician->name,
                     'total_checks' => $technician->total_checks,
                     'approved_checks' => $technician->approved_checks,
-                    'avg_pass_rate' => round($avgPassRate, 2),
+                    'avg_pass_rate' => $avgPassRate,
                     'approval_rate' => $approvalRate,
                 ];
             })
@@ -384,9 +422,9 @@ class QualityControlDashboardController extends Controller
         }
         
         // Quality checks pending approval for more than 24 hours
-        $pendingChecks = WorkOrderQualityCheck::where('status', 'completed')
+        $pendingChecks = JobOrderQualityCheck::where('status', 'completed')
             ->where('created_at', '<=', now()->subHours(24))
-            ->with(['workOrder', 'qualityCheck'])
+            ->with(['jobOrder', 'qualityCheck'])
             ->orderBy('created_at')
             ->limit(5)
             ->get();
@@ -398,13 +436,13 @@ class QualityControlDashboardController extends Controller
                 'title' => 'Quality Check Pending Approval: ' . ($check->qualityCheck->name ?? 'Unknown'),
                 'description' => 'Pending for ' . $hoursPending . ' hours',
                 'priority' => 'medium',
-                'work_order' => $check->workOrder ? $check->workOrder->work_order_number : 'N/A',
+                'job_order' => $check->jobOrder ? $check->jobOrder->job_order_number : 'N/A',
                 'created_at' => $check->created_at,
             ];
         }
         
         // Customer surveys needing follow-up
-        $surveysNeedingFollowUp = CustomerSatisfactionSurvey::needsFollowUp()
+        $surveysNeedingFollowUp = CustomerSatisfactionSurvey::requiresFollowUp()
             ->with(['customer', 'technician'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
@@ -523,7 +561,7 @@ class QualityControlDashboardController extends Controller
     {
         switch ($metric) {
             case 'pass_rate':
-                $checks = WorkOrderQualityCheck::whereBetween('created_at', [$start, $end])
+                $checks = JobOrderQualityCheck::whereBetween('created_at', [$start, $end])
                     ->whereNotNull('pass_rate')
                     ->get();
                 
@@ -532,8 +570,8 @@ class QualityControlDashboardController extends Controller
                     : 0;
                 
             case 'approval_rate':
-                $totalChecks = WorkOrderQualityCheck::whereBetween('created_at', [$start, $end])->count();
-                $approvedChecks = WorkOrderQualityCheck::whereBetween('created_at', [$start, $end])
+                $totalChecks = JobOrderQualityCheck::whereBetween('created_at', [$start, $end])->count();
+                $approvedChecks = JobOrderQualityCheck::whereBetween('created_at', [$start, $end])
                     ->where('status', 'approved')
                     ->count();
                 
@@ -584,7 +622,7 @@ class QualityControlDashboardController extends Controller
     private function exportSummaryReport()
     {
         $qualityCheckStats = $this->getQualityCheckStats();
-        $workOrderQualityStats = $this->getWorkOrderQualityStats();
+        $jobOrderQualityStats = $this->getJobOrderQualityStats();
         $complianceStats = $this->getComplianceStats();
         $customerSatisfactionStats = $this->getCustomerSatisfactionStats();
         
@@ -601,11 +639,11 @@ class QualityControlDashboardController extends Controller
         
         // Work Order Quality
         $csvData[] = ['WORK ORDER QUALITY'];
-        $csvData[] = ['Total Quality Checks', $workOrderQualityStats['total_checks']];
-        $csvData[] = ['Pass Rate', $workOrderQualityStats['pass_rate'] . '%'];
-        $csvData[] = ['Average Pass Rate', $workOrderQualityStats['average_pass_rate'] . '%'];
-        $csvData[] = ['Approved Checks', $workOrderQualityStats['approved_checks']];
-        $csvData[] = ['Rejected Checks', $workOrderQualityStats['rejected_checks']];
+        $csvData[] = ['Total Quality Checks', $jobOrderQualityStats['total_checks']];
+        $csvData[] = ['Pass Rate', $jobOrderQualityStats['pass_rate'] . '%'];
+        $csvData[] = ['Average Pass Rate', $jobOrderQualityStats['average_pass_rate'] . '%'];
+        $csvData[] = ['Approved Checks', $jobOrderQualityStats['approved_checks']];
+        $csvData[] = ['Rejected Checks', $jobOrderQualityStats['rejected_checks']];
         $csvData[] = [];
         
         // Compliance
@@ -681,7 +719,7 @@ class QualityControlDashboardController extends Controller
      */
     private function exportSatisfactionReport()
     {
-        $surveys = CustomerSatisfactionSurvey::with(['workOrder', 'customer', 'technician'])->get();
+        $surveys = CustomerSatisfactionSurvey::with(['jobOrder', 'customer', 'technician'])->get();
         
         $csvData = [];
         $csvData[] = ['Customer Satisfaction Report', 'Generated: ' . now()->format('Y-m-d H:i:s')];
@@ -697,7 +735,7 @@ class QualityControlDashboardController extends Controller
         foreach ($surveys as $survey) {
             $csvData[] = [
                 $survey->id,
-                $survey->workOrder ? $survey->workOrder->work_order_number : 'N/A',
+                $survey->jobOrder ? $survey->jobOrder->job_order_number : 'N/A',
                 $survey->customer ? $survey->customer->full_name : 'N/A',
                 $survey->technician ? $survey->technician->name : 'N/A',
                 $survey->overall_rating,

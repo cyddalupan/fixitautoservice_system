@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\ProfitAnalysis;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Invoice;
 use Carbon\Carbon;
 
@@ -30,7 +30,7 @@ class ProfitAnalysisController extends Controller
         $yearTotals = $this->calculateTotals($yearAnalysis);
         
         // Get recent analyses
-        $recentAnalyses = ProfitAnalysis::with(['workOrder', 'invoice'])
+        $recentAnalyses = ProfitAnalysis::with(['jobOrder', 'invoice'])
             ->orderBy('analysis_date', 'desc')
             ->limit(10)
             ->get();
@@ -51,7 +51,7 @@ class ProfitAnalysisController extends Controller
         $startDate = $request->get('start_date', now()->subMonth()->format('Y-m-d'));
         $endDate = $request->get('end_date', now()->format('Y-m-d'));
         
-        $analyses = ProfitAnalysis::with(['workOrder', 'invoice'])
+        $analyses = ProfitAnalysis::with(['jobOrder', 'invoice'])
             ->dateRange($startDate, $endDate)
             ->finalized()
             ->orderBy('analysis_date', 'desc')
@@ -70,9 +70,9 @@ class ProfitAnalysisController extends Controller
     /**
      * Generate profit analysis for a work order
      */
-    public function generateForWorkOrder(WorkOrder $workOrder)
+    public function generateForJobOrder(JobOrder $jobOrder)
     {
-        $analysis = ProfitAnalysis::generateFromWorkOrder($workOrder);
+        $analysis = ProfitAnalysis::generateFromJobOrder($jobOrder);
         $analysis->save();
         
         return redirect()->route('profit-analysis.show', $analysis)
@@ -84,7 +84,7 @@ class ProfitAnalysisController extends Controller
      */
     public function show(ProfitAnalysis $profitAnalysis)
     {
-        $profitAnalysis->load(['workOrder', 'invoice']);
+        $profitAnalysis->load(['jobOrder', 'invoice']);
         
         return view('profit-analysis.show', compact('profitAnalysis'));
     }
@@ -122,7 +122,7 @@ class ProfitAnalysisController extends Controller
         $startDate = $request->get('start_date', now()->subMonth()->format('Y-m-d'));
         $endDate = $request->get('end_date', now()->format('Y-m-d'));
         
-        $analyses = ProfitAnalysis::with(['workOrder', 'invoice'])
+        $analyses = ProfitAnalysis::with(['jobOrder', 'invoice'])
             ->dateRange($startDate, $endDate)
             ->finalized()
             ->orderBy('analysis_date')
@@ -137,7 +137,7 @@ class ProfitAnalysisController extends Controller
             'analyses' => $analyses->map(function($analysis) {
                 return [
                     'analysis_date' => $analysis->analysis_date,
-                    'work_order_number' => $analysis->workOrder->work_order_number ?? 'N/A',
+                    'job_order_number' => $analysis->jobOrder->job_order_number ?? 'N/A',
                     'invoice_number' => $analysis->invoice->invoice_number ?? 'N/A',
                     'total_revenue' => $analysis->total_revenue,
                     'total_cost' => $analysis->total_cost,

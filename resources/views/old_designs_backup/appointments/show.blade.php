@@ -272,7 +272,7 @@
         @endif
         
         <!-- Related Work Orders -->
-        @if($appointment->workOrder)
+        @if($appointment->jobOrder)
             <div class="col-md-6">
                 <div class="card">
                     <div class="card-header bg-primary text-white">
@@ -283,15 +283,15 @@
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <h6 class="mb-1">Work Order #{{ $appointment->workOrder->work_order_number }}</h6>
-                                <p class="mb-1 text-muted">Technician: {{ $appointment->workOrder->technician->name ?? 'Not assigned' }}</p>
+                                <h6 class="mb-1">Work Order #{{ $appointment->jobOrder->job_order_number }}</h6>
+                                <p class="mb-1 text-muted">Technician: {{ $appointment->jobOrder->technician->name ?? 'Not assigned' }}</p>
                                 <p class="mb-0 text-muted">Status: 
-                                    <span class="badge bg-{{ $appointment->workOrder->status_badge }}">
-                                        {{ ucfirst($appointment->workOrder->work_order_status) }}
+                                    <span class="badge bg-{{ $appointment->jobOrder->status_badge }}">
+                                        {{ ucfirst($appointment->jobOrder->job_order_status) }}
                                     </span>
                                 </p>
                             </div>
-                            <a href="{{ route('work-orders.show', $appointment->workOrder) }}" class="btn btn-outline-primary btn-sm">
+                            <a href="{{ route('job-orders.show', $appointment->jobOrder) }}" class="btn btn-outline-primary btn-sm">
                                 View Details
                             </a>
                         </div>

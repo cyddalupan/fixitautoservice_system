@@ -270,6 +270,7 @@ class BookingController extends Controller
         $dayOfWeek = strtolower($date->format('l'));
         $workingHours = BookingSetting::getWorkingHours();
         $slotDuration = BookingSetting::getSlotDuration();
+        $maxPerSlot = BookingSetting::getMaxBookingsPerSlot();
 
         // Check if the day is enabled
         $dayConfig = $workingHours[$dayOfWeek] ?? null;
@@ -283,14 +284,15 @@ class BookingController extends Controller
         $startTime = Carbon::parse($dayConfig['start']);
         $endTime = Carbon::parse($dayConfig['end']);
 
-        // Get existing appointments for this date that are not cancelled/no-show
-        $existingBookings = Appointment::whereDate('appointment_date', $date)
+        // Get existing appointments for this date that are not cancelled/no-show,
+        // grouped by their time slot so we can respect overbooking capacity.
+        $bookingsBySlot = Appointment::whereDate('appointment_date', $date)
             ->whereNotIn('appointment_status', ['cancelled', 'no_show'])
             ->get()
             ->map(function ($apt) {
                 return Carbon::parse($apt->appointment_time)->format('H:i');
             })
-            ->values()
+            ->countBy()
             ->toArray();
 
         // Generate all possible slots
@@ -299,12 +301,15 @@ class BookingController extends Controller
 
         while ($current < $endTime) {
             $timeStr = $current->format('H:i');
-            $isBooked = in_array($timeStr, $existingBookings);
+            $bookedCount = $bookingsBySlot[$timeStr] ?? 0;
+            $available = $bookedCount < $maxPerSlot;
 
             $slots[] = [
                 'time' => $timeStr,
                 'display' => $current->format('g:i A'),
-                'available' => !$isBooked,
+                'available' => $available,
+                'booked' => $bookedCount,
+                'capacity' => $maxPerSlot,
             ];
 
             $current->addMinutes($slotDuration);
@@ -450,11 +455,12 @@ class BookingController extends Controller
             'vehicle_id' => $vehicleId,
             'appointment_date' => $date,
             'appointment_time' => $time,
-            'appointment_type' => $request->service_type,
+            'appointment_type'   => $request->service_type,
             'appointment_status' => 'customer_booked',
-            'service_request' => $request->customer_notes,
+            'status'             => 'scheduled', // blueprint status (P2 gap fix): website booking = scheduled
+            'service_request'    => $request->service_request ?? $request->issue_description ?? $request->customer_notes,
             'booking_source' => 'website',
-            'customer_notes' => $request->customer_notes,
+            'customer_notes' => $request->service_request ?? $request->issue_description ?? $request->customer_notes,
             'scheduled_at' => now(),
             'estimated_duration' => 1.0, // 1 hour default
         ]);
@@ -468,6 +474,16 @@ class BookingController extends Controller
         } catch (\Exception $e) {
             // Email sending is best-effort; log but don't fail
             \Illuminate\Support\Facades\Log::warning('Booking confirmation email failed: ' . $e->getMessage());
+        }
+
+        // P2: Notify admin of the new booking (email, best-effort).
+        try {
+            foreach (config('mail.admin_recipients', []) as $adminEmail) {
+                \Illuminate\Support\Facades\Mail::to($adminEmail)
+                    ->send(new \App\Mail\NewBookingAdminNotification($appointment, $customer));
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Admin new-booking notification failed: ' . $e->getMessage());
         }
 
         return response()->json([
@@ -611,13 +627,21 @@ class BookingController extends Controller
         // Check token from API header (standalone frontend)
         $token = request()->header('X-Booking-Token');
         if ($token) {
+            // 1) Legacy/portal-style: an ENCRYPTED payload carrying customer_id.
             try {
                 $decoded = json_decode(decrypt($token), true);
                 if ($decoded && isset($decoded['customer_id']) && $decoded['expires_at'] > time()) {
                     return $decoded['customer_id'];
                 }
             } catch (\Exception $e) {
-                // Invalid or expired token
+                // Not an encrypted payload -> try as a raw booking token below.
+            }
+
+            // 2) Blueprint guest magic-link flow: the raw booking_tokens.token the
+            //    guest receives after booking (see apiCreateBooking -> track_url).
+            $bookingToken = \App\Models\BookingToken::findValid($token);
+            if ($bookingToken) {
+                return $bookingToken->customer_id ?? ($bookingToken->appointment?->customer_id);
             }
         }
 
@@ -1098,6 +1122,7 @@ class BookingController extends Controller
         $serviceTypes = is_array($validated['service_type'])
             ? array_values($validated['service_type'])
             : [$validated['service_type']];
+
         $appointment = Appointment::create([
             'customer_id' => $customerId,
             'vehicle_id' => $validated['vehicle_id'],
@@ -1107,11 +1132,52 @@ class BookingController extends Controller
             'appointment_type'   => $serviceTypes[0],
             'service_types'      => $serviceTypes,
             'appointment_status' => 'customer_booked',
-            'customer_notes' => $validated['notes'] ?? null,
+            'status'             => 'scheduled', // blueprint status (P2 gap fix): website booking = scheduled
+            'service_request'    => $validated['service_request'] ?? $validated['issue_description'] ?? ($validated['notes'] ?? null),
+            'customer_notes'     => $validated['service_request'] ?? $validated['issue_description'] ?? ($validated['notes'] ?? null),
             'booking_source' => 'website',
             'booking_ip' => $request->ip(),
             'scheduled_at' => now(),
         ]);
+
+        // P2: Generate a BookingToken on booking creation so the client can manage
+        // this appointment later via /booking/{token} (proceed/reschedule/cancel).
+        $bookingToken = \App\Models\BookingToken::generateForAppointment($appointment->id);
+
+        // P2: Notify admin of the new booking (email, best-effort).
+        try {
+            foreach (config('mail.admin_recipients', []) as $adminEmail) {
+                \Illuminate\Support\Facades\Mail::to($adminEmail)
+                    ->send(new \App\Mail\NewBookingAdminNotification($appointment, \App\Models\Customer::find($customerId)));
+            }
+        } catch (\Exception $e) {
+            // Email sending is best-effort; log but don't fail the booking.
+            \Illuminate\Support\Facades\Log::warning('Admin new-booking notification failed: ' . $e->getMessage());
+        }
+
+        // P2: Email the CUSTOMER a confirmation (was missing on guest/website path).
+        try {
+            $customer = \App\Models\Customer::find($customerId);
+            if ($customer && $customer->email) {
+                \Illuminate\Support\Facades\Mail::to($customer->email)
+                    ->send(new \App\Mail\BookingConfirmation($appointment, $customer));
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Customer booking confirmation email failed: ' . $e->getMessage());
+        }
+
+        // P2: Create in-app staff notifications (header bell real data).
+        try {
+            $staff = \App\Models\User::whereIn('role', ['super_admin', 'admin', 'office_staff'])->get();
+            if ($staff->isNotEmpty()) {
+                \Illuminate\Support\Facades\Notification::send(
+                    $staff,
+                    new \App\Notifications\NewBookingNotification($appointment, \App\Models\Customer::find($customerId))
+                );
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Staff booking notification failed: ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,
@@ -1124,6 +1190,8 @@ class BookingController extends Controller
                 'service' => $validated['service_type'],
                 'status' => 'Booked by Customer',
                 'vehicle' => $vehicle->make . ' ' . $vehicle->model . ' (' . $vehicle->license_plate . ')',
+                'token' => $bookingToken->token,
+                'track_url' => url('/booking/' . $bookingToken->token),
             ],
         ]);
     }
@@ -1314,6 +1382,134 @@ class BookingController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Appointment has been cancelled successfully.',
+        ]);
+    }
+
+    /**
+     * Client Reschedule via booking API (blueprint: token track flow).
+     *
+     * Lets a guest (identified by their booking token) change the appointment
+     * date/time, transitioning it to the blueprint 'rescheduled' status.
+     * Owner-scoped: a non-owner token is rejected (404).
+     */
+    public function apiRescheduleAppointment(Appointment $appointment)
+    {
+        $customerId = $this->resolveCustomerId();
+        if (!$customerId) {
+            return response()->json(['success' => false, 'message' => 'Authentication required.'], 401);
+        }
+
+        // Security: verify this token's customer owns the appointment.
+        if ($appointment->customer_id !== $customerId) {
+            return response()->json(['success' => false, 'message' => 'Appointment not found.'], 404);
+        }
+
+        // Only reschedule while it is still scheduled / booked.
+        if (!in_array($appointment->appointment_status, ['customer_booked', 'scheduled', 'confirmed'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This appointment cannot be rescheduled at its current stage.',
+            ], 422);
+        }
+
+        $validated = request()->validate([
+            'appointment_date' => 'required|date_format:Y-m-d|after_or_equal:today',
+            'appointment_time' => 'required|date_format:H:i',
+        ]);
+
+        $appointment->update([
+            'appointment_date' => $validated['appointment_date'],
+            'appointment_time' => $validated['appointment_time'] . ':00',
+            'appointment_status' => 'rescheduled',
+            'status' => 'rescheduled', // blueprint enum: scheduled -> rescheduled
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Appointment has been rescheduled successfully.',
+            'appointment' => [
+                'id' => $appointment->appointment_number ?? ('APT' . $appointment->id),
+                'date' => $appointment->appointment_date,
+                'time' => $appointment->appointment_time,
+                'status' => 'rescheduled',
+            ],
+        ]);
+    }
+
+    /**
+     * Client Proceed -> auto-populates Customer Management (admin CRUD).
+     *
+     * Blueprint: when the client proceeds on their booking (guest flow via
+     * /booking/{token}), their identity + vehicle data flow into the Customer
+     * Management module: the full name is split into first/last, the customer
+     * is marked active, customer_since is stamped on first proceed, and the
+     * appointment transitions to the blueprint 'proceeded' status.
+     */
+    public function apiProceedAppointment(Appointment $appointment)
+    {
+        $customerId = $this->resolveCustomerId();
+        if (!$customerId) {
+            return response()->json(['success' => false, 'message' => 'Authentication required.'], 401);
+        }
+
+        if ($appointment->customer_id !== $customerId) {
+            return response()->json(['success' => false, 'message' => 'Appointment not found.'], 404);
+        }
+
+        if ($appointment->appointment_status === 'cancelled' || $appointment->appointment_status === 'no_show') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This appointment can no longer be proceeded with.',
+            ], 422);
+        }
+
+        $customer = \App\Models\Customer::find($customerId);
+        if ($customer) {
+            // ---- Auto-populate Customer Management ----
+            // Split the full name into first/last when stored as a single part.
+            $firstName = trim($customer->first_name ?? '');
+            $lastName = trim($customer->last_name ?? '');
+            if ($firstName !== '' && $lastName === '') {
+                $parts = preg_split('/\s+/', $firstName);
+                if (count($parts) > 1) {
+                    $lastName = array_pop($parts);
+                    $firstName = implode(' ', $parts);
+                }
+            }
+
+            $customer->first_name = $firstName;
+            $customer->last_name = $lastName;
+            $customer->is_active = true;
+            if (!$customer->customer_since) {
+                $customer->customer_since = now()->toDateString();
+            }
+            if (!$customer->preferred_contact && $customer->phone) {
+                $customer->preferred_contact = 'phone';
+            }
+            $customer->save();
+        }
+
+        $appointment->update([
+            'appointment_status' => 'proceeded',
+            'status' => 'proceeded', // blueprint enum: scheduled -> proceeded
+        ]);
+
+        $appointment->load('vehicle');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Appointment confirmed. Your details are now in our system.',
+            'appointment' => [
+                'id' => $appointment->appointment_number ?? ('APT' . $appointment->id),
+                'status' => 'proceeded',
+                'vehicle' => $appointment->vehicle ? $appointment->vehicle->license_plate : null,
+            ],
+            'customer' => $customer ? [
+                'first_name' => $customer->first_name,
+                'last_name' => $customer->last_name,
+                'phone' => $customer->phone,
+                'is_active' => (bool) $customer->is_active,
+            ] : null,
         ]);
     }
 }

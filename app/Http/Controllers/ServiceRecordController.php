@@ -8,7 +8,7 @@ use App\Models\Estimate;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleInspection;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Services\ServiceRecordService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -78,7 +78,7 @@ class ServiceRecordController extends Controller
                 }
 
                 // Work orders — status, invoice_number
-                foreach ($wf['work_orders'] ?? [] as $wo) {
+                foreach ($wf['job_orders'] ?? [] as $wo) {
                     $haystackParts[] = $wo['status'] ?? '';
                     $haystackParts[] = $wo['invoice_number'] ?? '';
                 }
@@ -97,7 +97,7 @@ class ServiceRecordController extends Controller
 
         if ($technicianId) {
             $workflows = array_filter($workflows, function($wf) use ($technicianId) {
-                foreach ($wf['work_orders'] as $wo) {
+                foreach ($wf['job_orders'] as $wo) {
                     if (($wo['technician_id'] ?? 0) == $technicianId) return true;
                 }
                 return false;
@@ -109,7 +109,7 @@ class ServiceRecordController extends Controller
                 $days = match($dateRange) { 'today'=>0, 'week'=>7, 'month'=>30, 'quarter'=>90, default=>null };
                 if ($days === null) return true;
                 $cutoff = now()->subDays($days);
-                foreach ($wf['work_orders'] as $wo) {
+                foreach ($wf['job_orders'] as $wo) {
                     if (isset($wo['date']) && $wo['date'] >= $cutoff) return true;
                 }
                 foreach ($wf['appointments'] as $a) {
@@ -146,8 +146,8 @@ class ServiceRecordController extends Controller
         
         $customers = Customer::orderBy('last_name')->get();
         $vehicles = Vehicle::orderBy('make')->get();
-        $technicians = User::whereHas('workOrders')->orWhere('role', 'technician')->orderBy('name')->get();
-        $technicians = User::where(function($q) { $q->whereHas('workOrders')->orWhere('role', 'technician'); })->orderBy('name')->get();
+        $technicians = User::whereHas('jobOrders')->orWhere('role', 'technician')->orderBy('name')->get();
+        $technicians = User::where(function($q) { $q->whereHas('jobOrders')->orWhere('role', 'technician'); })->orderBy('name')->get();
 
         // Compute total for sidebar
         $serviceRecordsTotal = $scheduledCount + $repairOrderCount + $estimateCount + $jobOrderCount;
@@ -157,13 +157,13 @@ class ServiceRecordController extends Controller
         $appointments = collect([]);
         $inspections = collect([]);
         $estimates = collect([]);
-        $workOrders = collect([]);
+        $jobOrders = collect([]);
         $payments = collect([]);
         
         return view('service_records.index', compact(
             'workflows', 'customers', 'vehicles', 'customerId', 'vehicleId',
             'scheduledCount', 'repairOrderCount', 'estimateCount', 'jobOrderCount',
-            'appointments', 'inspections', 'estimates', 'workOrders', 'payments',
+            'appointments', 'inspections', 'estimates', 'jobOrders', 'payments',
             'technicians'
         ));
     }
@@ -173,13 +173,13 @@ class ServiceRecordController extends Controller
      */
     private function determineStage(array $wf): string
     {
-        $hasWO = count($wf['work_orders']) > 0;
+        $hasWO = count($wf['job_orders']) > 0;
         $hasEst = count($wf['estimates']) > 0;
         $hasInsp = count($wf['inspections']) > 0;
         $hasAppts = count($wf['appointments']) > 0;
 
         if ($hasWO) {
-            $s = $wf['work_orders'][0]['status'] ?? '';
+            $s = $wf['job_orders'][0]['status'] ?? '';
             return match($s) {
                 'pending' => 'checked_in',
                 'in_progress' => 'in_progress',

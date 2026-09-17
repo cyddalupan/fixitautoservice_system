@@ -84,7 +84,7 @@ class Archive extends Model
               ->orWhereRaw('LOWER(JSON_EXTRACT(original_data, "$.plate_number")) LIKE ?', ["%{$term}%"])
               ->orWhereRaw('LOWER(JSON_EXTRACT(original_data, "$.invoice_number")) LIKE ?', ["%{$term}%"])
               ->orWhereRaw('LOWER(JSON_EXTRACT(original_data, "$.estimate_number")) LIKE ?', ["%{$term}%"])
-              ->orWhereRaw('LOWER(JSON_EXTRACT(original_data, "$.work_order_number")) LIKE ?', ["%{$term}%"])
+              ->orWhereRaw('LOWER(JSON_EXTRACT(original_data, "$.job_order_number")) LIKE ?', ["%{$term}%"])
               ->orWhereRaw('LOWER(JSON_EXTRACT(original_data, "$.reference_number")) LIKE ?', ["%{$term}%"])
               ->orWhere('source_module', 'LIKE', "%{$term}%");
         });

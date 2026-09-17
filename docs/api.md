@@ -442,7 +442,7 @@ Content-Type: application/json
 ### List Work Orders
 
 ```http
-GET /api/work-orders
+GET /api/job-orders
 Authorization: Bearer {token}
 ```
 
@@ -456,7 +456,7 @@ Authorization: Bearer {token}
 ### Create Work Order
 
 ```http
-POST /api/work-orders
+POST /api/job-orders
 Authorization: Bearer {token}
 Content-Type: application/json
 
@@ -474,7 +474,7 @@ Content-Type: application/json
 ### Update Work Order Status
 
 ```http
-PATCH /api/work-orders/{id}/status
+PATCH /api/job-orders/{id}/status
 Authorization: Bearer {token}
 Content-Type: application/json
 

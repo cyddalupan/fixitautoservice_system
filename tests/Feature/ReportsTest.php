@@ -6,7 +6,7 @@ use Tests\TestCase;
 use App\Models\User;
 use App\Models\Customer;
 use App\Models\Appointment;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Vehicle;
@@ -91,7 +91,7 @@ class ReportsTest extends TestCase
         ]);
 
         // Create work orders for today
-        WorkOrder::create([
+        JobOrder::create([
             'customer_id' => $customer1->id,
             'vehicle_id' => $vehicle1->id,
             'service_type' => 'oil_change',
@@ -99,7 +99,7 @@ class ReportsTest extends TestCase
             'created_at' => Carbon::today(),
         ]);
 
-        WorkOrder::create([
+        JobOrder::create([
             'customer_id' => $customer2->id,
             'vehicle_id' => $vehicle2->id,
             'service_type' => 'brake_service',

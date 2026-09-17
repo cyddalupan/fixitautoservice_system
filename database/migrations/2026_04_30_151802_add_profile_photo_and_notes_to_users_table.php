@@ -13,7 +13,10 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->string('profile_photo_path')->nullable()->after('password');
-            $table->text('notes')->nullable()->after('is_active');
+            // notes may already exist from add_personnel_fields migration (2026_04_08)
+            if (!Schema::hasColumn('users', 'notes')) {
+                $table->text('notes')->nullable()->after('is_active');
+            }
             $table->json('roles')->nullable()->after('role');
         });
     }

@@ -111,7 +111,7 @@
                                     @error('vehicle_year')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                             </div>
-                            <div class="col-12">
+                            <div class="col-md-4">
                                 <div class="form-group">
                                     <label for="plate_number" class="form-label">Plate Number</label>
                                     <input type="text" class="form-control @error('plate_number') is-invalid @enderror"
@@ -119,6 +119,30 @@
                                            value="{{ old('plate_number', $selectedVehicle->license_plate ?? '') }}"
                                            placeholder="e.g. ABC-1234">
                                     @error('plate_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="fuel_type" class="form-label">Fuel Type</label>
+                                    <select class="form-select @error('fuel_type') is-invalid @enderror"
+                                            id="fuel_type" name="fuel_type">
+                                        <option value="">— Select —</option>
+                                        <option value="gasoline" @selected(old('fuel_type', $selectedVehicle->fuel_type ?? '') === 'gasoline')>Gas</option>
+                                        <option value="diesel" @selected(old('fuel_type', $selectedVehicle->fuel_type ?? '') === 'diesel')>Diesel</option>
+                                    </select>
+                                    @error('fuel_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="transmission" class="form-label">Transmission</label>
+                                    <select class="form-select @error('transmission') is-invalid @enderror"
+                                            id="transmission" name="transmission">
+                                        <option value="">— Select —</option>
+                                        <option value="automatic" @selected(old('transmission', $selectedVehicle->transmission ?? '') === 'automatic')>Automatic</option>
+                                        <option value="manual" @selected(old('transmission', $selectedVehicle->transmission ?? '') === 'manual')>Manual</option>
+                                    </select>
+                                    @error('transmission')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                 </div>
                             </div>
                         </div>
@@ -146,6 +170,16 @@
                                                value="{{ old('contact_no') }}"
                                                placeholder="e.g. 09171234567">
                                         @error('contact_no')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-group">
+                                        <label for="address" class="form-label">Address</label>
+                                        <input type="text" class="form-control @error('address') is-invalid @enderror"
+                                               id="address" name="address"
+                                               value="{{ old('address') }}"
+                                               placeholder="e.g. 123 Rizal St., Barangay San Roque, Quezon City">
+                                        @error('address')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                     </div>
                                 </div>
                             </div>
@@ -522,7 +556,14 @@ $(document).ready(function() {
                 showManualPanel(false); // picking existing customer hides manual panel
             } else if ($(this).val() === '') {
                 $customerId.val('');
+                $('#client_name').val('');
                 showManualPanel(false);
+            } else {
+                // New (unmatched) customer name typed: keep customer_id empty and mirror
+                // the typed name into the manual client_name field so the backend can
+                // persist it (otherwise the hidden client_name submits empty -> validation fails).
+                $customerId.val('');
+                $('#client_name').val($(this).val().trim());
             }
             // No match + non-empty text => new customer; keep customer_id empty
             // so the backend falls back to manual-add (client_name) mode.

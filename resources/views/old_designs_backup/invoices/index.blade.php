@@ -116,9 +116,9 @@
                                     <small class="text-gray-600">{{ $invoice->customer->phone ?? '' }}</small>
                                 </td>
                                 <td>
-                                    @if($invoice->workOrder)
-                                        <a href="{{ route('work-orders.show', $invoice->workOrder->id) }}">
-                                            {{ $invoice->workOrder->work_order_number }}
+                                    @if($invoice->jobOrder)
+                                        <a href="{{ route('job-orders.show', $invoice->jobOrder->id) }}">
+                                            {{ $invoice->jobOrder->job_order_number }}
                                         </a>
                                     @else
                                         <span class="text-gray-600">N/A</span>

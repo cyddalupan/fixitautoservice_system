@@ -313,6 +313,18 @@ body.dark-mode .service-type-badge {
 body.dark-mode .service-status-badge {
     color: #d1d5db;
 }
+
+    /* ===== Dark mode overrides (auto-swept) ===== */
+    [data-theme="dark"] .vhcl-info-value {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .vhcl-stat-item .num {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
 </style>
 @endpush
 

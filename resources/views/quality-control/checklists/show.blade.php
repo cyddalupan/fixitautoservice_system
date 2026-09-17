@@ -19,7 +19,7 @@
                     <i class="fas fa-edit"></i> Edit
                 </a>
                 <div class="btn-group">
-                    <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <i class="fas fa-download"></i> Export
                     </button>
                     <div class="dropdown-menu">
@@ -461,7 +461,23 @@
                         ol { margin-left: 20px; }
                         li { margin-bottom: 15px; }
                         .text-muted { color: #6c757d; }
-                    </style>
+                    
+    /* ===== Dark mode overrides ===== */
+    [data-theme="dark"] .checklist-section,
+    [data-theme="dark"] .checklist-item {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .checklist-section h2,
+    [data-theme="dark"] .checklist-item h3,
+    [data-theme="dark"] .checklist-item label {
+        color: var(--dark-text) !important;
+    }
+    [data-theme="dark"] .checklist-item input[type="checkbox"] {
+        accent-color: var(--bs-primary, #4f46e5);
+    }
+</style>
                 </head>
                 <body>
                     ${printContent.innerHTML}

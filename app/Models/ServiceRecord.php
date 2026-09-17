@@ -27,7 +27,7 @@ class ServiceRecord extends Model
         'service_status',
         'technician_id',
         'service_advisor_id',
-        'work_order_number',
+        'job_order_number',
         'diagnosis',
         'recommendations',
         'parts_used',

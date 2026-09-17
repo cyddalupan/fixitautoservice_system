@@ -2,14 +2,14 @@
 
 namespace App\Observers;
 
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 
-class WorkOrderUnreadObserver
+class JobOrderUnreadObserver
 {
-    public function updated(WorkOrder $workOrder): void
+    public function updated(JobOrder $jobOrder): void
     {
-        if ($workOrder->wasChanged() && !$workOrder->wasChanged('viewed_at') && $workOrder->viewed_at !== null) {
-            $workOrder->update(['viewed_at' => null]);
+        if ($jobOrder->wasChanged() && !$jobOrder->wasChanged('viewed_at') && $jobOrder->viewed_at !== null) {
+            $jobOrder->update(['viewed_at' => null]);
         }
     }
 }

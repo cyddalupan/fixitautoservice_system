@@ -4,27 +4,63 @@ namespace App\Http\Controllers;
 
 use App\Models\ServicePricing;
 use App\Models\ServiceType;
+use App\Models\VehicleBrand;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ServicePricingController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $pricings = ServicePricing::with(['serviceType'])
-            ->ordered()
+        $query = ServicePricing::with(['serviceType']);
+
+        if ($request->filled('service_type_id')) {
+            $query->where('service_type_id', $request->service_type_id);
+        }
+
+        if ($request->filled('vehicle_type')) {
+            $query->where('vehicle_type', $request->vehicle_type);
+        }
+
+        if ($request->filled('status')) {
+            if ($request->status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($request->status === 'inactive') {
+                $query->where('is_active', false);
+            }
+        }
+
+        if ($request->filled('brand')) {
+            $query->where('brand_name', $request->brand);
+        }
+
+        if ($request->filled('model')) {
+            $query->where('model_name', $request->model);
+        }
+
+        $pricings = $query->ordered()
             ->get()
             ->groupBy(fn($p) => $p->serviceType?->name ?? 'Uncategorized');
 
         $serviceTypes = ServiceType::where('is_active', true)->get();
-        $vehicleTypes = ['car', 'suv', 'truck', 'van'];
+        $vehicleTypes = ['Automatic', 'Manual'];
+        $brands = VehicleBrand::orderBy('name')->get();
+        $models = DB::table('service_pricings')
+            ->whereNotNull('model_name')
+            ->select('brand_name', 'model_name')
+            ->distinct()
+            ->orderBy('brand_name')
+            ->orderBy('model_name')
+            ->get()
+            ->groupBy('brand_name');
 
-        return view('service-pricings.index', compact('pricings', 'serviceTypes', 'vehicleTypes'));
+        return view('service-pricings.index', compact('pricings', 'serviceTypes', 'vehicleTypes', 'brands', 'models'));
     }
 
     public function create()
     {
         $serviceTypes = ServiceType::where('is_active', true)->get();
-        $vehicleTypes = ['car' => 'Car', 'suv' => 'SUV', 'truck' => 'Truck', 'van' => 'Van'];
+        $vehicleTypes = ['Automatic' => 'Automatic', 'Manual' => 'Manual'];
 
         return view('service-pricings.create', compact('serviceTypes', 'vehicleTypes'));
     }
@@ -51,7 +87,7 @@ class ServicePricingController extends Controller
     public function edit(ServicePricing $servicePricing)
     {
         $serviceTypes = ServiceType::where('is_active', true)->get();
-        $vehicleTypes = ['car' => 'Car', 'suv' => 'SUV', 'truck' => 'Truck', 'van' => 'Van'];
+        $vehicleTypes = ['Automatic' => 'Automatic', 'Manual' => 'Manual'];
 
         return view('service-pricings.edit', compact('servicePricing', 'serviceTypes', 'vehicleTypes'));
     }

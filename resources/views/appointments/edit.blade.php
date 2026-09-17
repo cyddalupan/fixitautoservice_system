@@ -161,7 +161,7 @@
                                         <option value="">Select Service Advisor</option>
                                         @foreach($advisors as $advisor)
                                             <option value="{{ $advisor->id }}" {{ old('service_advisor_id', $appointment->service_advisor_id) == $advisor->id ? 'selected' : '' }}>
-                                                {{ $advisor->first_name }} {{ $advisor->last_name }}
+                                                {{ $advisor->name }}
                                             </option>
                                         @endforeach
                                     </select>
@@ -178,7 +178,7 @@
                                         <option value="">Select Technician</option>
                                         @foreach($technicians as $technician)
                                             <option value="{{ $technician->id }}" {{ old('assigned_technician_id', $appointment->assigned_technician_id) == $technician->id ? 'selected' : '' }}>
-                                                {{ $technician->first_name }} {{ $technician->last_name }}
+                                                {{ $technician->name }}
                                             </option>
                                         @endforeach
                                     </select>

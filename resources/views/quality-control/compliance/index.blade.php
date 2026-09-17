@@ -116,7 +116,7 @@
     <!-- Filters -->
     <div class="card mb-4">
         <div class="card-body">
-            <form method="GET" action="{{ route('compliance.index') }}" class="row g-3">
+            <form method="GET" action="{{ route('compliance.dashboard') }}" class="row g-3">
                 <div class="col-md-3">
                     <label for="status" class="form-label">Status</label>
                     <select name="status" id="status" class="form-select">

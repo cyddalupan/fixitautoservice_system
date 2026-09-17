@@ -107,7 +107,7 @@
                 <i class="fas fa-list"></i> Low Stock Items ({{ $inventory->total() }})
             </h6>
             <div class="btn-group">
-                <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                     <i class="fas fa-download"></i> Export
                 </button>
                 <div class="dropdown-menu">

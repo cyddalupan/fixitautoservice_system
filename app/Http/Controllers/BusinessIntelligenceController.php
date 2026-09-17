@@ -7,7 +7,7 @@ use App\Models\BusinessIntelligenceMetric;
 use App\Models\DashboardWidget;
 use App\Models\RetentionAnalytics;
 use App\Models\Appointment;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Invoice;
 use App\Models\Customer;
 use App\Models\Technician;
@@ -114,6 +114,14 @@ class BusinessIntelligenceController extends Controller
     /**
      * Calculate and display metric details.
      */
+    public function widgetManagement()
+    {
+        return view('business-intelligence.widget-management');
+    }
+
+    /**
+     * Calculate a specific metric.
+     */
     public function calculateMetric(Request $request)
     {
         $metricName = $request->get('metric_name');
@@ -173,7 +181,7 @@ class BusinessIntelligenceController extends Controller
                 'color' => 'primary',
             ],
             'active_jobs' => [
-                'value' => WorkOrder::whereIn('status', ['in_progress', 'scheduled'])->count(),
+                'value' => JobOrder::whereIn('status', ['in_progress', 'scheduled'])->count(),
                 'trend' => $this->calculateJobTrend(),
                 'icon' => 'wrench',
                 'color' => 'warning',
@@ -233,7 +241,7 @@ class BusinessIntelligenceController extends Controller
                 return $log->start_time->diffInHours($log->end_time);
             });
             
-            $completedJobs = $tech->workOrders()->whereBetween('created_at', [$startDate, $endDate])->count();
+            $completedJobs = $tech->jobOrders()->whereBetween('created_at', [$startDate, $endDate])->count();
             
             $performance[] = [
                 'id' => $tech->id,
@@ -315,7 +323,7 @@ class BusinessIntelligenceController extends Controller
             case 'appointments':
                 return Appointment::whereDate('appointment_date', $date)->count();
             case 'completed_jobs':
-                return WorkOrder::whereDate('completed_at', $date)->count();
+                return JobOrder::whereDate('completed_at', $date)->count();
             default:
                 return 0;
         }
@@ -353,8 +361,8 @@ class BusinessIntelligenceController extends Controller
         $today = Carbon::now()->toDateString();
         $yesterday = Carbon::yesterday()->toDateString();
         
-        $todayCount = WorkOrder::whereDate('created_at', $today)->count();
-        $yesterdayCount = WorkOrder::whereDate('created_at', $yesterday)->count();
+        $todayCount = JobOrder::whereDate('created_at', $today)->count();
+        $yesterdayCount = JobOrder::whereDate('created_at', $yesterday)->count();
         
         return $this->calculateTrendPercentage($todayCount, $yesterdayCount);
     }

@@ -12,7 +12,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h4 class="mb-1"><i class="fas fa-tags me-2"></i>Service Pricing</h4>
-            <p class="text-muted mb-0 small">Manage pricing per service type, vehicle type, and variant</p>
+            <p class="text-muted mb-0 small">Manage pricing per service type, transmission, brand, and model</p>
         </div>
         <div>
             <a href="{{ route('service-pricings.create') }}" class="btn btn-success">
@@ -25,7 +25,7 @@
     <div class="card shadow-sm mb-4 border-0">
         <div class="card-body py-3">
             <form method="GET" action="{{ route('service-pricings.index') }}" class="row g-2 align-items-end">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label small fw-semibold">Service Type</label>
                     <select name="service_type_id" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">All Services</option>
@@ -36,18 +36,35 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label small fw-semibold">Vehicle Type</label>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold">Transmission</label>
                     <select name="vehicle_type" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="">All Types</option>
+                        <option value="">All</option>
                         @foreach($vehicleTypes as $vt)
                             <option value="{{ $vt }}" {{ request('vehicle_type') == $vt ? 'selected' : '' }}>
-                                {{ ucfirst($vt) }}
+                                {{ $vt }}
                             </option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold">Brand</label>
+                    <select name="brand" class="form-select form-select-sm" onchange="loadModels(this.value); this.form.submit()">
+                        <option value="">All Brands</option>
+                        @foreach($brands as $brand)
+                            <option value="{{ $brand->name }}" {{ request('brand') == $brand->name ? 'selected' : '' }}>
+                                {{ $brand->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold">Model</label>
+                    <select name="model" id="model-filter" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All Models</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
                     <label class="form-label small fw-semibold">Status</label>
                     <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="">All</option>
@@ -72,7 +89,7 @@
                     <thead class="table-light">
                         <tr>
                             <th class="ps-4">Service</th>
-                            <th>Vehicle Type</th>
+                            <th>Transmission</th>
                             <th>Vehicle Model</th>
                             <th>Variant Label</th>
                             <th class="text-end">Price (₱)</th>
@@ -151,6 +168,34 @@
     @endif
 </div>
 @endsection
+
+@push('scripts')
+<script>
+const modelsData = @json($models->mapWithKeys(fn($items, $brandName) => [$brandName => $items->pluck('model_name')->toArray()]));
+
+function loadModels(brandName) {
+    const select = document.getElementById('model-filter');
+    select.innerHTML = '<option value="">All Models</option>';
+    
+    if (brandName && modelsData[brandName]) {
+        const selected = '{{ request('model') }}';
+        modelsData[brandName].forEach(function(name) {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            if (name === selected) opt.selected = true;
+            select.appendChild(opt);
+        });
+    }
+}
+
+// Init on page load
+const initialBrand = '{{ request('brand') }}';
+if (initialBrand) {
+    loadModels(initialBrand);
+}
+</script>
+@endpush
 
 @push('styles')
 <style>

@@ -691,7 +691,7 @@
                         <a href="{{ route('estimates.create') }}?inspection_id={{ $inspection->id }}" class="btn btn-outline-success btn-sm">
                             <i class="fas fa-file-invoice-dollar me-1"></i>Create Estimate
                         </a>
-                        <a href="{{ route('work-orders.create') }}?inspection_id={{ $inspection->id }}" class="btn btn-outline-warning btn-sm">
+                        <a href="{{ route('job-orders.create') }}?inspection_id={{ $inspection->id }}" class="btn btn-outline-warning btn-sm">
                             <i class="fas fa-clipboard-list me-1"></i>Create Job Order
                         </a>
                     </div>

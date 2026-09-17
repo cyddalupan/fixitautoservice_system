@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PartsRequest;
 use App\Models\PartsRequestItem;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Vehicle;
 use App\Models\Inventory;
 use App\Models\User;
@@ -18,7 +18,7 @@ class PartsRequestController extends Controller
      */
     public function index(Request $request)
     {
-        $query = PartsRequest::with(['technician', 'workOrder', 'vehicle']);
+        $query = PartsRequest::with(['technician', 'jobOrder', 'vehicle']);
 
         // Filter by status
         if ($request->has('status') && $request->status) {
@@ -36,8 +36,8 @@ class PartsRequestController extends Controller
         }
 
         // Filter by work order
-        if ($request->has('work_order_id') && $request->work_order_id) {
-            $query->where('work_order_id', $request->work_order_id);
+        if ($request->has('job_order_id') && $request->job_order_id) {
+            $query->where('job_order_id', $request->job_order_id);
         }
 
         // Filter by search
@@ -65,7 +65,7 @@ class PartsRequestController extends Controller
         return view('parts-requests.index', [
             'requests' => $requests,
             'technicians' => User::technicians()->active()->get(),
-            'workOrders' => WorkOrder::where('status', '!=', 'completed')->get(),
+            'jobOrders' => JobOrder::where('job_order_status', '!=', 'completed')->get(),
         ]);
     }
 
@@ -75,20 +75,20 @@ class PartsRequestController extends Controller
     public function create(Request $request)
     {
         // Get work order if specified
-        $workOrder = null;
+        $jobOrder = null;
         $vehicle = null;
         
-        if ($request->has('work_order_id')) {
-            $workOrder = WorkOrder::findOrFail($request->work_order_id);
-            $vehicle = $workOrder->vehicle;
+        if ($request->has('job_order_id')) {
+            $jobOrder = JobOrder::findOrFail($request->job_order_id);
+            $vehicle = $jobOrder->vehicle;
         }
 
         return view('parts-requests.create', [
-            'workOrder' => $workOrder,
+            'jobOrder' => $jobOrder,
             'vehicle' => $vehicle,
-            'workOrders' => WorkOrder::where('status', '!=', 'completed')->get(),
+            'jobOrders' => JobOrder::where('job_order_status', '!=', 'completed')->get(),
             'vehicles' => Vehicle::all(),
-            'inventory' => Inventory::where('quantity_on_hand', '>', 0)->get(),
+            'inventory' => Inventory::where('quantity', '>', 0)->get(),
         ]);
     }
 
@@ -98,7 +98,7 @@ class PartsRequestController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'work_order_id' => 'required|exists:work_orders,id',
+            'job_order_id' => 'required|exists:job_orders,id',
             'vehicle_id' => 'required|exists:vehicles,id',
             'priority' => 'required|in:high,normal,low',
             'notes' => 'nullable|string|max:1000',
@@ -114,7 +114,7 @@ class PartsRequestController extends Controller
         // Create parts request
         $partsRequest = PartsRequest::create([
             'technician_id' => Auth::id(),
-            'work_order_id' => $request->work_order_id,
+            'job_order_id' => $request->job_order_id,
             'vehicle_id' => $request->vehicle_id,
             'priority' => $request->priority,
             'notes' => $request->notes,
@@ -152,7 +152,7 @@ class PartsRequestController extends Controller
     {
         $partsRequest->load([
             'technician',
-            'workOrder',
+            'jobOrder',
             'vehicle',
             'approver',
             'orderer',
@@ -264,7 +264,7 @@ class PartsRequestController extends Controller
         $highPriorityRequests = PartsRequest::highPriority()->pending()->get();
 
         // Get recent requests
-        $recentRequests = PartsRequest::with(['technician', 'workOrder', 'vehicle'])
+        $recentRequests = PartsRequest::with(['technician', 'jobOrder', 'vehicle'])
             ->orderBy('requested_at', 'desc')
             ->limit(10)
             ->get();

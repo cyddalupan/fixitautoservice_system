@@ -3,7 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\AppointmentController;
-use App\Http\Controllers\WorkOrderController;
+use App\Http\Controllers\JobOrderController;
 use App\Http\Controllers\EstimateController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
@@ -20,7 +20,7 @@ use App\Http\Controllers\NewJobOrderController;
 use App\Http\Controllers\NewInvoiceController;
 use App\Http\Controllers\QualityControlController;
 use App\Http\Controllers\QualityCheckController;
-use App\Http\Controllers\WorkOrderQualityController;
+use App\Http\Controllers\JobOrderQualityController;
 use App\Http\Controllers\ArchiveController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\ExpenseController;

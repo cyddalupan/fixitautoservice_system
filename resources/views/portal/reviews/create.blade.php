@@ -21,7 +21,7 @@
                     @csrf
                     <div class="card-body">
                         <!-- Service Selection -->
-                        @if($workOrder)
+                        @if($jobOrder)
                             <div class="card border-primary mb-4">
                                 <div class="card-header bg-primary text-white">
                                     <h4 class="card-title mb-0">
@@ -31,20 +31,20 @@
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-8">
-                                            <h5>Work Order #{{ $workOrder->id }}</h5>
+                                            <h5>Work Order #{{ $jobOrder->id }}</h5>
                                             <p class="text-muted mb-2">
-                                                Completed: {{ $workOrder->completed_at->format('F j, Y') }}
+                                                Completed: {{ $jobOrder->completed_at->format('F j, Y') }}
                                             </p>
-                                            @if($workOrder->vehicle)
+                                            @if($jobOrder->vehicle)
                                                 <p class="mb-2">
                                                     <i class="fas fa-car me-2"></i>
-                                                    {{ $workOrder->vehicle->year }} {{ $workOrder->vehicle->make }} {{ $workOrder->vehicle->model }}
+                                                    {{ $jobOrder->vehicle->year }} {{ $jobOrder->vehicle->make }} {{ $jobOrder->vehicle->model }}
                                                 </p>
                                             @endif
-                                            @if($workOrder->services)
+                                            @if($jobOrder->services)
                                                 <p class="mb-0">
                                                     <strong>Services Performed:</strong>
-                                                    {{ implode(', ', $workOrder->services) }}
+                                                    {{ implode(', ', $jobOrder->services) }}
                                                 </p>
                                             @endif
                                         </div>
@@ -52,12 +52,12 @@
                                             <div class="card bg-light">
                                                 <div class="card-body">
                                                     <h6 class="card-title">Invoice Total</h6>
-                                                    <h4 class="text-primary">${{ number_format($workOrder->total_amount ?? 0, 2) }}</h4>
+                                                    <h4 class="text-primary">${{ number_format($jobOrder->total_amount ?? 0, 2) }}</h4>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <input type="hidden" name="work_order_id" value="{{ $workOrder->id }}">
+                                    <input type="hidden" name="job_order_id" value="{{ $jobOrder->id }}">
                                 </div>
                             </div>
                         @else

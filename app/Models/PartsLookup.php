@@ -24,7 +24,7 @@ class PartsLookup extends Model
         'search_results',
         'customer_id',
         'vehicle_id',
-        'work_order_id',
+        'job_order_id',
         'created_by',
     ];
 
@@ -44,9 +44,9 @@ class PartsLookup extends Model
         return $this->belongsTo(Vehicle::class);
     }
 
-    public function workOrder()
+    public function jobOrder()
     {
-        return $this->belongsTo(WorkOrder::class);
+        return $this->belongsTo(JobOrder::class);
     }
 
     public function createdBy()

@@ -12,7 +12,7 @@
             <p class="text-muted mb-0">Create a new service work order</p>
         </div>
         <div>
-            <a href="{{ route('work-orders.index') }}" class="btn btn-secondary">
+            <a href="{{ route('job-orders.index') }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-1"></i> Back to Work Orders
             </a>
         </div>
@@ -23,7 +23,7 @@
     <div class="col-12">
         <div class="card">
             <div class="card-body">
-                <form method="POST" action="{{ route('work-orders.store') }}">
+                <form method="POST" action="{{ route('job-orders.store') }}">
                     @csrf
                     
                     <!-- Hidden fields for appointment/inspection -->
@@ -96,10 +96,10 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group mb-3">
-                                <label for="work_order_date" class="form-label">Work Order Date *</label>
-                                <input type="date" class="form-control @error('work_order_date') is-invalid @enderror" 
-                                       id="work_order_date" name="work_order_date" value="{{ old('work_order_date', date('Y-m-d')) }}" required>
-                                @error('work_order_date')
+                                <label for="job_order_date" class="form-label">Work Order Date *</label>
+                                <input type="date" class="form-control @error('job_order_date') is-invalid @enderror" 
+                                       id="job_order_date" name="job_order_date" value="{{ old('job_order_date', date('Y-m-d')) }}" required>
+                                @error('job_order_date')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror>
                             </div>
@@ -107,17 +107,17 @@
                         
                         <div class="col-md-6">
                             <div class="form-group mb-3">
-                                <label for="work_order_type" class="form-label">Work Order Type *</label>
-                                <select class="form-select @error('work_order_type') is-invalid @enderror" 
-                                        id="work_order_type" name="work_order_type" required>
+                                <label for="job_order_type" class="form-label">Work Order Type *</label>
+                                <select class="form-select @error('job_order_type') is-invalid @enderror" 
+                                        id="job_order_type" name="job_order_type" required>
                                     <option value="">Select Type</option>
-                                    <option value="repair" {{ old('work_order_type') == 'repair' ? 'selected' : '' }}>Repair</option>
-                                    <option value="maintenance" {{ old('work_order_type') == 'maintenance' ? 'selected' : '' }}>Maintenance</option>
-                                    <option value="diagnostic" {{ old('work_order_type') == 'diagnostic' ? 'selected' : '' }}>Diagnostic</option>
-                                    <option value="inspection" {{ old('work_order_type') == 'inspection' ? 'selected' : '' }}>Inspection</option>
-                                    <option value="emergency" {{ old('work_order_type') == 'emergency' ? 'selected' : '' }}>Emergency</option>
+                                    <option value="repair" {{ old('job_order_type') == 'repair' ? 'selected' : '' }}>Repair</option>
+                                    <option value="maintenance" {{ old('job_order_type') == 'maintenance' ? 'selected' : '' }}>Maintenance</option>
+                                    <option value="diagnostic" {{ old('job_order_type') == 'diagnostic' ? 'selected' : '' }}>Diagnostic</option>
+                                    <option value="inspection" {{ old('job_order_type') == 'inspection' ? 'selected' : '' }}>Inspection</option>
+                                    <option value="emergency" {{ old('job_order_type') == 'emergency' ? 'selected' : '' }}>Emergency</option>
                                 </select>
-                                @error('work_order_type')
+                                @error('job_order_type')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
@@ -241,7 +241,7 @@
                     <hr>
                     
                     <div class="d-flex justify-content-between">
-                        <a href="{{ route('work-orders.index') }}" class="btn btn-secondary">
+                        <a href="{{ route('job-orders.index') }}" class="btn btn-secondary">
                             <i class="fas fa-times me-1"></i> Cancel
                         </a>
                         <button type="submit" class="btn btn-primary">

@@ -17,11 +17,31 @@ class InvoiceItem extends Model
      */
     protected $fillable = [
         'invoice_id',
+        'item_type',
+        'item_code',
+        'item_name',
         'description',
         'quantity',
+        'unit',
         'unit_price',
+        'cost_price',
         'total_price',
+        'total_amount',
+        'discount_percentage',
+        'discount_amount',
+        'tax_percentage',
+        'tax_amount',
         'taxable',
+        'service_id',
+        'part_id',
+        'labor_id',
+        'technician_id',
+        'has_warranty',
+        'warranty_months',
+        'warranty_start_date',
+        'warranty_end_date',
+        'commission_rate',
+        'commission_amount',
     ];
 
     /**

@@ -15,10 +15,10 @@
                 <p class="text-muted mb-0">Manage quality check templates and categories</p>
             </div>
             <div class="col-auto">
-                <a href="{{ route('quality-checks.create') }}" class="btn btn-primary">
+                <a href="{{ route('quality-control.quality-checks.create') }}" class="btn btn-primary">
                     <i class="fas fa-plus me-1"></i> New Template
                 </a>
-                <a href="{{ route('quality-checks.export') }}" class="btn btn-outline-secondary">
+                <a href="{{ route('quality-control.quality-checks.export') }}" class="btn btn-outline-secondary">
                     <i class="fas fa-download me-1"></i> Export
                 </a>
             </div>
@@ -28,7 +28,7 @@
     <!-- Filters -->
     <div class="card mb-4">
         <div class="card-body">
-            <form method="GET" action="{{ route('quality-checks.index') }}" class="row g-3">
+            <form method="GET" action="{{ route('quality-control.quality-checks.index') }}" class="row g-3">
                 <div class="col-md-3">
                     <label for="category" class="form-label">Category</label>
                     <select name="category" id="category" class="form-select">
@@ -169,7 +169,7 @@
                                     @endif
                                 </td>
                                 <td>
-                                    <span class="badge bg-primary">{{ $check->work_order_quality_checks_count ?? 0 }} times</span>
+                                    <span class="badge bg-primary">{{ $check->job_order_quality_checks_count ?? 0 }} times</span>
                                 </td>
                                 <td>
                                     @php
@@ -184,19 +184,19 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a href="{{ route('quality-checks.show', $check->id) }}" 
+                                        <a href="{{ route('quality-control.quality-checks.show', $check->id) }}" 
                                            class="btn btn-sm btn-outline-primary" title="View">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <a href="{{ route('quality-checks.edit', $check->id) }}" 
+                                        <a href="{{ route('quality-control.quality-checks.edit', $check->id) }}" 
                                            class="btn btn-sm btn-outline-secondary" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <a href="{{ route('quality-checks.duplicate', $check->id) }}" 
+                                        <a href="{{ route('quality-control.quality-checks.duplicate', $check->id) }}" 
                                            class="btn btn-sm btn-outline-info" title="Duplicate">
                                             <i class="fas fa-copy"></i>
                                         </a>
-                                        <form action="{{ route('quality-checks.destroy', $check->id) }}" 
+                                        <form action="{{ route('quality-control.quality-checks.destroy', $check->id) }}" 
                                               method="POST" class="d-inline" 
                                               onsubmit="return confirm('Are you sure you want to delete this template?')">
                                             @csrf
@@ -215,7 +215,7 @@
                                         <i class="fas fa-clipboard-list fa-3x mb-3"></i>
                                         <h5>No quality check templates found</h5>
                                         <p>Create your first quality check template to get started.</p>
-                                        <a href="{{ route('quality-checks.create') }}" class="btn btn-primary">
+                                        <a href="{{ route('quality-control.quality-checks.create') }}" class="btn btn-primary">
                                             <i class="fas fa-plus me-1"></i> Create Template
                                         </a>
                                     </div>
@@ -237,7 +237,7 @@
                             </button>
                             <ul class="dropdown-menu">
                                 <li>
-                                    <form action="{{ route('quality-checks.bulk-update') }}" method="POST" id="bulk-activate-form">
+                                    <form action="{{ route('quality-control.quality-checks.bulk-update') }}" method="POST" id="bulk-activate-form">
                                         @csrf
                                         <input type="hidden" name="check_ids" id="bulk-check-ids">
                                         <input type="hidden" name="action" value="activate">
@@ -247,7 +247,7 @@
                                     </form>
                                 </li>
                                 <li>
-                                    <form action="{{ route('quality-checks.bulk-update') }}" method="POST" id="bulk-deactivate-form">
+                                    <form action="{{ route('quality-control.quality-checks.bulk-update') }}" method="POST" id="bulk-deactivate-form">
                                         @csrf
                                         <input type="hidden" name="check_ids" id="bulk-check-ids-deactivate">
                                         <input type="hidden" name="action" value="deactivate">
@@ -258,7 +258,7 @@
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <form action="{{ route('quality-checks.bulk-update') }}" method="POST" id="bulk-delete-form">
+                                    <form action="{{ route('quality-control.quality-checks.bulk-update') }}" method="POST" id="bulk-delete-form">
                                         @csrf
                                         <input type="hidden" name="check_ids" id="bulk-check-ids-delete">
                                         <input type="hidden" name="action" value="delete">

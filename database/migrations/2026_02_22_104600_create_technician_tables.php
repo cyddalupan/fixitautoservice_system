@@ -119,7 +119,7 @@ return new class extends Migration
         Schema::create('technician_time_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('technician_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('work_order_id')->nullable()->constrained('work_orders')->onDelete('set null');
+            $table->foreignId('job_order_id')->nullable()->constrained('job_orders')->onDelete('set null');
             $table->foreignId('appointment_id')->nullable()->constrained('appointments')->onDelete('set null');
             $table->enum('log_type', ['clock_in', 'clock_out', 'break_start', 'break_end', 'lunch_start', 'lunch_end', 'job_start', 'job_end', 'training', 'meeting', 'maintenance', 'other']);
             $table->timestamp('log_time')->useCurrent();
@@ -135,7 +135,7 @@ return new class extends Migration
             $table->timestamps();
             
             $table->index(['technician_id', 'log_time'], 'tech_time_log_idx');
-            $table->index(['work_order_id', 'log_type'], 'time_log_wo_type_idx');
+            $table->index(['job_order_id', 'log_type'], 'time_log_wo_type_idx');
             $table->index(['log_type', 'status'], 'time_log_type_status_idx');
             $table->index('log_time');
         });
@@ -198,7 +198,7 @@ return new class extends Migration
             
             $table->timestamps();
             
-            $table->unique(['technician_id', 'metric_date', 'period_type']);
+            $table->unique(['technician_id', 'metric_date', 'period_type'], 'tech_perf_unique');
             $table->index(['technician_id', 'period_type'], 'tech_perf_period_idx');
             $table->index('metric_date');
             $table->index('overall_performance_score');
@@ -258,7 +258,7 @@ return new class extends Migration
             $table->json('assessment_results')->nullable(); // JSON for detailed results
             $table->timestamps();
             
-            $table->unique(['technician_id', 'training_module_id']);
+            $table->unique(['technician_id', 'training_module_id'], 'tech_training_unique');
             $table->index(['technician_id', 'status'], 'training_rec_status_idx');
             $table->index(['training_module_id', 'completed_at'], 'training_mod_completed_idx');
             $table->index('passed');
@@ -269,7 +269,7 @@ return new class extends Migration
             $table->id();
             $table->string('request_number')->unique();
             $table->foreignId('technician_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('work_order_id')->nullable()->constrained('work_orders')->onDelete('set null');
+            $table->foreignId('job_order_id')->nullable()->constrained('job_orders')->onDelete('set null');
             $table->foreignId('vehicle_id')->nullable()->constrained('vehicles')->onDelete('set null');
             $table->enum('request_type', ['standard', 'urgent', 'emergency', 'warranty', 'special_order'])->default('standard');
             $table->enum('status', ['draft', 'submitted', 'approved', 'rejected', 'ordered', 'received', 'installed', 'returned', 'cancelled'])->default('draft');
@@ -303,7 +303,7 @@ return new class extends Migration
             $table->softDeletes();
             
             $table->index(['technician_id', 'status'], 'parts_req_tech_status_idx');
-            $table->index(['work_order_id', 'request_type'], 'parts_req_wo_type_idx');
+            $table->index(['job_order_id', 'request_type'], 'parts_req_wo_type_idx');
             $table->index(['status', 'created_at'], 'parts_req_status_created_idx');
             $table->index('request_number');
         });
@@ -338,27 +338,28 @@ return new class extends Migration
             $table->index('vehicle_make');
         });
 
-        // Add technician-specific columns to users table
-        Schema::table('users', function (Blueprint $table) {
-            // These columns already exist in the users table based on our analysis
-            // We'll just add indexes for better performance
-            $table->index(['role', 'is_active']);
-            $table->index('employee_id');
-            $table->index('hire_date');
-        });
+        // Ensure commonly-needed indexes exist on users/job_orders, but only add them
+        // if they don't already exist (base migrations / other feature migrations
+        // may already have created them — avoid Duplicate key name errors).
+        // NOTE: this only needs to run on MySQL; sqlite ignores duplicate index adds.
+        if (config('database.default') !== 'sqlite') {
+            if (!Schema::hasIndex('users', 'users_role_is_active_index')) {
+                Schema::table('users', function (Blueprint $table) { $table->index(['role', 'is_active']); });
+            }
+            if (!Schema::hasIndex('users', 'users_employee_id_index')) {
+                Schema::table('users', function (Blueprint $table) { $table->index('employee_id'); });
+            }
+            if (!Schema::hasIndex('users', 'users_hire_date_index')) {
+                Schema::table('users', function (Blueprint $table) { $table->index('hire_date'); });
+            }
 
-        // Enhance work_orders table for better technician tracking
-        Schema::table('work_orders', function (Blueprint $table) {
-            // Add index for technician_id
-            $table->index('technician_id');
-            
-            // Add index for time tracking fields
-            $table->index('work_start_time');
-            $table->index('work_complete_time');
-            
-            // Add index for performance tracking
-            $table->index(['technician_id', 'work_order_status']);
-        });
+            Schema::table('job_orders', function (Blueprint $table) {
+                if (!Schema::hasIndex('job_orders', 'job_orders_technician_id_index')) $table->index('technician_id');
+                if (!Schema::hasIndex('job_orders', 'job_orders_work_start_time_index')) $table->index('work_start_time');
+                if (!Schema::hasIndex('job_orders', 'job_orders_work_complete_time_index')) $table->index('work_complete_time');
+                if (!Schema::hasIndex('job_orders', 'job_orders_technician_id_job_order_status_index')) $table->index(['technician_id', 'job_order_status']);
+            });
+        }
     }
 
     /**
@@ -377,19 +378,20 @@ return new class extends Migration
         Schema::dropIfExists('technician_certifications');
         Schema::dropIfExists('technician_profiles');
         
-        // Remove indexes from users table
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropIndex(['role', 'is_active']);
-            $table->dropIndex(['employee_id']);
-            $table->dropIndex(['hire_date']);
-        });
-        
-        // Remove indexes from work_orders table
-        Schema::table('work_orders', function (Blueprint $table) {
-            $table->dropIndex(['technician_id']);
-            $table->dropIndex(['work_start_time']);
-            $table->dropIndex(['work_complete_time']);
-            $table->dropIndex(['technician_id', 'work_order_status']);
-        });
+        // Remove indexes from users table (MySQL only — SQLite skips these)
+        if (config('database.default') !== 'sqlite') {
+            Schema::table('users', function (Blueprint $table) {
+                $table->dropIndex(['role', 'is_active']);
+                $table->dropIndex(['employee_id']);
+                $table->dropIndex(['hire_date']);
+            });
+            
+            Schema::table('job_orders', function (Blueprint $table) {
+                $table->dropIndex(['technician_id']);
+                $table->dropIndex(['work_start_time']);
+                $table->dropIndex(['work_complete_time']);
+                $table->dropIndex(['technician_id', 'job_order_status']);
+            });
+        }
     }
 };

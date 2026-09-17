@@ -11,14 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Ensure invoice_id column exists in work_orders table
-        if (!Schema::hasColumn('work_orders', 'invoice_id')) {
-            Schema::table('work_orders', function (Blueprint $table) {
+        // Ensure invoice_id column exists in job_orders table
+        if (!Schema::hasColumn('job_orders', 'invoice_id')) {
+            Schema::table('job_orders', function (Blueprint $table) {
                 $table->foreignId('invoice_id')->nullable()->constrained('invoices')->onDelete('set null')->after('id');
             });
         } else {
             // If column exists, ensure it has proper foreign key constraint
-            Schema::table('work_orders', function (Blueprint $table) {
+            Schema::table('job_orders', function (Blueprint $table) {
                 // Try to drop existing foreign key if it exists
                 try {
                     $table->dropForeign(['invoice_id']);
@@ -30,22 +30,22 @@ return new class extends Migration
             });
         }
 
-        // Ensure work_order_id column exists in invoices table
-        if (!Schema::hasColumn('invoices', 'work_order_id')) {
+        // Ensure job_order_id column exists in invoices table
+        if (!Schema::hasColumn('invoices', 'job_order_id')) {
             Schema::table('invoices', function (Blueprint $table) {
-                $table->foreignId('work_order_id')->nullable()->constrained('work_orders')->onDelete('cascade')->after('id');
+                $table->foreignId('job_order_id')->nullable()->constrained('job_orders')->onDelete('cascade')->after('id');
             });
         } else {
             // If column exists, ensure it has proper foreign key constraint
             Schema::table('invoices', function (Blueprint $table) {
                 // Try to drop existing foreign key if it exists
                 try {
-                    $table->dropForeign(['work_order_id']);
+                    $table->dropForeign(['job_order_id']);
                 } catch (\Exception $e) {
                     // Foreign key might not exist, continue
                 }
                 // Re-add with proper constraint
-                $table->foreign('work_order_id')->references('id')->on('work_orders')->onDelete('cascade');
+                $table->foreign('job_order_id')->references('id')->on('job_orders')->onDelete('cascade');
             });
         }
     }
@@ -56,7 +56,7 @@ return new class extends Migration
     public function down(): void
     {
         // We won't drop columns in down migration to avoid data loss
-        Schema::table('work_orders', function (Blueprint $table) {
+        Schema::table('job_orders', function (Blueprint $table) {
             try {
                 $table->dropForeign(['invoice_id']);
             } catch (\Exception $e) {
@@ -66,7 +66,7 @@ return new class extends Migration
 
         Schema::table('invoices', function (Blueprint $table) {
             try {
-                $table->dropForeign(['work_order_id']);
+                $table->dropForeign(['job_order_id']);
             } catch (\Exception $e) {
                 // Foreign key might not exist, continue
             }

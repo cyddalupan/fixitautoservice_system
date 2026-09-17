@@ -284,7 +284,7 @@ MAIL_FROM_NAME="${APP_NAME}"
 - `customers` - Customer information
 - `vehicles` - Vehicle details
 - `appointments` - Service appointments
-- `work_orders` - Repair work orders
+- `job_orders` - Repair work orders
 - `inventory` - Parts inventory
 - `invoices` - Billing and invoices
 - `payments` - Payment records

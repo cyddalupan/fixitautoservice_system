@@ -26,10 +26,10 @@ return new class extends Migration
             $table->index(['category', 'is_active']);
         });
 
-        // Table 2: work_order_quality_checks - Quality checks performed on work orders
-        Schema::create('work_order_quality_checks', function (Blueprint $table) {
+        // Table 2: job_order_quality_checks - Quality checks performed on work orders
+        Schema::create('job_order_quality_checks', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('work_order_id')->constrained('work_orders')->onDelete('cascade');
+            $table->foreignId('job_order_id')->constrained('job_orders')->onDelete('cascade');
             $table->foreignId('quality_check_id')->constrained('quality_checks')->onDelete('cascade');
             $table->foreignId('technician_id')->constrained('users')->onDelete('cascade');
             $table->foreignId('supervisor_id')->nullable()->constrained('users')->onDelete('set null');
@@ -41,7 +41,7 @@ return new class extends Migration
             $table->timestamp('approved_at')->nullable();
             $table->timestamps();
             
-            $table->index(['work_order_id', 'status']);
+            $table->index(['job_order_id', 'status']);
             $table->index(['technician_id', 'status']);
             $table->index(['supervisor_id', 'status']);
             $table->index('completed_at');
@@ -74,7 +74,7 @@ return new class extends Migration
         // Table 4: customer_satisfaction_surveys - Post-service customer feedback
         Schema::create('customer_satisfaction_surveys', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('work_order_id')->constrained('work_orders')->onDelete('cascade');
+            $table->foreignId('job_order_id')->constrained('job_orders')->onDelete('cascade');
             $table->foreignId('customer_id')->constrained('customers')->onDelete('cascade');
             $table->foreignId('technician_id')->nullable()->constrained('users')->onDelete('set null');
             $table->integer('overall_rating')->default(0); // 1-5 stars
@@ -94,7 +94,7 @@ return new class extends Migration
             $table->timestamp('completed_at')->nullable();
             $table->timestamps();
             
-            $table->index(['work_order_id', 'customer_id']);
+            $table->index(['job_order_id', 'customer_id']);
             $table->index(['status', 'completed_at']);
             $table->index('overall_rating');
         });
@@ -120,7 +120,7 @@ return new class extends Migration
         Schema::dropIfExists('quality_control_settings');
         Schema::dropIfExists('customer_satisfaction_surveys');
         Schema::dropIfExists('compliance_documents');
-        Schema::dropIfExists('work_order_quality_checks');
+        Schema::dropIfExists('job_order_quality_checks');
         Schema::dropIfExists('quality_checks');
     }
 };

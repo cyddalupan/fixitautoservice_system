@@ -209,7 +209,7 @@
                     <a href="{{ route('portal.appointments') }}" class="list-group-item list-group-item-action">
                         <i class="fas fa-calendar me-2"></i>My Appointments
                     </a>
-                    <a href="{{ route('portal.work-orders') }}" class="list-group-item list-group-item-action">
+                    <a href="{{ route('portal.job-orders') }}" class="list-group-item list-group-item-action">
                         <i class="fas fa-clipboard-list me-2"></i>My Work Orders
                     </a>
                 </div>

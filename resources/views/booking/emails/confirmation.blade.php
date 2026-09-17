@@ -70,7 +70,7 @@
             @endif
 
             <p style="text-align:center;margin-top:25px;">
-                <a href="{{ route('booking.dashboard') }}" class="btn">View My Appointments</a>
+                <a href="https://fixitautoservices.com/booking/dashboard" class="btn">View My Appointments</a>
             </p>
 
             <p style="font-size:13px;color:#94a3b8;text-align:center;">

@@ -6,7 +6,7 @@ use App\Models\ServiceProgress;
 use App\Models\Appointment;
 use App\Models\Inspection;
 use App\Models\Estimate;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Invoice;
 use App\Models\Payment;
 use Illuminate\Database\Eloquent\Model;
@@ -141,10 +141,10 @@ class ServiceProgressService
     /**
      * Update service progress when a work order is created.
      */
-    public static function updateFromWorkOrder(WorkOrder $workOrder): ServiceProgress
+    public static function updateFromJobOrder(JobOrder $jobOrder): ServiceProgress
     {
         // Try to find by estimate first
-        $estimate = $workOrder->estimate;
+        $estimate = $jobOrder->estimate;
         $progress = null;
         
         if ($estimate) {
@@ -153,8 +153,8 @@ class ServiceProgressService
         
         // If not found by estimate, try by customer/vehicle
         if (!$progress) {
-            $progress = ServiceProgress::where('customer_id', $workOrder->customer_id)
-                ->where('vehicle_id', $workOrder->vehicle_id)
+            $progress = ServiceProgress::where('customer_id', $jobOrder->customer_id)
+                ->where('vehicle_id', $jobOrder->vehicle_id)
                 ->where('service_type', 'full_service')
                 ->latest()
                 ->first();
@@ -163,17 +163,17 @@ class ServiceProgressService
         // If still not found, create new
         if (!$progress) {
             $progress = ServiceProgress::create([
-                'customer_id' => $workOrder->customer_id,
-                'vehicle_id' => $workOrder->vehicle_id,
+                'customer_id' => $jobOrder->customer_id,
+                'vehicle_id' => $jobOrder->vehicle_id,
                 'service_type' => 'full_service',
                 'started_at' => now(),
             ]);
         }
 
         $progress->update([
-            'has_work_order' => true,
-            'work_order_id' => $workOrder->id,
-            'work_order_created_at' => $workOrder->created_at,
+            'has_job_order' => true,
+            'job_order_id' => $jobOrder->id,
+            'job_order_created_at' => $jobOrder->created_at,
         ]);
 
         $progress->progress_percentage = $progress->calculateProgressPercentage();
@@ -193,9 +193,9 @@ class ServiceProgressService
         
         // Try to find by work order first (for full service)
         if ($serviceType === 'full_service') {
-            $workOrder = $invoice->workOrder;
-            if ($workOrder) {
-                $progress = ServiceProgress::where('work_order_id', $workOrder->id)->first();
+            $jobOrder = $invoice->jobOrder;
+            if ($jobOrder) {
+                $progress = ServiceProgress::where('job_order_id', $jobOrder->id)->first();
                 if ($progress) {
                     $progress->update([
                         'has_invoice' => true,
@@ -295,8 +295,8 @@ class ServiceProgressService
             $progress = ServiceProgress::where('inspection_id', $entity->id)->first();
         } elseif ($entity instanceof Estimate) {
             $progress = ServiceProgress::where('estimate_id', $entity->id)->first();
-        } elseif ($entity instanceof WorkOrder) {
-            $progress = ServiceProgress::where('work_order_id', $entity->id)->first();
+        } elseif ($entity instanceof JobOrder) {
+            $progress = ServiceProgress::where('job_order_id', $entity->id)->first();
         } elseif ($entity instanceof Invoice) {
             $progress = ServiceProgress::where('invoice_id', $entity->id)->first();
         } elseif ($entity instanceof Payment) {

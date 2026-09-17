@@ -11,7 +11,20 @@ class QualityCheckController extends Controller
      */
     public function index()
     {
-        return view('quality-control.checklists.index');
+        $qualityChecks = \App\Models\QualityCheck::withCount('jobOrderQualityChecks')
+            ->orderBy('created_at', 'desc')
+            ->paginate(15);
+
+        // Average completion rate — computed in PHP from checklists with items
+        $all = \App\Models\QualityCheck::all();
+        $rates = $all->map(fn ($c) => $c->calculateCompletionRate())->filter(fn ($v) => $v !== null);
+        $averageCompletionRate = $rates->count() > 0 ? round($rates->avg(), 1) : 0;
+
+        $mostUsedTemplate = \App\Models\QualityCheck::withCount('jobOrderQualityChecks')
+            ->orderBy('job_order_quality_checks_count', 'desc')
+            ->first();
+
+        return view('quality-control.quality-checks.index', compact('qualityChecks', 'averageCompletionRate', 'mostUsedTemplate'));
     }
 
     /**
@@ -19,7 +32,7 @@ class QualityCheckController extends Controller
      */
     public function create()
     {
-        return view('quality-control.checklists.create');
+        return view('quality-control.quality-checks.create');
     }
 
     /**
@@ -36,7 +49,7 @@ class QualityCheckController extends Controller
      */
     public function show($id)
     {
-        return view('quality-control.checklists.show', compact('id'));
+        return view('quality-control.quality-checks.show', compact('id'));
     }
 
     /**
@@ -44,7 +57,7 @@ class QualityCheckController extends Controller
      */
     public function edit($id)
     {
-        return view('quality-control.checklists.edit', compact('id'));
+        return view('quality-control.quality-checks.edit', compact('id'));
     }
 
     /**
@@ -79,7 +92,7 @@ class QualityCheckController extends Controller
      */
     public function statistics($id)
     {
-        return view('quality-control.checklists.statistics', compact('id'));
+        return view('quality-control.quality-checks.statistics', compact('id'));
     }
 
     /**

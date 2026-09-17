@@ -83,6 +83,55 @@
 .today-card:hover {
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
+
+/* ===== Dark mode overrides ===== */
+[data-theme="dark"] .progress-fixit {
+    background: var(--dark-border);
+}
+[data-theme="dark"] .bay-chip {
+    background: rgba(14, 165, 233, 0.15);
+    color: #7dd3fc;
+}
+[data-theme="dark"] .tech-avatar {
+    background: var(--dark-hover);
+    color: var(--dark-text-secondary);
+}
+[data-theme="dark"] .btn-repair-small {
+    border-color: var(--dark-border);
+    background: var(--dark-card);
+    color: var(--dark-text);
+}
+[data-theme="dark"] .btn-repair-small:hover {
+    border-color: var(--dark-border);
+    background: var(--dark-hover);
+}
+[data-theme="dark"] .today-card {
+    background: var(--dark-card);
+    border-color: var(--dark-border);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+/* Repair approval cell backgrounds (was inline light hex) */
+.repair-approval-pending { background: #f8fafc; }
+.repair-approval-go { background: #d1fae5; }
+.repair-approval-no_go { background: #fee2e2; }
+[data-theme="dark"] .repair-approval-pending { background: var(--dark-surface); }
+[data-theme="dark"] .repair-approval-go { background: rgba(16, 185, 129, 0.15); }
+[data-theme="dark"] .repair-approval-no_go { background: rgba(239, 68, 68, 0.15); }
+[data-theme="dark"] .repair-approval-column small {
+    color: var(--dark-text-secondary);
+}
+[data-theme="dark"] .repair-approval-column .status-badge {
+    color: var(--dark-text);
+}
+[data-theme="dark"] .stat-card-icon {
+    background: var(--dark-elevated) !important;
+    color: var(--dark-text-secondary) !important;
+}
+[data-theme="dark"] .btn-action {
+    color: var(--dark-text-secondary);
+    border-color: var(--dark-border);
+}
+
 </style>
 @endpush
 
@@ -373,8 +422,7 @@
                                         @endif
                                     @endif
                                 </td>
-                                <td class="repair-approval-column" 
-                                    style="background:{{ $jobOrder->repair_approval_status == 'go' ? '#d1fae5' : ($jobOrder->repair_approval_status == 'no_go' ? '#fee2e2' : '#f8fafc') }};">
+                                <td class="repair-approval-column repair-approval-{{ $jobOrder->repair_approval_status ?: 'pending' }}">
                                     <div style="display:flex;flex-direction:column;align-items:center;gap:6px;min-height:80px;">
                                         @if($jobOrder->repair_approval_status == 'pending')
                                             <span class="status-badge status-badge-secondary" style="margin-bottom:4px;">

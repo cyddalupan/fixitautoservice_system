@@ -180,9 +180,9 @@
                                             <tr>
                                                 <td>{{ $analysis->analysis_date->format('Y-m-d') }}</td>
                                                 <td>
-                                                    @if($analysis->workOrder)
-                                                    <a href="{{ route('work-orders.show', $analysis->workOrder) }}">
-                                                        {{ $analysis->workOrder->work_order_number }}
+                                                    @if($analysis->jobOrder)
+                                                    <a href="{{ route('job-orders.show', $analysis->jobOrder) }}">
+                                                        {{ $analysis->jobOrder->job_order_number }}
                                                     </a>
                                                     @else
                                                     <span class="text-muted">N/A</span>

@@ -19,7 +19,7 @@ return new class extends Migration
             $table->enum('type', ['internal', 'external', 'customer', 'supplier'])->default('internal');
             $table->enum('severity', ['minor', 'major', 'critical'])->default('minor');
             $table->foreignId('audit_id')->nullable()->constrained('quality_audits')->onDelete('set null');
-            $table->foreignId('work_order_id')->nullable()->constrained('work_orders')->onDelete('set null');
+            $table->foreignId('job_order_id')->nullable()->constrained('job_orders')->onDelete('set null');
             $table->foreignId('vehicle_id')->nullable()->constrained('vehicles')->onDelete('set null');
             $table->foreignId('technician_id')->nullable()->constrained('users')->onDelete('set null');
             $table->foreignId('reported_by')->constrained('users')->onDelete('restrict');
@@ -31,7 +31,7 @@ return new class extends Migration
             $table->text('root_cause')->nullable();
             $table->text('containment_actions')->nullable();
             $table->foreignId('assigned_to')->nullable()->constrained('users')->onDelete('set null');
-            $table->foreignId('created_by')->constrained('users')->onDelete('set null');
+            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
             $table->softDeletes();
             

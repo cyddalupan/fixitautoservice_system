@@ -6,7 +6,7 @@ use App\Models\QualityAudit;
 use App\Models\QualityControlChecklist;
 use App\Models\NonConformanceReport;
 use App\Models\CorrectiveAction;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Vehicle;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -57,7 +57,7 @@ class AuditController extends Controller
      */
     public function index(Request $request)
     {
-        $query = QualityAudit::with(['checklist', 'technician', 'auditor', 'vehicle', 'workOrder']);
+        $query = QualityAudit::with(['checklist', 'technician', 'auditor', 'vehicle', 'jobOrder']);
         
         // Apply filters
         if ($request->has('status')) {
@@ -95,12 +95,12 @@ class AuditController extends Controller
         $audits = $query->orderBy('audit_date', 'desc')->paginate(20);
         
         $checklists = QualityControlChecklist::active()->get();
-        $technicians = User::whereHas('roles', function($q) {
-            $q->where('name', 'technician');
+        $technicians = User::where(function($q) {
+            $q->where('role', 'technician')->orWhereJsonContains('roles', 'technician');
         })->get();
         
-        $auditors = User::whereHas('roles', function($q) {
-            $q->where('name', 'quality_auditor');
+        $auditors = User::where(function($q) {
+            $q->where('role', 'quality_auditor')->orWhereJsonContains('roles', 'quality_auditor');
         })->get();
         
         return view('audit.index', compact('audits', 'checklists', 'technicians', 'auditors'));
@@ -112,18 +112,18 @@ class AuditController extends Controller
     public function create()
     {
         $checklists = QualityControlChecklist::active()->get();
-        $workOrders = WorkOrder::where('status', 'completed')
+        $jobOrders = JobOrder::where('job_order_status', 'completed')
             ->with(['vehicle', 'technician'])
-            ->orderBy('completed_at', 'desc')
+            ->orderBy('work_complete_time', 'desc')
             ->limit(50)
             ->get();
         
-        $technicians = User::whereHas('roles', function($q) {
-            $q->where('name', 'technician');
+        $technicians = User::where(function($q) {
+            $q->where('role', 'technician')->orWhereJsonContains('roles', 'technician');
         })->get();
         
-        $auditors = User::whereHas('roles', function($q) {
-            $q->where('name', 'quality_auditor');
+        $auditors = User::where(function($q) {
+            $q->where('role', 'quality_auditor')->orWhereJsonContains('roles', 'quality_auditor');
         })->get();
         
         $vehicles = Vehicle::with('customer')
@@ -132,7 +132,7 @@ class AuditController extends Controller
             ->limit(100)
             ->get();
         
-        return view('audit.create', compact('checklists', 'workOrders', 'technicians', 'auditors', 'vehicles'));
+        return view('audit.create', compact('checklists', 'jobOrders', 'technicians', 'auditors', 'vehicles'));
     }
     
     /**
@@ -144,7 +144,7 @@ class AuditController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'checklist_id' => 'required|exists:quality_control_checklists,id',
-            'work_order_id' => 'nullable|exists:work_orders,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
             'vehicle_id' => 'nullable|exists:vehicles,id',
             'technician_id' => 'nullable|exists:users,id',
             'auditor_id' => 'required|exists:users,id',
@@ -189,7 +189,7 @@ class AuditController extends Controller
             'technician', 
             'auditor', 
             'vehicle', 
-            'workOrder',
+            'jobOrder',
             'nonConformanceReports',
             'creator'
         ])->findOrFail($id);
@@ -207,18 +207,18 @@ class AuditController extends Controller
         $audit = QualityAudit::findOrFail($id);
         
         $checklists = QualityControlChecklist::active()->get();
-        $workOrders = WorkOrder::where('status', 'completed')
+        $jobOrders = JobOrder::where('job_order_status', 'completed')
             ->with(['vehicle', 'technician'])
-            ->orderBy('completed_at', 'desc')
+            ->orderBy('work_complete_time', 'desc')
             ->limit(50)
             ->get();
         
-        $technicians = User::whereHas('roles', function($q) {
-            $q->where('name', 'technician');
+        $technicians = User::where(function($q) {
+            $q->where('role', 'technician')->orWhereJsonContains('roles', 'technician');
         })->get();
         
-        $auditors = User::whereHas('roles', function($q) {
-            $q->where('name', 'quality_auditor');
+        $auditors = User::where(function($q) {
+            $q->where('role', 'quality_auditor')->orWhereJsonContains('roles', 'quality_auditor');
         })->get();
         
         $vehicles = Vehicle::with('customer')
@@ -227,7 +227,7 @@ class AuditController extends Controller
             ->limit(100)
             ->get();
         
-        return view('audit.edit', compact('audit', 'checklists', 'workOrders', 'technicians', 'auditors', 'vehicles'));
+        return view('audit.edit', compact('audit', 'checklists', 'jobOrders', 'technicians', 'auditors', 'vehicles'));
     }
     
     /**
@@ -241,7 +241,7 @@ class AuditController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'checklist_id' => 'required|exists:quality_control_checklists,id',
-            'work_order_id' => 'nullable|exists:work_orders,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
             'vehicle_id' => 'nullable|exists:vehicles,id',
             'technician_id' => 'nullable|exists:users,id',
             'auditor_id' => 'required|exists:users,id',
@@ -296,7 +296,7 @@ class AuditController extends Controller
             'technician', 
             'auditor', 
             'vehicle', 
-            'workOrder'
+            'jobOrder'
         ])->findOrFail($id);
         
         $report = $audit->generateReport();
@@ -327,7 +327,7 @@ class AuditController extends Controller
             'type' => 'quality_audit',
             'severity' => 'major',
             'audit_id' => $audit->id,
-            'work_order_id' => $audit->work_order_id,
+            'job_order_id' => $audit->job_order_id,
             'vehicle_id' => $audit->vehicle_id,
             'technician_id' => $audit->technician_id,
             'reported_by' => $audit->auditor_id,

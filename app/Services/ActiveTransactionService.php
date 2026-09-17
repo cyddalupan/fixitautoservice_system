@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\Appointment;
 use App\Models\VehicleInspection;
 use App\Models\Estimate;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 
 class ActiveTransactionService
 {
@@ -21,23 +21,23 @@ class ActiveTransactionService
     public static function checkActiveTransaction($vehicleId)
     {
         // Check Work Orders first (highest priority)
-        $workOrder = WorkOrder::where('vehicle_id', $vehicleId)
-            ->whereNotIn('work_order_status', ['completed', 'cancelled', 'archived'])
+        $jobOrder = JobOrder::where('vehicle_id', $vehicleId)
+            ->whereNotIn('job_order_status', ['completed', 'cancelled', 'archived'])
             ->whereNull('deleted_at')
             ->latest()
             ->first();
-        if ($workOrder) {
+        if ($jobOrder) {
             return [
                 'has_active' => true,
                 'stage' => 'Job Order',
-                'stage_key' => 'work_order',
-                'reference_number' => $workOrder->work_order_number ?? 'WO-' . str_pad($workOrder->id, 5, '0', STR_PAD_LEFT),
-                'record_id' => $workOrder->id,
-                'status' => $workOrder->work_order_status,
-                'created_at' => $workOrder->created_at,
-                'route' => route('work-orders.show', $workOrder->id) ?? '/work-orders/' . $workOrder->id,
-                'customer' => optional($workOrder->customer)->name,
-                'customer_id' => optional($workOrder->customer)->id,
+                'stage_key' => 'job_order',
+                'reference_number' => $jobOrder->job_order_number ?? 'WO-' . str_pad($jobOrder->id, 5, '0', STR_PAD_LEFT),
+                'record_id' => $jobOrder->id,
+                'status' => $jobOrder->job_order_status,
+                'created_at' => $jobOrder->created_at,
+                'route' => route('job-orders.show', $jobOrder->id) ?? '/job-orders/' . $jobOrder->id,
+                'customer' => optional($jobOrder->customer)->name,
+                'customer_id' => optional($jobOrder->customer)->id,
             ];
         }
 

@@ -107,6 +107,43 @@
   .hr-stat-val { font-size:1.1rem; }
   .hr-cal-day { min-height:60px; font-size:.65rem; }
 }
+
+    /* ===== Dark mode overrides (auto-swept) ===== */
+    [data-theme="dark"] .hr-cal-day {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .hr-card {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .hr-filter input {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .hr-filter select {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .hr-modal {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .hr-stat {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .hr-tabs {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
 </style>
 @endpush
 

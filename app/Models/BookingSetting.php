@@ -74,10 +74,11 @@ class BookingSetting extends Model
     }
 
     /**
-     * Get max days ahead for booking.
+     * Get max bookings allowed per time slot (overbooking capacity).
      */
-    public static function getMaxDaysAhead(): int
+    public static function getMaxBookingsPerSlot(): int
     {
-        return (int) static::getValue('max_days_ahead', 30);
+        return (int) static::getValue('max_bookings_per_slot', 1);
     }
+
 }

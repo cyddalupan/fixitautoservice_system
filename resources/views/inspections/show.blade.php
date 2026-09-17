@@ -27,7 +27,7 @@
                         </a>
                     </li>
                     <li>
-                        <a class="dropdown-item" href="{{ route('work-orders.create', ['customer_id' => $inspection->customer_id, 'vehicle_id' => $inspection->vehicle_id, 'inspection_id' => $inspection->id]) }}">
+                        <a class="dropdown-item" href="{{ route('job-orders.create', ['customer_id' => $inspection->customer_id, 'vehicle_id' => $inspection->vehicle_id, 'inspection_id' => $inspection->id]) }}">
                             <i class="fas fa-wrench me-2 text-warning"></i> Create Job Order
                         </a>
                     </li>
@@ -318,7 +318,7 @@
                         <div class="form-section-body">
                             @php
                                 $relations = [];
-                                if($inspection->workOrder) $relations[] = ['name' => 'Work Order', 'icon' => 'fa-clipboard-list', 'route' => route('work_orders.show', $inspection->workOrder), 'color' => 'primary'];
+                                if($inspection->jobOrder) $relations[] = ['name' => 'Work Order', 'icon' => 'fa-clipboard-list', 'route' => route('job_orders.show', $inspection->jobOrder), 'color' => 'primary'];
                                 if($inspection->appointment) $relations[] = ['name' => 'Appointment', 'icon' => 'fa-calendar-check', 'route' => route('appointments.show', $inspection->appointment), 'color' => 'info'];
                                 if(isset($inspection->estimate) && $inspection->estimate) $relations[] = ['name' => 'Estimate', 'icon' => 'fa-file-invoice-dollar', 'route' => route('estimates.show', $inspection->estimate), 'color' => 'success'];
                             @endphp
@@ -807,6 +807,23 @@
 #findingEditModal .modal-header .btn-close{filter:brightness(0) invert(1)}
 .bulk-add-btn{transition:all .1s ease;cursor:pointer}
 .bulk-add-btn:hover{transform:translateY(-1px);box-shadow:0 2px 4px rgba(0,0,0,.1)}
+
+    /* ===== Dark mode overrides (auto-swept) ===== */
+    [data-theme="dark"] .finding-action {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .finding-notes {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .finding-title {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
 </style>
 @endpush
 

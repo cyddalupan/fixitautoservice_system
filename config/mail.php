@@ -49,6 +49,13 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
+        'brevo-api' => [
+            'transport' => 'brevo-api',
+            'api_key' => env('BREVO_API_KEY'),
+            'sender_email' => env('BREVO_SENDER_EMAIL', env('MAIL_FROM_ADDRESS', 'noreply@fixitautoservices.com')),
+            'sender_name' => env('BREVO_SENDER_NAME', env('MAIL_FROM_NAME', 'Fix-It Auto Services Center')),
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],
@@ -114,5 +121,17 @@ return [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Recipients (notifications)
+    |--------------------------------------------------------------------------
+    |
+    | Recipients notified when a customer books a new appointment (ADMIN NAV
+    | DECISION — Brevo, per FixIt plan). Comma-separated addresses.
+    |
+    */
+
+    'admin_recipients' => explode(',', env('MAIL_ADMIN_RECIPIENTS', 'cydmdalupan@gmail.com,andrewacecontreras@gmail.com')),
 
 ];

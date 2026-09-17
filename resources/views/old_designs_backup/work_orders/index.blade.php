@@ -12,10 +12,10 @@
             <p class="text-muted mb-0">Manage job orders, estimates, and repair tracking</p>
         </div>
         <div>
-            <a href="{{ route('work-orders.create') }}" class="btn btn-primary">
+            <a href="{{ route('job-orders.create') }}" class="btn btn-primary">
                 <i class="fas fa-plus me-1"></i> Create Job Order
             </a>
-            <a href="{{ route('work-orders.statistics') }}" class="btn btn-outline-primary ms-2">
+            <a href="{{ route('job-orders.statistics') }}" class="btn btn-outline-primary ms-2">
                 <i class="fas fa-chart-bar me-1"></i> Statistics
             </a>
         </div>
@@ -77,7 +77,7 @@
 <!-- Filters -->
 <div class="card mb-4">
     <div class="card-body">
-        <form method="GET" action="{{ route('work-orders.index') }}" class="row g-3">
+        <form method="GET" action="{{ route('job-orders.index') }}" class="row g-3">
             <div class="col-md-3">
                 <input type="text" name="search" class="form-control" placeholder="Search work orders..." 
                        value="{{ request('search') }}">
@@ -117,7 +117,7 @@
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-filter me-1"></i> Filter
                     </button>
-                    <a href="{{ route('work-orders.index') }}" class="btn btn-outline-secondary">
+                    <a href="{{ route('job-orders.index') }}" class="btn btn-outline-secondary">
                         <i class="fas fa-redo me-1"></i> Reset
                     </a>
                 </div>
@@ -129,7 +129,7 @@
 <!-- Work Orders Table -->
 <div class="card">
     <div class="card-body">
-        @if($workOrders->count() > 0)
+        @if($jobOrders->count() > 0)
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead>
@@ -146,60 +146,60 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($workOrders as $workOrder)
+                        @foreach($jobOrders as $jobOrder)
                         <tr>
                             <td>
-                                <strong>{{ $workOrder->work_order_number }}</strong>
-                                @if($workOrder->is_warranty_work)
+                                <strong>{{ $jobOrder->job_order_number }}</strong>
+                                @if($jobOrder->is_warranty_work)
                                     <br>
                                     <span class="badge bg-info">Warranty</span>
                                 @endif
-                                @if($workOrder->is_insurance_work)
+                                @if($jobOrder->is_insurance_work)
                                     <br>
                                     <span class="badge bg-warning">Insurance</span>
                                 @endif
                             </td>
                             <td>
                                 <div>
-                                    <strong>{{ $workOrder->customer->full_name }}</strong>
+                                    <strong>{{ $jobOrder->customer->full_name }}</strong>
                                     <br>
                                     <small class="text-muted">
                                         <i class="fas fa-car me-1"></i>
-                                        {{ $workOrder->vehicle->year }} {{ $workOrder->vehicle->make }} {{ $workOrder->vehicle->model }}
+                                        {{ $jobOrder->vehicle->year }} {{ $jobOrder->vehicle->make }} {{ $jobOrder->vehicle->model }}
                                     </small>
                                     <br>
-                                    <small class="text-muted">{{ $workOrder->vehicle->license_plate }}</small>
+                                    <small class="text-muted">{{ $jobOrder->vehicle->license_plate }}</small>
                                 </div>
                             </td>
                             <td>
-                                <strong>{{ $workOrder->work_order_date->format('M d, Y') }}</strong>
+                                <strong>{{ $jobOrder->job_order_date->format('M d, Y') }}</strong>
                                 <br>
-                                <span class="text-muted">{{ ucfirst($workOrder->work_order_type) }}</span>
-                                @if($workOrder->bay_number)
+                                <span class="text-muted">{{ ucfirst($jobOrder->job_order_type) }}</span>
+                                @if($jobOrder->bay_number)
                                     <br>
-                                    <small class="text-muted">Bay #{{ $workOrder->bay_number }}</small>
+                                    <small class="text-muted">Bay #{{ $jobOrder->bay_number }}</small>
                                 @endif
                             </td>
                             <td>
-                                <span class="badge bg-{{ $workOrder->priority_color }}">
-                                    {{ ucfirst($workOrder->priority) }}
+                                <span class="badge bg-{{ $jobOrder->priority_color }}">
+                                    {{ ucfirst($jobOrder->priority) }}
                                 </span>
                                 <br>
-                                <span class="badge bg-{{ $workOrder->status_color }}">
-                                    {{ ucfirst(str_replace('_', ' ', $workOrder->work_order_status)) }}
+                                <span class="badge bg-{{ $jobOrder->status_color }}">
+                                    {{ ucfirst(str_replace('_', ' ', $jobOrder->job_order_status)) }}
                                 </span>
-                                @if($workOrder->is_overdue)
+                                @if($jobOrder->is_overdue)
                                     <br>
-                                    <small class="text-danger">Overdue {{ $workOrder->days_overdue }} days</small>
+                                    <small class="text-danger">Overdue {{ $jobOrder->days_overdue }} days</small>
                                 @endif
                             </td><td>
-                                @if($workOrder->technician)
+                                @if($jobOrder->technician)
                                     <div class="d-flex align-items-center">
                                         <div class="customer-avatar me-2">
-                                            {{ substr($workOrder->technician->name, 0, 1) }}
+                                            {{ substr($jobOrder->technician->name, 0, 1) }}
                                         </div>
                                         <div>
-                                            <strong>{{ $workOrder->technician->name }}</strong>
+                                            <strong>{{ $jobOrder->technician->name }}</strong>
                                             <br>
                                             <small class="text-muted">Technician</small>
                                         </div>
@@ -209,38 +209,38 @@
                                 @endif
                             </td>
                             <td>
-                                <strong>{{ $workOrder->formatted_final_amount }}</strong>
+                                <strong>{{ $jobOrder->formatted_final_amount }}</strong>
                                 <br>
-                                <small class="text-{{ $workOrder->payment_status_color }}">
-                                    {{ ucfirst($workOrder->payment_status) }}
+                                <small class="text-{{ $jobOrder->payment_status_color }}">
+                                    {{ ucfirst($jobOrder->payment_status) }}
                                 </small>
-                                @if($workOrder->balance_due > 0)
+                                @if($jobOrder->balance_due > 0)
                                     <br>
-                                    <small class="text-danger">Due: {{ $workOrder->formatted_balance_due }}</small>
+                                    <small class="text-danger">Due: {{ $jobOrder->formatted_balance_due }}</small>
                                 @endif
                             </td>
                             <td>
-                                @if($workOrder->invoice)
+                                @if($jobOrder->invoice)
                                     <span class="badge bg-success">
                                         <i class="fas fa-file-invoice-dollar me-1"></i> Invoiced
                                     </span>
                                     <br>
                                     <small class="text-muted">
-                                        <a href="{{ route('invoices.show', $workOrder->invoice) }}" class="text-decoration-none">
-                                            {{ $workOrder->invoice->invoice_number }}
+                                        <a href="{{ route('invoices.show', $jobOrder->invoice) }}" class="text-decoration-none">
+                                            {{ $jobOrder->invoice->invoice_number }}
                                         </a>
                                     </small>
                                     <br>
-                                    <small class="text-{{ $workOrder->invoice->status_color }}">
-                                        {{ ucfirst($workOrder->invoice->status) }}
+                                    <small class="text-{{ $jobOrder->invoice->status_color }}">
+                                        {{ ucfirst($jobOrder->invoice->status) }}
                                     </small>
                                 @else
                                     <span class="badge bg-secondary">
                                         <i class="fas fa-clock me-1"></i> No Invoice
                                     </span>
                                     <br>
-                                    @if(in_array($workOrder->work_order_status, ['completed', 'released']))
-                                        <a href="{{ route('invoices.create', ['work_order_id' => $workOrder->id]) }}" 
+                                    @if(in_array($jobOrder->job_order_status, ['completed', 'released']))
+                                        <a href="{{ route('invoices.create', ['job_order_id' => $jobOrder->id]) }}" 
                                            class="btn btn-sm btn-outline-primary mt-1">
                                             <i class="fas fa-plus me-1"></i> Create Invoice
                                         </a>
@@ -250,11 +250,11 @@
                                 @endif
                             </td>
                             <td class="text-center repair-approval-column 
-                                @if($workOrder->repair_approval_status == 'go') bg-success-subtle 
-                                @elseif($workOrder->repair_approval_status == 'no_go') bg-danger-subtle 
+                                @if($jobOrder->repair_approval_status == 'go') bg-success-subtle 
+                                @elseif($jobOrder->repair_approval_status == 'no_go') bg-danger-subtle 
                                 @else bg-light @endif">
                                 <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 80px;">
-                                    @if($workOrder->repair_approval_status == 'pending')
+                                    @if($jobOrder->repair_approval_status == 'pending')
                                         <div class="mb-2">
                                             <span class="badge bg-secondary px-3 py-2">
                                                 <i class="fas fa-clock me-1"></i> PENDING REVIEW
@@ -262,14 +262,14 @@
                                         </div>
                                         <div class="dropdown w-100 px-2">
                                             <button class="btn btn-outline-secondary dropdown-toggle w-100 py-2" 
-                                                    type="button" id="repairApprovalDropdown{{ $workOrder->id }}" 
+                                                    type="button" id="repairApprovalDropdown{{ $jobOrder->id }}" 
                                                     data-bs-toggle="dropdown" aria-expanded="false">
                                                 <i class="fas fa-cog me-2"></i> Set Approval Status
                                             </button>
-                                            <ul class="dropdown-menu w-100" aria-labelledby="repairApprovalDropdown{{ $workOrder->id }}">
+                                            <ul class="dropdown-menu w-100" aria-labelledby="repairApprovalDropdown{{ $jobOrder->id }}">
                                                 <li>
                                                     <a class="dropdown-item text-success repair-approval-btn" 
-                                                       href="#" data-id="{{ $workOrder->id }}" data-status="go">
+                                                       href="#" data-id="{{ $jobOrder->id }}" data-status="go">
                                                         <i class="fas fa-check-circle me-2"></i> <strong>Authorize</strong>
                                                         <small class="text-muted d-block mt-1">GO for Repair</small>
                                                     </a>
@@ -277,14 +277,14 @@
                                                 <li><hr class="dropdown-divider"></li>
                                                 <li>
                                                     <a class="dropdown-item text-danger repair-approval-btn" 
-                                                       href="#" data-id="{{ $workOrder->id }}" data-status="no_go">
+                                                       href="#" data-id="{{ $jobOrder->id }}" data-status="no_go">
                                                         <i class="fas fa-times-circle me-2"></i> <strong>Not Cleared</strong>
                                                         <small class="text-muted d-block mt-1">NO GO for Repair</small>
                                                     </a>
                                                 </li>
                                             </ul>
                                         </div>
-                                    @elseif($workOrder->repair_approval_status == 'go')
+                                    @elseif($jobOrder->repair_approval_status == 'go')
                                         <div class="mb-2">
                                             <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
                                         </div>
@@ -293,10 +293,10 @@
                                         </span>
                                         <small class="text-muted d-block mb-2">GO for Repair</small>
                                         <button type="button" class="btn btn-sm btn-outline-secondary repair-reset-btn" 
-                                                data-id="{{ $workOrder->id }}">
+                                                data-id="{{ $jobOrder->id }}">
                                             <i class="fas fa-redo me-1"></i> Change Status
                                         </button>
-                                    @elseif($workOrder->repair_approval_status == 'no_go')
+                                    @elseif($jobOrder->repair_approval_status == 'no_go')
                                         <div class="mb-2">
                                             <i class="fas fa-times-circle fa-2x text-danger mb-2"></i>
                                         </div>
@@ -305,7 +305,7 @@
                                         </span>
                                         <small class="text-muted d-block mb-2">NO GO for Repair</small>
                                         <button type="button" class="btn btn-sm btn-outline-secondary repair-reset-btn" 
-                                                data-id="{{ $workOrder->id }}">
+                                                data-id="{{ $jobOrder->id }}">
                                             <i class="fas fa-redo me-1"></i> Change Status
                                         </button>
                                     @endif
@@ -313,35 +313,35 @@
                             </td>
                             <td>
                                 <div class="btn-group" role="group">
-                                    <a href="{{ route('work-orders.show', $workOrder) }}" class="btn btn-sm btn-outline-primary">
+                                    <a href="{{ route('job-orders.show', $jobOrder) }}" class="btn btn-sm btn-outline-primary">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <a href="{{ route('work-orders.edit', $workOrder) }}" class="btn btn-sm btn-outline-secondary">
+                                    <a href="{{ route('job-orders.edit', $jobOrder) }}" class="btn btn-sm btn-outline-secondary">
                                         <i class="fas fa-edit"></i>
                                     </a>
                                     
-                                    @if($workOrder->work_order_status === 'pending')
-                                    <form action="{{ route('work-orders.start-work', $workOrder) }}" method="POST" class="d-inline">
+                                    @if($jobOrder->job_order_status === 'pending')
+                                    <form action="{{ route('job-orders.start-work', $jobOrder) }}" method="POST" class="d-inline">
                                         @csrf
-                                        <button type="button" class="btn btn-sm btn-warning btn-start-repair-list" data-workorder-id="{{ $workOrder->id }}" title="Start Repair">
+                                        <button type="button" class="btn btn-sm btn-warning btn-start-repair-list" data-workorder-id="{{ $jobOrder->id }}" title="Start Repair">
                                             <i class="fas fa-play"></i>
                                         </button>
                                     </form>
                                     @endif
                                     
-                                    @if($workOrder->work_order_status === 'repairing')
-                                    <form action="{{ route('work-orders.complete-work', $workOrder) }}" method="POST" class="d-inline">
+                                    @if($jobOrder->job_order_status === 'repairing')
+                                    <form action="{{ route('job-orders.complete-work', $jobOrder) }}" method="POST" class="d-inline">
                                         @csrf
-                                        <button type="button" class="btn btn-sm btn-success btn-complete-repair-list" data-workorder-id="{{ $workOrder->id }}" title="Complete Repair">
+                                        <button type="button" class="btn btn-sm btn-success btn-complete-repair-list" data-workorder-id="{{ $jobOrder->id }}" title="Complete Repair">
                                             <i class="fas fa-flag-checkered"></i>
                                         </button>
                                     </form>
                                     @endif
                                     
-                                    @if($workOrder->work_order_status === 'completed')
-                                    <form action="{{ route('work-orders.mark-released', $workOrder) }}" method="POST" class="d-inline">
+                                    @if($jobOrder->job_order_status === 'completed')
+                                    <form action="{{ route('job-orders.mark-released', $jobOrder) }}" method="POST" class="d-inline">
                                         @csrf
-                                        <button type="button" class="btn btn-sm btn-info btn-mark-released-list" data-workorder-id="{{ $workOrder->id }}" title="Mark as Released">
+                                        <button type="button" class="btn btn-sm btn-info btn-mark-released-list" data-workorder-id="{{ $jobOrder->id }}" title="Mark as Released">
                                             <i class="fas fa-truck"></i>
                                         </button>
                                     </form>
@@ -357,10 +357,10 @@
             <!-- Pagination -->
             <div class="d-flex justify-content-between align-items-center mt-3">
                 <div>
-                    Showing {{ $workOrders->firstItem() }} to {{ $workOrders->lastItem() }} of {{ $workOrders->total() }} work orders
+                    Showing {{ $jobOrders->firstItem() }} to {{ $jobOrders->lastItem() }} of {{ $jobOrders->total() }} work orders
                 </div>
                 <div>
-                    {{ $workOrders->links() }}
+                    {{ $jobOrders->links() }}
                 </div>
             </div>
         @else
@@ -368,7 +368,7 @@
                 <i class="fas fa-clipboard-list fa-4x text-muted mb-3"></i>
                 <h4 class="text-muted">No work orders found</h4>
                 <p class="text-muted">Try adjusting your filters or create a new work order</p>
-                <a href="{{ route('work-orders.create') }}" class="btn btn-primary">
+                <a href="{{ route('job-orders.create') }}" class="btn btn-primary">
                     <i class="fas fa-plus me-1"></i> Create First Work Order
                 </a>
             </div>
@@ -385,50 +385,50 @@
     </div>
     <div class="card-body">
         @php
-            $todayWorkOrders = \App\Models\WorkOrder::with(['customer', 'vehicle', 'technician'])
-                ->whereDate('work_order_date', \Carbon\Carbon::today())
-                ->whereIn('work_order_status', ['in_progress', 'approved'])
+            $todayJobOrders = \App\Models\JobOrder::with(['customer', 'vehicle', 'technician'])
+                ->whereDate('job_order_date', \Carbon\Carbon::today())
+                ->whereIn('job_order_status', ['in_progress', 'approved'])
                 ->orderBy('priority', 'desc')
                 ->orderBy('created_at')
                 ->get();
         @endphp
         
-        @if($todayWorkOrders->count() > 0)
+        @if($todayJobOrders->count() > 0)
             <div class="row">
-                @foreach($todayWorkOrders as $workOrder)
+                @foreach($todayJobOrders as $jobOrder)
                 <div class="col-md-6 mb-3">
                     <div class="card">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
-                                    <h6 class="card-title mb-1">{{ $workOrder->work_order_number }}</h6>
+                                    <h6 class="card-title mb-1">{{ $jobOrder->job_order_number }}</h6>
                                     <p class="card-text mb-1">
-                                        <strong>{{ $workOrder->customer->full_name }}</strong>
+                                        <strong>{{ $jobOrder->customer->full_name }}</strong>
                                         <br>
                                         <small class="text-muted">
-                                            {{ $workOrder->vehicle->year }} {{ $workOrder->vehicle->make }} • 
-                                            {{ $workOrder->work_order_type }}
+                                            {{ $jobOrder->vehicle->year }} {{ $jobOrder->vehicle->make }} • 
+                                            {{ $jobOrder->job_order_type }}
                                         </small>
                                     </p>
                                 </div>
                                 <div class="text-end">
-                                    <span class="badge bg-{{ $workOrder->priority_color }}">
-                                        {{ ucfirst($workOrder->priority) }}
+                                    <span class="badge bg-{{ $jobOrder->priority_color }}">
+                                        {{ ucfirst($jobOrder->priority) }}
                                     </span>
                                     <br>
-                                    <span class="badge bg-{{ $workOrder->status_color }}">
-                                        {{ ucfirst(str_replace('_', ' ', $workOrder->work_order_status)) }}
+                                    <span class="badge bg-{{ $jobOrder->status_color }}">
+                                        {{ ucfirst(str_replace('_', ' ', $jobOrder->job_order_status)) }}
                                     </span>
                                 </div>
                             </div>
                             <div class="mt-2">
                                 <div class="progress" style="height: 8px;">
-                                    <div class="progress-bar bg-{{ $workOrder->status_color }}" 
+                                    <div class="progress-bar bg-{{ $jobOrder->status_color }}" 
                                          role="progressbar" 
-                                         style="width: {{ $workOrder->completion_percentage }}%">
+                                         style="width: {{ $jobOrder->completion_percentage }}%">
                                     </div>
                                 </div>
-                                <small class="text-muted">{{ $workOrder->completion_percentage }}% complete</small>
+                                <small class="text-muted">{{ $jobOrder->completion_percentage }}% complete</small>
                             </div>
                         </div>
                     </div>
@@ -453,7 +453,7 @@ document.addEventListener('DOMContentLoaded', function() {
     startRepairListButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            const workOrderId = this.getAttribute('data-workorder-id');
+            const jobOrderId = this.getAttribute('data-workorder-id');
             
             Swal.fire({
                 title: 'Start Repair?',
@@ -478,7 +478,7 @@ document.addEventListener('DOMContentLoaded', function() {
     completeRepairListButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            const workOrderId = this.getAttribute('data-workorder-id');
+            const jobOrderId = this.getAttribute('data-workorder-id');
             
             Swal.fire({
                 title: 'Complete Repair?',
@@ -503,7 +503,7 @@ document.addEventListener('DOMContentLoaded', function() {
     markReleasedListButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            const workOrderId = this.getAttribute('data-workorder-id');
+            const jobOrderId = this.getAttribute('data-workorder-id');
             
             Swal.fire({
                 title: 'Mark as Released?',
@@ -534,12 +534,12 @@ document.addEventListener('DOMContentLoaded', function() {
     repairApprovalButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            const workOrderId = this.getAttribute('data-id');
+            const jobOrderId = this.getAttribute('data-id');
             const status = this.getAttribute('data-status');
             const statusText = status === 'go' ? 'Authorize (GO)' : 'Not Cleared (NO GO)';
             const actionText = status === 'go' ? 'Authorize' : 'Mark as Not Cleared';
             
-            console.log('Button clicked:', { workOrderId, status, csrfToken: !!csrfToken });
+            console.log('Button clicked:', { jobOrderId, status, csrfToken: !!csrfToken });
             
             Swal.fire({
                 title: `${actionText} this repair?`,
@@ -563,7 +563,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     
                     // Send AJAX request
-                    const url = `/work-orders/${workOrderId}/update-repair-approval`;
+                    const url = `/job-orders/${jobOrderId}/update-repair-approval`;
                     console.log('Making request to:', url);
                     
                     fetch(url, {
@@ -625,7 +625,7 @@ document.addEventListener('DOMContentLoaded', function() {
     repairResetButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            const workOrderId = this.getAttribute('data-id');
+            const jobOrderId = this.getAttribute('data-id');
             
             Swal.fire({
                 title: 'Reset Approval Status?',
@@ -649,7 +649,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     });
                     
                     // Send AJAX request
-                    fetch(`/work-orders/${workOrderId}/update-repair-approval`, {
+                    fetch(`/job-orders/${jobOrderId}/update-repair-approval`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

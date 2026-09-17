@@ -116,32 +116,32 @@
                                 @forelse($analyses as $analysis)
                                 <tr>
                                     <td>
-                                        @if($analysis->workOrder)
-                                        <a href="{{ route('work-orders.show', $analysis->workOrder) }}">
-                                            {{ $analysis->workOrder->work_order_number }}
+                                        @if($analysis->jobOrder)
+                                        <a href="{{ route('job-orders.show', $analysis->jobOrder) }}">
+                                            {{ $analysis->jobOrder->job_order_number }}
                                         </a>
                                         @else
                                         <span class="text-muted">N/A</span>
                                         @endif
                                     </td>
                                     <td>
-                                        @if($analysis->workOrder && $analysis->workOrder->customer)
-                                        {{ $analysis->workOrder->customer->name }}
+                                        @if($analysis->jobOrder && $analysis->jobOrder->customer)
+                                        {{ $analysis->jobOrder->customer->name }}
                                         @else
                                         <span class="text-muted">N/A</span>
                                         @endif
                                     </td>
                                     <td>
-                                        @if($analysis->workOrder && $analysis->workOrder->vehicle)
-                                        {{ $analysis->workOrder->vehicle->make }} {{ $analysis->workOrder->vehicle->model }}
+                                        @if($analysis->jobOrder && $analysis->jobOrder->vehicle)
+                                        {{ $analysis->jobOrder->vehicle->make }} {{ $analysis->jobOrder->vehicle->model }}
                                         @else
                                         <span class="text-muted">N/A</span>
                                         @endif
                                     </td>
-                                    <td>{{ $analysis->workOrder->service_type ?? 'N/A' }}</td>
+                                    <td>{{ $analysis->jobOrder->service_type ?? 'N/A' }}</td>
                                     <td>
-                                        @if($analysis->workOrder && $analysis->workOrder->technician)
-                                        {{ $analysis->workOrder->technician->name }}
+                                        @if($analysis->jobOrder && $analysis->jobOrder->technician)
+                                        {{ $analysis->jobOrder->technician->name }}
                                         @else
                                         <span class="text-muted">N/A</span>
                                         @endif

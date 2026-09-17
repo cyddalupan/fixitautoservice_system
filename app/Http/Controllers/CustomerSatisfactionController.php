@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\CustomerSatisfactionSurvey;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -17,7 +17,7 @@ class CustomerSatisfactionController extends Controller
      */
     public function index(Request $request)
     {
-        $query = CustomerSatisfactionSurvey::with(['workOrder', 'customer', 'technician', 'followUpUser']);
+        $query = CustomerSatisfactionSurvey::with(['jobOrder', 'customer', 'technician', 'followUpUser']);
 
         // Apply filters
         if ($request->has('status') && $request->status) {
@@ -52,8 +52,8 @@ class CustomerSatisfactionController extends Controller
             $query->where('technician_id', $request->technician_id);
         }
 
-        if ($request->has('work_order_id') && $request->work_order_id) {
-            $query->where('work_order_id', $request->work_order_id);
+        if ($request->has('job_order_id') && $request->job_order_id) {
+            $query->where('job_order_id', $request->job_order_id);
         }
 
         if ($request->has('date_from') && $request->date_from) {
@@ -73,8 +73,8 @@ class CustomerSatisfactionController extends Controller
                        ->orWhere('email', 'like', "%{$search}%")
                        ->orWhere('phone', 'like', "%{$search}%");
                 })
-                ->orWhereHas('workOrder', function ($q2) use ($search) {
-                    $q2->where('work_order_number', 'like', "%{$search}%");
+                ->orWhereHas('jobOrder', function ($q2) use ($search) {
+                    $q2->where('job_order_number', 'like', "%{$search}%");
                 })
                 ->orWhere('positive_comments', 'like', "%{$search}%")
                 ->orWhere('improvement_suggestions', 'like', "%{$search}%");
@@ -100,20 +100,20 @@ class CustomerSatisfactionController extends Controller
      */
     public function create(Request $request)
     {
-        $workOrderId = $request->get('work_order_id');
-        $workOrder = null;
+        $jobOrderId = $request->get('job_order_id');
+        $jobOrder = null;
         $customer = null;
         $technician = null;
 
-        if ($workOrderId) {
-            $workOrder = WorkOrder::with(['customer', 'assignedTechnician'])->find($workOrderId);
-            if ($workOrder) {
-                $customer = $workOrder->customer;
-                $technician = $workOrder->assignedTechnician;
+        if ($jobOrderId) {
+            $jobOrder = JobOrder::with(['customer', 'assignedTechnician'])->find($jobOrderId);
+            if ($jobOrder) {
+                $customer = $jobOrder->customer;
+                $technician = $jobOrder->assignedTechnician;
             }
         }
 
-        $workOrders = WorkOrder::where('status', 'completed')
+        $jobOrders = JobOrder::where('status', 'completed')
             ->whereDoesntHave('customerSatisfactionSurvey')
             ->with(['customer', 'assignedTechnician'])
             ->orderBy('completed_at', 'desc')
@@ -123,7 +123,7 @@ class CustomerSatisfactionController extends Controller
         $technicians = User::where('is_active', true)->where('role', 'technician')->orderBy('name')->get();
 
         return view('customer-satisfaction.create', compact(
-            'workOrder', 'customer', 'technician', 'workOrders', 'customers', 'technicians'
+            'jobOrder', 'customer', 'technician', 'jobOrders', 'customers', 'technicians'
         ));
     }
 
@@ -133,7 +133,7 @@ class CustomerSatisfactionController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'work_order_id' => 'nullable|exists:work_orders,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
             'customer_id' => 'required|exists:customers,id',
             'technician_id' => 'nullable|exists:users,id',
             'overall_rating' => 'required|integer|min:1|max:5',
@@ -176,7 +176,7 @@ class CustomerSatisfactionController extends Controller
     public function show($id)
     {
         $survey = CustomerSatisfactionSurvey::with([
-            'workOrder', 
+            'jobOrder', 
             'customer', 
             'technician', 
             'followUpUser'
@@ -195,9 +195,9 @@ class CustomerSatisfactionController extends Controller
         $survey = CustomerSatisfactionSurvey::findOrFail($id);
         $customers = Customer::where('is_active', true)->orderBy('first_name')->get();
         $technicians = User::where('is_active', true)->where('role', 'technician')->orderBy('name')->get();
-        $workOrders = WorkOrder::where('status', 'completed')->with(['customer', 'assignedTechnician'])->get();
+        $jobOrders = JobOrder::where('status', 'completed')->with(['customer', 'assignedTechnician'])->get();
 
-        return view('customer-satisfaction.edit', compact('survey', 'customers', 'technicians', 'workOrders'));
+        return view('customer-satisfaction.edit', compact('survey', 'customers', 'technicians', 'jobOrders'));
     }
 
     /**
@@ -208,7 +208,7 @@ class CustomerSatisfactionController extends Controller
         $survey = CustomerSatisfactionSurvey::findOrFail($id);
 
         $validator = Validator::make($request->all(), [
-            'work_order_id' => 'nullable|exists:work_orders,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
             'customer_id' => 'required|exists:customers,id',
             'technician_id' => 'nullable|exists:users,id',
             'overall_rating' => 'required|integer|min:1|max:5',
@@ -304,7 +304,7 @@ class CustomerSatisfactionController extends Controller
     public function autoCreateSurveys()
     {
         // Find work orders completed in the last 24 hours without surveys
-        $workOrders = WorkOrder::where('status', 'completed')
+        $jobOrders = JobOrder::where('status', 'completed')
             ->where('completed_at', '>=', now()->subDays(1))
             ->whereDoesntHave('customerSatisfactionSurvey')
             ->with(['customer', 'assignedTechnician'])
@@ -312,13 +312,13 @@ class CustomerSatisfactionController extends Controller
 
         $createdCount = 0;
 
-        foreach ($workOrders as $workOrder) {
+        foreach ($jobOrders as $jobOrder) {
             // Check if customer is active and has email
-            if ($workOrder->customer && $workOrder->customer->is_active && $workOrder->customer->email) {
+            if ($jobOrder->customer && $jobOrder->customer->is_active && $jobOrder->customer->email) {
                 CustomerSatisfactionSurvey::create([
-                    'work_order_id' => $workOrder->id,
-                    'customer_id' => $workOrder->customer_id,
-                    'technician_id' => $workOrder->assigned_technician_id,
+                    'job_order_id' => $jobOrder->id,
+                    'customer_id' => $jobOrder->customer_id,
+                    'technician_id' => $jobOrder->assigned_technician_id,
                     'status' => CustomerSatisfactionSurvey::STATUS_PENDING,
                 ]);
                 $createdCount++;
@@ -383,7 +383,7 @@ class CustomerSatisfactionController extends Controller
      */
     public function export(Request $request)
     {
-        $query = CustomerSatisfactionSurvey::with(['workOrder', 'customer', 'technician']);
+        $query = CustomerSatisfactionSurvey::with(['jobOrder', 'customer', 'technician']);
 
         // Apply filters same as index
         if ($request->has('status') && $request->status) {
@@ -415,7 +415,7 @@ class CustomerSatisfactionController extends Controller
         foreach ($surveys as $survey) {
             $csvData[] = [
                 $survey->id,
-                $survey->workOrder ? $survey->workOrder->work_order_number : 'N/A',
+                $survey->jobOrder ? $survey->jobOrder->job_order_number : 'N/A',
                 $survey->customer ? $survey->customer->full_name : 'N/A',
                 $survey->technician ? $survey->technician->name : 'N/A',
                 $survey->overall_rating,

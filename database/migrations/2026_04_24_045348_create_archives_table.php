@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('archives', function (Blueprint $table) {
             $table->id();
             $table->morphs('archivable'); // archivable_id + archivable_type
-            $table->string('source_module'); // 'work_order', 'estimate', 'payment', 'invoice'
+            $table->string('source_module'); // 'job_order', 'estimate', 'payment', 'invoice'
             $table->foreignId('archived_by')->nullable()->constrained('users')->nullOnDelete();
             $table->json('original_data');
             $table->text('notes')->nullable();

@@ -8,7 +8,7 @@ use App\Models\PartsReturn;
 use App\Models\CoreReturn;
 use App\Models\Customer;
 use App\Models\Vehicle;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\InventorySupplier;
 use App\Models\Inventory;
 use Illuminate\Http\Request;
@@ -21,7 +21,7 @@ class PartsProcurementController extends Controller
      */
     public function index()
     {
-        $partsOrders = PartsOrder::with(['vendor', 'workOrder', 'customer', 'vehicle'])
+        $partsOrders = PartsOrder::with(['vendor', 'jobOrder', 'customer', 'vehicle'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
 
@@ -35,14 +35,14 @@ class PartsProcurementController extends Controller
     {
         $customers = Customer::where('is_active', true)->orderBy('first_name')->get();
         $vehicles = Vehicle::with('customer')->orderBy('make')->get();
-        $workOrders = WorkOrder::whereIn('status', ['pending', 'in_progress', 'waiting_parts'])
+        $jobOrders = JobOrder::whereIn('status', ['pending', 'in_progress', 'waiting_parts'])
             ->with(['customer', 'vehicle'])
             ->orderBy('created_at', 'desc')
             ->get();
         $vendors = InventorySupplier::where('is_active', true)->orderBy('name')->get();
         $inventoryItems = Inventory::where('quantity', '>', 0)->orderBy('name')->get();
 
-        return view('parts-procurement.create', compact('customers', 'vehicles', 'workOrders', 'vendors', 'inventoryItems'));
+        return view('parts-procurement.create', compact('customers', 'vehicles', 'jobOrders', 'vendors', 'inventoryItems'));
     }
 
     /**
@@ -52,7 +52,7 @@ class PartsProcurementController extends Controller
     {
         $validated = $request->validate([
             'vendor_id' => 'required|exists:inventory_suppliers,id',
-            'work_order_id' => 'nullable|exists:work_orders,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
             'customer_id' => 'nullable|exists:customers,id',
             'vehicle_id' => 'nullable|exists:vehicles,id',
             'shipping_method' => 'nullable|string|max:100',
@@ -85,7 +85,7 @@ class PartsProcurementController extends Controller
             // Create parts order
             $partsOrder = PartsOrder::create([
                 'vendor_id' => $validated['vendor_id'],
-                'work_order_id' => $validated['work_order_id'] ?? null,
+                'job_order_id' => $validated['job_order_id'] ?? null,
                 'customer_id' => $validated['customer_id'] ?? null,
                 'vehicle_id' => $validated['vehicle_id'] ?? null,
                 'status' => 'draft',
@@ -131,7 +131,7 @@ class PartsProcurementController extends Controller
      */
     public function show(PartsOrder $partsOrder)
     {
-        $partsOrder->load(['vendor', 'workOrder', 'customer', 'vehicle', 'items', 'returns', 'coreReturns', 'createdBy']);
+        $partsOrder->load(['vendor', 'jobOrder', 'customer', 'vehicle', 'items', 'returns', 'coreReturns', 'createdBy']);
         
         return view('parts-procurement.show', compact('partsOrder'));
     }
@@ -148,14 +148,14 @@ class PartsProcurementController extends Controller
 
         $customers = Customer::where('is_active', true)->orderBy('first_name')->get();
         $vehicles = Vehicle::with('customer')->orderBy('make')->get();
-        $workOrders = WorkOrder::whereIn('status', ['pending', 'in_progress', 'waiting_parts'])
+        $jobOrders = JobOrder::whereIn('status', ['pending', 'in_progress', 'waiting_parts'])
             ->with(['customer', 'vehicle'])
             ->orderBy('created_at', 'desc')
             ->get();
         $vendors = InventorySupplier::where('is_active', true)->orderBy('name')->get();
         $inventoryItems = Inventory::where('quantity', '>', 0)->orderBy('name')->get();
 
-        return view('parts-procurement.edit', compact('partsOrder', 'customers', 'vehicles', 'workOrders', 'vendors', 'inventoryItems'));
+        return view('parts-procurement.edit', compact('partsOrder', 'customers', 'vehicles', 'jobOrders', 'vendors', 'inventoryItems'));
     }
 
     /**
@@ -170,7 +170,7 @@ class PartsProcurementController extends Controller
 
         $validated = $request->validate([
             'vendor_id' => 'required|exists:inventory_suppliers,id',
-            'work_order_id' => 'nullable|exists:work_orders,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
             'customer_id' => 'nullable|exists:customers,id',
             'vehicle_id' => 'nullable|exists:vehicles,id',
             'shipping_method' => 'nullable|string|max:100',
@@ -204,7 +204,7 @@ class PartsProcurementController extends Controller
             // Update parts order
             $partsOrder->update([
                 'vendor_id' => $validated['vendor_id'],
-                'work_order_id' => $validated['work_order_id'] ?? null,
+                'job_order_id' => $validated['job_order_id'] ?? null,
                 'customer_id' => $validated['customer_id'] ?? null,
                 'vehicle_id' => $validated['vehicle_id'] ?? null,
                 'subtotal' => $subtotal,

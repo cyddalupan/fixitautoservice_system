@@ -7,7 +7,7 @@ use App\Models\Customer;
 use App\Models\Estimate;
 use App\Models\Vehicle;
 use App\Models\VehicleInspection;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use Illuminate\Support\Collection;
 
 class ServiceRecordService
@@ -17,7 +17,7 @@ class ServiceRecordService
      *
      * @param int|null $customerId Filter by customer
      * @param int|null $vehicleId Filter by vehicle
-     * @param string|null $section Filter by section (appointments, inspections, estimates, work_orders, payments)
+     * @param string|null $section Filter by section (appointments, inspections, estimates, job_orders, payments)
      * @return array
      */
     public function getWorkflows($customerId = null, $vehicleId = null, $section = null)
@@ -30,7 +30,7 @@ class ServiceRecordService
             $vehicles = Vehicle::where('customer_id', $customerId)
                 ->with(['customer', 'appointments' => function($query) {
                     // Include all appointments including cancelled
-                    $query->with(['vehicleInspection', 'estimate', 'workOrder']);
+                    $query->with(['vehicleInspection', 'estimate', 'jobOrder']);
                     // REMOVED: ->orderBy('appointment_date', 'desc');
                     // Sorting will be done in buildVehicleWorkflow
                 }])
@@ -47,7 +47,7 @@ class ServiceRecordService
         elseif ($vehicleId) {
             $vehicle = Vehicle::with(['customer', 'appointments' => function($query) {
                 // Include all appointments including cancelled
-                $query->with(['vehicleInspection', 'estimate', 'workOrder.technician']);
+                $query->with(['vehicleInspection', 'estimate', 'jobOrder.technician']);
                 // REMOVED: ->orderBy('appointment_date', 'desc');
                 // Sorting will be done in buildVehicleWorkflow
             }])->findOrFail($vehicleId);
@@ -72,18 +72,18 @@ class ServiceRecordService
             
             // Get vehicles with work orders (no appointments and no estimates)
             $vehicleIdsWithApptsOrEsts = array_unique(array_merge($vehicleIdsWithAppointments, $vehicleIdsWithEstimates));
-            $vehicleIdsWithWorkOrders = \App\Models\WorkOrder::whereNotNull('vehicle_id')
+            $vehicleIdsWithJobOrders = \App\Models\JobOrder::whereNotNull('vehicle_id')
                 ->whereNotIn('vehicle_id', $vehicleIdsWithApptsOrEsts)
                 ->pluck('vehicle_id')
                 ->unique()
                 ->toArray();
             
             // Combine all three
-            $vehicleIds = array_merge($vehicleIdsWithAppointments, $vehicleIdsWithEstimates, $vehicleIdsWithWorkOrders);
+            $vehicleIds = array_merge($vehicleIdsWithAppointments, $vehicleIdsWithEstimates, $vehicleIdsWithJobOrders);
             
             if (empty($vehicleIds)) {
                 // Still need to check for orphan records (null vehicle_id)
-                $hasOrphans = \App\Models\Appointment::whereNull('vehicle_id')->exists() || \App\Models\WorkOrder::whereNull('vehicle_id')->exists();
+                $hasOrphans = \App\Models\Appointment::whereNull('vehicle_id')->exists() || \App\Models\JobOrder::whereNull('vehicle_id')->exists();
                 if (!$hasOrphans) {
                     return [];
                 }
@@ -91,7 +91,7 @@ class ServiceRecordService
             
             $vehicles = Vehicle::whereIn('id', $vehicleIds)
                 ->with(['customer', 'appointments' => function($query) {
-                    $query->with(['vehicleInspection', 'estimate', 'workOrder']);
+                    $query->with(['vehicleInspection', 'estimate', 'jobOrder']);
                     // REMOVED: ->orderBy('appointment_date', 'desc');
                     // Sorting will be done in buildVehicleWorkflow
                 }])
@@ -113,7 +113,7 @@ class ServiceRecordService
         // Also fetch orphan appointments (vehicle_id IS NULL) — walk-ins or online bookings
         // that weren't linked to a vehicle record
         $orphanAppointments = \App\Models\Appointment::whereNull('vehicle_id')
-            ->with(['vehicleInspection', 'estimate', 'workOrder', 'customer'])
+            ->with(['vehicleInspection', 'estimate', 'jobOrder', 'customer'])
             ->orderBy('appointment_date', 'desc')
             ->get();
 
@@ -125,7 +125,7 @@ class ServiceRecordService
                 'appointments' => [],
                 'inspections' => [],
                 'estimates' => [],
-                'work_orders' => [],
+                'job_orders' => [],
                 'payments' => [],
                 'has_any_transaction' => true
             ];
@@ -163,12 +163,12 @@ class ServiceRecordService
                 ];
             }
 
-            if ($appointment->workOrder) {
-                $wo = $appointment->workOrder;
-                $syntheticWorkflow['work_orders'][] = [
+            if ($appointment->jobOrder) {
+                $wo = $appointment->jobOrder;
+                $syntheticWorkflow['job_orders'][] = [
                     'id' => $wo->id,
                     'date' => $wo->created_at,
-                    'status' => $wo->work_order_status ?? $wo->status,
+                    'status' => $wo->job_order_status ?? $wo->status,
                     'estimated_total' => $wo->estimated_total ?? 0,
                     'payment_status' => $wo->payment_status ?? 'pending',
                     'balance_due' => $wo->balance_due ?? ($wo->estimated_total ?? 0),
@@ -205,7 +205,7 @@ class ServiceRecordService
             'appointments' => [],
             'inspections' => [],
             'estimates' => [],
-            'work_orders' => [],
+            'job_orders' => [],
             'payments' => [],
             'has_any_transaction' => false
         ];
@@ -213,7 +213,7 @@ class ServiceRecordService
         // Force reload appointments with a fresh query
         // This bypasses any eager-loading issues
         $appointments = \App\Models\Appointment::where('vehicle_id', $vehicle->id)
-            ->with(['vehicleInspection', 'estimate', 'workOrder'])
+            ->with(['vehicleInspection', 'estimate', 'jobOrder'])
             ->orderBy('appointment_date', 'desc')
             ->get();
 
@@ -257,12 +257,12 @@ class ServiceRecordService
                 $workflow['has_any_transaction'] = true;
             }
 
-            if ($appointment->workOrder) {
-                $wo = $appointment->workOrder;
-                $workflow['work_orders'][] = [
+            if ($appointment->jobOrder) {
+                $wo = $appointment->jobOrder;
+                $workflow['job_orders'][] = [
                     'id' => $wo->id,
                     'date' => $wo->created_at,
-                    'status' => $wo->work_order_status ?? $wo->status,
+                    'status' => $wo->job_order_status ?? $wo->status,
                     'estimated_total' => $wo->estimated_total ?? 0,
                     'payment_status' => $wo->payment_status ?? 'pending',
                     'balance_due' => $wo->balance_due ?? ($wo->estimated_total ?? 0),
@@ -299,11 +299,11 @@ class ServiceRecordService
         }
 
         // SPECIAL CASE: Check for work orders directly linked to vehicle (not through appointment)
-        $directWorkOrders = \App\Models\WorkOrder::where('vehicle_id', $vehicle->id)->get();
-        foreach ($directWorkOrders as $directWO) {
+        $directJobOrders = \App\Models\JobOrder::where('vehicle_id', $vehicle->id)->get();
+        foreach ($directJobOrders as $directWO) {
             // Check if this work order is already in the workflow (linked to an appointment)
             $alreadyAdded = false;
-            foreach ($workflow['work_orders'] as $existingWO) {
+            foreach ($workflow['job_orders'] as $existingWO) {
                 if ($existingWO['id'] == $directWO->id) {
                     $alreadyAdded = true;
                     break;
@@ -311,10 +311,10 @@ class ServiceRecordService
             }
             
             if (!$alreadyAdded) {
-                $workflow['work_orders'][] = [
+                $workflow['job_orders'][] = [
                     'id' => $directWO->id,
                     'date' => $directWO->created_at,
-                    'status' => $directWO->work_order_status ?? $directWO->status,
+                    'status' => $directWO->job_order_status ?? $directWO->status,
                     'estimated_total' => $directWO->estimated_total ?? 0,
                     'payment_status' => $directWO->payment_status ?? 'pending',
                     'balance_due' => $directWO->balance_due ?? ($directWO->estimated_total ?? 0),
@@ -357,7 +357,7 @@ class ServiceRecordService
      *
      * Uses MarX breakdown:
      * - scheduledCount: appointments with status 'scheduled' or 'confirmed' (NO work order check)
-     * - repairOrderCount: vehicle_inspections linked to appointments that have NO work_order_id
+     * - repairOrderCount: vehicle_inspections linked to appointments that have NO job_order_id
      * - estimateCount: all estimates
      * - jobOrderCount: all work orders
      */
@@ -370,18 +370,18 @@ class ServiceRecordService
             ->whereIn('appointment_status', ['scheduled', 'confirmed'])
             ->count();
 
-        // repairOrderCount: vehicle_inspections linked to appointments that have NO work_order_id
+        // repairOrderCount: vehicle_inspections linked to appointments that have NO job_order_id
         $repairOrderCount =
             \App\Models\VehicleInspection::where('created_at', '>=', $recentDate)
                 ->whereNotNull('appointment_id')
-                ->whereNull('work_order_id')
+                ->whereNull('job_order_id')
                 ->count();
 
         // estimateCount: all estimates
         $estimateCount = Estimate::where('created_at', '>=', $recentDate)->count();
 
         // jobOrderCount: all work orders
-        $jobOrderCount = WorkOrder::where('created_at', '>=', $recentDate)->count();
+        $jobOrderCount = JobOrder::where('created_at', '>=', $recentDate)->count();
 
         return [
             'scheduledCount' => $scheduledCount,

@@ -176,6 +176,79 @@
         padding: 8px 12px;
         font-size: 0.85rem;
     }
+
+    /* ===== Dark mode overrides ===== */
+    [data-theme="dark"] .settings-page .main-content-area {
+        background-color: var(--dark-bg) !important;
+    }
+
+    [data-theme="dark"] .settings-card {
+        background: var(--dark-card);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme="dark"] .settings-card .card-header {
+        background: linear-gradient(135deg, #1a2233, #232d42);
+    }
+
+    [data-theme="dark"] .settings-card .form-label {
+        color: var(--dark-text-secondary);
+    }
+
+    [data-theme="dark"] .settings-card .form-control,
+    [data-theme="dark"] .settings-card .form-select {
+        background: var(--dark-input-bg);
+        border-color: var(--dark-border);
+        color: var(--dark-text);
+    }
+
+    [data-theme="dark"] .settings-card .btn-outline-secondary {
+        border-color: var(--dark-border);
+        color: var(--dark-text-secondary);
+    }
+
+    [data-theme="dark"] .settings-card .btn-outline-secondary:hover {
+        background: var(--dark-hover);
+        border-color: var(--dark-border);
+    }
+
+    [data-theme="dark"] .password-mask {
+        color: var(--dark-text-secondary);
+    }
+
+    [data-theme="dark"] .toast-message {
+        background: var(--dark-card);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    [data-theme="dark"] .log-table th {
+        background: var(--dark-surface);
+        border-bottom-color: var(--dark-border);
+        color: var(--dark-text-secondary);
+    }
+
+    [data-theme="dark"] .log-table td {
+        color: var(--dark-text);
+        border-color: var(--dark-border);
+    }
+
+    [data-theme="dark"] .log-table .badge-success {
+        background: rgba(22, 163, 74, 0.2);
+        color: #4ade80;
+    }
+
+    [data-theme="dark"] .log-table .badge-danger {
+        background: rgba(239, 68, 68, 0.2);
+        color: #f87171;
+    }
+
+    [data-theme="dark"] .log-filters .form-control,
+    [data-theme="dark"] .log-filters .form-select {
+        background: var(--dark-input-bg);
+        border-color: var(--dark-border);
+        color: var(--dark-text);
+    }
+
 </style>
 @endpush
 

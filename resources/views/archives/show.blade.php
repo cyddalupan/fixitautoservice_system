@@ -1,6 +1,6 @@
 @php
     $moduleLabels = [
-        'work_order' => 'Repair Order',
+        'job_order' => 'Repair Order',
         'estimate' => 'Estimate',
         'payment' => 'Payment',
         'invoice' => 'Invoice',

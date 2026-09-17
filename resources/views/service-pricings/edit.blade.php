@@ -40,18 +40,18 @@
                         @enderror
                     </div>
 
-                    {{-- Vehicle Type --}}
+                    {{-- Transmission Type --}}
                     <div class="col-md-3">
-                        <label class="form-label fw-semibold">Vehicle Type</label>
+                        <label class="form-label fw-semibold">Transmission</label>
                         <select name="vehicle_type" class="form-select @error('vehicle_type') is-invalid @enderror">
-                            <option value="">— All Types —</option>
+                            <option value="">— All —</option>
                             @foreach($vehicleTypes as $key => $label)
                                 <option value="{{ $key }}" {{ old('vehicle_type', $servicePricing->vehicle_type) == $key ? 'selected' : '' }}>
                                     {{ $label }}
                                 </option>
                             @endforeach
                         </select>
-                        <small class="text-muted">Leave blank if per-model</small>
+                        <small class="text-muted">Leave blank if for both</small>
                         @error('vehicle_type')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror

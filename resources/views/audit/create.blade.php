@@ -133,18 +133,18 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="work_order_id" class="form-label">Work Order (Optional)</label>
-                                    <select class="form-control @error('work_order_id') is-invalid @enderror" 
-                                            id="work_order_id" name="work_order_id">
+                                    <label for="job_order_id" class="form-label">Work Order (Optional)</label>
+                                    <select class="form-control @error('job_order_id') is-invalid @enderror" 
+                                            id="job_order_id" name="job_order_id">
                                         <option value="">Select work order</option>
-                                        @foreach($workOrders as $workOrder)
-                                            <option value="{{ $workOrder->id }}" 
-                                                    {{ old('work_order_id') == $workOrder->id ? 'selected' : '' }}>
-                                                WO-{{ $workOrder->id }} - {{ $workOrder->customer->name ?? 'Unknown' }}
+                                        @foreach($jobOrders as $jobOrder)
+                                            <option value="{{ $jobOrder->id }}" 
+                                                    {{ old('job_order_id') == $jobOrder->id ? 'selected' : '' }}>
+                                                WO-{{ $jobOrder->id }} - {{ $jobOrder->customer->name ?? 'Unknown' }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    @error('work_order_id')
+                                    @error('job_order_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
@@ -429,11 +429,11 @@
             </div>
             ` : ''}
             
-            ${formData.get('work_order_id') ? `
+            ${formData.get('job_order_id') ? `
             <div class="preview-section mb-4">
                 <h6>Work Order</h6>
                 <table class="table table-sm">
-                    <tr><td><strong>Work Order:</strong></td><td>${document.querySelector('#work_order_id option:checked').textContent}</td></tr>
+                    <tr><td><strong>Work Order:</strong></td><td>${document.querySelector('#job_order_id option:checked').textContent}</td></tr>
                 </table>
             </div>
             ` : ''}

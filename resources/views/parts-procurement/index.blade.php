@@ -62,8 +62,8 @@
                                     <tr>
                                         <td>
                                             <strong>{{ $order->order_number }}</strong>
-                                            @if($order->workOrder)
-                                                <div class="text-muted small">WO: {{ $order->workOrder->work_order_number }}</div>
+                                            @if($order->jobOrder)
+                                                <div class="text-muted small">WO: {{ $order->jobOrder->job_order_number }}</div>
                                             @endif
                                         </td>
                                         <td>{{ $order->vendor->name ?? 'N/A' }}</td>

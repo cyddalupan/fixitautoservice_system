@@ -15,7 +15,7 @@ class VehicleInspection extends Model
 
     protected $fillable = [
         'service_id',
-        'work_order_id',
+        'job_order_id',
         'appointment_id',
         'customer_id',
         'vehicle_id',
@@ -101,9 +101,9 @@ class VehicleInspection extends Model
         return $this->belongsTo(Service::class, 'service_id', 'service_id');
     }
 
-    public function workOrder()
+    public function jobOrder()
     {
-        return $this->belongsTo(WorkOrder::class);
+        return $this->belongsTo(JobOrder::class);
     }
 
     public function appointment()
@@ -547,10 +547,10 @@ class VehicleInspection extends Model
         ];
     }
 
-    public static function createFromTemplate(int $workOrderId, int $customerId, int $vehicleId, string $templateType = 'pre_service'): self
+    public static function createFromTemplate(int $jobOrderId, int $customerId, int $vehicleId, string $templateType = 'pre_service'): self
     {
         $inspection = self::create([
-            'work_order_id' => $workOrderId,
+            'job_order_id' => $jobOrderId,
             'customer_id' => $customerId,
             'vehicle_id' => $vehicleId,
             'inspection_type' => $templateType,

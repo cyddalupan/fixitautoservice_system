@@ -222,6 +222,13 @@ class AppointmentController extends Controller
             'plate_number' => $request->input('plate_number') ?: $request->input('plate_number_manual'),
         ]);
 
+        // Safety net: when a brand-new customer name is typed into the search box,
+        // the hidden manual "client_name" field submits empty. Fall back to the typed
+        // search value so the guest/manual flow can still create the appointment.
+        if (!$request->filled('client_name')) {
+            $request->merge(['client_name' => $request->input('customer_search')]);
+        }
+
         $isAdminForm = $request->filled('customer_id');
 
         $baseRules = [
@@ -231,6 +238,9 @@ class AppointmentController extends Controller
             'service_type.*' => 'string|in:' . implode(',', \App\Models\ServiceType::keys()),
             'description' => 'nullable|string|max:1000',
             'estimated_cost' => 'nullable|numeric|min:0',
+            'fuel_type' => 'nullable|in:gasoline,diesel',
+            'transmission' => 'nullable|in:manual,automatic',
+            'address' => 'nullable|string|max:255',
         ];
 
         if ($isAdminForm) {
@@ -298,8 +308,19 @@ class AppointmentController extends Controller
                         'model' => $validated['vehicle_model'],
                         'year' => $validated['vehicle_year'],
                         'license_plate' => strtoupper($validated['plate_number'] ?? ''),
+                        'fuel_type' => $validated['fuel_type'] ?? null,
+                        'transmission' => $validated['transmission'] ?? null,
                         'is_active' => true,
                     ]);
+                } else {
+                    // Persist fuel/transmission onto the existing vehicle when provided
+                    $vehicleAttrs = array_filter([
+                        'fuel_type' => $validated['fuel_type'] ?? null,
+                        'transmission' => $validated['transmission'] ?? null,
+                    ], function ($v) { return $v !== null && $v !== ''; });
+                    if (!empty($vehicleAttrs)) {
+                        $vehicle->update($vehicleAttrs);
+                    }
                 }
 
                 $plateNumber = $vehicle->license_plate ?? '';
@@ -317,6 +338,7 @@ class AppointmentController extends Controller
                         'first_name' => $firstName,
                         'last_name' => $lastName,
                         'phone' => $contactNo,
+                        'address' => $validated['address'] ?? null,
                         'email' => $request->filled('email')
                             ? $request->get('email')
                             : ($contactNo
@@ -329,10 +351,14 @@ class AppointmentController extends Controller
                     $nameParts = explode(' ', $validated['client_name'], 2);
                     $firstName = $nameParts[0];
                     $lastName = $nameParts[1] ?? '';
-                    $customer->update([
+                    $customerData = [
                         'first_name' => $firstName,
                         'last_name' => $lastName,
-                    ]);
+                    ];
+                    if (!empty($validated['address'])) {
+                        $customerData['address'] = $validated['address'];
+                    }
+                    $customer->update($customerData);
                 }
 
                 // Find or create vehicle
@@ -345,6 +371,8 @@ class AppointmentController extends Controller
                         'model' => $validated['vehicle_model'],
                         'year' => $validated['vehicle_year'],
                         'license_plate' => $plateNumber,
+                        'fuel_type' => $validated['fuel_type'] ?? null,
+                        'transmission' => $validated['transmission'] ?? null,
                     ]);
                 } else {
                     // Update vehicle details if plate exists
@@ -353,6 +381,8 @@ class AppointmentController extends Controller
                         'make' => $validated['vehicle_brand'],
                         'model' => $validated['vehicle_model'],
                         'year' => $validated['vehicle_year'],
+                        'fuel_type' => $validated['fuel_type'] ?? $vehicle->fuel_type,
+                        'transmission' => $validated['transmission'] ?? $vehicle->transmission,
                     ]);
                 }
 
@@ -628,8 +658,14 @@ class AppointmentController extends Controller
             'regular_service' => 'preventive_maintenance',
             'other' => 'engine_service',
         ];
-        $serviceType = $appointment->service_types 
-            ?? ($serviceTypeLookup[$appointment->appointment_type] ?? null);
+        // service_types is a JSON array; service_type is a single varchar column.
+        $serviceTypes = $appointment->service_types;
+        $serviceType = is_array($serviceTypes)
+            ? (reset($serviceTypes) ?: null)
+            : $serviceTypes;
+        if (!$serviceType) {
+            $serviceType = $serviceTypeLookup[$appointment->appointment_type] ?? null;
+        }
         
         $inspection = \App\Models\VehicleInspection::create([
             'appointment_id' => $appointment->id,
@@ -664,21 +700,372 @@ class AppointmentController extends Controller
     }
     
     /**
-     * Start an appointment.
+     * Start an appointment from the Arrived tab.
+     *
+     * This is the hand-off from "Arrived" (where staff complete all details)
+     * to the actual Repair Order. The appointment keeps a link to the vehicle
+     * inspection / Repair Order, so the job stays visible under "Repair Orders"
+     * instead of disappearing (in_progress appointments have no tab).
+     * The vehicle's received date is captured at the same time.
      */
     public function start(Appointment $appointment)
     {
         if (!in_array($appointment->appointment_status, ['checked_in', 'confirmed'])) {
             return redirect()->back()->with('error', 'Appointment must be checked in or confirmed to start.');
         }
-        
-        $appointment->update([
-            'appointment_status' => 'in_progress',
-            'started_at' => now(),
-            'bay_status' => 'occupied',
+
+        try {
+            $inspection = DB::transaction(function () use ($appointment) {
+                // Capture the vehicle received date. Priority: value entered on
+                // the Arrived/Update-Information page -> check-in date -> the
+                // scheduled date. Always ends up with a real date.
+                $receivedDate = $appointment->date_received
+                    ? $appointment->date_received->toDateString()
+                    : ($appointment->checked_in_at
+                        ? $appointment->checked_in_at->toDateString()
+                        : ($appointment->appointment_date
+                            ? $appointment->appointment_date->toDateString()
+                            : now()->toDateString()));
+
+                // appointments.service_types is a JSON array while
+                // vehicle_inspections.service_type is a single varchar. Passing
+                // the array throws "Array to string conversion" (same guard as
+                // the check-in flow).
+                $serviceTypes = $appointment->service_types;
+                $serviceType = is_array($serviceTypes)
+                    ? (reset($serviceTypes) ?: null)
+                    : $serviceTypes;
+                if (!$serviceType) {
+                    $serviceTypeLookup = [
+                        'maintenance' => 'preventive_maintenance',
+                        'repair' => 'engine_service',
+                        'emergency' => 'engine_service',
+                        'inspection' => 'preventive_maintenance',
+                        'diagnostic' => 'engine_service',
+                        'tire_service' => 'underchassis_service',
+                        'oil_change' => 'preventive_maintenance',
+                        'brake_service' => 'underchassis_service',
+                        'regular_service' => 'preventive_maintenance',
+                        'other' => 'engine_service',
+                    ];
+                    $serviceType = $serviceTypeLookup[$appointment->appointment_type] ?? null;
+                }
+
+                // Repair Orders need a vehicle. Fall back to the customer's
+                // first vehicle, then to a placeholder (same as check-in).
+                $vehicleId = $appointment->vehicle_id;
+                if (!$vehicleId) {
+                    $customerVehicle = \App\Models\Vehicle::where('customer_id', $appointment->customer_id)->first();
+                    if ($customerVehicle) {
+                        $vehicleId = $customerVehicle->id;
+                    } else {
+                        $defaultVehicle = \App\Models\Vehicle::create([
+                            'customer_id' => $appointment->customer_id,
+                            'make' => 'Unknown',
+                            'model' => 'Vehicle',
+                            'year' => date('Y'),
+                            'license_plate' => 'TEMP-' . $appointment->id,
+                        ]);
+                        $vehicleId = $defaultVehicle->id;
+                    }
+                }
+
+                // Reuse the Repair Order created at check-in (if any) so we
+                // never create a duplicate; otherwise create one now.
+                $inspection = \App\Models\VehicleInspection::where('appointment_id', $appointment->id)->first();
+
+                if (!$inspection) {
+                    $customerName = $appointment->customer->full_name ?? 'Customer';
+                    $inspection = \App\Models\VehicleInspection::create([
+                        'appointment_id' => $appointment->id,
+                        'customer_id' => $appointment->customer_id,
+                        'vehicle_id' => $vehicleId,
+                        'technician_id' => $appointment->assigned_technician_id,
+                        'service_advisor_id' => $appointment->service_advisor_id,
+                        'service_type' => $serviceType,
+                        'inspection_type' => 'pre_service',
+                        'inspection_status' => 'in_progress',
+                        'inspection_name' => 'Repair Order for ' . $customerName,
+                        'customer_concerns' => $appointment->service_request,
+                        'inspection_started_at' => now(),
+                        'created_by' => auth()->id(),
+                        'total_items_checked' => 0,
+                        'items_passed' => 0,
+                        'items_failed' => 0,
+                        'items_attention_needed' => 0,
+                        'items_not_applicable' => 0,
+                        'has_safety_concerns' => 0,
+                        'has_urgent_issues' => 0,
+                        'has_critical_issues' => 0,
+                        'requires_customer_approval' => 1,
+                        'customer_approved' => 0,
+                        'has_upsell_opportunities' => 0,
+                    ]);
+
+                    // Copy the assigned technicians from the appointment.
+                    if ($appointment->technicians()->exists()) {
+                        foreach ($appointment->technicians as $tech) {
+                            $inspection->technicians()->attach($tech->id, ['role' => $tech->pivot->role ?? 'technician']);
+                        }
+                    }
+
+                    if ($appointment->service_id) {
+                        $inspection->update(['service_id' => $appointment->service_id]);
+                    }
+                } else {
+                    // Keep the existing Repair Order in sync with everything that
+                    // was gathered on the Arrived tab (non-empty values only).
+                    $inspection->update([
+                        'service_type' => $serviceType ?: $inspection->service_type,
+                        'customer_concerns' => $appointment->service_request ?: $inspection->customer_concerns,
+                        'technician_id' => $appointment->assigned_technician_id ?: $inspection->technician_id,
+                        'service_advisor_id' => $appointment->service_advisor_id ?: $inspection->service_advisor_id,
+                        'inspection_status' => in_array($inspection->inspection_status, ['draft', 'in_progress'], true)
+                            ? 'in_progress'
+                            : $inspection->inspection_status,
+                        'inspection_started_at' => $inspection->inspection_started_at ?: now(),
+                    ]);
+                }
+
+                $appointment->update([
+                    'appointment_status' => 'in_progress',
+                    'started_at' => now(),
+                    'bay_status' => 'occupied',
+                    'date_received' => $appointment->date_received ?: $receivedDate,
+                ]);
+
+                return $inspection;
+            });
+        } catch (\Throwable $e) {
+            \Log::error('Failed to start appointment ' . $appointment->id . ': ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'Failed to start appointment: ' . $e->getMessage());
+        }
+
+        return redirect()->route('inspections.show', $inspection)
+            ->with('success', 'Appointment started. Nasa Repair Orders na ang trabaho.');
+    }
+
+    /**
+     * Show the full-page form to update missing customer / vehicle /
+     * appointment information from the Arrived tab.
+     */
+    public function showUpdateInfoForm(Appointment $appointment)
+    {
+        $appointment->load(['customer', 'vehicle']);
+
+        return view('appointments.update-info', compact('appointment'));
+    }
+
+    /**
+     * Normalise the appointment's stored service types into a plain array
+     * of service keys (handles cast arrays and double-encoded JSON).
+     */
+    protected function resolveSelectedServiceTypes(Appointment $appointment): array
+    {
+        $raw = $appointment->service_types;
+        if (is_array($raw)) {
+            return array_values(array_filter($raw, 'is_string'));
+        }
+        if (is_string($raw) && $raw !== '') {
+            $decoded = json_decode($raw, true);
+            if (is_string($decoded)) {
+                $decoded = json_decode($decoded, true);
+            }
+            if (is_array($decoded)) {
+                return array_values(array_filter($decoded, 'is_string'));
+            }
+            return [$raw];
+        }
+        return [];
+    }
+
+    /**
+     * Show a printable Repair Order slip for the appointment, so Andrew can
+     * review the format before printing.
+     */
+    public function showRepairOrderSlip(Appointment $appointment)
+    {
+        $appointment->load(['customer', 'vehicle']);
+        $services = config('service-types.list', []);
+        $selectedTypes = $this->resolveSelectedServiceTypes($appointment);
+
+        return view('appointments.repair-order-slip', compact('appointment', 'services', 'selectedTypes'));
+    }
+
+    /**
+     * Download the Repair Order slip as a PDF.
+     */
+    public function downloadRepairOrderSlipPdf(Appointment $appointment)
+    {
+        $appointment->load(['customer', 'vehicle']);
+        $services = config('service-types.list', []);
+        $selectedTypes = $this->resolveSelectedServiceTypes($appointment);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.repair-order-slip', compact('appointment', 'services', 'selectedTypes'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->download('Repair-Order-' . $appointment->appointment_number . '.pdf');
+    }
+
+    /**
+     * Update missing customer / vehicle / appointment information from the
+     * Arrived tab (fills in only the fields the user actually provided, so
+     * existing data is never wiped).
+     */
+    public function updateInfo(Request $request, Appointment $appointment)
+    {
+        $validated = $request->validate([
+            'date_received' => 'nullable|date',
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:50',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
+            'make' => 'nullable|string|max:255',
+            'model' => 'nullable|string|max:255',
+            'year' => 'nullable|string|max:4',
+            'license_plate' => 'nullable|string|max:50',
+            'vin' => 'nullable|string|max:50',
+            'engine_no' => 'nullable|string|max:50',
+            'transmission' => 'nullable|string|max:20',
+            'fuel_type' => 'nullable|string|max:20',
+            'odometer' => 'nullable|string|max:20',
+            'color' => 'nullable|string|max:50',
+            'service_request' => 'nullable|string|max:1000',
+            'service_types' => 'nullable|array',
+            'service_types.*' => 'string|max:100',
+            'job_description_items' => 'nullable|array',
+            'job_description_items.*.description' => 'nullable|string|max:255',
+            'job_description_items.*.mh' => 'nullable|numeric|min:0',
+            'job_description_items.*.unit_price' => 'nullable|numeric|min:0',
+            'job_description_items.*.labor_cost' => 'nullable|numeric|min:0',
+            'parts_items' => 'nullable|array',
+            'parts_items.*.description' => 'nullable|string|max:255',
+            'parts_items.*.qty' => 'nullable|numeric|min:0',
+            'parts_items.*.unit_price' => 'nullable|numeric|min:0',
+            'parts_items.*.cost' => 'nullable|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
         ]);
-        
-        return redirect()->back()->with('success', 'Appointment started successfully.');
+
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($request, $appointment, $validated) {
+                // ---- Customer: only fill / overwrite with non-empty values ----
+                if ($appointment->customer) {
+                    $customerData = [];
+                    foreach (['first_name', 'last_name', 'phone', 'email', 'address', 'city'] as $field) {
+                        if (!empty($validated[$field])) {
+                            $customerData[$field] = $validated[$field];
+                        }
+                    }
+                    if ($customerData) {
+                        $appointment->customer->update($customerData);
+                    }
+                }
+
+                // ---- Vehicle ----
+                if ($appointment->vehicle) {
+                    $vehicleData = [];
+                    foreach (['make', 'model', 'year', 'license_plate', 'vin', 'engine_no', 'transmission', 'fuel_type', 'color'] as $field) {
+                        if (!empty($validated[$field])) {
+                            $vehicleData[$field] = $validated[$field];
+                        }
+                    }
+                    if (!empty($validated['odometer'])) {
+                        $vehicleData['odometer'] = (int) $validated['odometer'];
+                    }
+                    if ($vehicleData) {
+                        $appointment->vehicle->update($vehicleData);
+                    }
+                }
+
+                // ---- Appointment (mirror contact info) ----
+                $apptData = [];
+                // Date the vehicle was received (captured on the Arrived tab and
+                // re-recorded onto the Repair Order when the job is started).
+                if (!empty($validated['date_received'])) {
+                    $apptData['date_received'] = $validated['date_received'];
+                }
+                if ($request->filled('service_request')) {
+                    $apptData['service_request'] = $validated['service_request'];
+                }
+                // Services to be done (PMS, Aircon, Basic Tune Up, ...) -> JSON array column
+                if (!empty($validated['service_types'])) {
+                    $apptData['service_types'] = array_values($validated['service_types']);
+                }
+                // Repair Order line items (flexible, editable from Update Information)
+                $apptData['job_description_items'] = $this->normalizeRepairRows(
+                    $validated['job_description_items'] ?? [],
+                    ['description', 'mh', 'unit_price', 'labor_cost']
+                );
+                $apptData['parts_items'] = $this->normalizeRepairRows(
+                    $validated['parts_items'] ?? [],
+                    ['description', 'qty', 'unit_price', 'cost']
+                );
+                // Manual discount shown on the printed slip (null clears it)
+                $apptData['discount'] = array_key_exists('discount', $validated) ? $validated['discount'] : null;
+                if (!empty($validated['phone'])) {
+                    $apptData['phone'] = $validated['phone'];
+                }
+                if (!empty($validated['email'])) {
+                    $apptData['email'] = $validated['email'];
+                }
+                if (!empty($validated['first_name']) || !empty($validated['last_name'])) {
+                    $first = $validated['first_name'] ?? ($appointment->customer->first_name ?? '');
+                    $last  = $validated['last_name'] ?? ($appointment->customer->last_name ?? '');
+                    $fullName = trim($first . ' ' . $last);
+                    if ($fullName !== '') {
+                        $apptData['name'] = $fullName;
+                    }
+                }
+                if ($apptData) {
+                    $appointment->update($apptData);
+                }
+            });
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'Failed to update information: ' . $e->getMessage());
+        }
+
+        return redirect()->back()->with('success', 'Information updated successfully.');
+    }
+
+    /**
+     * Normalise the Repair Order slip line items coming from the Update
+     * Information form: trim text, cast numbers, and drop fully-empty rows.
+     */
+    protected function normalizeRepairRows($rows, array $fields): array
+    {
+        if (!is_array($rows)) {
+            return [];
+        }
+        $out = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $clean = [];
+            foreach ($fields as $f) {
+                $val = $row[$f] ?? null;
+                if ($f === 'description') {
+                    $clean[$f] = is_string($val) ? trim($val) : '';
+                } else {
+                    $clean[$f] = ($val === '' || $val === null) ? null : (float) $val;
+                }
+            }
+            $hasText = ($clean['description'] ?? '') !== '';
+            $hasNum = false;
+            foreach ($fields as $f) {
+                if ($f !== 'description' && $clean[$f] !== null) {
+                    $hasNum = true;
+                    break;
+                }
+            }
+            if ($hasText || $hasNum) {
+                $out[] = $clean;
+            }
+        }
+        return $out;
     }
     
     public function complete(Appointment $appointment)
@@ -922,20 +1309,14 @@ class AppointmentController extends Controller
     {
         try {
             $appointment = Appointment::findOrFail($id);
-            
-            if (!in_array($appointment->appointment_status, ['scheduled', 'confirmed'])) {
+
+            if (!in_array($appointment->appointment_status, ['scheduled', 'confirmed', 'customer_booked'])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Only scheduled or confirmed appointments can be checked in.'
+                    'message' => 'Only scheduled, confirmed or online-booked appointments can be checked in.'
                 ], 400);
             }
-            
-            // Update appointment status
-            $appointment->update([
-                'appointment_status' => 'checked_in',
-                'checked_in_at' => now(),
-            ]);
-            
+
             // Get customer name safely
             $customerName = 'Customer';
             if ($appointment->customer) {
@@ -946,29 +1327,7 @@ class AppointmentController extends Controller
                     $customerName = $customer->full_name;
                 }
             }
-            
-            // Create vehicle inspection for the appointment
-            // Note: vehicle_id may be null since appointments now use vehicle_description
-            // Get or create a vehicle for the customer
-            $vehicleId = $appointment->vehicle_id;
-            if (!$vehicleId) {
-                // Try to find any vehicle for this customer
-                $customerVehicle = \App\Models\Vehicle::where('customer_id', $appointment->customer_id)->first();
-                if ($customerVehicle) {
-                    $vehicleId = $customerVehicle->id;
-                } else {
-                    // Create a default vehicle for the customer
-                    $defaultVehicle = \App\Models\Vehicle::create([
-                        'customer_id' => $appointment->customer_id,
-                        'make' => 'Unknown',
-                        'model' => 'Vehicle',
-                        'year' => date('Y'),
-                        'license_plate' => 'TEMP-' . $appointment->id,
-                    ]);
-                    $vehicleId = $defaultVehicle->id;
-                }
-            }
-            
+
             $serviceTypeLookup = [
                 'maintenance' => 'preventive_maintenance',
                 'repair' => 'engine_service',
@@ -981,48 +1340,86 @@ class AppointmentController extends Controller
                 'regular_service' => 'preventive_maintenance',
                 'other' => 'engine_service',
             ];
-            $serviceType = $appointment->service_types 
-                ?? ($serviceTypeLookup[$appointment->appointment_type] ?? null);
-            
-            $inspection = \App\Models\VehicleInspection::create([
-                'appointment_id' => $appointment->id,
-                'customer_id' => $appointment->customer_id,
-                'vehicle_id' => $vehicleId, // Now guaranteed to have a value
-                'technician_id' => $appointment->assigned_technician_id,
-                'service_advisor_id' => $appointment->service_advisor_id,
-                'service_type' => $serviceType,
-                'inspection_type' => 'pre_service',
-                'inspection_status' => 'draft',
-                'inspection_name' => 'Pre-Service Inspection for ' . $customerName,
-                'customer_concerns' => $appointment->service_request,
-                'inspection_started_at' => now(),
-                'created_by' => auth()->id(),
-                // Required fields with NOT NULL constraint
-                'total_items_checked' => 0,
-                'items_passed' => 0,
-                'items_failed' => 0,
-                'items_attention_needed' => 0,
-                'items_not_applicable' => 0,
-                'has_safety_concerns' => 0,
-                'has_urgent_issues' => 0,
-                'has_critical_issues' => 0,
-                'requires_customer_approval' => 1,
-                'customer_approved' => 0,
-                'has_upsell_opportunities' => 0,
-            ]);
-            
-            // Copy additional technicians from appointment to inspection
-            if ($appointment->technicians()->exists()) {
-                foreach ($appointment->technicians as $tech) {
-                    $inspection->technicians()->attach($tech->id, ['role' => $tech->pivot->role ?? 'technician']);
+
+            // NOTE: appointments.service_types is a JSON array (cast to array by the
+            // model) while vehicle_inspections.service_type is a single varchar column.
+            // Passing the whole array caused "Array to string conversion" and made the
+            // whole check-in fail. Take the first entry instead.
+            $serviceTypes = $appointment->service_types;
+            $serviceType = is_array($serviceTypes)
+                ? (reset($serviceTypes) ?: null)
+                : $serviceTypes;
+            if (!$serviceType) {
+                $serviceType = $serviceTypeLookup[$appointment->appointment_type] ?? null;
+            }
+
+            $inspection = \Illuminate\Support\Facades\DB::transaction(function () use ($appointment, $customerName, $serviceType) {
+                // Get or create a vehicle for the customer
+                $vehicleId = $appointment->vehicle_id;
+                if (!$vehicleId) {
+                    $customerVehicle = \App\Models\Vehicle::where('customer_id', $appointment->customer_id)->first();
+                    if ($customerVehicle) {
+                        $vehicleId = $customerVehicle->id;
+                    } else {
+                        $defaultVehicle = \App\Models\Vehicle::create([
+                            'customer_id' => $appointment->customer_id,
+                            'make' => 'Unknown',
+                            'model' => 'Vehicle',
+                            'year' => date('Y'),
+                            'license_plate' => 'TEMP-' . $appointment->id,
+                        ]);
+                        $vehicleId = $defaultVehicle->id;
+                    }
                 }
-            }
-            
-            // If appointment has a service_id, link it to the inspection
-            if ($appointment->service_id) {
-                $inspection->update(['service_id' => $appointment->service_id]);
-            }
-            
+
+                $inspection = \App\Models\VehicleInspection::create([
+                    'appointment_id' => $appointment->id,
+                    'customer_id' => $appointment->customer_id,
+                    'vehicle_id' => $vehicleId,
+                    'technician_id' => $appointment->assigned_technician_id,
+                    'service_advisor_id' => $appointment->service_advisor_id,
+                    'service_type' => $serviceType,
+                    'inspection_type' => 'pre_service',
+                    'inspection_status' => 'draft',
+                    'inspection_name' => 'Pre-Service Inspection for ' . $customerName,
+                    'customer_concerns' => $appointment->service_request,
+                    'inspection_started_at' => now(),
+                    'created_by' => auth()->id(),
+                    'total_items_checked' => 0,
+                    'items_passed' => 0,
+                    'items_failed' => 0,
+                    'items_attention_needed' => 0,
+                    'items_not_applicable' => 0,
+                    'has_safety_concerns' => 0,
+                    'has_urgent_issues' => 0,
+                    'has_critical_issues' => 0,
+                    'requires_customer_approval' => 1,
+                    'customer_approved' => 0,
+                    'has_upsell_opportunities' => 0,
+                ]);
+
+                // Copy additional technicians from appointment to inspection
+                if ($appointment->technicians()->exists()) {
+                    foreach ($appointment->technicians as $tech) {
+                        $inspection->technicians()->attach($tech->id, ['role' => $tech->pivot->role ?? 'technician']);
+                    }
+                }
+
+                // If appointment has a service_id, link it to the inspection
+                if ($appointment->service_id) {
+                    $inspection->update(['service_id' => $appointment->service_id]);
+                }
+
+                // Mark the appointment checked in LAST: if anything above throws,
+                // the appointment stays in Scheduled instead of a half-checked-in state.
+                $appointment->update([
+                    'appointment_status' => 'checked_in',
+                    'checked_in_at' => now(),
+                ]);
+
+                return $inspection;
+            });
+
             return response()->json([
                 'success' => true,
                 'message' => 'Appointment checked in successfully. Vehicle inspection created.',
@@ -1038,7 +1435,7 @@ class AppointmentController extends Controller
                 'inspection_edit_url' => route('inspections.edit', $inspection->id),
                 'redirect_message' => 'Redirecting to vehicle inspection...',
             ]);
-            
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -1250,6 +1647,25 @@ class AppointmentController extends Controller
                 'payment_count' => $appointment->payments ? $appointment->payments->count() : 0,
             ]);
             
+            // Human-readable service type label(s) from the JSON `service_types` column
+            // (cached list -> no per-event query). e.g. ["aircon_cleaning"] => "AIRCON CLEANING"
+            $typeList = \App\Models\ServiceType::list();
+            // `service_types` is normally cast to array, but be defensive: it may arrive
+            // as a raw JSON string on legacy rows.
+            $rawTypes = $appointment->service_types;
+            if (is_string($rawTypes)) {
+                $rawTypes = json_decode($rawTypes, true) ?: [$rawTypes];
+            }
+            $serviceLabels = [];
+            foreach ((array) $rawTypes as $k) {
+                $k = trim((string) $k, "[]\" \t\n\r");
+                if ($k === "") {
+                    continue;
+                }
+                $serviceLabels[] = $typeList[$k] ?? ucwords(str_replace("_", " ", $k));
+            }
+            $serviceLabel = implode(", ", $serviceLabels);
+
             $event = [
                 "id" => $appointment->id,
                 "title" => $this->getEventTitle($appointment),
@@ -1265,24 +1681,19 @@ class AppointmentController extends Controller
                     "workflow_status" => $workflowStatus,
                     "workflow_status_display" => $this->getWorkflowStatusDisplay($workflowStatus),
                     "vehicle_info" => $this->getVehicleInfo($appointment),
+                    "fuel_type" => $appointment->vehicle ? $appointment->vehicle->fuel_type : null,
+                    "transmission" => $appointment->vehicle ? $appointment->vehicle->transmission : null,
+                    "time_display" => Carbon::parse($appointment->appointment_time)->format("g:i A"),
+                    "customer_short" => $appointment->customer ? $appointment->customer->first_name : "Walk-in",
+                    "plate" => $appointment->vehicle ? $appointment->vehicle->license_plate : null,
+                    "service_label" => $serviceLabel ?: null,
                     "service_type" => $appointment->service_type,
-                    "notes" => $appointment->notes,
+                    "service_description" => $appointment->service_request,
+                    "notes" => $appointment->customer_notes,
                     "technician_name" => $appointment->technician ? $appointment->technician->name : "Not Assigned",
                     "tooltip" => $this->getEventTooltip($appointment)
                 ]
             ];
-            
-            // Store original workflow status for tooltip
-            $originalWorkflowStatus = $workflowStatus;
-            
-            // Add warning class if appointment is within 3 days
-            // WARNING OVERRIDES workflow colors for urgency
-            if ($this->isWithinThreeDays($appointment)) {
-                $event["className"] = "fc-event-warning";
-                // Keep original workflow status in extended props for tooltip
-                $event["extendedProps"]["workflow_status"] = $originalWorkflowStatus;
-                $event["extendedProps"]["workflow_status_display"] = $this->getWorkflowStatusDisplay($originalWorkflowStatus) . " (Within 3 days)";
-            }
             
             $events[] = $event;
         }

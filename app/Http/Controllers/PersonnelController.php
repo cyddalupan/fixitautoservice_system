@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Appointment;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
@@ -169,14 +169,14 @@ class PersonnelController extends Controller
             ->get();
 
         // Get work orders
-        $workOrders = WorkOrder::where('technician_id', $personnel->id)
+        $jobOrders = JobOrder::where('technician_id', $personnel->id)
             ->orderBy('created_at', 'desc')
             ->take(10)
             ->get();
 
         $availableRoles = User::roleLabels();
 
-        return view('personnel.show', compact('personnel', 'appointments', 'workOrders', 'availableRoles'));
+        return view('personnel.show', compact('personnel', 'appointments', 'jobOrders', 'availableRoles'));
     }
 
     /**
@@ -381,9 +381,9 @@ class PersonnelController extends Controller
         $personnel = User::whereNotIn('role', ['customer'])->findOrFail($id);
 
         $appointmentCount = Appointment::where('technician_id', $personnel->id)->count();
-        $workOrderCount = WorkOrder::where('technician_id', $personnel->id)->count();
+        $jobOrderCount = JobOrder::where('technician_id', $personnel->id)->count();
 
-        return view('personnel.performance', compact('personnel', 'appointmentCount', 'workOrderCount'));
+        return view('personnel.performance', compact('personnel', 'appointmentCount', 'jobOrderCount'));
     }
 
     /**

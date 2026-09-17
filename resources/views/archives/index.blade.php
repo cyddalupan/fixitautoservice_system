@@ -1,6 +1,6 @@
 @php
     $moduleLabels = [
-        'work_order' => 'Repair Order',
+        'job_order' => 'Repair Order',
         'estimate' => 'Estimate',
         'payment' => 'Payment',
         'invoice' => 'Invoice',
@@ -22,6 +22,15 @@
     .restore-card { border-left: 4px solid #1cc88a; }
     .json-data { max-height: 200px; overflow-y: auto; font-size: 0.75rem; }
     .record-count-badge { position: absolute; top: -8px; right: -8px; font-size: 0.6rem; }
+
+    /* ===== Dark mode overrides ===== */
+    [data-theme="dark"] .filter-section {
+        background: var(--dark-card) !important;
+    }
+    [data-theme="dark"] .search-highlight {
+        background-color: rgba(255, 193, 7, 0.35) !important;
+        color: var(--dark-text) !important;
+    }
 </style>
 @endsection
 
@@ -138,7 +147,7 @@
                     <label class="form-label small">Module</label>
                     <select name="module" class="form-select">
                         <option value="">All Modules</option>
-                        @foreach(['work_order', 'estimate', 'payment', 'invoice', 'inspection', 'customer'] as $mod)
+                        @foreach(['job_order', 'estimate', 'payment', 'invoice', 'inspection', 'customer'] as $mod)
                             <option value="{{ $mod }}" {{ request('module') == $mod ? 'selected' : '' }}>
                                 {{ $moduleLabels[$mod] ?? ucfirst($mod) }}
                             </option>
@@ -219,7 +228,7 @@
                                 ?? ($data['customer_first_name'] ?? '') . ' ' . ($data['customer_last_name'] ?? '')
                                 ?? ($data['first_name'] ?? '') . ' ' . ($data['last_name'] ?? '')
                                 ?? 'N/A';
-                            $identifier = $data['work_order_number']
+                            $identifier = $data['job_order_number']
                                 ?? $data['estimate_number']
                                 ?? $data['invoice_number']
                                 ?? $data['reference_number']

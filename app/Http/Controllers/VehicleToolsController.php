@@ -325,8 +325,13 @@ class VehicleToolsController extends Controller
     /**
      * Export vehicle data.
      */
-    public function exportVehicleData($vehicleId)
+    public function exportVehicleData($vehicleId = null)
     {
+        if (!$vehicleId) {
+            return redirect()->route('vehicle-tools.dashboard')
+                ->with('error', 'Please select a vehicle to export.');
+        }
+
         $vehicle = Vehicle::with(['customer', 'serviceRecords', 'recalls'])->findOrFail($vehicleId);
         
         $data = [

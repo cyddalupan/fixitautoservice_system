@@ -19,7 +19,7 @@
                     <i class="fas fa-edit"></i> Edit Audit
                 </a>
                 <div class="btn-group">
-                    <button type="button" class="btn btn-success dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <button type="button" class="btn btn-success dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <i class="fas fa-download"></i> Export
                     </button>
                     <div class="dropdown-menu">
@@ -288,18 +288,18 @@
                     </div>
                     @endif
                     
-                    @if($audit->workOrder)
+                    @if($audit->jobOrder)
                     <div class="media">
                         <div class="media-body">
                             <h6 class="mt-0 mb-1">Work Order</h6>
                             <p class="mb-0">
                                 <i class="fas fa-clipboard-list mr-1"></i>
-                                WO-{{ $audit->workOrder->id }}
+                                WO-{{ $audit->jobOrder->id }}
                             </p>
                             <small class="text-muted">
-                                {{ $audit->workOrder->customer->name ?? 'Unknown Customer' }}
-                                @if($audit->workOrder->service_type)
-                                    <br>Service: {{ $audit->workOrder->service_type }}
+                                {{ $audit->jobOrder->customer->name ?? 'Unknown Customer' }}
+                                @if($audit->jobOrder->service_type)
+                                    <br>Service: {{ $audit->jobOrder->service_type }}
                                 @endif
                             </small>
                         </div>

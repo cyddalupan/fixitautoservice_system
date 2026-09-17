@@ -12,7 +12,7 @@ class PartsOrder extends Model
     protected $fillable = [
         'order_number',
         'vendor_id',
-        'work_order_id',
+        'job_order_id',
         'customer_id',
         'vehicle_id',
         'status',
@@ -68,9 +68,9 @@ class PartsOrder extends Model
         return $this->belongsTo(InventorySupplier::class, 'vendor_id');
     }
 
-    public function workOrder()
+    public function jobOrder()
     {
-        return $this->belongsTo(WorkOrder::class);
+        return $this->belongsTo(JobOrder::class);
     }
 
     public function customer()

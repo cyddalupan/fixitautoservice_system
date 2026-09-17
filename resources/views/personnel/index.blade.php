@@ -14,7 +14,7 @@
     --prsnl-card-radius: 12px;
     --prsnl-shadow: 0 1px 3px rgba(0,0,0,.04), 0 1px 2px rgba(0,0,0,.02);
 }
-body.dark-mode {
+[data-theme="dark"] {
     --prsnl-shadow: 0 1px 3px rgba(0,0,0,.2);
 }
 
@@ -25,7 +25,7 @@ body.dark-mode {
     padding-top: .5rem;
     padding-bottom: 2rem;
 }
-body.dark-mode .prsnl-dash {
+[data-theme="dark"] .prsnl-dash {
     background: #1a1d23;
 }
 .prsnl-dash .page-title {
@@ -33,7 +33,7 @@ body.dark-mode .prsnl-dash {
     font-size: 1.15rem;
     font-weight: 700;
 }
-body.dark-mode .prsnl-dash .page-title {
+[data-theme="dark"] .prsnl-dash .page-title {
     color: #e4e6eb;
 }
 .prsnl-dash .accent-icon { color: var(--prsnl-primary); }
@@ -71,8 +71,8 @@ body.dark-mode .prsnl-dash .page-title {
     color: #1a2332;
     line-height: 1.1;
 }
-body.dark-mode .prsnl-stat-value { color: #e4e6eb; }
-body.dark-mode .prsnl-stat-label { color: #9ca3af; }
+[data-theme="dark"] .prsnl-stat-value { color: #e4e6eb; }
+[data-theme="dark"] .prsnl-stat-label { color: #9ca3af; }
 
 /* ── Card shell ── */
 .prsnl-card {
@@ -80,7 +80,7 @@ body.dark-mode .prsnl-stat-label { color: #9ca3af; }
     border: 0;
     box-shadow: var(--prsnl-shadow);
 }
-body.dark-mode .prsnl-card { background: #2a2d35; }
+[data-theme="dark"] .prsnl-card { background: #2a2d35; }
 .prsnl-card-header {
     background: transparent;
     border-bottom: 1px solid #eef0f3;
@@ -89,7 +89,7 @@ body.dark-mode .prsnl-card { background: #2a2d35; }
     font-weight: 600;
     color: #1a2332;
 }
-body.dark-mode .prsnl-card-header {
+[data-theme="dark"] .prsnl-card-header {
     border-bottom-color: #3a3d45;
     color: #e4e6eb;
 }
@@ -140,15 +140,15 @@ body.dark-mode .prsnl-card-header {
 .prsnl-role-badge.executive { background: #fce4ec; color: #b71c1c; }
 .prsnl-role-badge.service_advisor { background: #e0f2f1; color: #004d40; }
 .prsnl-role-badge.default { background: #f5f5f5; color: #555; }
-body.dark-mode .prsnl-role-badge.technician { background: #1a3a5c; color: #90caf9; }
-body.dark-mode .prsnl-role-badge.admin { background: #3d2817; color: #ffcc80; }
-body.dark-mode .prsnl-role-badge.office_staff { background: #133a3d; color: #80cbc4; }
-body.dark-mode .prsnl-role-badge.accounting { background: #2a1a3a; color: #ce93d8; }
-body.dark-mode .prsnl-role-badge.manager { background: #1a1a3a; color: #9fa8da; }
-body.dark-mode .prsnl-role-badge.super_admin { background: #3a1a1a; color: #ef9a9a; }
-body.dark-mode .prsnl-role-badge.executive { background: #3a1a1a; color: #ef9a9a; }
-body.dark-mode .prsnl-role-badge.service_advisor { background: #1a302e; color: #80cbc4; }
-body.dark-mode .prsnl-role-badge.default { background: #3a3a3a; color: #ccc; }
+[data-theme="dark"] .prsnl-role-badge.technician { background: #1a3a5c; color: #90caf9; }
+[data-theme="dark"] .prsnl-role-badge.admin { background: #3d2817; color: #ffcc80; }
+[data-theme="dark"] .prsnl-role-badge.office_staff { background: #133a3d; color: #80cbc4; }
+[data-theme="dark"] .prsnl-role-badge.accounting { background: #2a1a3a; color: #ce93d8; }
+[data-theme="dark"] .prsnl-role-badge.manager { background: #1a1a3a; color: #9fa8da; }
+[data-theme="dark"] .prsnl-role-badge.super_admin { background: #3a1a1a; color: #ef9a9a; }
+[data-theme="dark"] .prsnl-role-badge.executive { background: #3a1a1a; color: #ef9a9a; }
+[data-theme="dark"] .prsnl-role-badge.service_advisor { background: #1a302e; color: #80cbc4; }
+[data-theme="dark"] .prsnl-role-badge.default { background: #3a3a3a; color: #ccc; }
 
 /* ── Table ── */
 .prsnl-table th {
@@ -161,14 +161,14 @@ body.dark-mode .prsnl-role-badge.default { background: #3a3a3a; color: #ccc; }
     padding: .65rem .75rem;
     white-space: nowrap;
 }
-body.dark-mode .prsnl-table th { color: #9ca3af; }
+[data-theme="dark"] .prsnl-table th { color: #9ca3af; }
 .prsnl-table td {
     padding: .55rem .75rem;
     vertical-align: middle;
     font-size: .8rem;
 }
-body.dark-mode .prsnl-table td { color: #d1d5db; }
-body.dark-mode .prsnl-table tr:hover { background: rgba(67, 97, 238, .05); }
+[data-theme="dark"] .prsnl-table td { color: #d1d5db; }
+[data-theme="dark"] .prsnl-table tr:hover { background: rgba(67, 97, 238, .05); }
 
 /* ── Sticky top ── */
 .prsnl-sticky-header {
@@ -178,7 +178,7 @@ body.dark-mode .prsnl-table tr:hover { background: rgba(67, 97, 238, .05); }
     background: #f4f6fa;
     padding-top: .5rem;
 }
-body.dark-mode .prsnl-sticky-header { background: #1a1d23; }
+[data-theme="dark"] .prsnl-sticky-header { background: #1a1d23; }
 </style>
 @endpush
 

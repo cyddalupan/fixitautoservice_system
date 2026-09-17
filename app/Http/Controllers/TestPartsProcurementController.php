@@ -142,7 +142,7 @@ class TestPartsProcurementController extends Controller
         $integrations = [
             ['name' => 'Inventory System', 'connected' => DB::getSchemaBuilder()->hasTable('inventory')],
             ['name' => 'Vendor/Supplier System', 'connected' => DB::getSchemaBuilder()->hasTable('inventory_suppliers')],
-            ['name' => 'Work Order System', 'connected' => DB::getSchemaBuilder()->hasTable('work_orders')],
+            ['name' => 'Work Order System', 'connected' => DB::getSchemaBuilder()->hasTable('job_orders')],
             ['name' => 'Customer System', 'connected' => DB::getSchemaBuilder()->hasTable('customers')],
             ['name' => 'Vehicle System', 'connected' => DB::getSchemaBuilder()->hasTable('vehicles')],
         ];

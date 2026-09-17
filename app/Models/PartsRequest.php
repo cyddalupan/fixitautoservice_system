@@ -24,7 +24,7 @@ class PartsRequest extends Model
     protected $fillable = [
         'request_number',
         'technician_id',
-        'work_order_id',
+        'job_order_id',
         'vehicle_id',
         'status',
         'priority',
@@ -82,9 +82,9 @@ class PartsRequest extends Model
     /**
      * Get the work order associated with this request.
      */
-    public function workOrder()
+    public function jobOrder()
     {
-        return $this->belongsTo(WorkOrder::class, 'work_order_id');
+        return $this->belongsTo(JobOrder::class, 'job_order_id');
     }
 
     /**

@@ -7,11 +7,11 @@
 :root {
     --prsnl-primary: #4361ee;
 }
-body.dark-mode { --prsnl-card-bg: #2a2d35; }
+[data-theme="dark"] { --prsnl-card-bg: #2a2d35; }
 .prsnl-profile { background: #f4f6fa; min-height: 100vh; padding-top: .5rem; padding-bottom: 2rem; }
-body.dark-mode .prsnl-profile { background: #1a1d23; }
+[data-theme="dark"] .prsnl-profile { background: #1a1d23; }
 .prsnl-card { border-radius: 12px; border: 0; box-shadow: 0 1px 3px rgba(0,0,0,.04); margin-bottom: 1rem; }
-body.dark-mode .prsnl-card { background: #2a2d35; }
+[data-theme="dark"] .prsnl-card { background: #2a2d35; }
 
 /* ── Profile header ── */
 .prsnl-profile-header {
@@ -97,7 +97,7 @@ body.dark-mode .prsnl-card { background: #2a2d35; }
     align-items: center;
     gap: .5rem;
 }
-body.dark-mode .prsnl-section-title { color: #e4e6eb; border-bottom-color: #3a3d45; }
+[data-theme="dark"] .prsnl-section-title { color: #e4e6eb; border-bottom-color: #3a3d45; }
 
 /* ── Skills chips ── */
 .skill-chip {
@@ -110,7 +110,7 @@ body.dark-mode .prsnl-section-title { color: #e4e6eb; border-bottom-color: #3a3d
     color: #4361ee;
     margin: 2px;
 }
-body.dark-mode .skill-chip { background: #1a2a4a; color: #90aef9; }
+[data-theme="dark"] .skill-chip { background: #1a2a4a; color: #90aef9; }
 
 /* ── Info rows ── */
 .prsnl-info-row {
@@ -119,16 +119,16 @@ body.dark-mode .skill-chip { background: #1a2a4a; color: #90aef9; }
     font-size: .8rem;
 }
 .prsnl-info-row:nth-child(even) { background: rgba(0,0,0,.02); }
-body.dark-mode .prsnl-info-row:nth-child(even) { background: rgba(255,255,255,.03); }
+[data-theme="dark"] .prsnl-info-row:nth-child(even) { background: rgba(255,255,255,.03); }
 .prsnl-info-label {
     width: 140px;
     flex-shrink: 0;
     color: #6c7a8d;
     font-weight: 500;
 }
-body.dark-mode .prsnl-info-label { color: #9ca3af; }
+[data-theme="dark"] .prsnl-info-label { color: #9ca3af; }
 .prsnl-info-value { color: #1a2332; }
-body.dark-mode .prsnl-info-value { color: #d1d5db; }
+[data-theme="dark"] .prsnl-info-value { color: #d1d5db; }
 
 /* ── Empty state ── */
 .prsnl-empty {
@@ -343,11 +343,11 @@ body.dark-mode .prsnl-info-value { color: #d1d5db; }
                 <div class="prsnl-section-title">
                     <i class="fas fa-clipboard-list" style="color:#f7a429;"></i> Recent Work Orders
                 </div>
-                @if($workOrders->count() > 0)
+                @if($jobOrders->count() > 0)
                     <div class="prsnl-timeline">
-                        @foreach($workOrders as $wo)
+                        @foreach($jobOrders as $wo)
                             <div class="prsnl-timeline-item">
-                                <strong style="font-size:.8rem;">{{ $wo->work_order_number ?? '#' . $wo->id }}</strong>
+                                <strong style="font-size:.8rem;">{{ $wo->job_order_number ?? '#' . $wo->id }}</strong>
                                 <br>
                                 <small>{{ $wo->created_at->format('M d, Y') }} — {{ $wo->status ?? 'N/A' }}</small>
                             </div>

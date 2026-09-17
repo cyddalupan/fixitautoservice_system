@@ -19,23 +19,39 @@ class Invoice extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'customer_id',
-        'work_order_id',
-        'estimate_id',
         'invoice_number',
+        'reference_number',
+        'invoice_type',
+        'customer_id',
+        'vehicle_id',
+        'job_order_id',
+        'appointment_id',
+        'estimate_id',
         'invoice_date',
         'due_date',
+        'paid_date',
+        'notes',
+        'terms',
         'subtotal',
         'tax_rate',
         'tax_amount',
         'discount_amount',
         'shipping_amount',
+        'deposit_amount',
         'total_amount',
         'amount_paid',
         'balance_due',
-        'notes',
-        'terms',
+        'is_taxable',
+        'discount_id',
+        'discount_type',
+        'discount_value',
         'status',
+        'payment_status',
+        'is_recurring',
+        'recurring_frequency',
+        'delivery_method',
+        'sent_at',
+        'reminder_sent_at',
         'viewed_at',
     ];
 
@@ -71,9 +87,9 @@ class Invoice extends Model
     /**
      * Get the work order that owns the invoice.
      */
-    public function workOrder(): BelongsTo
+    public function jobOrder(): BelongsTo
     {
-        return $this->belongsTo(WorkOrder::class);
+        return $this->belongsTo(JobOrder::class);
     }
 
     /**

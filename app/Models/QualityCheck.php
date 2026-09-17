@@ -133,9 +133,9 @@ class QualityCheck extends Model
     /**
      * Relationship: Work order quality checks
      */
-    public function workOrderQualityChecks(): HasMany
+    public function jobOrderQualityChecks(): HasMany
     {
-        return $this->hasMany(WorkOrderQualityCheck::class);
+        return $this->hasMany(JobOrderQualityCheck::class);
     }
 
     /**
@@ -143,10 +143,10 @@ class QualityCheck extends Model
      */
     public function getCompletionStats(): array
     {
-        $total = $this->workOrderQualityChecks()->count();
-        $completed = $this->workOrderQualityChecks()->whereIn('status', ['passed', 'approved'])->count();
-        $failed = $this->workOrderQualityChecks()->whereIn('status', ['failed', 'rejected'])->count();
-        $pending = $this->workOrderQualityChecks()->whereIn('status', ['pending', 'in_progress'])->count();
+        $total = $this->jobOrderQualityChecks()->count();
+        $completed = $this->jobOrderQualityChecks()->whereIn('status', ['passed', 'approved'])->count();
+        $failed = $this->jobOrderQualityChecks()->whereIn('status', ['failed', 'rejected'])->count();
+        $pending = $this->jobOrderQualityChecks()->whereIn('status', ['pending', 'in_progress'])->count();
 
         return [
             'total' => $total,
@@ -163,7 +163,7 @@ class QualityCheck extends Model
      */
     public function canBeDeleted(): bool
     {
-        return $this->workOrderQualityChecks()->count() === 0;
+        return $this->jobOrderQualityChecks()->count() === 0;
     }
 
     /**

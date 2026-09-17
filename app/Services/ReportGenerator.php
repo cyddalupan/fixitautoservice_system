@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Appointment;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Customer;
@@ -28,7 +28,7 @@ class ReportGenerator
             ->get();
         
         // Get work orders for the day
-        $workOrders = WorkOrder::whereBetween('created_at', [$startOfDay, $endOfDay])
+        $jobOrders = JobOrder::whereBetween('created_at', [$startOfDay, $endOfDay])
             ->with(['customer', 'vehicle', 'technician', 'items'])
             ->get();
         
@@ -49,19 +49,19 @@ class ReportGenerator
         // Calculate totals
         $totalRevenue = $invoices->sum('total_amount');
         $totalPayments = $payments->sum('amount');
-        $completedJobs = $workOrders->where('status', 'completed')->count();
-        $inProgressJobs = $workOrders->where('status', 'in_progress')->count();
+        $completedJobs = $jobOrders->where('status', 'completed')->count();
+        $inProgressJobs = $jobOrders->where('status', 'in_progress')->count();
         
         // Apply filters if provided
         if (!empty($filters)) {
             if (isset($filters['technician_id'])) {
                 $appointments = $appointments->where('technician_id', $filters['technician_id']);
-                $workOrders = $workOrders->where('technician_id', $filters['technician_id']);
+                $jobOrders = $jobOrders->where('technician_id', $filters['technician_id']);
             }
             
             if (isset($filters['service_type'])) {
-                $workOrders = $workOrders->filter(function($workOrder) use ($filters) {
-                    return $workOrder->service_type === $filters['service_type'];
+                $jobOrders = $jobOrders->filter(function($jobOrder) use ($filters) {
+                    return $jobOrder->service_type === $filters['service_type'];
                 });
             }
         }
@@ -70,7 +70,7 @@ class ReportGenerator
             'date' => $date->format('Y-m-d'),
             'summary' => [
                 'appointments' => $appointments->count(),
-                'work_orders' => $workOrders->count(),
+                'job_orders' => $jobOrders->count(),
                 'invoices' => $invoices->count(),
                 'payments' => $payments->count(),
                 'revenue' => $totalRevenue,
@@ -81,7 +81,7 @@ class ReportGenerator
             ],
             'details' => [
                 'appointments' => $appointments,
-                'work_orders' => $workOrders,
+                'job_orders' => $jobOrders,
                 'invoices' => $invoices,
                 'payments' => $payments,
                 'new_customers' => $newCustomers,
@@ -176,7 +176,7 @@ class ReportGenerator
             ->get();
         
         // Get work orders for the month
-        $workOrders = WorkOrder::whereBetween('created_at', [$start, $end])
+        $jobOrders = JobOrder::whereBetween('created_at', [$start, $end])
             ->with(['customer', 'vehicle'])
             ->get();
         
@@ -209,8 +209,8 @@ class ReportGenerator
         // Apply filters
         if (!empty($filters)) {
             if (isset($filters['service_type'])) {
-                $workOrders = $workOrders->filter(function($workOrder) use ($filters) {
-                    return $workOrder->service_type === $filters['service_type'];
+                $jobOrders = $jobOrders->filter(function($jobOrder) use ($filters) {
+                    return $jobOrder->service_type === $filters['service_type'];
                 });
                 
                 $invoices = $invoices->filter(function($invoice) use ($filters) {
@@ -222,13 +222,13 @@ class ReportGenerator
         return [
             'revenue' => $invoices->sum('total_amount'),
             'expenses' => $expenses,
-            'jobs_completed' => $workOrders->where('status', 'completed')->count(),
+            'jobs_completed' => $jobOrders->where('status', 'completed')->count(),
             'new_customers' => $newCustomers->count(),
             'repeat_customers' => $repeatCustomers->count(),
             'avg_satisfaction' => $avgSatisfaction,
             'details' => [
                 'invoices' => $invoices,
-                'work_orders' => $workOrders,
+                'job_orders' => $jobOrders,
                 'new_customers' => $newCustomers,
                 'repeat_customers' => $repeatCustomers,
             ],

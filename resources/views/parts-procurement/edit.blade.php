@@ -107,23 +107,23 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="work_order_id" class="form-label fw-bold">
+                                    <label for="job_order_id" class="form-label fw-bold">
                                         <i class="fas fa-wrench me-1"></i>Work Order (Optional)
                                     </label>
-                                    <select class="form-select @error('work_order_id') is-invalid @enderror" 
-                                            id="work_order_id" 
-                                            name="work_order_id">
+                                    <select class="form-select @error('job_order_id') is-invalid @enderror" 
+                                            id="job_order_id" 
+                                            name="job_order_id">
                                         <option value="">Not Linked</option>
-                                        @foreach($workOrders as $workOrder)
-                                            <option value="{{ $workOrder->id }}" 
-                                                    {{ old('work_order_id', $partsOrder->work_order_id) == $workOrder->id ? 'selected' : '' }}>
-                                                #{{ $workOrder->work_order_number }} - 
-                                                {{ $workOrder->customer->name ?? 'Unknown' }} - 
-                                                {{ $workOrder->vehicle->make ?? '' }} {{ $workOrder->vehicle->model ?? '' }}
+                                        @foreach($jobOrders as $jobOrder)
+                                            <option value="{{ $jobOrder->id }}" 
+                                                    {{ old('job_order_id', $partsOrder->job_order_id) == $jobOrder->id ? 'selected' : '' }}>
+                                                #{{ $jobOrder->job_order_number }} - 
+                                                {{ $jobOrder->customer->name ?? 'Unknown' }} - 
+                                                {{ $jobOrder->vehicle->make ?? '' }} {{ $jobOrder->vehicle->model ?? '' }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    @error('work_order_id')
+                                    @error('job_order_id')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>

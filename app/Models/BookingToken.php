@@ -11,6 +11,7 @@ class BookingToken extends Model
 
     protected $fillable = [
         'customer_id',
+        'appointment_id',
         'token',
         'expires_at',
         'used_at',
@@ -26,6 +27,11 @@ class BookingToken extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function appointment()
+    {
+        return $this->belongsTo(\App\Models\Appointment::class);
+    }
+
     /**
      * Generate a secure, unique magic link token for a customer.
      */
@@ -33,6 +39,21 @@ class BookingToken extends Model
     {
         return static::create([
             'customer_id' => $customerId,
+            'token' => Str::random(64),
+            'expires_at' => now()->addHours($hoursValid),
+        ]);
+    }
+
+    /**
+     * Generate a booking-management token for an appointment.
+     *
+     * Supports the blueprint guest flow (email + phone, no account): a guest
+     * appointment can receive a token without a linked Customer record.
+     */
+    public static function generateForAppointment(int $appointmentId, int $hoursValid = 72): self
+    {
+        return static::create([
+            'appointment_id' => $appointmentId,
             'token' => Str::random(64),
             'expires_at' => now()->addHours($hoursValid),
         ]);

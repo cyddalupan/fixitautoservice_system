@@ -6,7 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\BusinessIntelligenceMetric;
 use App\Models\RetentionAnalytics;
 use App\Models\Appointment;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Invoice;
 use App\Models\Customer;
 use App\Models\Technician;
@@ -31,7 +31,7 @@ class AnalyticsController extends Controller
         BusinessIntelligenceMetric::calculateMetric('appointments', 'daily', $date, $dailyAppointments, [], 'appointments');
         
         // Calculate and store daily completed jobs
-        $completedJobs = WorkOrder::whereDate('completed_at', $date)->count();
+        $completedJobs = JobOrder::whereDate('completed_at', $date)->count();
         BusinessIntelligenceMetric::calculateMetric('completed_jobs', 'daily', $date, $completedJobs, [], 'jobs');
         
         // Calculate and store new customers
@@ -43,7 +43,7 @@ class AnalyticsController extends Controller
         BusinessIntelligenceMetric::calculateMetric('technician_productivity', 'daily', $date, $productivity, [], 'technicians');
         
         return response()->json([
-            'message' => 'Daily metrics generated successfully',
+            'message' => 'Daily metrics generation started',
             'date' => $date,
             'metrics' => [
                 'daily_revenue' => $dailyRevenue,
@@ -262,7 +262,7 @@ class AnalyticsController extends Controller
         $technicians = Technician::with(['timeLogs' => function($query) use ($startDate, $endDate) {
             $query->whereBetween('start_time', [$startDate, $endDate])
                   ->whereNotNull('end_time');
-        }, 'workOrders' => function($query) use ($startDate, $endDate) {
+        }, 'jobOrders' => function($query) use ($startDate, $endDate) {
             $query->whereBetween('created_at', [$startDate, $endDate]);
         }])->get();
         
@@ -272,8 +272,8 @@ class AnalyticsController extends Controller
                 return $log->start_time->diffInHours($log->end_time);
             });
             
-            $completedJobs = $tech->workOrders->where('status', 'completed')->count();
-            $totalJobs = $tech->workOrders->count();
+            $completedJobs = $tech->jobOrders->where('status', 'completed')->count();
+            $totalJobs = $tech->jobOrders->count();
             
             $performanceData[] = [
                 'id' => $tech->id,
@@ -483,7 +483,7 @@ class AnalyticsController extends Controller
                 return $log->start_time->diffInHours($log->end_time);
             });
             
-            $completedJobs = $tech->workOrders()->whereDate('completed_at', $date)->count();
+            $completedJobs = $tech->jobOrders()->whereDate('completed_at', $date)->count();
             
             if ($totalHours > 0) {
                 $efficiency = $completedJobs / $totalHours;
@@ -553,7 +553,7 @@ class AnalyticsController extends Controller
         $filename = "analytics_report_{$reportType}_" . Carbon::now()->format('Y-m-d_H-i-s') . '.csv';
         
         $headers = [
-            'Content-Type' => 'text/csv',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => "attachment; filename=\"$filename\"",
         ];
         
@@ -610,7 +610,7 @@ class AnalyticsController extends Controller
         $data = [
             'today_revenue' => Invoice::whereDate('created_at', $today)->sum('total_amount'),
             'today_appointments' => Appointment::whereDate('appointment_date', $today)->count(),
-            'active_jobs' => WorkOrder::whereIn('status', ['in_progress', 'scheduled'])->count(),
+            'active_jobs' => JobOrder::whereIn('status', ['in_progress', 'scheduled'])->count(),
             'technicians_working' => Technician::whereHas('timeLogs', function($query) use ($today) {
                 $query->whereDate('start_time', $today)->whereNull('end_time');
             })->count(),

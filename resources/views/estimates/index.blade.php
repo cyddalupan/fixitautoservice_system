@@ -13,6 +13,20 @@
     --module-active-dark: #7c3aed;
     --module-active-light: #ede9fe;
 }
+
+    /* ===== Dark mode overrides ===== */
+    [data-theme="dark"] .stat-card {
+        background-color: var(--dark-card) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .stat-card-icon {
+        background: var(--dark-hover) !important;
+        color: var(--dark-text) !important;
+    }
+    [data-theme="dark"] .stat-card-info h3,
+    [data-theme="dark"] .stat-card-info p {
+        color: var(--dark-text) !important;
+    }
 </style>
 @endpush
 
@@ -263,7 +277,7 @@
                                         </form>
                                         @endif
                                         @if($estimate->status == 'approved')
-                                        <form action="{{ route('work-orders.create') }}" method="GET" class="d-inline">
+                                        <form action="{{ route('job-orders.create') }}" method="GET" class="d-inline">
                                             <input type="hidden" name="estimate_id" value="{{ $estimate->id }}">
                                             <button type="submit" class="btn-action" style="color:#f97316;border-color:#fed7aa;" title="Convert to Job Order">
                                                 <i class="fas fa-clipboard-check"></i>

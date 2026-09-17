@@ -62,15 +62,15 @@
                                     </td>
                                 </tr>
                                 @endif
-                                @if($document->workOrder)
+                                @if($document->jobOrder)
                                 <tr>
                                     <th>Work Order:</th>
                                     <td>
-                                        <a href="{{ route('portal.work-orders.show', $document->workOrder) }}">
-                                            #{{ $document->workOrder->id }}
+                                        <a href="{{ route('portal.job-orders.show', $document->jobOrder) }}">
+                                            #{{ $document->jobOrder->id }}
                                         </a>
                                         <div class="text-muted small">
-                                            {{ $document->workOrder->service_type }}
+                                            {{ $document->jobOrder->service_type }}
                                         </div>
                                     </td>
                                 </tr>

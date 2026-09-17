@@ -69,9 +69,9 @@ class Service extends Model
     /**
      * Get the work order for the service.
      */
-    public function workOrder(): HasOne
+    public function jobOrder(): HasOne
     {
-        return $this->hasOne(WorkOrder::class, 'service_id', 'service_id');
+        return $this->hasOne(JobOrder::class, 'service_id', 'service_id');
     }
 
     /**
@@ -115,7 +115,7 @@ class Service extends Model
             return 'payment_completed';
         } elseif ($this->invoice()->exists()) {
             return 'invoiced';
-        } elseif ($this->workOrder()->exists()) {
+        } elseif ($this->jobOrder()->exists()) {
             return 'work_in_progress';
         } elseif ($this->estimate()->exists()) {
             return 'estimated';
@@ -151,8 +151,8 @@ class Service extends Model
             return $this->invoice->total_amount;
         } elseif ($this->estimate()->exists()) {
             return $this->estimate->total_amount;
-        } elseif ($this->workOrder()->exists()) {
-            return $this->workOrder->final_amount;
+        } elseif ($this->jobOrder()->exists()) {
+            return $this->jobOrder->final_amount;
         }
         
         return 0;
@@ -220,7 +220,7 @@ class Service extends Model
             'is_paid' => $this->is_paid,
             'has_appointment' => $this->appointment()->exists(),
             'has_estimate' => $this->estimate()->exists(),
-            'has_work_order' => $this->workOrder()->exists(),
+            'has_job_order' => $this->jobOrder()->exists(),
             'has_invoice' => $this->invoice()->exists(),
             'has_payments' => $this->payments()->exists(),
         ];

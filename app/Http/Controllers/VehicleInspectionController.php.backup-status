@@ -6,7 +6,7 @@ use App\Models\VehicleInspection;
 use App\Models\InspectionItem;
 use App\Models\InspectionCategory;
 use App\Models\InspectionTemplate;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Appointment;
 use App\Models\Customer;
 use App\Models\Vehicle;
@@ -22,7 +22,7 @@ class VehicleInspectionController extends Controller
      */
     public function index(Request $request)
     {
-        $query = VehicleInspection::with(['customer', 'vehicle', 'technician', 'workOrder'])
+        $query = VehicleInspection::with(['customer', 'vehicle', 'technician', 'jobOrder'])
             ->latest();
         
         // Search filter
@@ -85,8 +85,8 @@ class VehicleInspectionController extends Controller
         }
         
         // Work order filter
-        if ($request->filled('work_order_id')) {
-            $query->where('work_order_id', $request->work_order_id);
+        if ($request->filled('job_order_id')) {
+            $query->where('job_order_id', $request->job_order_id);
         }
         
         $inspections = $query->paginate(20);
@@ -119,7 +119,7 @@ class VehicleInspectionController extends Controller
         $technicians = User::where('role', 'technician')->where('is_active', true)->get();
         $inspectors = User::where('role', 'technician')->where('is_active', true)->get(); // Same as technicians for now
         $advisors = User::where('role', 'service_advisor')->where('is_active', true)->get();
-        $workOrders = WorkOrder::whereIn('work_order_status', ['draft', 'pending_approval', 'approved'])
+        $jobOrders = JobOrder::whereIn('job_order_status', ['draft', 'pending_approval', 'approved'])
             ->with(['customer', 'vehicle'])
             ->get();
         $appointments = Appointment::whereIn('appointment_status', ['scheduled', 'confirmed', 'checked_in'])
@@ -128,8 +128,8 @@ class VehicleInspectionController extends Controller
         $templates = InspectionTemplate::active()->get();
         
         // Pre-select work order if provided
-        $selectedWorkOrder = $request->filled('work_order_id') 
-            ? WorkOrder::with(['customer', 'vehicle'])->find($request->work_order_id)
+        $selectedJobOrder = $request->filled('job_order_id') 
+            ? JobOrder::with(['customer', 'vehicle'])->find($request->job_order_id)
             : null;
         
         // Pre-select appointment if provided
@@ -151,9 +151,9 @@ class VehicleInspectionController extends Controller
         } elseif ($selectedAppointment && $selectedAppointment->customer) {
             // If appointment is provided but customer isn't, get customer from appointment
             $selectedCustomer = $selectedAppointment->customer;
-        } elseif ($selectedWorkOrder && $selectedWorkOrder->customer) {
+        } elseif ($selectedJobOrder && $selectedJobOrder->customer) {
             // If work order is provided but customer isn't, get customer from work order
-            $selectedCustomer = $selectedWorkOrder->customer;
+            $selectedCustomer = $selectedJobOrder->customer;
         } else {
             $selectedCustomer = null;
         }
@@ -164,10 +164,10 @@ class VehicleInspectionController extends Controller
             'technicians', 
             'inspectors',
             'advisors', 
-            'workOrders',
+            'jobOrders',
             'appointments',
             'templates',
-            'selectedWorkOrder',
+            'selectedJobOrder',
             'selectedAppointment',
             'selectedCustomer',
             'selectedVehicle'
@@ -180,7 +180,7 @@ class VehicleInspectionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'work_order_id' => 'nullable|exists:work_orders,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
             'appointment_id' => 'nullable|exists:appointments,id',
             'customer_id' => 'required|exists:customers,id',
             'vehicle_id' => 'required|exists:vehicles,id',
@@ -243,7 +243,7 @@ class VehicleInspectionController extends Controller
             'vehicle', 
             'technician', 
             'serviceAdvisor', 
-            'workOrder',
+            'jobOrder',
             'appointment',
             'items.category',
             'createdBy',
@@ -304,7 +304,7 @@ class VehicleInspectionController extends Controller
         $vehicles = Vehicle::with('customer')->get();
         $technicians = User::where('role', 'technician')->where('is_active', true)->get();
         $advisors = User::where('role', 'service_advisor')->where('is_active', true)->get();
-        $workOrders = WorkOrder::whereIn('work_order_status', ['draft', 'pending_approval', 'approved'])
+        $jobOrders = JobOrder::whereIn('job_order_status', ['draft', 'pending_approval', 'approved'])
             ->with(['customer', 'vehicle'])
             ->get();
         $appointments = Appointment::whereIn('appointment_status', ['scheduled', 'confirmed', 'checked_in'])
@@ -317,7 +317,7 @@ class VehicleInspectionController extends Controller
             'vehicles', 
             'technicians', 
             'advisors', 
-            'workOrders', 
+            'jobOrders', 
             'appointments'
         ));
     }

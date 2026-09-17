@@ -84,10 +84,20 @@ class CustomerController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'full_name' => 'required|string|max:100',
+            'first_name' => 'required_without:full_name|string|max:50',
+            'last_name' => 'required_without:full_name|string|max:50',
+            'full_name' => 'required_without:first_name|string|max:100',
             'email' => 'nullable|email|unique:customers,email',
             'phone' => 'required|string|max:20',
             'address' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:100',
+            'state' => 'nullable|string|max:100',
+            'zip_code' => 'nullable|string|max:20',
+            'customer_type' => 'nullable|in:individual,commercial,fleet',
+            'segment' => 'nullable|string|max:50',
+            'preferred_contact_method' => 'nullable|in:email,phone,sms',
+            'notes' => 'nullable|string',
+            'is_active' => 'nullable|boolean',
             'facebook_profile' => 'nullable|string|max:255',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'cropped_image'   => 'nullable|string',
@@ -114,16 +124,20 @@ class CustomerController extends Controller
                 ->withInput();
         }
 
-        // Split full name into first and last name
-        $nameParts = explode(' ', $request->full_name, 2);
-        $firstName = $nameParts[0] ?? '';
-        $lastName = $nameParts[1] ?? '';
+        // Split full name into first and last name (supports first_name/last_name OR legacy full_name)
+        if ($request->filled('first_name')) {
+            $firstName = $request->first_name;
+            $lastName = $request->last_name ?? '';
+        } else {
+            $nameParts = explode(' ', $request->full_name, 2);
+            $firstName = $nameParts[0] ?? '';
+            $lastName = $nameParts[1] ?? '';
+        }
         
         // Convert empty strings to null for database
         $firstName = $firstName ?: null;
         $lastName = $lastName ?: ''; // Keep as empty string, not null (last_name column is NOT NULL)
         
-        // Handle profile picture (cropped or raw upload)
         // Handle profile picture (cropped or raw upload)
         $profilePicturePath = $this->saveCroppedImage($request, 'cropped_image', 'profile_picture', 'profile_pictures', 300, 85);
         
@@ -131,11 +145,19 @@ class CustomerController extends Controller
         $customerData = [
             'first_name' => $firstName,
             'last_name' => $lastName,
-            'email' => $request->email,
+            // customers.email is NOT NULL in the DB - generate placeholder when blank
+            'email' => $request->email ?: 'customer_' . preg_replace('/\D/', '', $request->phone) . '@customer.local',
             'phone' => $request->phone,
             'address' => $request->address,
+            'city' => $request->city,
+            'state' => $request->state,
+            'zip_code' => $request->zip_code,
+            'customer_type' => $request->customer_type ?: 'individual',
+            'segment' => $request->segment,
+            'preferred_contact' => $request->preferred_contact_method ?: 'email',
+            'notes' => $request->notes,
             'customer_since' => now(),
-            'is_active' => true,
+            'is_active' => $request->has('is_active') ? (bool) $request->is_active : true,
         ];
         
         // Include profile_picture
@@ -267,10 +289,20 @@ class CustomerController extends Controller
     public function update(Request $request, Customer $customer)
     {
         $validator = Validator::make($request->all(), [
-            'full_name' => 'required|string|max:100',
+            'first_name' => 'required_without:full_name|string|max:50',
+            'last_name' => 'required_without:full_name|string|max:50',
+            'full_name' => 'required_without:first_name|string|max:100',
             'email' => 'nullable|email|unique:customers,email,' . $customer->id,
             'phone' => 'required|string|max:20',
             'address' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:100',
+            'state' => 'nullable|string|max:100',
+            'zip_code' => 'nullable|string|max:20',
+            'customer_type' => 'nullable|in:individual,commercial,fleet',
+            'segment' => 'nullable|string|max:50',
+            'preferred_contact_method' => 'nullable|in:email,phone,sms',
+            'notes' => 'nullable|string',
+            'is_active' => 'nullable|boolean',
             'facebook_profile' => 'nullable|string|max:255',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             // Optional vehicle fields
@@ -296,10 +328,15 @@ class CustomerController extends Controller
                 ->withInput();
         }
 
-        // Split full name into first and last name
-        $nameParts = explode(' ', $request->full_name, 2);
-        $firstName = $nameParts[0] ?? '';
-        $lastName = $nameParts[1] ?? '';
+        // Split full name into first and last name (supports first_name/last_name OR legacy full_name)
+        if ($request->filled('first_name')) {
+            $firstName = $request->first_name;
+            $lastName = $request->last_name ?? '';
+        } else {
+            $nameParts = explode(' ', $request->full_name, 2);
+            $firstName = $nameParts[0] ?? '';
+            $lastName = $nameParts[1] ?? '';
+        }
         
         // Convert empty strings to null for database
         $firstName = $firstName ?: null;
@@ -309,9 +346,18 @@ class CustomerController extends Controller
         $updateData = [
             'first_name' => $firstName,
             'last_name' => $lastName,
-            'email' => $request->email,
+            'email' => $request->email ?: $customer->email,
             'phone' => $request->phone,
             'address' => $request->address,
+            'city' => $request->city,
+            'state' => $request->state,
+            'zip_code' => $request->zip_code,
+            'customer_type' => $request->customer_type ?: $customer->customer_type,
+            'segment' => $request->segment,
+            'preferred_contact' => $request->preferred_contact_method ?: $customer->preferred_contact,
+            'notes' => $request->notes,
+            'facebook_profile' => $request->facebook_profile,
+            'is_active' => $request->has('is_active') ? (bool) $request->is_active : $customer->is_active,
         ];
         if ($request->filled('cropped_image') || $request->hasFile('profile_picture')) {
             $this->deleteStoredImage($customer->profile_picture);
@@ -549,7 +595,7 @@ class CustomerController extends Controller
      */
     public function export(Customer $customer, $format = 'pdf')
     {
-        $customer->load(['vehicles', 'serviceRecords', 'notes']);
+        $customer->load(['vehicles', 'serviceRecords', 'customerNotes']);
         
         // Generate export based on format
         // This would typically use a PDF or Excel library
@@ -558,7 +604,7 @@ class CustomerController extends Controller
             'customer' => $customer,
             'vehicles' => $customer->vehicles,
             'service_records' => $customer->serviceRecords,
-            'notes' => $customer->notes,
+            'notes' => $customer->customerNotes,
         ]);
     }
 
@@ -891,12 +937,12 @@ class CustomerController extends Controller
                 if ($existingAppointment) {
                     $duplicateWarning = 'This vehicle already has an ongoing service. Please wait for completion or contact support.';
                 } else {
-                    $existingWorkOrder = \App\Models\WorkOrder::where('vehicle_id', $vehicle->id)
-                        ->whereIn('work_order_status', ['pending', 'repairing', 'waiting_parts'])
+                    $existingJobOrder = \App\Models\JobOrder::where('vehicle_id', $vehicle->id)
+                        ->whereIn('job_order_status', ['pending', 'repairing', 'waiting_parts'])
                         ->whereNull('deleted_at')
                         ->first();
 
-                    if ($existingWorkOrder) {
+                    if ($existingJobOrder) {
                         $duplicateWarning = 'This vehicle already has an ongoing service. Please wait for completion or contact support.';
                     }
                 }
@@ -1114,6 +1160,10 @@ class CustomerController extends Controller
         $page = (int) $request->get('page', 1);
         $perPage = 20;
         $filters = $request->get('filters', []);
+        // The index page JS sends filters as a JSON string (JSON.stringify(currentFilters))
+        if (is_string($filters)) {
+            $filters = json_decode($filters, true) ?: [];
+        }
 
         // === SMART SEARCH (cross-field, partial match) ===
         if (!empty($search) && strlen(trim($search)) >= 1) {

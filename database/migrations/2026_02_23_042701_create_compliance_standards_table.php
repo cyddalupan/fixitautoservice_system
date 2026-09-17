@@ -22,7 +22,7 @@ return new class extends Migration
             $table->date('expiration_date')->nullable();
             $table->boolean('is_mandatory')->default(true);
             $table->integer('revision_number')->default(1);
-            $table->foreignId('created_by')->constrained('users')->onDelete('set null');
+            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
             $table->softDeletes();

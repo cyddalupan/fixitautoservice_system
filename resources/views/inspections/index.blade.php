@@ -13,6 +13,21 @@
     --module-active-dark: #0284c7;
     --module-active-light: #e0f2fe;
 }
+
+
+    /* ===== Dark mode overrides ===== */
+    [data-theme="dark"] .stat-card {
+        background-color: var(--dark-card) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .stat-card-icon {
+        background: var(--dark-hover) !important;
+        color: var(--dark-text) !important;
+    }
+    [data-theme="dark"] .stat-card-info h3,
+    [data-theme="dark"] .stat-card-info p {
+        color: var(--dark-text) !important;
+    }
 </style>
 @endpush
 
@@ -162,6 +177,7 @@
                                 <th>Vehicle</th>
                                 <th>Inspection Type</th>
                                 <th>Status</th>
+                                <th>Date Received</th>
                                 <th>Created</th>
                                 <th>Actions</th>
                             </tr>
@@ -237,6 +253,14 @@
                                         <i class="fas fa-circle" style="font-size:0.5rem;"></i>
                                         {{ ucfirst(str_replace('_', ' ', $inspection->status)) }}
                                     </span>
+                                </td>
+                                <td>
+                                    @php
+                                        $recv = optional($inspection->appointment)->date_received
+                                            ?? optional($inspection->appointment)->checked_in_at
+                                            ?? $inspection->created_at;
+                                    @endphp
+                                    <span style="font-size:0.85rem;">{{ $recv ? $recv->format('M d, Y') : '—' }}</span>
                                 </td>
                                 <td>
                                     <span style="font-size:0.85rem;">{{ $inspection->created_at->format('M d, Y') }}</span>

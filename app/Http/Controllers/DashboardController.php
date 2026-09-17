@@ -20,6 +20,77 @@ class DashboardController extends Controller
         return view('dashboard');
     }
 
+    /**
+     * JSON payload of aggregate data for the D3 dashboard charts.
+     */
+    public function dashboardData()
+    {
+        $today = \Carbon\Carbon::today();
+
+        // Revenue by month (last 6 months)
+        $monthlyRevenue = ServiceRecord::select(
+                DB::raw('DATE_FORMAT(service_date, "%Y-%m") as month'),
+                DB::raw('DATE_FORMAT(service_date, "%b") as label'),
+                DB::raw('SUM(final_amount) as revenue'),
+                DB::raw('COUNT(*) as service_count')
+            )
+            ->where('service_date', '>=', now()->subMonths(5)->startOfMonth())
+            ->groupBy('month', 'label')
+            ->orderBy('month')
+            ->get();
+
+        // Appointments by status
+        $appointmentStatus = \App\Models\Appointment::select('appointment_status', DB::raw('COUNT(*) as count'))
+            ->groupBy('appointment_status')->get();
+
+        // Appointments last 30 days (daily volume)
+        $appointmentVolume = \App\Models\Appointment::select(
+                DB::raw('DATE(appointment_date) as day'),
+                DB::raw('COUNT(*) as count')
+            )
+            ->where('appointment_date', '>=', now()->subDays(29))
+            ->groupBy('day')->orderBy('day')
+            ->get();
+
+        // Service type profitability (top services by revenue)
+        $serviceProfitability = ServiceRecord::select(
+                'service_type',
+                DB::raw('COUNT(*) as count'),
+                DB::raw('SUM(final_amount) as revenue')
+            )
+            ->groupBy('service_type')
+            ->orderByDesc('revenue')
+            ->limit(8)
+            ->get();
+
+        // Inspection outcomes
+        $inspectionOutcomes = \App\Models\VehicleInspection::select('inspection_status', DB::raw('COUNT(*) as count'))
+            ->groupBy('inspection_status')->get();
+
+        // KPI quick stats
+        $totals = [
+            'customers' => \App\Models\Customer::count(),
+            'vehicles' => \App\Models\Vehicle::count(),
+            'appointments_today' => \App\Models\Appointment::whereDate('appointment_date', $today)->count(),
+            'appointments_this_month' => \App\Models\Appointment::whereMonth('appointment_date', $today->month)->whereYear('appointment_date', $today->year)->count(),
+            'in_progress' => \App\Models\Appointment::whereIn('appointment_status', ['checked_in', 'in_progress'])->count(),
+            'inspections' => \App\Models\VehicleInspection::count(),
+            'services' => ServiceRecord::count(),
+            'revenue_mtd' => round(ServiceRecord::whereYear('service_date', $today->year)->whereMonth('service_date', $today->month)->sum('final_amount'), 2),
+            'revenue_total' => round(ServiceRecord::sum('final_amount'), 2),
+            'avg_ticket' => round(ServiceRecord::avg('final_amount'), 2),
+        ];
+
+        return response()->json([
+            'monthly_revenue' => $monthlyRevenue,
+            'appointment_status' => $appointmentStatus,
+            'appointment_volume' => $appointmentVolume,
+            'service_profitability' => $serviceProfitability,
+            'inspection_outcomes' => $inspectionOutcomes,
+            'totals' => $totals,
+        ]);
+    }
+
     public function analytics()
     {
         // Monthly revenue trend
@@ -190,7 +261,7 @@ class DashboardController extends Controller
     public function createWidget(Request $request)
     {
         $validated = $request->validate([
-            'widget_type' => 'required|in:metric_card,chart,table,kpi',
+            'widget_type' => 'required|in:metric_card,chart,table,kpi,metric',
             'widget_title' => 'required|string|max:255',
             'metric_name' => 'nullable|string|max:255',
             'column_position' => 'required|integer|min:0|max:3',
@@ -631,21 +702,21 @@ class DashboardController extends Controller
                 break;
 
             case 'top_technicians':
-                $data = \App\Models\Technician::withCount(['workOrders' => function($query) {
+                $data = \App\Models\Technician::withCount(['jobOrders' => function($query) {
                     $query->where('status', 'completed');
                 }])
-                    ->withSum(['workOrders' => function($query) {
+                    ->withSum(['jobOrders' => function($query) {
                         $query->where('status', 'completed');
                     }], 'total_cost')
-                    ->orderBy('work_orders_count', 'desc')
+                    ->orderBy('job_orders_count', 'desc')
                     ->limit(10)
                     ->get()
                     ->map(function($tech) {
                         return [
                             'id' => $tech->id,
                             'name' => $tech->name,
-                            'completed_jobs' => $tech->work_orders_count,
-                            'revenue_generated' => $tech->work_orders_sum_total_cost,
+                            'completed_jobs' => $tech->job_orders_count,
+                            'revenue_generated' => $tech->job_orders_sum_total_cost,
                             'rating' => $tech->average_rating ?? 'N/A',
                         ];
                     });
@@ -740,6 +811,43 @@ class DashboardController extends Controller
 
     /**
      * Reset user's dashboard to default widgets.
+     */
+    /**
+     * Save dashboard widget layout (positions/rows/widths/heights).
+     */
+    public function saveLayout(Request $request)
+    {
+        $validated = $request->validate([
+            'widgets' => 'required|array',
+            'widgets.*.id' => 'required|integer',
+            'widgets.*.column_position' => 'required|integer|min:0|max:3',
+            'widgets.*.row_position' => 'required|integer|min:0|max:10',
+            'widgets.*.width' => 'nullable|integer|min:1|max:4',
+            'widgets.*.height' => 'nullable|integer|min:1|max:4',
+        ]);
+
+        foreach ($validated['widgets'] as $widgetData) {
+            $widget = \App\Models\DashboardWidget::find($widgetData['id']);
+
+            if (!$widget || $widget->user_id != auth()->id()) {
+                continue;
+            }
+
+            $widget->column_position = $widgetData['column_position'];
+            $widget->row_position = $widgetData['row_position'];
+            $widget->width = $widgetData['width'] ?? $widget->width;
+            $widget->height = $widgetData['height'] ?? $widget->height;
+            $widget->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Layout saved successfully',
+        ]);
+    }
+
+    /**
+     * Reset dashboard.
      */
     public function resetDashboard()
     {

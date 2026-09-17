@@ -640,7 +640,7 @@ This guide provides comprehensive instructions for deploying the Fixit Auto Serv
    CREATE INDEX idx_vehicles_vin ON vehicles(vin);
    CREATE INDEX idx_customers_email ON customers(email);
    CREATE INDEX idx_invoices_status ON invoices(status);
-   CREATE INDEX idx_work_orders_status ON work_orders(status);
+   CREATE INDEX idx_job_orders_status ON job_orders(status);
    ```
 
 2. **Configure MySQL Settings**

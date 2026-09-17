@@ -29,7 +29,7 @@ return new class extends Migration
             $table->enum('service_status', ['scheduled', 'in_progress', 'completed', 'cancelled'])->default('scheduled');
             $table->foreignId('technician_id')->nullable()->constrained('users')->onDelete('set null');
             $table->foreignId('service_advisor_id')->nullable()->constrained('users')->onDelete('set null');
-            $table->string('work_order_number')->unique();
+            $table->string('job_order_number')->unique();
             $table->text('diagnosis')->nullable();
             $table->text('recommendations')->nullable();
             $table->text('parts_used')->nullable();
@@ -49,7 +49,7 @@ return new class extends Migration
             $table->index('service_type');
             $table->index('payment_status');
             $table->index('service_status');
-            $table->index('work_order_number');
+            $table->index('job_order_number');
         });
     }
 

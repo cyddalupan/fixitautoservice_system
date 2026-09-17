@@ -167,7 +167,7 @@
         // Check if current page is a Service Management page (matches PHP $isServiceManagementRoute)
         var isServicePage = window.location.pathname.includes('/appointments') ||
                             window.location.pathname.includes('/estimates') ||
-                            window.location.pathname.includes('/work-orders') ||
+                            window.location.pathname.includes('/job-orders') ||
                             window.location.pathname.includes('/invoices') ||
                             window.location.pathname.includes('/payments') ||
                             window.location.pathname.includes('/inspections') ||

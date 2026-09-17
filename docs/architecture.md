@@ -81,7 +81,7 @@ app/Http/Controllers/
 ├── CustomerController.php           # Customer management
 ├── VehicleController.php            # Vehicle management
 ├── AppointmentController.php        # Appointment scheduling
-├── WorkOrderController.php          # Work order management
+├── JobOrderController.php          # Work order management
 ├── InventoryController.php          # Inventory management
 ├── PartsProcurementController.php   # Parts procurement
 ├── CustomerPortalController.php     # Customer portal
@@ -109,7 +109,7 @@ Customer ────┐
 
 #### Service Domain
 ```
-WorkOrder ────┐
+JobOrder ────┐
               ├─── VehicleInspection
               ├─── TimeLog (Technician)
               └─── Invoice ──── Payment
@@ -135,7 +135,7 @@ QualityControlChecklist ───┐
 1. **One-to-Many:**
    - Customer → Vehicles
    - Vehicle → ServiceRecords
-   - WorkOrder → VehicleInspections
+   - JobOrder → VehicleInspections
 
 2. **Many-to-Many:**
    - Technician ↔ Skill (via pivot table)
@@ -190,7 +190,7 @@ namespace App\Services;
 class VehicleService {
     public function decodeVIN(string $vin): array;
     public function checkRecalls(Vehicle $vehicle): array;
-    public function calculateServiceCost(WorkOrder $workOrder): float;
+    public function calculateServiceCost(JobOrder $jobOrder): float;
 }
 
 class InventoryService {

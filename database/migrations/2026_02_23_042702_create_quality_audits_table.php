@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('title');
             $table->text('description')->nullable();
             $table->foreignId('checklist_id')->constrained('quality_control_checklists')->onDelete('restrict');
-            $table->foreignId('work_order_id')->nullable()->constrained('work_orders')->onDelete('set null');
+            $table->foreignId('job_order_id')->nullable()->constrained('job_orders')->onDelete('set null');
             $table->foreignId('vehicle_id')->nullable()->constrained('vehicles')->onDelete('set null');
             $table->foreignId('technician_id')->nullable()->constrained('users')->onDelete('set null');
             $table->foreignId('auditor_id')->constrained('users')->onDelete('restrict');
@@ -30,13 +30,13 @@ return new class extends Migration
             $table->text('findings')->nullable();
             $table->text('recommendations')->nullable();
             $table->date('follow_up_date')->nullable();
-            $table->foreignId('created_by')->constrained('users')->onDelete('set null');
+            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
             $table->softDeletes();
             
             $table->index(['audit_date', 'status']);
             $table->index(['technician_id', 'audit_date']);
-            $table->index(['work_order_id', 'status']);
+            $table->index(['job_order_id', 'status']);
         });
     }
 

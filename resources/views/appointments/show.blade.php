@@ -354,7 +354,7 @@
             </div>
 
             <!-- Related Records -->
-            @if($appointment->estimate || $appointment->workOrder || $appointment->vehicleInspection)
+            @if($appointment->estimate || $appointment->jobOrder || $appointment->vehicleInspection)
             <div class="card modern-card mb-4">
                 <div class="card-header modern-card-header">
                     <h5 class="mb-0"><i class="fas fa-link me-2"></i>Related Records</h5>
@@ -374,16 +374,16 @@
                         </a>
                     </div>
                     @endif
-                    @if($appointment->workOrder)
+                    @if($appointment->jobOrder)
                     <div class="related-item d-flex justify-content-between align-items-center mb-3">
                         <div>
                             <div class="fw-bold small">Work Order</div>
-                            <div class="text-muted small">#{{ $appointment->workOrder->work_order_number }}</div>
-                            <span class="badge badge-status-{{ $appointment->workOrder->work_order_status ?? 'pending' }} status-badge-sm">
-                                {{ ucfirst(str_replace('_', ' ', $appointment->workOrder->work_order_status)) }}
+                            <div class="text-muted small">#{{ $appointment->jobOrder->job_order_number }}</div>
+                            <span class="badge badge-status-{{ $appointment->jobOrder->job_order_status ?? 'pending' }} status-badge-sm">
+                                {{ ucfirst(str_replace('_', ' ', $appointment->jobOrder->job_order_status)) }}
                             </span>
                         </div>
-                        <a href="{{ route('work-orders.show', $appointment->workOrder) }}" class="btn btn-sm btn-outline-primary">
+                        <a href="{{ route('job-orders.show', $appointment->jobOrder) }}" class="btn btn-sm btn-outline-primary">
                             <i class="fas fa-eye"></i>
                         </a>
                     </div>

@@ -6,12 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Carbon\Carbon;
 
-class WorkOrderTask extends Model
+class JobOrderTask extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'work_order_id',
+        'job_order_id',
         'task_name',
         'description',
         'task_status',
@@ -44,9 +44,9 @@ class WorkOrderTask extends Model
     /**
      * Relationships
      */
-    public function workOrder()
+    public function jobOrder()
     {
-        return $this->belongsTo(WorkOrder::class);
+        return $this->belongsTo(JobOrder::class);
     }
 
     public function assignedTechnician()

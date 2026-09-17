@@ -208,9 +208,9 @@
                        class="btn btn-outline-primary">
                         <i class="fas fa-calendar-plus me-2"></i> Schedule Appointment
                     </a>
-                    <a href="{{ route('work-orders.create') }}?vehicle_id={{ $vehicle->id }}" 
+                    <a href="{{ route('job-orders.create') }}?vehicle_id={{ $vehicle->id }}" 
                        class="btn btn-outline-primary">
-                    <a href="{{ route("work-orders.create") }}?vehicle_id={{ $vehicle->id }}" 
+                    <a href="{{ route("job-orders.create") }}?vehicle_id={{ $vehicle->id }}" 
                        class="btn btn-outline-primary">
                         <i class="fas fa-wrench me-2"></i> Create Work Order
                     </a>

@@ -191,7 +191,7 @@
                                         
                                         <!-- Approved Status: Convert to Job Order -->
                                         @if($estimate->status === 'approved')
-                                            <a href="{{ route('estimates.convert-to-work-order', $estimate->id) }}" class="btn btn-primary" title="Convert to Job Order">
+                                            <a href="{{ route('estimates.convert-to-job-order', $estimate->id) }}" class="btn btn-primary" title="Convert to Job Order">
                                                 <i class="fas fa-clipboard-check"></i>
                                             </a>
                                         @endif

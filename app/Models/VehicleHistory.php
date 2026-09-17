@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class VehicleHistory extends Model
 {
+    protected $table = 'vehicle_histories';
+
     /**
      * The attributes that are mass assignable.
      *

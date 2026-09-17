@@ -1,8 +1,8 @@
 *.log
 .DS_Store
 .env
-.env.backup
-.env.production
+.env.*
+!.env.example
 .phpactor.json
 .phpunit.result.cache
 /.fleet
@@ -31,8 +31,13 @@ BACKUP_MANIFEST.md
 
 # Temporary and development files
 *.backup
-*.old
+*.bak
+*.bak.*
 *.tmp
+*.tmp_bak
+*.broken
+*.update_method
+/storage/app/manual-backups/
 test_*.php
 verify_*.php
 clear_opcache.php

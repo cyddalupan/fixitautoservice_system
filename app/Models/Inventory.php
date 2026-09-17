@@ -77,9 +77,9 @@ class Inventory extends Model
         return $this->hasMany(PurchaseOrderItem::class, 'inventory_id');
     }
 
-    public function workOrderItems()
+    public function jobOrderItems()
     {
-        return $this->hasMany(WorkOrderItem::class, 'inventory_id');
+        return $this->hasMany(JobOrderItem::class, 'inventory_id');
     }
 
     // Scopes

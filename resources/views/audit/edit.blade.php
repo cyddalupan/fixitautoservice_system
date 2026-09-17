@@ -269,13 +269,13 @@
                     </div>
                     @endif
                     
-                    @if($audit->workOrder)
+                    @if($audit->jobOrder)
                     <div>
                         <h6 class="small text-muted mb-1">Work Order</h6>
                         <p class="mb-0">
                             <i class="fas fa-clipboard-list mr-1"></i>
-                            WO-{{ $audit->workOrder->id }}
-                            <small class="d-block text-muted">{{ $audit->workOrder->customer->name ?? 'Unknown Customer' }}</small>
+                            WO-{{ $audit->jobOrder->id }}
+                            <small class="d-block text-muted">{{ $audit->jobOrder->customer->name ?? 'Unknown Customer' }}</small>
                         </p>
                     </div>
                     @endif

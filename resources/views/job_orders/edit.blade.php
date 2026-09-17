@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Edit Work Order ' . $workOrder->work_order_number . ' - Fix-It Auto Services')
+@section('title', 'Edit Work Order ' . $jobOrder->job_order_number . ' - Fix-It Auto Services')
 
 @section('content')
 <div class="container-fluid py-3">
@@ -20,7 +20,7 @@
         <button class="nav-pill" data-section="notes" onclick="scrollToSection('notes')"><i class="fas fa-sticky-note"></i> Notes</button>
     </div>
 
-    <form action="{{ route('work-orders.update', $workOrder) }}" method="POST">
+    <form action="{{ route('job-orders.update', $jobOrder) }}" method="POST">
         @csrf
         @method('PUT')
 
@@ -39,7 +39,7 @@
                                 <select name="customer_id" id="customer_id" class="form-select @error('customer_id') is-invalid @enderror" required>
                                     <option value="">Select Customer</option>
                                     @foreach($customers as $customer)
-                                        <option value="{{ $customer->id }}" {{ $workOrder->customer_id == $customer->id ? 'selected' : '' }}>{{ $customer->first_name }} {{ $customer->last_name }} - {{ $customer->phone }}</option>
+                                        <option value="{{ $customer->id }}" {{ $jobOrder->customer_id == $customer->id ? 'selected' : '' }}>{{ $customer->first_name }} {{ $customer->last_name }} - {{ $customer->phone }}</option>
                                     @endforeach
                                 </select>
                                 @error('customer_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -53,7 +53,7 @@
                                 <select name="vehicle_id" id="vehicle_id" class="form-select @error('vehicle_id') is-invalid @enderror" required>
                                     <option value="">Select Vehicle</option>
                                     @foreach($vehicles as $vehicle)
-                                        <option value="{{ $vehicle->id }}" {{ $workOrder->vehicle_id == $vehicle->id ? 'selected' : '' }}>{{ $vehicle->make }} {{ $vehicle->model }} - {{ $vehicle->license_plate }}</option>
+                                        <option value="{{ $vehicle->id }}" {{ $jobOrder->vehicle_id == $vehicle->id ? 'selected' : '' }}>{{ $vehicle->make }} {{ $vehicle->model }} - {{ $vehicle->license_plate }}</option>
                                     @endforeach
                                 </select>
                                 @error('vehicle_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -63,49 +63,47 @@
                     <div class="col-md-4">
                         <div class="card"><div class="card-body">
                             <div class="form-group">
-                                <label for="work_order_number" class="form-label">Work Order Number</label>
-                                <input type="text" name="work_order_number" id="work_order_number" class="form-control" value="{{ old('work_order_number', $workOrder->work_order_number) }}" readonly>
+                                <label for="job_order_number" class="form-label">Work Order Number</label>
+                                <input type="text" name="job_order_number" id="job_order_number" class="form-control" value="{{ old('job_order_number', $jobOrder->job_order_number) }}" readonly>
                             </div>
                         </div></div>
                     </div>
                     <div class="col-md-4">
                         <div class="card"><div class="card-body">
                             <div class="form-group">
-                                <label for="work_order_date" class="form-label field-required">Work Order Date</label>
-                                <input type="date" name="work_order_date" id="work_order_date" class="form-control @error('work_order_date') is-invalid @enderror" value="{{ old('work_order_date', $workOrder->work_order_date ? $workOrder->work_order_date->format('Y-m-d') : '') }}" required>
-                                @error('work_order_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                <label for="job_order_date" class="form-label field-required">Work Order Date</label>
+                                <input type="date" name="job_order_date" id="job_order_date" class="form-control @error('job_order_date') is-invalid @enderror" value="{{ old('job_order_date', $jobOrder->job_order_date ? $jobOrder->job_order_date->format('Y-m-d') : '') }}" required>
+                                @error('job_order_date')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
                     </div>
                     <div class="col-md-4">
                         <div class="card"><div class="card-body">
                             <div class="form-group">
-                                <label for="work_order_type" class="form-label">Work Order Type</label>
-                                <select name="work_order_type" id="work_order_type" class="form-select @error('work_order_type') is-invalid @enderror">
+                                <label for="job_order_type" class="form-label">Work Order Type</label>
+                                <select name="job_order_type" id="job_order_type" class="form-select @error('job_order_type') is-invalid @enderror">
                                     <option value="">Select Type</option>
-                                    <option value="standard" {{ old('work_order_type', $workOrder->work_order_type) == 'standard' ? 'selected' : '' }}>Standard</option>
-                                    <option value="emergency" {{ old('work_order_type', $workOrder->work_order_type) == 'emergency' ? 'selected' : '' }}>Emergency</option>
-                                    <option value="express" {{ old('work_order_type', $workOrder->work_order_type) == 'express' ? 'selected' : '' }}>Express</option>
-                                    <option value="warranty" {{ old('work_order_type', $workOrder->work_order_type) == 'warranty' ? 'selected' : '' }}>Warranty</option>
-                                    <option value="insurance" {{ old('work_order_type', $workOrder->work_order_type) == 'insurance' ? 'selected' : '' }}>Insurance</option>
+                                    @foreach(['repair', 'maintenance', 'inspection', 'diagnostic', 'recall', 'other'] as $type)
+                                        <option value="{{ $type }}" {{ old('job_order_type', $jobOrder->job_order_type) == $type ? 'selected' : '' }}>{{ ucfirst($type) }}</option>
+                                    @endforeach
                                 </select>
-                                @error('work_order_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                @error('job_order_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
                     </div>
                     <div class="col-md-6">
                         <div class="card"><div class="card-body">
                             <div class="form-group">
-                                <label for="work_order_status" class="form-label field-required">Status</label>
-                                <select name="work_order_status" id="work_order_status" class="form-select @error('work_order_status') is-invalid @enderror" required>
-                                    <option value="pending" {{ $workOrder->work_order_status == 'pending' ? 'selected' : '' }}>Pending</option>
-                                    <option value="repairing" {{ $workOrder->work_order_status == 'repairing' ? 'selected' : '' }}>Repairing</option>
-                                    <option value="waiting_parts" {{ $workOrder->work_order_status == 'waiting_parts' ? 'selected' : '' }}>Waiting Parts</option>
-                                    <option value="completed" {{ $workOrder->work_order_status == 'completed' ? 'selected' : '' }}>Completed</option>
-                                    <option value="released" {{ $workOrder->work_order_status == 'released' ? 'selected' : '' }}>Released</option>
-                                    <option value="cancelled" {{ $workOrder->work_order_status == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                                <label for="job_order_status" class="form-label field-required">Status</label>
+                                <select name="job_order_status" id="job_order_status" class="form-select @error('job_order_status') is-invalid @enderror" required>
+                                    <option value="pending" {{ $jobOrder->job_order_status == 'pending' ? 'selected' : '' }}>Pending</option>
+                                    <option value="repairing" {{ $jobOrder->job_order_status == 'repairing' ? 'selected' : '' }}>Repairing</option>
+                                    <option value="waiting_parts" {{ $jobOrder->job_order_status == 'waiting_parts' ? 'selected' : '' }}>Waiting Parts</option>
+                                    <option value="completed" {{ $jobOrder->job_order_status == 'completed' ? 'selected' : '' }}>Completed</option>
+                                    <option value="released" {{ $jobOrder->job_order_status == 'released' ? 'selected' : '' }}>Released</option>
+                                    <option value="cancelled" {{ $jobOrder->job_order_status == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                                 </select>
-                                @error('work_order_status')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                @error('job_order_status')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
                     </div>
@@ -114,9 +112,9 @@
                             <div class="form-group">
                                 <label for="priority" class="form-label field-required">Priority</label>
                                 <select name="priority" id="priority" class="form-select @error('priority') is-invalid @enderror" required>
-                                    <option value="low" {{ $workOrder->priority == 'low' ? 'selected' : '' }}>Low</option>
-                                    <option value="normal" {{ $workOrder->priority == 'normal' ? 'selected' : '' }}>Normal</option>
-                                    <option value="high" {{ $workOrder->priority == 'high' ? 'selected' : '' }}>High</option>
+                                    <option value="low" {{ $jobOrder->priority == 'low' ? 'selected' : '' }}>Low</option>
+                                    <option value="normal" {{ $jobOrder->priority == 'normal' ? 'selected' : '' }}>Normal</option>
+                                    <option value="high" {{ $jobOrder->priority == 'high' ? 'selected' : '' }}>High</option>
                                 </select>
                                 @error('priority')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
@@ -126,7 +124,7 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <label for="bay_number" class="form-label">Bay Number</label>
-                                <input type="text" name="bay_number" id="bay_number" class="form-control @error('bay_number') is-invalid @enderror" value="{{ old('bay_number', $workOrder->bay_number) }}" placeholder="e.g. Bay 3">
+                                <input type="text" name="bay_number" id="bay_number" class="form-control @error('bay_number') is-invalid @enderror" value="{{ old('bay_number', $jobOrder->bay_number) }}" placeholder="e.g. Bay 3">
                                 @error('bay_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
@@ -147,7 +145,7 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <label for="odometer_in" class="form-label">Odometer In (km)</label>
-                                <input type="number" min="0" step="1" class="form-control @error('odometer_in') is-invalid @enderror" id="odometer_in" name="odometer_in" value="{{ old('odometer_in', $workOrder->odometer_in) }}" placeholder="Current mileage">
+                                <input type="number" min="0" step="1" class="form-control @error('odometer_in') is-invalid @enderror" id="odometer_in" name="odometer_in" value="{{ old('odometer_in', $jobOrder->odometer_in) }}" placeholder="Current mileage">
                                 @error('odometer_in')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
@@ -158,11 +156,11 @@
                                 <label for="fuel_level" class="form-label">Fuel Level</label>
                                 <select name="fuel_level" id="fuel_level" class="form-select @error('fuel_level') is-invalid @enderror">
                                     <option value="">-- Select --</option>
-                                    <option value="empty" {{ old('fuel_level', $workOrder->fuel_level) == 'empty' ? 'selected' : '' }}>Empty</option>
-                                    <option value="1/4" {{ old('fuel_level', $workOrder->fuel_level) == '1/4' ? 'selected' : '' }}>1/4</option>
-                                    <option value="1/2" {{ old('fuel_level', $workOrder->fuel_level) == '1/2' ? 'selected' : '' }}>1/2</option>
-                                    <option value="3/4" {{ old('fuel_level', $workOrder->fuel_level) == '3/4' ? 'selected' : '' }}>3/4</option>
-                                    <option value="full" {{ old('fuel_level', $workOrder->fuel_level) == 'full' ? 'selected' : '' }}>Full</option>
+                                    <option value="empty" {{ old('fuel_level', $jobOrder->fuel_level) == 'empty' ? 'selected' : '' }}>Empty</option>
+                                    <option value="1/4" {{ old('fuel_level', $jobOrder->fuel_level) == '1/4' ? 'selected' : '' }}>1/4</option>
+                                    <option value="1/2" {{ old('fuel_level', $jobOrder->fuel_level) == '1/2' ? 'selected' : '' }}>1/2</option>
+                                    <option value="3/4" {{ old('fuel_level', $jobOrder->fuel_level) == '3/4' ? 'selected' : '' }}>3/4</option>
+                                    <option value="full" {{ old('fuel_level', $jobOrder->fuel_level) == 'full' ? 'selected' : '' }}>Full</option>
                                 </select>
                                 @error('fuel_level')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
@@ -174,10 +172,10 @@
                                 <label for="vehicle_condition" class="form-label">Vehicle Condition</label>
                                 <select name="vehicle_condition" id="vehicle_condition" class="form-select @error('vehicle_condition') is-invalid @enderror">
                                     <option value="">-- Select --</option>
-                                    <option value="excellent" {{ old('vehicle_condition', $workOrder->vehicle_condition) == 'excellent' ? 'selected' : '' }}>Excellent</option>
-                                    <option value="good" {{ old('vehicle_condition', $workOrder->vehicle_condition) == 'good' ? 'selected' : '' }}>Good</option>
-                                    <option value="fair" {{ old('vehicle_condition', $workOrder->vehicle_condition) == 'fair' ? 'selected' : '' }}>Fair</option>
-                                    <option value="poor" {{ old('vehicle_condition', $workOrder->vehicle_condition) == 'poor' ? 'selected' : '' }}>Poor</option>
+                                    <option value="excellent" {{ old('vehicle_condition', $jobOrder->vehicle_condition) == 'excellent' ? 'selected' : '' }}>Excellent</option>
+                                    <option value="good" {{ old('vehicle_condition', $jobOrder->vehicle_condition) == 'good' ? 'selected' : '' }}>Good</option>
+                                    <option value="fair" {{ old('vehicle_condition', $jobOrder->vehicle_condition) == 'fair' ? 'selected' : '' }}>Fair</option>
+                                    <option value="poor" {{ old('vehicle_condition', $jobOrder->vehicle_condition) == 'poor' ? 'selected' : '' }}>Poor</option>
                                 </select>
                                 @error('vehicle_condition')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
@@ -202,7 +200,7 @@
                                 <select name="technician_id" id="technician_id" class="form-select @error('technician_id') is-invalid @enderror">
                                     <option value="">Select Technician</option>
                                     @foreach($technicians as $technician)
-                                        <option value="{{ $technician->id }}" {{ $workOrder->technician_id == $technician->id ? 'selected' : '' }}>{{ $technician->name }}</option>
+                                        <option value="{{ $technician->id }}" {{ $jobOrder->technician_id == $technician->id ? 'selected' : '' }}>{{ $technician->name }}</option>
                                     @endforeach
                                 </select>
                                 @error('technician_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -216,7 +214,7 @@
                                 <select name="service_advisor_id" id="service_advisor_id" class="form-select @error('service_advisor_id') is-invalid @enderror">
                                     <option value="">Select Service Advisor</option>
                                     @foreach($advisors as $advisor)
-                                        <option value="{{ $advisor->id }}" {{ $workOrder->service_advisor_id == $advisor->id ? 'selected' : '' }}>{{ $advisor->name }}</option>
+                                        <option value="{{ $advisor->id }}" {{ $jobOrder->service_advisor_id == $advisor->id ? 'selected' : '' }}>{{ $advisor->name }}</option>
                                     @endforeach
                                 </select>
                                 @error('service_advisor_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
@@ -236,7 +234,7 @@
                                         <div class="tech-option" data-id="{{ $tech->id }}" data-name="{{ $tech->name }}" data-role="Technician"><span class="tech-check"></span><span>{{ $tech->name }}</span></div>
                                         @endforeach
                                     </div>
-                                    <input type="hidden" name="technician_assignments" value="{{ json_encode($workOrder->technician_assignments ?? []) }}">
+                                    <input type="hidden" name="technician_assignments" value="{{ json_encode($jobOrder->technician_assignments ?? []) }}">
                                 </div>
                                 <small class="text-muted">Assign technicians with specific roles (e.g. Lead, Assistant, Specialist)</small>
                             </div>
@@ -258,7 +256,7 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <label for="customer_concerns" class="form-label">Customer Concerns</label>
-                                <textarea class="form-control @error('customer_concerns') is-invalid @enderror" id="customer_concerns" name="customer_concerns" rows="3" placeholder="What did the customer report?">{{ old('customer_concerns', $workOrder->customer_concerns) }}</textarea>
+                                <textarea class="form-control @error('customer_concerns') is-invalid @enderror" id="customer_concerns" name="customer_concerns" rows="3" placeholder="What did the customer report?">{{ old('customer_concerns', $jobOrder->customer_concerns) }}</textarea>
                                 @error('customer_concerns')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
@@ -267,7 +265,7 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <label for="customer_complaints" class="form-label">Customer Complaints</label>
-                                <textarea class="form-control @error('customer_complaints') is-invalid @enderror" id="customer_complaints" name="customer_complaints" rows="3" placeholder="Detailed complaints...">{{ old('customer_complaints', $workOrder->customer_complaints) }}</textarea>
+                                <textarea class="form-control @error('customer_complaints') is-invalid @enderror" id="customer_complaints" name="customer_complaints" rows="3" placeholder="Detailed complaints...">{{ old('customer_complaints', $jobOrder->customer_complaints) }}</textarea>
                                 @error('customer_complaints')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
@@ -276,7 +274,7 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <label for="initial_diagnosis" class="form-label">Initial Diagnosis</label>
-                                <textarea class="form-control @error('initial_diagnosis') is-invalid @enderror" id="initial_diagnosis" name="initial_diagnosis" rows="3" placeholder="Initial findings and diagnosis...">{{ old('initial_diagnosis', $workOrder->initial_diagnosis) }}</textarea>
+                                <textarea class="form-control @error('initial_diagnosis') is-invalid @enderror" id="initial_diagnosis" name="initial_diagnosis" rows="3" placeholder="Initial findings and diagnosis...">{{ old('initial_diagnosis', $jobOrder->initial_diagnosis) }}</textarea>
                                 @error('initial_diagnosis')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
@@ -297,7 +295,7 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <label for="recommended_services" class="form-label">Recommended Services</label>
-                                <textarea class="form-control @error('recommended_services') is-invalid @enderror" id="recommended_services" name="recommended_services" rows="3" placeholder="Services recommended based on diagnosis...">{{ old('recommended_services', $workOrder->recommended_services) }}</textarea>
+                                <textarea class="form-control @error('recommended_services') is-invalid @enderror" id="recommended_services" name="recommended_services" rows="3" placeholder="Services recommended based on diagnosis...">{{ old('recommended_services', $jobOrder->recommended_services) }}</textarea>
                                 @error('recommended_services')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
@@ -306,11 +304,11 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <div class="form-check mb-2">
-                                    <input type="checkbox" class="form-check-input" id="has_safety_concerns" name="has_safety_concerns" value="1" {{ old('has_safety_concerns', $workOrder->has_safety_concerns) ? 'checked' : '' }}>
+                                    <input type="checkbox" class="form-check-input" id="has_safety_concerns" name="has_safety_concerns" value="1" {{ old('has_safety_concerns', $jobOrder->has_safety_concerns) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="has_safety_concerns"><i class="fas fa-exclamation-circle text-danger me-1"></i> Has Safety Concerns</label>
                                 </div>
                                 <div class="form-check">
-                                    <input type="checkbox" class="form-check-input" id="requires_customer_approval" name="requires_customer_approval" value="1" {{ old('requires_customer_approval', $workOrder->requires_customer_approval) ? 'checked' : '' }}>
+                                    <input type="checkbox" class="form-check-input" id="requires_customer_approval" name="requires_customer_approval" value="1" {{ old('requires_customer_approval', $jobOrder->requires_customer_approval) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="requires_customer_approval"><i class="fas fa-file-signature text-primary me-1"></i> Requires Customer Approval</label>
                                 </div>
                             </div>
@@ -332,7 +330,7 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <label for="estimated_labor_hours" class="form-label">Estimated Labor Hours</label>
-                                <input type="number" min="0" step="0.5" class="form-control @error('estimated_labor_hours') is-invalid @enderror" id="estimated_labor_hours" name="estimated_labor_hours" value="{{ old('estimated_labor_hours', $workOrder->estimated_labor_hours) }}" placeholder="0.0">
+                                <input type="number" min="0" step="0.5" class="form-control @error('estimated_labor_hours') is-invalid @enderror" id="estimated_labor_hours" name="estimated_labor_hours" value="{{ old('estimated_labor_hours', $jobOrder->estimated_labor_hours) }}" placeholder="0.0">
                                 @error('estimated_labor_hours')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
@@ -341,7 +339,7 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <label for="estimated_labor_cost" class="form-label">Estimated Labor Cost ($)</label>
-                                <input type="number" min="0" step="0.01" class="form-control @error('estimated_labor_cost') is-invalid @enderror" id="estimated_labor_cost" name="estimated_labor_cost" value="{{ old('estimated_labor_cost', $workOrder->estimated_labor_cost) }}" placeholder="0.00">
+                                <input type="number" min="0" step="0.01" class="form-control @error('estimated_labor_cost') is-invalid @enderror" id="estimated_labor_cost" name="estimated_labor_cost" value="{{ old('estimated_labor_cost', $jobOrder->estimated_labor_cost) }}" placeholder="0.00">
                                 @error('estimated_labor_cost')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
@@ -350,7 +348,7 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <label for="estimated_parts_cost" class="form-label">Estimated Parts Cost ($)</label>
-                                <input type="number" min="0" step="0.01" class="form-control @error('estimated_parts_cost') is-invalid @enderror" id="estimated_parts_cost" name="estimated_parts_cost" value="{{ old('estimated_parts_cost', $workOrder->estimated_parts_cost) }}" placeholder="0.00">
+                                <input type="number" min="0" step="0.01" class="form-control @error('estimated_parts_cost') is-invalid @enderror" id="estimated_parts_cost" name="estimated_parts_cost" value="{{ old('estimated_parts_cost', $jobOrder->estimated_parts_cost) }}" placeholder="0.00">
                                 @error('estimated_parts_cost')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
@@ -359,7 +357,7 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <label for="estimated_tax" class="form-label">Estimated Tax ($)</label>
-                                <input type="number" min="0" step="0.01" class="form-control @error('estimated_tax') is-invalid @enderror" id="estimated_tax" name="estimated_tax" value="{{ old('estimated_tax', $workOrder->estimated_tax) }}" placeholder="0.00">
+                                <input type="number" min="0" step="0.01" class="form-control @error('estimated_tax') is-invalid @enderror" id="estimated_tax" name="estimated_tax" value="{{ old('estimated_tax', $jobOrder->estimated_tax) }}" placeholder="0.00">
                                 @error('estimated_tax')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
@@ -368,7 +366,7 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <label for="estimated_total" class="form-label">Estimated Total ($)</label>
-                                <input type="number" min="0" step="0.01" class="form-control @error('estimated_total') is-invalid @enderror" id="estimated_total" name="estimated_total" value="{{ old('estimated_total', $workOrder->estimated_total) }}" placeholder="0.00">
+                                <input type="number" min="0" step="0.01" class="form-control @error('estimated_total') is-invalid @enderror" id="estimated_total" name="estimated_total" value="{{ old('estimated_total', $jobOrder->estimated_total) }}" placeholder="0.00">
                                 @error('estimated_total')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
@@ -377,7 +375,7 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <label for="estimate_notes" class="form-label">Estimate Notes</label>
-                                <textarea class="form-control @error('estimate_notes') is-invalid @enderror" id="estimate_notes" name="estimate_notes" rows="2" placeholder="Notes about this estimate...">{{ old('estimate_notes', $workOrder->estimate_notes) }}</textarea>
+                                <textarea class="form-control @error('estimate_notes') is-invalid @enderror" id="estimate_notes" name="estimate_notes" rows="2" placeholder="Notes about this estimate...">{{ old('estimate_notes', $jobOrder->estimate_notes) }}</textarea>
                                 @error('estimate_notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
@@ -398,15 +396,15 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <div class="form-check mb-3">
-                                    <input type="checkbox" class="form-check-input" id="is_warranty_work" name="is_warranty_work" value="1" {{ old('is_warranty_work', $workOrder->is_warranty_work) ? 'checked' : '' }}>
+                                    <input type="checkbox" class="form-check-input" id="is_warranty_work" name="is_warranty_work" value="1" {{ old('is_warranty_work', $jobOrder->is_warranty_work) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="is_warranty_work"><i class="fas fa-shield-alt text-info me-1"></i> Warranty Work</label>
                                 </div>
                                 <label for="warranty_type" class="form-label">Warranty Type</label>
                                 <select name="warranty_type" id="warranty_type" class="form-select @error('warranty_type') is-invalid @enderror">
                                     <option value="">-- Select --</option>
-                                    <option value="manufacturer" {{ old('warranty_type', $workOrder->warranty_type) == 'manufacturer' ? 'selected' : '' }}>Manufacturer</option>
-                                    <option value="extended" {{ old('warranty_type', $workOrder->warranty_type) == 'extended' ? 'selected' : '' }}>Extended</option>
-                                    <option value="shop" {{ old('warranty_type', $workOrder->warranty_type) == 'shop' ? 'selected' : '' }}>Shop</option>
+                                    <option value="manufacturer" {{ old('warranty_type', $jobOrder->warranty_type) == 'manufacturer' ? 'selected' : '' }}>Manufacturer</option>
+                                    <option value="extended" {{ old('warranty_type', $jobOrder->warranty_type) == 'extended' ? 'selected' : '' }}>Extended</option>
+                                    <option value="shop" {{ old('warranty_type', $jobOrder->warranty_type) == 'shop' ? 'selected' : '' }}>Shop</option>
                                 </select>
                                 @error('warranty_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
@@ -416,17 +414,17 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <label for="warranty_number" class="form-label">Warranty Number</label>
-                                <input type="text" name="warranty_number" id="warranty_number" class="form-control @error('warranty_number') is-invalid @enderror" value="{{ old('warranty_number', $workOrder->warranty_number) }}" placeholder="Warranty reference #">
+                                <input type="text" name="warranty_number" id="warranty_number" class="form-control @error('warranty_number') is-invalid @enderror" value="{{ old('warranty_number', $jobOrder->warranty_number) }}" placeholder="Warranty reference #">
                                 @error('warranty_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="form-group mt-2">
                                 <label for="warranty_expiry" class="form-label">Warranty Expiry</label>
-                                <input type="date" name="warranty_expiry" id="warranty_expiry" class="form-control @error('warranty_expiry') is-invalid @enderror" value="{{ old('warranty_expiry', $workOrder->warranty_expiry ? date('Y-m-d', strtotime($workOrder->warranty_expiry)) : '') }}">
+                                <input type="date" name="warranty_expiry" id="warranty_expiry" class="form-control @error('warranty_expiry') is-invalid @enderror" value="{{ old('warranty_expiry', $jobOrder->warranty_expiry ? date('Y-m-d', strtotime($jobOrder->warranty_expiry)) : '') }}">
                                 @error('warranty_expiry')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                             <div class="form-group mt-2">
                                 <label for="warranty_coverage" class="form-label">Warranty Coverage</label>
-                                <textarea class="form-control @error('warranty_coverage') is-invalid @enderror" id="warranty_coverage" name="warranty_coverage" rows="2" placeholder="What's covered?">{{ old('warranty_coverage', $workOrder->warranty_coverage) }}</textarea>
+                                <textarea class="form-control @error('warranty_coverage') is-invalid @enderror" id="warranty_coverage" name="warranty_coverage" rows="2" placeholder="What's covered?">{{ old('warranty_coverage', $jobOrder->warranty_coverage) }}</textarea>
                                 @error('warranty_coverage')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
@@ -447,28 +445,28 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <div class="form-check mb-3">
-                                    <input type="checkbox" class="form-check-input" id="is_insurance_work" name="is_insurance_work" value="1" {{ old('is_insurance_work', $workOrder->is_insurance_work) ? 'checked' : '' }}>
+                                    <input type="checkbox" class="form-check-input" id="is_insurance_work" name="is_insurance_work" value="1" {{ old('is_insurance_work', $jobOrder->is_insurance_work) ? 'checked' : '' }}>
                                     <label class="form-check-label" for="is_insurance_work"><i class="fas fa-file-invoice text-warning me-1"></i> Insurance Work</label>
                                 </div>
                                 <div class="row g-3">
                                     <div class="col-md-4">
                                         <label for="insurance_company" class="form-label">Insurance Company</label>
-                                        <input type="text" name="insurance_company" id="insurance_company" class="form-control @error('insurance_company') is-invalid @enderror" value="{{ old('insurance_company', $workOrder->insurance_company) }}" placeholder="Company name">
+                                        <input type="text" name="insurance_company" id="insurance_company" class="form-control @error('insurance_company') is-invalid @enderror" value="{{ old('insurance_company', $jobOrder->insurance_company) }}" placeholder="Company name">
                                         @error('insurance_company')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                     </div>
                                     <div class="col-md-4">
                                         <label for="insurance_claim_number" class="form-label">Claim Number</label>
-                                        <input type="text" name="insurance_claim_number" id="insurance_claim_number" class="form-control @error('insurance_claim_number') is-invalid @enderror" value="{{ old('insurance_claim_number', $workOrder->insurance_claim_number) }}" placeholder="Claim #">
+                                        <input type="text" name="insurance_claim_number" id="insurance_claim_number" class="form-control @error('insurance_claim_number') is-invalid @enderror" value="{{ old('insurance_claim_number', $jobOrder->insurance_claim_number) }}" placeholder="Claim #">
                                         @error('insurance_claim_number')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                     </div>
                                     <div class="col-md-2">
                                         <label for="insurance_adjuster" class="form-label">Adjuster</label>
-                                        <input type="text" name="insurance_adjuster" id="insurance_adjuster" class="form-control @error('insurance_adjuster') is-invalid @enderror" value="{{ old('insurance_adjuster', $workOrder->insurance_adjuster) }}" placeholder="Adjuster name">
+                                        <input type="text" name="insurance_adjuster" id="insurance_adjuster" class="form-control @error('insurance_adjuster') is-invalid @enderror" value="{{ old('insurance_adjuster', $jobOrder->insurance_adjuster) }}" placeholder="Adjuster name">
                                         @error('insurance_adjuster')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                     </div>
                                     <div class="col-md-2">
                                         <label for="insurance_deductible" class="form-label">Deductible ($)</label>
-                                        <input type="number" min="0" step="0.01" name="insurance_deductible" id="insurance_deductible" class="form-control @error('insurance_deductible') is-invalid @enderror" value="{{ old('insurance_d{{ old('insurance_deductible', $workOrder->insurance_deductible) }}" placeholder="0.00">
+                                        <input type="number" min="0" step="0.01" name="insurance_deductible" id="insurance_deductible" class="form-control @error('insurance_deductible') is-invalid @enderror" value="{{ old('insurance_deductible', $jobOrder->insurance_deductible) }}" placeholder="0.00">
                                         @error('insurance_deductible')<div class="invalid-feedback">{{ $message }}</div>@enderror
                                     </div>
                                 </div>
@@ -491,7 +489,7 @@
                         <div class="card"><div class="card-body">
                             <div class="form-group">
                                 <label for="additional_notes" class="form-label">Additional Notes</label>
-                                <textarea class="form-control @error('additional_notes') is-invalid @enderror" id="additional_notes" name="additional_notes" rows="4" placeholder="Any additional notes or instructions...">{{ old('additional_notes', $workOrder->additional_notes) }}</textarea>
+                                <textarea class="form-control @error('additional_notes') is-invalid @enderror" id="additional_notes" name="additional_notes" rows="4" placeholder="Any additional notes or instructions...">{{ old('additional_notes', $jobOrder->additional_notes) }}</textarea>
                                 @error('additional_notes')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
                         </div></div>
@@ -507,7 +505,7 @@
                     <span class="text-white-50"><i class="fas fa-save me-1"></i> Unsaved changes</span>
                 </div>
                 <div>
-                    <a href="{{ route('work-orders.index') }}" class="btn btn-outline-light btn-sm me-2"><i class="fas fa-times me-1"></i> Cancel</a>
+                    <a href="{{ route('job-orders.index') }}" class="btn btn-outline-light btn-sm me-2"><i class="fas fa-times me-1"></i> Cancel</a>
                     <button type="submit" class="btn btn-light btn-sm"><i class="fas fa-check me-1"></i> Save Work Order</button>
                 </div>
             </div>
@@ -751,6 +749,13 @@
         padding: 12px;
     }
 }
+
+    /* ===== Dark mode overrides (auto-swept) ===== */
+    [data-theme="dark"] .technician-dropdown {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
 </style>
 @endpush
 

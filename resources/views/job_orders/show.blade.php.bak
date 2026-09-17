@@ -1,15 +1,15 @@
 @extends('layouts.app')
 
-@section('title', 'Work Order ' . $workOrder->work_order_number . ' - Fix-It Auto Services')
+@section('title', 'Work Order ' . $jobOrder->job_order_number . ' - Fix-It Auto Services')
 
 @section('content')
 <!-- Service Progress Bar -->
-@if($workOrder->serviceProgress)
+@if($jobOrder->serviceProgress)
     <div class="row mb-4">
         <div class="col-12">
             @include('components.service-progress-bar', [
-    'progress' => $workOrder->serviceProgress,
-    'currentStage' => 'work_order'
+    'progress' => $jobOrder->serviceProgress,
+    'currentStage' => 'job_order'
 ])
         </div>
     </div>
@@ -19,18 +19,18 @@
     <div class="d-flex justify-content-between align-items-center">
         <div>
             <h1 class="h3 mb-0">
-                <i class="fas fa-clipboard-list me-2"></i>Work Order: {{ $workOrder->work_order_number }}
+                <i class="fas fa-clipboard-list me-2"></i>Work Order: {{ $jobOrder->job_order_number }}
             </h1>
             <p class="text-muted mb-0">
-                {{ $workOrder->customer->first_name ?? 'Customer' }} {{ $workOrder->customer->last_name ?? '' }} - 
-                {{ $workOrder->vehicle->make ?? '' }} {{ $workOrder->vehicle->model ?? '' }}
+                {{ $jobOrder->customer->first_name ?? 'Customer' }} {{ $jobOrder->customer->last_name ?? '' }} - 
+                {{ $jobOrder->vehicle->make ?? '' }} {{ $jobOrder->vehicle->model ?? '' }}
             </p>
         </div>
         <div>
-            <a href="{{ route('work-orders.index') }}" class="btn btn-outline-secondary">
+            <a href="{{ route('job-orders.index') }}" class="btn btn-outline-secondary">
                 <i class="fas fa-arrow-left me-1"></i> Back to List
             </a>
-            <a href="{{ route('work-orders.edit', $workOrder) }}" class="btn btn-primary ms-2">
+            <a href="{{ route('job-orders.edit', $jobOrder) }}" class="btn btn-primary ms-2">
                 <i class="fas fa-edit me-1"></i> Edit
             </a>
         </div>
@@ -41,14 +41,14 @@
 <div class="row mb-4">
     <div class="col-12">
         <div class="d-flex align-items-center">
-            <span class="badge bg-{{ $workOrder->status_color }} me-2">
-                {{ ucfirst(str_replace('_', ' ', $workOrder->work_order_status)) }}
+            <span class="badge bg-{{ $jobOrder->status_color }} me-2">
+                {{ ucfirst(str_replace('_', ' ', $jobOrder->job_order_status)) }}
             </span>
-            <span class="badge bg-{{ $workOrder->priority === 'high' ? 'danger' : ($workOrder->priority === 'normal' ? 'info' : 'warning') }} me-2">
-                {{ ucfirst($workOrder->priority) }} Priority
+            <span class="badge bg-{{ $jobOrder->priority === 'high' ? 'danger' : ($jobOrder->priority === 'normal' ? 'info' : 'warning') }} me-2">
+                {{ ucfirst($jobOrder->priority) }} Priority
             </span>
             <span class="text-muted">
-                Created: {{ $workOrder->created_at->format('M d, Y h:i A') }}
+                Created: {{ $jobOrder->created_at->format('M d, Y h:i A') }}
             </span>
         </div>
     </div>
@@ -68,38 +68,38 @@
                         <h6>Customer Details</h6>
                         <p class="mb-1">
                             <strong>Name:</strong> 
-                            {{ $workOrder->customer->first_name ?? 'N/A' }} {{ $workOrder->customer->last_name ?? '' }}
+                            {{ $jobOrder->customer->first_name ?? 'N/A' }} {{ $jobOrder->customer->last_name ?? '' }}
                         </p>
                         <p class="mb-1">
                             <strong>Phone:</strong> 
-                            {{ $workOrder->customer->phone ?? 'N/A' }}
+                            {{ $jobOrder->customer->phone ?? 'N/A' }}
                         </p>
                         <p class="mb-1">
                             <strong>Email:</strong> 
-                            {{ $workOrder->customer->email ?? 'N/A' }}
+                            {{ $jobOrder->customer->email ?? 'N/A' }}
                         </p>
                     </div>
                     <div class="col-md-6">
                         <h6>Vehicle Details</h6>
                         <p class="mb-1">
                             <strong>Vehicle:</strong> 
-                            {{ $workOrder->vehicle->make ?? 'N/A' }} {{ $workOrder->vehicle->model ?? '' }}
+                            {{ $jobOrder->vehicle->make ?? 'N/A' }} {{ $jobOrder->vehicle->model ?? '' }}
                         </p>
                         <p class="mb-1">
                             <strong>Year:</strong> 
-                            {{ $workOrder->vehicle->year ?? 'N/A' }}
+                            {{ $jobOrder->vehicle->year ?? 'N/A' }}
                         </p>
                         <p class="mb-1">
                             <strong>License Plate:</strong> 
-                            {{ $workOrder->vehicle->license_plate ?? 'N/A' }}
+                            {{ $jobOrder->vehicle->license_plate ?? 'N/A' }}
                         </p>
                         <p class="mb-1">
                             <strong>VIN:</strong> 
-                            {{ $workOrder->vehicle->vin ?? 'N/A' }}
+                            {{ $jobOrder->vehicle->vin ?? 'N/A' }}
                         </p>
                         <p class="mb-1">
                             <strong>Odometer In:</strong> 
-                            {{ $workOrder->odometer_in ? number_format($workOrder->odometer_in) . ' km' : 'N/A' }}
+                            {{ $jobOrder->odometer_in ? number_format($jobOrder->odometer_in) . ' km' : 'N/A' }}
                         </p>
                     </div>
                 </div>
@@ -115,18 +115,18 @@
                 <div class="row">
                     <div class="col-md-6">
                         <h6>Customer Concerns</h6>
-                        <p>{{ $workOrder->customer_concerns ?? 'No concerns reported.' }}</p>
+                        <p>{{ $jobOrder->customer_concerns ?? 'No concerns reported.' }}</p>
                     </div>
                     <div class="col-md-6">
                         <h6>Technician Diagnosis</h6>
-                        <p>{{ $workOrder->technician_diagnosis ?? 'Diagnosis pending.' }}</p>
+                        <p>{{ $jobOrder->technician_diagnosis ?? 'Diagnosis pending.' }}</p>
                     </div>
                 </div>
-                @if($workOrder->recommended_services)
+                @if($jobOrder->recommended_services)
                 <div class="row mt-3">
                     <div class="col-12">
                         <h6>Recommended Services</h6>
-                        <p>{{ $workOrder->recommended_services }}</p>
+                        <p>{{ $jobOrder->recommended_services }}</p>
                     </div>
                 </div>
                 @endif
@@ -138,10 +138,10 @@
             <div class="col-md-6">
                 <div class="card mb-4">
                     <div class="card-header">
-                        <h5 class="mb-0"><i class="fas fa-boxes me-2"></i>Items ({{ $workOrder->items->count() }})</h5>
+                        <h5 class="mb-0"><i class="fas fa-boxes me-2"></i>Items ({{ $jobOrder->items->count() }})</h5>
                     </div>
                     <div class="card-body">
-                        @if($workOrder->items->count() > 0)
+                        @if($jobOrder->items->count() > 0)
                             <div class="table-responsive">
                                 <table class="table table-sm">
                                     <thead>
@@ -152,7 +152,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($workOrder->items as $item)
+                                        @foreach($jobOrder->items as $item)
                                         <tr>
                                             <td>{{ $item->description }}</td>
                                             <td>{{ $item->quantity }} {{ $item->unit }}</td>
@@ -171,10 +171,10 @@
             <div class="col-md-6">
                 <div class="card mb-4">
                     <div class="card-header">
-                        <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Tasks ({{ $workOrder->tasks->count() }})</h5>
+                        <h5 class="mb-0"><i class="fas fa-tasks me-2"></i>Tasks ({{ $jobOrder->tasks->count() }})</h5>
                     </div>
                     <div class="card-body">
-                        @if($workOrder->tasks->count() > 0)
+                        @if($jobOrder->tasks->count() > 0)
                             <div class="table-responsive">
                                 <table class="table table-sm">
                                     <thead>
@@ -185,7 +185,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @foreach($workOrder->tasks as $task)
+                                        @foreach($jobOrder->tasks as $task)
                                         <tr>
                                             <td>{{ $task->task_name }}</td>
                                             <td>
@@ -220,54 +220,54 @@
                     <h6>Estimated Costs</h6>
                     <p class="mb-1 d-flex justify-content-between">
                         <span>Labor:</span>
-                        <span>₱{{ number_format($workOrder->estimated_labor_cost, 2) }}</span>
+                        <span>₱{{ number_format($jobOrder->estimated_labor_cost, 2) }}</span>
                     </p>
                     <p class="mb-1 d-flex justify-content-between">
                         <span>Parts:</span>
-                        <span>₱{{ number_format($workOrder->estimated_parts_cost, 2) }}</span>
+                        <span>₱{{ number_format($jobOrder->estimated_parts_cost, 2) }}</span>
                     </p>
                     <p class="mb-1 d-flex justify-content-between">
                         <span>Tax:</span>
-                        <span>₱{{ number_format($workOrder->estimated_tax, 2) }}</span>
+                        <span>₱{{ number_format($jobOrder->estimated_tax, 2) }}</span>
                     </p>
                     <hr>
                     <p class="mb-0 d-flex justify-content-between fw-bold">
                         <span>Estimated Total:</span>
-                        <span>₱{{ number_format($workOrder->estimated_total, 2) }}</span>
+                        <span>₱{{ number_format($jobOrder->estimated_total, 2) }}</span>
                     </p>
                 </div>
 
-                @if($workOrder->work_order_status === 'completed' || $workOrder->actual_total > 0)
+                @if($jobOrder->job_order_status === 'completed' || $jobOrder->actual_total > 0)
                 <div class="mt-3">
                     <h6>Actual Costs</h6>
                     <p class="mb-1 d-flex justify-content-between">
                         <span>Labor:</span>
-                        <span>₱{{ number_format($workOrder->actual_labor_cost, 2) }}</span>
+                        <span>₱{{ number_format($jobOrder->actual_labor_cost, 2) }}</span>
                     </p>
                     <p class="mb-1 d-flex justify-content-between">
                         <span>Parts:</span>
-                        <span>₱{{ number_format($workOrder->actual_parts_cost, 2) }}</span>
+                        <span>₱{{ number_format($jobOrder->actual_parts_cost, 2) }}</span>
                     </p>
                     <p class="mb-1 d-flex justify-content-between">
                         <span>Tax:</span>
-                        <span>₱{{ number_format($workOrder->actual_tax, 2) }}</span>
+                        <span>₱{{ number_format($jobOrder->actual_tax, 2) }}</span>
                     </p>
                     <hr>
                     <p class="mb-0 d-flex justify-content-between fw-bold">
                         <span>Actual Total:</span>
-                        <span>₱{{ number_format($workOrder->actual_total, 2) }}</span>
+                        <span>₱{{ number_format($jobOrder->actual_total, 2) }}</span>
                     </p>
                 </div>
                 @endif
 
                 <div class="mt-3">
                     <h6>Payment Status</h6>
-                    <span class="badge bg-{{ $workOrder->payment_status === 'paid' ? 'success' : ($workOrder->payment_status === 'partial' ? 'warning' : 'secondary') }}">
-                        {{ ucfirst($workOrder->payment_status) }}
+                    <span class="badge bg-{{ $jobOrder->payment_status === 'paid' ? 'success' : ($jobOrder->payment_status === 'partial' ? 'warning' : 'secondary') }}">
+                        {{ ucfirst($jobOrder->payment_status) }}
                     </span>
-                    @if($workOrder->payment_status !== 'paid')
+                    @if($jobOrder->payment_status !== 'paid')
                         <p class="mt-2 mb-0">
-                            <small>Balance Due: ₱{{ number_format($workOrder->balance_due, 2) }}</small>
+                            <small>Balance Due: ₱{{ number_format($jobOrder->balance_due, 2) }}</small>
                         </p>
                     @endif
                 </div>
@@ -282,16 +282,16 @@
             <div class="card-body">
                 <p class="mb-2">
                     <strong>Service Advisor:</strong><br>
-                    {{ $workOrder->serviceAdvisor->name ?? 'Not assigned' }}
+                    {{ $jobOrder->serviceAdvisor->name ?? 'Not assigned' }}
                 </p>
                 <p class="mb-2">
                     <strong>Technician:</strong><br>
-                    {{ $workOrder->technician->name ?? 'Not assigned' }}
+                    {{ $jobOrder->technician->name ?? 'Not assigned' }}
                 </p>
-                @if($workOrder->qualityChecker)
+                @if($jobOrder->qualityChecker)
                 <p class="mb-0">
                     <strong>Quality Checker:</strong><br>
-                    {{ $workOrder->qualityChecker->name }}
+                    {{ $jobOrder->qualityChecker->name }}
                 </p>
                 @endif
             </div>
@@ -329,34 +329,34 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    @if($workOrder->work_order_status === 'pending')
-                    <form action="{{ route('work-orders.start-work', $workOrder) }}" method="POST" class="d-inline">
+                    @if($jobOrder->job_order_status === 'pending')
+                    <form action="{{ route('job-orders.start-work', $jobOrder) }}" method="POST" class="d-inline">
                         @csrf
-                        <button type="button" class="btn btn-warning btn-start-repair" data-workorder-id="{{ $workOrder->id }}">
+                        <button type="button" class="btn btn-warning btn-start-repair" data-workorder-id="{{ $jobOrder->id }}">
                             <i class="fas fa-play me-1"></i> Start Repair
                         </button>
                     </form>
                     @endif
                     
-                    @if($workOrder->work_order_status === 'repairing')
-                    <form action="{{ route('work-orders.complete-work', $workOrder) }}" method="POST" class="d-inline">
+                    @if($jobOrder->job_order_status === 'repairing')
+                    <form action="{{ route('job-orders.complete-work', $jobOrder) }}" method="POST" class="d-inline">
                         @csrf
-                        <button type="button" class="btn btn-success btn-complete-repair" data-workorder-id="{{ $workOrder->id }}">
+                        <button type="button" class="btn btn-success btn-complete-repair" data-workorder-id="{{ $jobOrder->id }}">
                             <i class="fas fa-flag-checkered me-1"></i> Complete Repair
                         </button>
                     </form>
                     @endif
                     
-                    @if($workOrder->work_order_status === 'completed')
-                    <form action="{{ route('work-orders.mark-released', $workOrder) }}" method="POST" class="d-inline">
+                    @if($jobOrder->job_order_status === 'completed')
+                    <form action="{{ route('job-orders.mark-released', $jobOrder) }}" method="POST" class="d-inline">
                         @csrf
-                        <button type="button" class="btn btn-info btn-mark-released" data-workorder-id="{{ $workOrder->id }}">
+                        <button type="button" class="btn btn-info btn-mark-released" data-workorder-id="{{ $jobOrder->id }}">
                             <i class="fas fa-truck me-1"></i> Mark as Released
                         </button>
                     </form>
                     @endif
                     
-                    <a href="{{ route('work-orders.edit', $workOrder) }}" class="btn btn-outline-primary">
+                    <a href="{{ route('job-orders.edit', $jobOrder) }}" class="btn btn-outline-primary">
                         <i class="fas fa-edit me-1"></i> Edit Work Order
                     </a>
                     
@@ -379,13 +379,13 @@
             </div>
             <div class="modal-body">
                 <div class="alert alert-warning mb-3">
-                    <i class="fas fa-archive me-2"></i>Are you sure you want to move work order <strong>{{ $workOrder->work_order_number }}</strong> to archive?
+                    <i class="fas fa-archive me-2"></i>Are you sure you want to move work order <strong>{{ $jobOrder->job_order_number }}</strong> to archive?
                 </div>
                 <p class="mb-0 text-muted small">The record will be preserved in the archive and can be restored later.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <form action="{{ route('work-orders.destroy', $workOrder) }}" method="POST">
+                <form action="{{ route('job-orders.destroy', $jobOrder) }}" method="POST">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="btn btn-warning">
@@ -427,7 +427,7 @@ document.addEventListener('DOMContentLoaded', function() {
     startRepairButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            const workOrderId = this.getAttribute('data-workorder-id');
+            const jobOrderId = this.getAttribute('data-workorder-id');
             
             Swal.fire({
                 title: 'Start Repair?',
@@ -452,7 +452,7 @@ document.addEventListener('DOMContentLoaded', function() {
     completeRepairButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            const workOrderId = this.getAttribute('data-workorder-id');
+            const jobOrderId = this.getAttribute('data-workorder-id');
             
             Swal.fire({
                 title: 'Complete Repair?',
@@ -477,7 +477,7 @@ document.addEventListener('DOMContentLoaded', function() {
     markReleasedButtons.forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
-            const workOrderId = this.getAttribute('data-workorder-id');
+            const jobOrderId = this.getAttribute('data-workorder-id');
             
             Swal.fire({
                 title: 'Mark as Released?',

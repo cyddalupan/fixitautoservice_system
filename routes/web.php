@@ -381,6 +381,10 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::resource("appointments", AppointmentController::class);
     Route::post('/appointments/{appointment}/check-in', [AppointmentController::class, 'checkIn'])->name('appointments.check-in');
     Route::post('/appointments/{appointment}/start', [AppointmentController::class, 'start'])->name('appointments.start');
+    Route::post('/appointments/{appointment}/update-info', [AppointmentController::class, 'updateInfo'])->name('appointments.update-info');
+    Route::get('/appointments/{appointment}/update-info', [AppointmentController::class, 'showUpdateInfoForm'])->name('appointments.update-info.form');
+    Route::get('/appointments/{appointment}/repair-order-slip', [AppointmentController::class, 'showRepairOrderSlip'])->name('appointments.repair-order-slip');
+    Route::get('/appointments/{appointment}/repair-order-slip.pdf', [AppointmentController::class, 'downloadRepairOrderSlipPdf'])->name('appointments.repair-order.pdf');
     Route::post('/appointments/{appointment}/complete', [AppointmentController::class, 'complete'])->name('appointments.complete');
     Route::post('/appointments/{appointment}/cancel', [AppointmentController::class, 'cancel'])->name('appointments.cancel');
     Route::post('/appointments/{appointment}/mark-no-show', [AppointmentController::class, 'markNoShow'])->name('appointments.mark-no-show');
@@ -445,13 +449,14 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::get('/estimates/{estimate}/print', [EstimateController::class, 'print'])->name('estimates.print');
 
     // Invoice Routes
+    Route::get('/invoices/statistics', [InvoiceController::class, 'statistics'])->name('invoices.statistics');
     Route::resource('invoices', InvoiceController::class);
     Route::post('/invoices/{invoice}/send', [InvoiceController::class, 'send'])->name('invoices.send');
     Route::post('/invoices/{invoice}/mark-as-paid', [InvoiceController::class, 'markAsPaid'])->name('invoices.mark-as-paid');
+    Route::post('/invoices/{invoice}/cancel', [InvoiceController::class, 'cancel'])->name('invoices.cancel');
     Route::post('/invoices/{invoice}/record-payment', [InvoiceController::class, 'recordPayment'])->name('invoices.record-payment');
     Route::get('/invoices/{invoice}/print', [InvoiceController::class, 'print'])->name('invoices.print');
     Route::get('/invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
-    Route::get('/invoices/statistics', [InvoiceController::class, 'statistics'])->name('invoices.statistics');
     
     // AJAX endpoints for invoice creation
     Route::get('/invoices/get-vehicles/{customerId}', [InvoiceController::class, 'getVehiclesByCustomer'])->name('invoices.get-vehicles');
@@ -897,6 +902,79 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
 
     // Service Items (service catalog)
     Route::resource('service-items', \App\Http\Controllers\ServiceItemController::class);
+
+    // ===== Vehicle Recalls =====
+    Route::prefix('recalls')->name('recalls.')->group(function () {
+        Route::get('/dashboard', [\App\Http\Controllers\RecallController::class, 'dashboard'])->name('dashboard');
+        Route::get('/statistics', [\App\Http\Controllers\RecallController::class, 'statistics'])->name('statistics');
+        Route::get('/needs-notification', [\App\Http\Controllers\RecallController::class, 'needsNotification'])->name('needs-notification');
+        Route::get('/overdue', [\App\Http\Controllers\RecallController::class, 'overdue'])->name('overdue');
+        Route::get('/urgent', [\App\Http\Controllers\RecallController::class, 'urgent'])->name('urgent');
+        Route::get('/search', [\App\Http\Controllers\RecallController::class, 'search'])->name('search');
+        Route::get('/export', [\App\Http\Controllers\RecallController::class, 'export'])->name('export');
+        Route::get('/create', [\App\Http\Controllers\RecallController::class, 'create'])->name('create');
+        Route::get('/', [\App\Http\Controllers\RecallController::class, 'index'])->name('index');
+        Route::post('/', [\App\Http\Controllers\RecallController::class, 'store'])->name('store');
+        Route::post('/batch-check', [\App\Http\Controllers\RecallController::class, 'batchCheckRecalls'])->name('batch-check');
+        Route::post('/batch-send-notifications', [\App\Http\Controllers\RecallController::class, 'batchSendNotifications'])->name('batch-send-notifications');
+        Route::get('/check-vehicle/{vehicleId}', [\App\Http\Controllers\RecallController::class, 'checkVehicleRecalls'])->name('check-vehicle');
+        Route::get('/api', [\App\Http\Controllers\RecallController::class, 'apiIndex'])->name('api.index');
+        Route::get('/api/{recall}', [\App\Http\Controllers\RecallController::class, 'apiShow'])->name('api.show');
+        Route::post('/{recall}/send-notification', [\App\Http\Controllers\RecallController::class, 'sendNotification'])->name('send-notification');
+        Route::post('/{recall}/update-status', [\App\Http\Controllers\RecallController::class, 'updateStatus'])->name('update-status');
+        Route::get('/{recall}/edit', [\App\Http\Controllers\RecallController::class, 'edit'])->name('edit');
+        Route::get('/{recall}', [\App\Http\Controllers\RecallController::class, 'show'])->name('show');
+        Route::put('/{recall}', [\App\Http\Controllers\RecallController::class, 'update'])->name('update');
+        Route::delete('/{recall}', [\App\Http\Controllers\RecallController::class, 'destroy'])->name('destroy');
+    });
+
+    // ===== VIN Decoder =====
+    Route::prefix('vin-decoder')->name('vin-decoder.')->group(function () {
+        Route::post('/decode', [\App\Http\Controllers\VINDecoderController::class, 'decode'])->name('decode');
+        Route::post('/batch-decode', [\App\Http\Controllers\VINDecoderController::class, 'batchDecode'])->name('batch-decode');
+        Route::get('/cache-stats', [\App\Http\Controllers\VINDecoderController::class, 'cacheStats'])->name('cache-stats');
+        Route::post('/clear-cache', [\App\Http\Controllers\VINDecoderController::class, 'clearCache'])->name('clear-cache');
+        Route::post('/validate', [\App\Http\Controllers\VINDecoderController::class, 'validateVIN'])->name('validate');
+        Route::get('/history', [\App\Http\Controllers\VINDecoderController::class, 'history'])->name('history');
+        Route::get('/export', [\App\Http\Controllers\VINDecoderController::class, 'export'])->name('export');
+    });
+
+    // ===== Vehicle Tools =====
+    Route::prefix('vehicle-tools')->name('vehicle-tools.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\VehicleToolsController::class, 'dashboard'])->name('dashboard');
+        Route::get('/vin-decoder', [\App\Http\Controllers\VehicleToolsController::class, 'vinDecoder'])->name('vin-decoder');
+        Route::post('/decode-vin', [\App\Http\Controllers\VehicleToolsController::class, 'decodeVIN'])->name('decode-vin');
+        Route::get('/vin-results', [\App\Http\Controllers\VehicleToolsController::class, 'vinResults'])->name('vin-results');
+        Route::get('/service-history', [\App\Http\Controllers\VehicleToolsController::class, 'serviceHistory'])->name('service-history');
+        Route::get('/service-history/{vehicleId}', [\App\Http\Controllers\VehicleToolsController::class, 'serviceHistory'])->name('service-history.vehicle');
+        Route::post('/batch-decode-vin', [\App\Http\Controllers\VehicleToolsController::class, 'batchDecodeVIN'])->name('batch-decode-vin');
+        Route::get('/check-recalls/{vehicleId}', [\App\Http\Controllers\VehicleToolsController::class, 'checkRecalls'])->name('check-recalls');
+        Route::post('/batch-check-recalls', [\App\Http\Controllers\VehicleToolsController::class, 'batchCheckRecalls'])->name('batch-check-recalls');
+        Route::get('/export-vehicle-data/{vehicleId?}', [\App\Http\Controllers\VehicleToolsController::class, 'exportVehicleData'])->name('export-vehicle-data');
+        Route::post('/clear-expired-cache', [\App\Http\Controllers\VehicleToolsController::class, 'clearExpiredCache'])->name('clear-expired-cache');
+        Route::get('/statistics', [\App\Http\Controllers\VehicleToolsController::class, 'getStatistics'])->name('statistics');
+    });
+
+    // ===== Business Intelligence =====
+    Route::prefix('business-intelligence')->name('business-intelligence.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\BusinessIntelligenceController::class, 'dashboard'])->name('dashboard');
+        Route::get('/metrics', [\App\Http\Controllers\BusinessIntelligenceController::class, 'metrics'])->name('metrics');
+        Route::get('/technician-performance', [\App\Http\Controllers\BusinessIntelligenceController::class, 'technicianPerformance'])->name('technician-performance');
+        Route::get('/customer-retention', [\App\Http\Controllers\BusinessIntelligenceController::class, 'customerRetention'])->name('customer-retention');
+        Route::get('/widget-management', [\App\Http\Controllers\BusinessIntelligenceController::class, 'widgetManagement'])->name('widget-management');
+    });
+
+    // ===== Analytics =====
+    Route::get('/analytics/dashboard', function () { return view('analytics.dashboard'); })->name('analytics.dashboard');
+    Route::get('/analytics/metrics', function () { return view('analytics.metrics'); })->name('analytics.metrics');
+    Route::post('/analytics/generate-daily', [\App\Http\Controllers\AnalyticsController::class, 'generateDailyMetrics'])->name('analytics.generate-daily');
+    Route::get('/analytics/export', [\App\Http\Controllers\AnalyticsController::class, 'exportReport'])->name('analytics.export');
+
+    // ===== Dashboard Widgets =====
+    Route::get('/dashboard/widgets', [DashboardController::class, 'getWidgets'])->name('dashboard.widgets.index');
+    Route::post('/dashboard/widgets', [DashboardController::class, 'createWidget'])->name('dashboard.widgets.store');
+    Route::delete('/dashboard/widgets/{widgetId}', [DashboardController::class, 'deleteWidget'])->name('dashboard.widgets.destroy');
+    Route::post('/dashboard/layout/save', [DashboardController::class, 'saveLayout'])->name('dashboard.layout.save');
 });
 
 // Public test route (outside auth)

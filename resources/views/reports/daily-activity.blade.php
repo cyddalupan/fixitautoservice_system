@@ -104,7 +104,7 @@
                     <div class="d-flex justify-content-between">
                         <div>
                             <h5 class="text-muted fw-normal mt-0">Work Orders</h5>
-                            <h3 class="my-2">{{ $report['summary']['work_orders'] ?? 0 }}</h3>
+                            <h3 class="my-2">{{ $report['summary']['job_orders'] ?? 0 }}</h3>
                         </div>
                         <div class="avatar-sm">
                             <span class="avatar-title bg-success rounded-circle">
@@ -212,15 +212,15 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @if(isset($report['details']['work_orders']) && count($report['details']['work_orders']) > 0)
-                                    @foreach($report['details']['work_orders'] as $workOrder)
+                                @if(isset($report['details']['job_orders']) && count($report['details']['job_orders']) > 0)
+                                    @foreach($report['details']['job_orders'] as $jobOrder)
                                         <tr>
-                                            <td>#{{ $workOrder->id }}</td>
-                                            <td>{{ $workOrder->customer->first_name ?? 'N/A' }} {{ $workOrder->customer->last_name ?? '' }}</td>
-                                            <td>{{ ucfirst(str_replace('_', ' ', $workOrder->service_type)) }}</td>
+                                            <td>#{{ $jobOrder->id }}</td>
+                                            <td>{{ $jobOrder->customer->first_name ?? 'N/A' }} {{ $jobOrder->customer->last_name ?? '' }}</td>
+                                            <td>{{ ucfirst(str_replace('_', ' ', $jobOrder->service_type)) }}</td>
                                             <td>
-                                                <span class="badge bg-{{ $workOrder->status == 'completed' ? 'success' : ($workOrder->status == 'in_progress' ? 'warning' : 'primary') }}">
-                                                    {{ ucfirst($workOrder->status) }}
+                                                <span class="badge bg-{{ $jobOrder->status == 'completed' ? 'success' : ($jobOrder->status == 'in_progress' ? 'warning' : 'primary') }}">
+                                                    {{ ucfirst($jobOrder->status) }}
                                                 </span>
                                             </td>
                                         </tr>

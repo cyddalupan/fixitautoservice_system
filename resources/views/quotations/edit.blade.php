@@ -348,5 +348,12 @@
 .service-card-input:checked + .service-card-body .service-card-label {
     color: #B50C09;
 }
+
+    /* ===== Dark mode overrides (auto-swept) ===== */
+    [data-theme="dark"] .service-card-body {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
 </style>
 @endpush

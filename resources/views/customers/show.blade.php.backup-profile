@@ -196,7 +196,7 @@
                     <a href="{{ route('appointments.create') }}?customer_id={{ $customer->id }}" class="btn btn-outline-warning">
                         <i class="fas fa-calendar-plus me-2"></i> Schedule Appointment
                     </a>
-                    <a href="{{ route('work-orders.create') }}?customer_id={{ $customer->id }}" class="btn btn-outline-danger">
+                    <a href="{{ route('job-orders.create') }}?customer_id={{ $customer->id }}" class="btn btn-outline-danger">
                         <i class="fas fa-wrench me-2"></i> Create Work Order
                     </a>
                     <a href="{{ route('inspections.create') }}?customer_id={{ $customer->id }}" class="btn btn-outline-primary">

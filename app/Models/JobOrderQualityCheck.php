@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class WorkOrderQualityCheck extends Model
+class JobOrderQualityCheck extends Model
 {
     /**
      * The attributes that are mass assignable.
@@ -13,7 +13,7 @@ class WorkOrderQualityCheck extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'work_order_id',
+        'job_order_id',
         'quality_check_id',
         'technician_id',
         'supervisor_id',
@@ -142,6 +142,17 @@ class WorkOrderQualityCheck extends Model
     }
 
     /**
+     * Calculate score (0-100) from results — alias of pass rate for the UI.
+     */
+    public function calculateScore(): ?float
+    {
+        if (empty($this->results) || !is_array($this->results)) {
+            return null;
+        }
+        return $this->calculatePassRate();
+    }
+
+    /**
      * Get failed items
      */
     public function getFailedItems(): array
@@ -251,9 +262,9 @@ class WorkOrderQualityCheck extends Model
     /**
      * Relationship: Work order
      */
-    public function workOrder(): BelongsTo
+    public function jobOrder(): BelongsTo
     {
-        return $this->belongsTo(WorkOrder::class);
+        return $this->belongsTo(JobOrder::class);
     }
 
     /**
@@ -291,9 +302,9 @@ class WorkOrderQualityCheck extends Model
     /**
      * Scope: By work order
      */
-    public function scopeByWorkOrder($query, $workOrderId)
+    public function scopeByJobOrder($query, $jobOrderId)
     {
-        return $query->where('work_order_id', $workOrderId);
+        return $query->where('job_order_id', $jobOrderId);
     }
 
     /**

@@ -11,13 +11,13 @@
     padding-top: .5rem;
     padding-bottom: 100px;
 }
-body.dark-mode .prsnl-form-wrap { background: #1a1d23; }
+[data-theme="dark"] .prsnl-form-wrap { background: #1a1d23; }
 .prsnl-form-wrap .page-title {
     color: #1a2332;
     font-size: 1.15rem;
     font-weight: 700;
 }
-body.dark-mode .prsnl-form-wrap .page-title { color: #e4e6eb; }
+[data-theme="dark"] .prsnl-form-wrap .page-title { color: #e4e6eb; }
 
 .prsnl-section {
     border-radius: 12px;
@@ -25,7 +25,7 @@ body.dark-mode .prsnl-form-wrap .page-title { color: #e4e6eb; }
     box-shadow: 0 1px 3px rgba(0,0,0,.04);
     margin-bottom: 1rem;
 }
-body.dark-mode .prsnl-section { background: #2a2d35; }
+[data-theme="dark"] .prsnl-section { background: #2a2d35; }
 .prsnl-section-header {
     background: transparent;
     border-bottom: 1px solid #eef0f3;
@@ -37,7 +37,7 @@ body.dark-mode .prsnl-section { background: #2a2d35; }
     align-items: center;
     gap: .5rem;
 }
-body.dark-mode .prsnl-section-header {
+[data-theme="dark"] .prsnl-section-header {
     border-bottom-color: #3a3d45;
     color: #e4e6eb;
 }
@@ -50,7 +50,7 @@ body.dark-mode .prsnl-section-header {
     color: #374151;
     margin-bottom: .25rem;
 }
-body.dark-mode .prsnl-label { color: #d1d5db; }
+[data-theme="dark"] .prsnl-label { color: #d1d5db; }
 .prsnl-input {
     font-size: .82rem;
     border-radius: 6px;
@@ -58,7 +58,7 @@ body.dark-mode .prsnl-label { color: #d1d5db; }
     padding: .4rem .65rem;
     transition: border-color .15s, box-shadow .15s;
 }
-body.dark-mode .prsnl-input {
+[data-theme="dark"] .prsnl-input {
     background: #1f2937;
     border-color: #4b5563;
     color: #e4e6eb;
@@ -75,7 +75,7 @@ body.dark-mode .prsnl-input {
     resize: vertical;
     padding: .4rem .65rem;
 }
-body.dark-mode .prsnl-textarea {
+[data-theme="dark"] .prsnl-textarea {
     background: #1f2937;
     border-color: #4b5563;
     color: #e4e6eb;
@@ -100,7 +100,7 @@ body.dark-mode .prsnl-textarea {
     color: #4361ee;
     border: 1px solid #ccd5ff;
 }
-body.dark-mode .prsnl-role-chip {
+[data-theme="dark"] .prsnl-role-chip {
     background: #1a2a4a;
     border-color: #2a4a7a;
     color: #90aef9;
@@ -135,7 +135,7 @@ body.dark-mode .prsnl-role-chip {
     flex-shrink: 0;
     object-fit: cover;
 }
-body.dark-mode .prsnl-photo-preview { border-color: #2a4a7a; }
+[data-theme="dark"] .prsnl-photo-preview { border-color: #2a4a7a; }
 .prsnl-photo-preview img {
     width: 100%;
     height: 100%;
@@ -164,7 +164,7 @@ body.dark-mode .prsnl-photo-preview { border-color: #2a4a7a; }
     align-items: center;
     gap: .75rem;
 }
-body.dark-mode .prsnl-sticky-bar {
+[data-theme="dark"] .prsnl-sticky-bar {
     background: #2a2d35;
     border-top-color: #3a3d45;
 }
@@ -175,7 +175,7 @@ body.dark-mode .prsnl-sticky-bar {
     border: 1px solid #d1d5db;
     padding: .4rem .65rem;
 }
-body.dark-mode .prsnl-role-select {
+[data-theme="dark"] .prsnl-role-select {
     background: #1f2937;
     border-color: #4b5563;
     color: #e4e6eb;
@@ -209,6 +209,13 @@ body.dark-mode .prsnl-role-select {
     font-weight: 700;
     border-color: #ccd5ff;
 }
+
+    /* ===== Dark mode overrides (auto-swept) ===== */
+    [data-theme="dark"] .prsnl-label {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
 </style>
 @endpush
 

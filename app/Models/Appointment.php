@@ -23,6 +23,9 @@ class Appointment extends Model
     protected $fillable = [
         'customer_id',
         'vehicle_id',
+        'name',
+        'email',
+        'phone',
         'vehicle_description',
         'assigned_technician_id',
         'service_advisor_id',
@@ -34,6 +37,9 @@ class Appointment extends Model
         'priority',
         'service_request',
         'service_types',
+        'job_description_items',
+        'parts_items',
+        'discount',
         'estimated_duration',
         'estimated_cost',
         'bay_number',
@@ -61,10 +67,12 @@ class Appointment extends Model
         'scheduled_at',
         'confirmed_at',
         'checked_in_at',
+        'date_received',
         'started_at',
         'completed_at',
         'cancelled_at',
         'booking_source',
+        'status', // blueprint enum: scheduled / proceeded / rescheduled / cancelled
         'booking_ip',
         'booking_referrer',
         'viewed_at',
@@ -78,6 +86,9 @@ class Appointment extends Model
     protected $casts = [
         'appointment_date' => 'date',
         'service_types' => 'array',
+        'job_description_items' => 'array',
+        'parts_items' => 'array',
+        'discount' => 'decimal:2',
         'estimated_duration' => 'decimal:2',
         'estimated_cost' => 'decimal:2',
         'deposit_amount' => 'decimal:2',
@@ -87,6 +98,7 @@ class Appointment extends Model
         'scheduled_at' => 'datetime',
         'confirmed_at' => 'datetime',
         'checked_in_at' => 'datetime',
+        'date_received' => 'date',
         'started_at' => 'datetime',
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',
@@ -141,9 +153,9 @@ class Appointment extends Model
     /**
      * Get the work order associated with the appointment.
      */
-    public function workOrder(): HasOne
+    public function jobOrder(): HasOne
     {
-        return $this->hasOne(WorkOrder::class, 'appointment_id');
+        return $this->hasOne(JobOrder::class, 'appointment_id');
     }
 
     /**
@@ -283,6 +295,18 @@ class Appointment extends Model
             'emergency' => 'danger',
             default => 'info',
         };
+    }
+
+    /**
+     * The "booted" method of the model — auto-generate appointment number on create.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function ($appointment) {
+            if (empty($appointment->appointment_number)) {
+                $appointment->appointment_number = static::generateAppointmentNumber();
+            }
+        });
     }
 
     /**

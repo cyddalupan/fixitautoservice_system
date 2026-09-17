@@ -28,7 +28,7 @@ return new class extends Migration
             $table->json('search_results')->nullable(); // Store API search results
             $table->foreignId('customer_id')->nullable()->constrained('customers')->onDelete('set null');
             $table->foreignId('vehicle_id')->nullable()->constrained('vehicles')->onDelete('set null');
-            $table->foreignId('work_order_id')->nullable()->constrained('work_orders')->onDelete('set null');
+            $table->foreignId('job_order_id')->nullable()->constrained('job_orders')->onDelete('set null');
             $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
         });
@@ -57,7 +57,7 @@ return new class extends Migration
             $table->id();
             $table->string('order_number')->unique();
             $table->foreignId('vendor_id')->constrained('inventory_suppliers')->onDelete('cascade');
-            $table->foreignId('work_order_id')->nullable()->constrained('work_orders')->onDelete('set null');
+            $table->foreignId('job_order_id')->nullable()->constrained('job_orders')->onDelete('set null');
             $table->foreignId('customer_id')->nullable()->constrained('customers')->onDelete('set null');
             $table->foreignId('vehicle_id')->nullable()->constrained('vehicles')->onDelete('set null');
             $table->string('status')->default('draft'); // draft, pending, ordered, shipped, delivered, cancelled, returned

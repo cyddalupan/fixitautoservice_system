@@ -11,10 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('work_orders', function (Blueprint $table) {
+        Schema::table('job_orders', function (Blueprint $table) {
             $table->enum('repair_approval_status', ['pending', 'go', 'no_go'])
                   ->default('pending')
-                  ->after('work_order_status')
+                  ->after('job_order_status')
                   ->comment('GO/NO GO for repair approval status');
         });
     }
@@ -24,7 +24,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('work_orders', function (Blueprint $table) {
+        Schema::table('job_orders', function (Blueprint $table) {
             $table->dropColumn('repair_approval_status');
         });
     }

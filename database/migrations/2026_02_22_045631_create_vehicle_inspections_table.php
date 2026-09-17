@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             
             // Relationships
-            $table->foreignId('work_order_id')->nullable()->constrained('work_orders')->onDelete('cascade');
+            $table->foreignId('job_order_id')->nullable()->constrained('job_orders')->onDelete('cascade');
             $table->foreignId('appointment_id')->nullable()->constrained('appointments')->onDelete('cascade');
             $table->foreignId('customer_id')->constrained('customers')->onDelete('cascade');
             $table->foreignId('vehicle_id')->constrained('vehicles')->onDelete('cascade');
@@ -82,7 +82,7 @@ return new class extends Migration
             $table->softDeletes();
             
             // Indexes
-            $table->index('work_order_id');
+            $table->index('job_order_id');
             $table->index('appointment_id');
             $table->index('customer_id');
             $table->index('vehicle_id');

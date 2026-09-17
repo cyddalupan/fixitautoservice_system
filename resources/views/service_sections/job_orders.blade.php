@@ -25,33 +25,33 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($sectionData as $workOrder)
+                                @foreach($sectionData as $jobOrder)
                                     <tr>
                                         <td>
-                                            <strong>{{ $workOrder['date']->format('M d, Y') }}</strong>
+                                            <strong>{{ $jobOrder['date']->format('M d, Y') }}</strong>
                                         </td>
                                         <td>
-                                            <strong>{{ $workOrder['customer']->first_name }} {{ $workOrder['customer']->last_name }}</strong><br>
-                                            <small class="text-muted">{{ $workOrder['customer']->phone }}</small>
+                                            <strong>{{ $jobOrder['customer']->first_name }} {{ $jobOrder['customer']->last_name }}</strong><br>
+                                            <small class="text-muted">{{ $jobOrder['customer']->phone }}</small>
                                         </td>
                                         <td>
-                                            <strong>{{ $workOrder['vehicle']->year }} {{ $workOrder['vehicle']->make }} {{ $workOrder['vehicle']->model }}</strong><br>
-                                            <small class="text-muted">{{ $workOrder['vehicle']->license_plate }}</small>
+                                            <strong>{{ $jobOrder['vehicle']->year }} {{ $jobOrder['vehicle']->make }} {{ $jobOrder['vehicle']->model }}</strong><br>
+                                            <small class="text-muted">{{ $jobOrder['vehicle']->license_plate }}</small>
                                         </td>
                                         <td>
-                                            <span class="badge bg-{{ $workOrder['status'] == 'completed' ? 'success' : ($workOrder['status'] == 'cancelled' ? 'danger' : 'warning') }}">
-                                                {{ ucfirst($workOrder['status']) }}
+                                            <span class="badge bg-{{ $jobOrder['status'] == 'completed' ? 'success' : ($jobOrder['status'] == 'cancelled' ? 'danger' : 'warning') }}">
+                                                {{ ucfirst($jobOrder['status']) }}
                                             </span>
                                         </td>
                                         <td>
                                             <div class="btn-group btn-group-sm">
-                                                <a href="{{ route('work-orders.show', $workOrder['id']) }}" class="btn btn-outline-danger" title="View Details">
+                                                <a href="{{ route('job-orders.show', $jobOrder['id']) }}" class="btn btn-outline-danger" title="View Details">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
-                                                <a href="{{ route('work-orders.edit', $workOrder['id']) }}" class="btn btn-outline-primary" title="Edit">
+                                                <a href="{{ route('job-orders.edit', $jobOrder['id']) }}" class="btn btn-outline-primary" title="Edit">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
-                                                <button type="button" class="btn btn-outline-danger" title="Delete" data-bs-toggle="modal" data-bs-target="#deleteJobOrderModal{{ $workOrder['id'] }}">
+                                                <button type="button" class="btn btn-outline-danger" title="Delete" data-bs-toggle="modal" data-bs-target="#deleteJobOrderModal{{ $jobOrder['id'] }}">
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                             </div>
@@ -66,7 +66,7 @@
                         <i class="fas fa-clipboard-check fa-3x text-muted mb-3"></i>
                         <h4>No Job Orders Found</h4>
                         <p class="text-muted">No job orders match your current filters.</p>
-                        <a href="{{ route('work-orders.create') }}" class="btn btn-danger">
+                        <a href="{{ route('job-orders.create') }}" class="btn btn-danger">
                             <i class="fas fa-plus me-1"></i> Create New Job Order
                         </a>
                     </div>
@@ -80,12 +80,12 @@
 @include('service_sections._workflow_timeline')
 
 <!-- Delete Confirmation Modals -->
-@foreach($sectionData as $workOrder)
-<div class="modal fade" id="deleteJobOrderModal{{ $workOrder['id'] }}" tabindex="-1" aria-labelledby="deleteJobOrderModalLabel{{ $workOrder['id'] }}" aria-hidden="true">
+@foreach($sectionData as $jobOrder)
+<div class="modal fade" id="deleteJobOrderModal{{ $jobOrder['id'] }}" tabindex="-1" aria-labelledby="deleteJobOrderModalLabel{{ $jobOrder['id'] }}" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title" id="deleteJobOrderModalLabel{{ $workOrder['id'] }}">
+                <h5 class="modal-title" id="deleteJobOrderModalLabel{{ $jobOrder['id'] }}">
                     <i class="fas fa-exclamation-triangle me-2"></i>Confirm Delete
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -102,10 +102,10 @@
                     <div class="card-body">
                         <h6 class="card-title text-danger">Job Order Details:</h6>
                         <ul class="list-unstyled mb-0">
-                            <li><strong>Date:</strong> {{ $workOrder['date']->format('M d, Y') }}</li>
-                            <li><strong>Customer:</strong> {{ $workOrder['customer']->first_name }} {{ $workOrder['customer']->last_name }}</li>
-                            <li><strong>Vehicle:</strong> {{ $workOrder['vehicle']->year }} {{ $workOrder['vehicle']->make }} {{ $workOrder['vehicle']->model }} ({{ $workOrder['vehicle']->license_plate }})</li>
-                            <li><strong>Status:</strong> <span class="badge bg-{{ $workOrder['status'] == 'completed' ? 'success' : ($workOrder['status'] == 'cancelled' ? 'danger' : 'warning') }}">{{ ucfirst($workOrder['status']) }}</span></li>
+                            <li><strong>Date:</strong> {{ $jobOrder['date']->format('M d, Y') }}</li>
+                            <li><strong>Customer:</strong> {{ $jobOrder['customer']->first_name }} {{ $jobOrder['customer']->last_name }}</li>
+                            <li><strong>Vehicle:</strong> {{ $jobOrder['vehicle']->year }} {{ $jobOrder['vehicle']->make }} {{ $jobOrder['vehicle']->model }} ({{ $jobOrder['vehicle']->license_plate }})</li>
+                            <li><strong>Status:</strong> <span class="badge bg-{{ $jobOrder['status'] == 'completed' ? 'success' : ($jobOrder['status'] == 'cancelled' ? 'danger' : 'warning') }}">{{ ucfirst($jobOrder['status']) }}</span></li>
                         </ul>
                     </div>
                 </div>
@@ -119,7 +119,7 @@
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i> Cancel
                 </button>
-                <form action="{{ route('work-orders.destroy', $workOrder['id']) }}" method="POST" class="d-inline">
+                <form action="{{ route('job-orders.destroy', $jobOrder['id']) }}" method="POST" class="d-inline">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="btn btn-danger">

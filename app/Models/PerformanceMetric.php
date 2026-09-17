@@ -32,7 +32,7 @@ class PerformanceMetric extends Model
         'score',
         'weight',
         'period',
-        'work_order_id',
+        'job_order_id',
         'appointment_id',
         'notes',
         'calculated_at',
@@ -117,9 +117,9 @@ class PerformanceMetric extends Model
      *
      * @return BelongsTo
      */
-    public function workOrder(): BelongsTo
+    public function jobOrder(): BelongsTo
     {
-        return $this->belongsTo(WorkOrder::class, 'work_order_id');
+        return $this->belongsTo(JobOrder::class, 'job_order_id');
     }
 
     /**

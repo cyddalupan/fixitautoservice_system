@@ -130,7 +130,7 @@
             <div class="card shadow">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-warning">Standards Expiring Soon (30 days)</h6>
-                    <a href="{{ route('compliance.standards') }}" class="btn btn-sm btn-outline-warning">View All</a>
+                    <a href="{{ route('compliance.standards.index') }}" class="btn btn-sm btn-outline-warning">View All</a>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -182,7 +182,7 @@
             <div class="card shadow">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-danger">Expired Standards</h6>
-                    <a href="{{ route('compliance.standards') }}?status=expired" class="btn btn-sm btn-outline-danger">View All</a>
+                    <a href="{{ route('compliance.standards.index') }}?status=expired" class="btn btn-sm btn-outline-danger">View All</a>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -289,7 +289,7 @@
             <div class="card shadow">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-info">Documents Needing Renewal (60 days)</h6>
-                    <a href="{{ route('compliance.documents') }}" class="btn btn-sm btn-outline-info">View All</a>
+                    <a href="{{ route('compliance.documents.index') }}" class="btn btn-sm btn-outline-info">View All</a>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -431,7 +431,7 @@
                             </a>
                         </div>
                         <div class="col-md-3 mb-3">
-                            <a href="{{ route('compliance.send-alerts') }}" class="btn btn-outline-warning btn-block" onclick="return confirm('Send compliance alerts to relevant personnel?')">
+                            <a href="{{ route('compliance.alerts') }}" class="btn btn-outline-warning btn-block" onclick="return confirm('Send compliance alerts to relevant personnel?')">
                                 <i class="fas fa-bell fa-2x mb-2"></i><br>
                                 Send Alerts
                             </a>
@@ -454,7 +454,7 @@
     // Send alerts confirmation
     function sendAlerts() {
         if (confirm('Send compliance alerts to relevant personnel?')) {
-            fetch('{{ route("compliance.send-alerts") }}')
+            fetch('{{ route("compliance.alerts") }}')
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {

@@ -3,13 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Support\Facades\Storage;
 
 class Customer extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'first_name', 'last_name', 'email', 'phone', 'address',
-        'facebook_profile', 'profile_picture', 'last_visit',
+        'city', 'state', 'zip_code', 'customer_type', 'segment',
+        'preferred_contact', 'facebook_profile', 'profile_picture', 'last_visit',
         'is_active', 'notes', 'source',
     ];
 
@@ -41,6 +45,19 @@ class Customer extends Model
     }
 
     public function notes()
+    {
+        return $this->hasMany(CustomerNote::class);
+    }
+
+    /**
+     * Relation alias for customer notes.
+     *
+     * NOTE: the `customers` table has a `notes` TEXT *column* (string), which
+     * shadows property access to the notes() relation ($customer->notes returns
+     * the column value, never the relation). Views/controllers that need the
+     * CustomerNote records must use $customer->customerNotes instead.
+     */
+    public function customerNotes()
     {
         return $this->hasMany(CustomerNote::class);
     }

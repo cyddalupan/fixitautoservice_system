@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\PerformanceMetric;
 use App\Models\User;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Appointment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,7 +20,7 @@ class PerformanceController extends Controller
      */
     public function index(Request $request)
     {
-        $query = PerformanceMetric::with(['technician', 'workOrder', 'appointment']);
+        $query = PerformanceMetric::with(['technician', 'jobOrder', 'appointment']);
 
         // Filter by technician
         if ($request->has('technician_id')) {
@@ -43,8 +43,8 @@ class PerformanceController extends Controller
         }
 
         // Filter by work order
-        if ($request->has('work_order_id')) {
-            $query->where('work_order_id', $request->work_order_id);
+        if ($request->has('job_order_id')) {
+            $query->where('job_order_id', $request->job_order_id);
         }
 
         $perPage = $request->get('per_page', 20);
@@ -61,12 +61,12 @@ class PerformanceController extends Controller
     public function create()
     {
         $technicians = User::where('role', 'technician')->where('is_active', true)->get();
-        $workOrders = WorkOrder::where('status', '!=', 'completed')->get();
+        $jobOrders = JobOrder::where('status', '!=', 'completed')->get();
         $appointments = Appointment::where('status', '!=', 'completed')->get();
         $metricTypes = PerformanceMetric::getMetricTypes();
         $periods = PerformanceMetric::getPeriods();
 
-        return view('performance.create', compact('technicians', 'workOrders', 'appointments', 'metricTypes', 'periods'));
+        return view('performance.create', compact('technicians', 'jobOrders', 'appointments', 'metricTypes', 'periods'));
     }
 
     /**
@@ -85,7 +85,7 @@ class PerformanceController extends Controller
             'target_value' => 'nullable|numeric|min:0',
             'weight' => 'nullable|numeric|min:0.1|max:5',
             'period' => 'required|in:' . implode(',', array_keys(PerformanceMetric::getPeriods())),
-            'work_order_id' => 'nullable|exists:work_orders,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
             'appointment_id' => 'nullable|exists:appointments,id',
             'notes' => 'nullable|string|max:1000',
         ]);
@@ -110,7 +110,7 @@ class PerformanceController extends Controller
      */
     public function show($id)
     {
-        $metric = PerformanceMetric::with(['technician', 'workOrder', 'appointment'])->findOrFail($id);
+        $metric = PerformanceMetric::with(['technician', 'jobOrder', 'appointment'])->findOrFail($id);
         
         return view('performance.show', compact('metric'));
     }
@@ -125,12 +125,12 @@ class PerformanceController extends Controller
     {
         $metric = PerformanceMetric::findOrFail($id);
         $technicians = User::where('role', 'technician')->where('is_active', true)->get();
-        $workOrders = WorkOrder::all();
+        $jobOrders = JobOrder::all();
         $appointments = Appointment::all();
         $metricTypes = PerformanceMetric::getMetricTypes();
         $periods = PerformanceMetric::getPeriods();
 
-        return view('performance.edit', compact('metric', 'technicians', 'workOrders', 'appointments', 'metricTypes', 'periods'));
+        return view('performance.edit', compact('metric', 'technicians', 'jobOrders', 'appointments', 'metricTypes', 'periods'));
     }
 
     /**
@@ -152,7 +152,7 @@ class PerformanceController extends Controller
             'target_value' => 'nullable|numeric|min:0',
             'weight' => 'nullable|numeric|min:0.1|max:5',
             'period' => 'required|in:' . implode(',', array_keys(PerformanceMetric::getPeriods())),
-            'work_order_id' => 'nullable|exists:work_orders,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
             'appointment_id' => 'nullable|exists:appointments,id',
             'notes' => 'nullable|string|max:1000',
         ]);
@@ -343,7 +343,7 @@ class PerformanceController extends Controller
      */
     public function export(Request $request)
     {
-        $query = PerformanceMetric::with(['technician', 'workOrder', 'appointment']);
+        $query = PerformanceMetric::with(['technician', 'jobOrder', 'appointment']);
 
         // Apply filters
         if ($request->has('technician_id')) {
@@ -399,7 +399,7 @@ class PerformanceController extends Controller
                     $metric->score,
                     $metric->weight,
                     $metric->period,
-                    $metric->workOrder->work_order_number ?? 'N/A',
+                    $metric->jobOrder->job_order_number ?? 'N/A',
                     $metric->appointment->appointment_number ?? 'N/A',
                     $metric->notes,
                     $metric->calculated_at,
@@ -485,21 +485,21 @@ class PerformanceController extends Controller
      */
     private function calculateEfficiencyMetric(User $technician, Carbon $date): ?float
     {
-        $workOrders = WorkOrder::where('technician_id', $technician->id)
+        $jobOrders = JobOrder::where('technician_id', $technician->id)
             ->whereDate('created_at', $date)
             ->where('status', 'completed')
             ->get();
 
-        if ($workOrders->isEmpty()) {
+        if ($jobOrders->isEmpty()) {
             return null;
         }
 
         $totalEstimatedHours = 0;
         $totalActualHours = 0;
 
-        foreach ($workOrders as $workOrder) {
-            $totalEstimatedHours += $workOrder->estimated_labor_hours ?? 0;
-            $totalActualHours += $workOrder->actual_labor_hours ?? 0;
+        foreach ($jobOrders as $jobOrder) {
+            $totalEstimatedHours += $jobOrder->estimated_labor_hours ?? 0;
+            $totalActualHours += $jobOrder->actual_labor_hours ?? 0;
         }
 
         if ($totalEstimatedHours == 0) {
@@ -526,24 +526,24 @@ class PerformanceController extends Controller
      */
     private function calculateQualityMetric(User $technician, Carbon $date): ?float
     {
-        $workOrders = WorkOrder::where('technician_id', $technician->id)
+        $jobOrders = JobOrder::where('technician_id', $technician->id)
             ->whereDate('created_at', $date)
             ->where('status', 'completed')
             ->get();
 
-        if ($workOrders->isEmpty()) {
+        if ($jobOrders->isEmpty()) {
             return null;
         }
 
-        $totalWorkOrders = $workOrders->count();
-        $reworkWorkOrders = $workOrders->where('has_rework', true)->count();
+        $totalJobOrders = $jobOrders->count();
+        $reworkJobOrders = $jobOrders->where('has_rework', true)->count();
 
-        if ($totalWorkOrders == 0) {
+        if ($totalJobOrders == 0) {
             return 100; // No work orders, assume perfect quality
         }
 
         // Quality = 100 - (Rework Rate * 100)
-        $reworkRate = ($reworkWorkOrders / $totalWorkOrders) * 100;
+        $reworkRate = ($reworkJobOrders / $totalJobOrders) * 100;
         $qualityScore = 100 - $reworkRate;
 
         return max($qualityScore, 0); // Ensure non-negative

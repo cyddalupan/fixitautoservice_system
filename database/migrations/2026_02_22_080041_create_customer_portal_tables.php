@@ -130,7 +130,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('customer_id')->constrained()->onDelete('cascade');
             $table->foreignId('appointment_id')->nullable()->constrained()->onDelete('set null');
-            $table->foreignId('work_order_id')->nullable()->constrained()->onDelete('set null');
+            $table->foreignId('job_order_id')->nullable()->constrained()->onDelete('set null');
             $table->integer('rating')->default(5); // 1-5 stars
             $table->text('review_text')->nullable();
             $table->json('review_ratings')->nullable(); // JSON for specific ratings (quality, timeliness, communication, etc.)
@@ -151,7 +151,7 @@ return new class extends Migration
             $table->integer('points');
             $table->text('description');
             $table->foreignId('related_appointment_id')->nullable()->constrained('appointments')->onDelete('set null');
-            $table->foreignId('related_work_order_id')->nullable()->constrained('work_orders')->onDelete('set null');
+            $table->foreignId('related_job_order_id')->nullable()->constrained('job_orders')->onDelete('set null');
             $table->integer('balance_after');
             $table->timestamps();
         });

@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\Models\Archive;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Estimate;
 use App\Models\Payment;
 use App\Models\Invoice;
@@ -17,8 +17,8 @@ class ArchiveService
      * Archive a record: save its data to the archives table,
      * then soft-delete the original.
      *
-     * @param WorkOrder|Estimate|Payment|Invoice $record
-     * @param string $sourceModule  'work_order', 'estimate', 'payment', 'invoice'
+     * @param JobOrder|Estimate|Payment|Invoice $record
+     * @param string $sourceModule  'job_order', 'estimate', 'payment', 'invoice'
      * @return Archive
      */
     public static function archive($record, string $sourceModule): Archive
@@ -92,7 +92,7 @@ class ArchiveService
         }
 
         // For customer module, ensure identifier is populated from name/id
-        if ($module === 'customer' && empty($data['work_order_number']) && empty($data['estimate_number']) && empty($data['invoice_number']) && empty($data['reference_number'])) {
+        if ($module === 'customer' && empty($data['job_order_number']) && empty($data['estimate_number']) && empty($data['invoice_number']) && empty($data['reference_number'])) {
             $data['customer_id_for_display'] = $data['id'] ?? $record->id;
         }
 

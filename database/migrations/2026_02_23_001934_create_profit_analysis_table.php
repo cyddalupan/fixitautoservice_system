@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('profit_analysis', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('work_order_id')->constrained('work_orders')->onDelete('cascade');
+            $table->foreignId('job_order_id')->constrained('job_orders')->onDelete('cascade');
             $table->foreignId('invoice_id')->nullable()->constrained('invoices')->onDelete('set null');
             $table->date('analysis_date');
             $table->decimal('total_revenue', 12, 2);
@@ -43,7 +43,7 @@ return new class extends Migration
             $table->softDeletes();
             
             $table->index('analysis_date');
-            $table->index('work_order_id');
+            $table->index('job_order_id');
             $table->index('invoice_id');
             $table->index('gross_profit_margin');
         });

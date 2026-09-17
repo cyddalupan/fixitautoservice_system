@@ -83,7 +83,7 @@ class TechnicianController extends Controller
 
         // Get parts requests
         $partsRequests = PartsRequest::where('technician_id', $user->id)
-            ->with(['workOrder', 'vehicle'])
+            ->with(['jobOrder', 'vehicle'])
             ->orderBy('requested_at', 'desc')
             ->limit(5)
             ->get();
@@ -96,7 +96,7 @@ class TechnicianController extends Controller
         ];
 
         // Get recent work orders assigned to this technician
-        $recentWorkOrders = $user->technicianServiceRecords()
+        $recentJobOrders = $user->technicianServiceRecords()
             ->with(['vehicle', 'customer'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
@@ -114,7 +114,7 @@ class TechnicianController extends Controller
             'trainingStats' => $trainingStats,
             'partsRequests' => $partsRequests,
             'partsRequestStats' => $partsRequestStats,
-            'recentWorkOrders' => $recentWorkOrders,
+            'recentJobOrders' => $recentJobOrders,
         ]);
     }
 

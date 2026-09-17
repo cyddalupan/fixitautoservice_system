@@ -32,7 +32,7 @@
                         'appointment' => ['name' => 'Appointment', 'icon' => 'fa-calendar-check'],
                         'inspection' => ['name' => 'Inspection', 'icon' => 'fa-search'],
                         'estimate' => ['name' => 'Estimate', 'icon' => 'fa-file-alt'],
-                        'work_order' => ['name' => 'Work Order', 'icon' => 'fa-tools'],
+                        'job_order' => ['name' => 'Work Order', 'icon' => 'fa-tools'],
                         'invoice' => ['name' => 'Invoice', 'icon' => 'fa-file-invoice'],
                         'payment' => ['name' => 'Payment', 'icon' => 'fa-receipt'],
                     ];
@@ -51,7 +51,7 @@
                         
                         // Always show these stages for full service
                         $stages[] = 'estimate';
-                        $stages[] = 'work_order';
+                        $stages[] = 'job_order';
                         $stages[] = 'invoice';
                         $stages[] = 'payment';
                     }

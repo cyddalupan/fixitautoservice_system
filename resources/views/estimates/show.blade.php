@@ -97,6 +97,33 @@ body{background:var(--ebg)}
 /* Responsive */
 @media print{.no-print{display:none!important}.card-premium{break-inside:avoid;box-shadow:none}.est-header{background:#1e293b!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
 @media(max-width:768px){.action-grid{grid-template-columns:1fr 1fr}.info-grid{grid-template-columns:1fr}}
+
+    /* ===== Dark mode overrides (auto-swept) ===== */
+    [data-theme="dark"] .cat-other {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .it-tbl th {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .status-draft {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .status-expired {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .tt-tbl .lbl {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
 </style>
 @endpush
 
@@ -169,7 +196,7 @@ body{background:var(--ebg)}
                         <a href="javascript:window.print()" class="btn btn-outline-secondary"><i class="fas fa-print"></i> Print</a>
                         <a href="{{ route('estimates.edit', $estimate) }}" class="btn btn-outline-warning"><i class="fas fa-copy"></i> Duplicate</a>
                         @if($estimate->status === 'approved')
-                        <form method="POST" action="{{ route('estimates.convert-to-work-order', $estimate) }}" style="display:inline" class="d-grid">
+                        <form method="POST" action="{{ route('estimates.convert-to-job-order', $estimate) }}" style="display:inline" class="d-grid">
                             @csrf
                             <button type="submit" class="btn btn-success"><i class="fas fa-wrench"></i> Work Order</button>
                         </form>
@@ -381,15 +408,15 @@ body{background:var(--ebg)}
             </div>
 
             {{-- LINKS --}}
-            @if($estimate->appointment_id || $estimate->workOrder)
+            @if($estimate->appointment_id || $estimate->jobOrder)
             <div class="card-premium">
                 <div class="ch"><h6><i class="fas fa-link"></i> Related Records</h6></div>
                 <div class="cb">
                     @if($estimate->appointment_id)
                     <a href="{{ route('appointments.show', $estimate->appointment_id) }}" class="btn btn-outline-primary btn-sm w-100 mb-2"><i class="fas fa-calendar-check me-1"></i> View Appointment</a>
                     @endif
-                    @if($estimate->workOrder)
-                    <a href="{{ route('work-orders.show', $estimate->workOrder) }}" class="btn btn-outline-success btn-sm w-100"><i class="fas fa-wrench me-1"></i> View Work Order</a>
+                    @if($estimate->jobOrder)
+                    <a href="{{ route('job-orders.show', $estimate->jobOrder) }}" class="btn btn-outline-success btn-sm w-100"><i class="fas fa-wrench me-1"></i> View Work Order</a>
                     @endif
                 </div>
             </div>

@@ -107,7 +107,7 @@ class ReportSetting extends Model
     {
         return match($reportType) {
             'daily_activity' => [
-                'date', 'appointments', 'work_orders', 'invoices', 
+                'date', 'appointments', 'job_orders', 'invoices', 
                 'revenue', 'payments', 'new_customers'
             ],
             'monthly_performance' => [

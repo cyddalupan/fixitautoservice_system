@@ -46,10 +46,10 @@ class ComplianceController extends Controller
             ->get();
         
         // Get compliance documents needing renewal
-        $documentsNeedingRenewal = ComplianceDocument::where('expiry_date', '<=', now()->addDays(60))
-            ->where('expiry_date', '>', now())
+        $documentsNeedingRenewal = ComplianceDocument::where('expiration_date', '<=', now()->addDays(60))
+            ->where('expiration_date', '>', now())
             ->with(['standard', 'uploadedBy'])
-            ->orderBy('expiry_date', 'asc')
+            ->orderBy('expiration_date', 'asc')
             ->limit(10)
             ->get();
         
@@ -234,20 +234,20 @@ class ComplianceController extends Controller
         if ($request->has('status')) {
             switch ($request->status) {
                 case 'active':
-                    $query->where('expiry_date', '>', now())
-                          ->orWhereNull('expiry_date');
+                    $query->where('expiration_date', '>', now())
+                          ->orWhereNull('expiration_date');
                     break;
                 case 'expired':
-                    $query->where('expiry_date', '<', now());
+                    $query->where('expiration_date', '<', now());
                     break;
                 case 'expiring':
-                    $query->where('expiry_date', '<=', now()->addDays(30))
-                          ->where('expiry_date', '>', now());
+                    $query->where('expiration_date', '<=', now()->addDays(30))
+                          ->where('expiration_date', '>', now());
                     break;
             }
         }
         
-        $documents = $query->orderBy('expiry_date', 'asc')->paginate(20);
+        $documents = $query->orderBy('expiration_date', 'asc')->paginate(20);
         
         $standards = ComplianceStandard::active()->get();
         $documentTypes = $this->getDocumentTypes();
@@ -278,7 +278,7 @@ class ComplianceController extends Controller
             'description' => 'nullable|string',
             'file' => 'required|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:10240',
             'issue_date' => 'required|date',
-            'expiry_date' => 'nullable|date|after:issue_date',
+            'expiration_date' => 'nullable|date|after:issue_date',
             'version' => 'nullable|string|max:50'
         ]);
         
@@ -337,7 +337,7 @@ class ComplianceController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'issue_date' => 'required|date',
-            'expiry_date' => 'nullable|date|after:issue_date',
+            'expiration_date' => 'nullable|date|after:issue_date',
             'version' => 'nullable|string|max:50'
         ]);
         
@@ -443,8 +443,8 @@ class ComplianceController extends Controller
             ->get();
         
         // Get documents expiring in next 30 days
-        $expiringDocuments = ComplianceDocument::where('expiry_date', '<=', now()->addDays(30))
-            ->where('expiry_date', '>', now())
+        $expiringDocuments = ComplianceDocument::where('expiration_date', '<=', now()->addDays(30))
+            ->where('expiration_date', '>', now())
             ->get();
         
         // Get overdue corrective actions
@@ -484,9 +484,9 @@ class ComplianceController extends Controller
         // Documents metrics
         $documentsMetrics = ComplianceDocument::select(
             DB::raw('COUNT(*) as total_documents'),
-            DB::raw('SUM(CASE WHEN expiry_date IS NULL OR expiry_date > NOW() THEN 1 ELSE 0 END) as active_documents'),
-            DB::raw('SUM(CASE WHEN expiry_date <= NOW() THEN 1 ELSE 0 END) as expired_documents'),
-            DB::raw('SUM(CASE WHEN expiry_date <= DATE_ADD(NOW(), INTERVAL 30 DAY) AND expiry_date > NOW() THEN 1 ELSE 0 END) as expiring_documents')
+            DB::raw('SUM(CASE WHEN expiration_date IS NULL OR expiration_date > NOW() THEN 1 ELSE 0 END) as active_documents'),
+            DB::raw('SUM(CASE WHEN expiration_date <= NOW() THEN 1 ELSE 0 END) as expired_documents'),
+            DB::raw('SUM(CASE WHEN expiration_date <= DATE_ADD(NOW(), INTERVAL 30 DAY) AND expiration_date > NOW() THEN 1 ELSE 0 END) as expiring_documents')
         )->first();
         
         // Compliance audit metrics
@@ -614,16 +614,28 @@ class ComplianceController extends Controller
             ->orderBy('audit_day')
             ->get();
         
-        // NCR summary
-        $ncrSummary = NonConformanceReport::whereBetween('reported_date', [$startDate, $endDate])
-            ->select(
-                'severity',
-                DB::raw('COUNT(*) as total'),
-                DB::raw('SUM(CASE WHEN status = "open" THEN 1 ELSE 0 END) as open'),
-                DB::raw('AVG(daysOpen()) as avg_days_open')
-            )
-            ->groupBy('severity')
+        // NCR summary (avg days open computed in PHP — daysOpen() is a model method, not a SQL function)
+        $ncrRows = NonConformanceReport::whereBetween('reported_date', [$startDate, $endDate])
+            ->select('severity', 'status', 'reported_date', 'resolved_date')
             ->get();
+        $ncrSummary = $ncrRows->groupBy('severity')->map(function ($rows) {
+            $open = $rows->where('status', 'open')->count();
+            $avgDays = $rows->map(function ($ncr) {
+                if ($ncr->status === 'open' && $ncr->reported_date) {
+                    return $ncr->reported_date->diffInDays(now());
+                }
+                if ($ncr->resolved_date && $ncr->reported_date) {
+                    return $ncr->reported_date->diffInDays($ncr->resolved_date);
+                }
+                return null;
+            })->filter()->avg();
+            return [
+                'severity' => $rows->first()->severity,
+                'total' => $rows->count(),
+                'open' => $open,
+                'avg_days_open' => round($avgDays ?? 0, 1),
+            ];
+        })->values();
         
         return [
             'period' => [
@@ -711,7 +723,7 @@ class ComplianceController extends Controller
         
         $documents = ComplianceDocument::with(['standard', 'uploadedBy'])
             ->whereBetween('issue_date', [$startDate, $endDate])
-            ->orderBy('expiry_date', 'asc')
+            ->orderBy('expiration_date', 'asc')
             ->get();
         
         return [
@@ -724,10 +736,10 @@ class ComplianceController extends Controller
                 'total_documents' => $documents->count(),
                 'by_type' => $documents->groupBy('document_type')->map->count(),
                 'by_status' => [
-                    'active' => $documents->where('expiry_date', '>', now())->count(),
-                    'expired' => $documents->where('expiry_date', '<=', now())->count(),
-                    'expiring' => $documents->where('expiry_date', '<=', now()->addDays(30))
-                                           ->where('expiry_date', '>', now())
+                    'active' => $documents->where('expiration_date', '>', now())->count(),
+                    'expired' => $documents->where('expiration_date', '<=', now())->count(),
+                    'expiring' => $documents->where('expiration_date', '<=', now()->addDays(30))
+                                           ->where('expiration_date', '>', now())
                                            ->count()
                 ]
             ]
@@ -774,7 +786,7 @@ class ComplianceController extends Controller
             $query->where('standard_id', $request->standard_id);
         }
         
-        $documents = $query->orderBy('expiry_date', 'asc')->get();
+        $documents = $query->orderBy('expiration_date', 'asc')->get();
         
         return $documents->map(function($document) {
             return [
@@ -783,7 +795,7 @@ class ComplianceController extends Controller
                 'Standard' => $document->standard->code ?? 'N/A',
                 'Document Type' => $document->document_type,
                 'Issue Date' => $document->issue_date->format('Y-m-d'),
-                'Expiry Date' => $document->expiry_date ? $document->expiry_date->format('Y-m-d') : 'N/A',
+                'Expiry Date' => $document->expiration_date ? $document->expiration_date->format('Y-m-d') : 'N/A',
                 'Status' => $document->isActive() ? 'Active' : ($document->isExpired() ? 'Expired' : 'Expiring'),
                 'Days to Expiry' => $document->daysToExpiry(),
                 'File Name' => $document->file_name,

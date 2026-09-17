@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RetentionAnalytics extends Model
 {
+    protected $table = 'retention_analytics';
+
     use HasFactory;
 
     /**

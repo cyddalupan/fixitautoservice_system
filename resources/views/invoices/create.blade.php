@@ -165,15 +165,15 @@
                     <div class="row mb-4">
                         <div class="col-md-6">
                             <label class="form-label">Work Order</label>
-                            <select class="form-select select2" name="work_order_id" id="workOrderSelect">
+                            <select class="form-select select2" name="job_order_id" id="jobOrderSelect">
                                 <option value="">Select Work Order</option>
-                                @foreach($workOrders as $workOrder)
-                                    <option value="{{ $workOrder->id }}"
-                                            {{ $selectedWorkOrder && $selectedWorkOrder->id == $workOrder->id ? 'selected' : '' }}
-                                            data-customer-id="{{ $workOrder->customer_id }}"
-                                            data-vehicle-id="{{ $workOrder->vehicle_id }}">
-                                        WO-{{ str_pad($workOrder->id, 6, '0', STR_PAD_LEFT) }} - 
-                                        {{ $workOrder->customer->first_name }} {{ $workOrder->customer->last_name }}
+                                @foreach($jobOrders as $jobOrder)
+                                    <option value="{{ $jobOrder->id }}"
+                                            {{ $selectedJobOrder && $selectedJobOrder->id == $jobOrder->id ? 'selected' : '' }}
+                                            data-customer-id="{{ $jobOrder->customer_id }}"
+                                            data-vehicle-id="{{ $jobOrder->vehicle_id }}">
+                                        WO-{{ str_pad($jobOrder->id, 6, '0', STR_PAD_LEFT) }} - 
+                                        {{ $jobOrder->customer->first_name }} {{ $jobOrder->customer->last_name }}
                                     </option>
                                 @endforeach
                             </select>
@@ -338,7 +338,7 @@
                     <a href="{{ route('vehicles.create') }}" class="btn btn-outline-primary">
                         <i class="fas fa-car me-2"></i> Add New Vehicle
                     </a>
-                    <a href="{{ route('work-orders.create') }}" class="btn btn-outline-primary">
+                    <a href="{{ route('job-orders.create') }}" class="btn btn-outline-primary">
                         <i class="fas fa-wrench me-2"></i> Create Work Order
                     </a>
                 </div>
@@ -458,6 +458,21 @@
     
     .select2-container--default .select2-selection--single .select2-selection__arrow {
         height: 36px;
+    }
+
+    /* ===== Dark mode overrides ===== */
+    [data-theme="dark"] .invoice-items-table,
+    [data-theme="dark"] .invoice-items-table th,
+    [data-theme="dark"] .invoice-items-table td {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .invoice-items-table input,
+    [data-theme="dark"] .invoice-items-table select {
+        background-color: var(--dark-input-bg) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
     }
 </style>
 
@@ -666,7 +681,7 @@
             
             const customerSelect = document.getElementById('customerSelect');
             const vehicleSelect = document.getElementById('vehicleSelect');
-            const workOrderSelect = document.getElementById('workOrderSelect');
+            const jobOrderSelect = document.getElementById('jobOrderSelect');
             
             if (customerSelect) {
                 console.log('Found customer select element');
@@ -738,18 +753,18 @@
                     }
                     
                     // Filter work orders for this customer
-                    if (workOrderSelect) {
+                    if (jobOrderSelect) {
                         console.log('Filtering work orders for customer:', customerId);
                         
                         // First, enable all options
-                        Array.from(workOrderSelect.options).forEach(option => {
+                        Array.from(jobOrderSelect.options).forEach(option => {
                             option.disabled = false;
                             option.style.display = 'block';
                         });
                         
                         // If a customer is selected, disable options that don't match
                         if (customerId) {
-                            Array.from(workOrderSelect.options).forEach(option => {
+                            Array.from(jobOrderSelect.options).forEach(option => {
                                 if (option.value === '') return; // Keep "Select Work Order" enabled
                                 
                                 const customerMatch = option.dataset.customerId === customerId;
@@ -761,14 +776,14 @@
                                     // If this option was selected but doesn't match, clear selection
                                     if (option.selected) {
                                         option.selected = false;
-                                        workOrderSelect.value = '';
+                                        jobOrderSelect.value = '';
                                     }
                                 }
                             });
                         }
                         
                         // Update Select2
-                        $(workOrderSelect).trigger('change.select2');
+                        $(jobOrderSelect).trigger('change.select2');
                         console.log('Work order dropdown filtered');
                     }
                 });
@@ -785,10 +800,10 @@
             }
             
             // Work order selection event
-            if (workOrderSelect) {
+            if (jobOrderSelect) {
                 console.log('Found work order select element');
                 
-                $(workOrderSelect).on('change.select2', function() {
+                $(jobOrderSelect).on('change.select2', function() {
                     const selectedOption = this.options[this.selectedIndex];
                     console.log('Work order selected:', selectedOption.value);
                     

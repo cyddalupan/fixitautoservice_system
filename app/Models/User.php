@@ -325,9 +325,17 @@ class User extends Authenticatable
     /**
      * Work orders where this user is the assigned technician.
      */
-    public function workOrders()
+    public function jobOrders()
     {
-        return $this->hasMany(WorkOrder::class, 'technician_id');
+        return $this->hasMany(JobOrder::class, 'technician_id');
+    }
+
+    /**
+     * Quality checks performed by this technician.
+     */
+    public function jobOrderQualityChecks()
+    {
+        return $this->hasMany(JobOrderQualityCheck::class, 'technician_id');
     }
 
     /**

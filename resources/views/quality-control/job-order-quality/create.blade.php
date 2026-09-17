@@ -15,7 +15,7 @@
                 <p class="text-muted mb-0">Create a new quality check for a work order</p>
             </div>
             <div class="col-auto">
-                <a href="{{ route('work-order-quality.index') }}" class="btn btn-outline-secondary">
+                <a href="{{ route('quality-control.job-order-quality.index') }}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left me-1"></i> Back to List
                 </a>
             </div>
@@ -26,7 +26,7 @@
         <div class="col-lg-8">
             <div class="card">
                 <div class="card-body">
-                    <form method="POST" action="{{ route('work-order-quality.store') }}" enctype="multipart/form-data" id="quality-check-form">
+                    <form method="POST" action="{{ route('quality-control.job-order-quality.store') }}" enctype="multipart/form-data" id="quality-check-form">
                         @csrf
 
                         <!-- Work Order Selection -->
@@ -37,21 +37,21 @@
                             </h5>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <label for="work_order_id" class="form-label">Work Order *</label>
-                                    <select name="work_order_id" id="work_order_id" class="form-select" required>
+                                    <label for="job_order_id" class="form-label">Work Order *</label>
+                                    <select name="job_order_id" id="job_order_id" class="form-select" required>
                                         <option value="">Select Work Order</option>
-                                        @foreach($workOrders as $workOrder)
-                                            <option value="{{ $workOrder->id }}" 
-                                                    {{ old('work_order_id') == $workOrder->id ? 'selected' : '' }}
-                                                    data-customer="{{ $workOrder->customer->name ?? 'Unknown' }}"
-                                                    data-vehicle="{{ $workOrder->vehicle->make ?? 'Unknown' }} {{ $workOrder->vehicle->model ?? '' }}"
-                                                    data-technician="{{ $workOrder->technician->name ?? 'Unknown' }}">
-                                                WO-{{ str_pad($workOrder->id, 6, '0', STR_PAD_LEFT) }} - 
-                                                {{ $workOrder->customer->name ?? 'Unknown Customer' }}
+                                        @foreach($jobOrders as $jobOrder)
+                                            <option value="{{ $jobOrder->id }}" 
+                                                    {{ old('job_order_id') == $jobOrder->id ? 'selected' : '' }}
+                                                    data-customer="{{ $jobOrder->customer->name ?? 'Unknown' }}"
+                                                    data-vehicle="{{ $jobOrder->vehicle->make ?? 'Unknown' }} {{ $jobOrder->vehicle->model ?? '' }}"
+                                                    data-technician="{{ $jobOrder->technician->name ?? 'Unknown' }}">
+                                                WO-{{ str_pad($jobOrder->id, 6, '0', STR_PAD_LEFT) }} - 
+                                                {{ $jobOrder->customer->name ?? 'Unknown Customer' }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    @error('work_order_id')
+                                    @error('job_order_id')
                                         <div class="text-danger small mt-1">{{ $message }}</div>
                                     @enderror
                                 </div>
@@ -59,7 +59,7 @@
                                     <div class="card bg-light">
                                         <div class="card-body">
                                             <h6 class="card-title">Selected Work Order Details</h6>
-                                            <div id="work-order-details">
+                                            <div id="job-order-details">
                                                 <p class="text-muted mb-1">Select a work order to see details</p>
                                             </div>
                                         </div>
@@ -249,9 +249,9 @@
 @push('scripts')
 <script>
     // Work Order Details
-    document.getElementById('work_order_id').addEventListener('change', function() {
+    document.getElementById('job_order_id').addEventListener('change', function() {
         const selectedOption = this.options[this.selectedIndex];
-        const detailsDiv = document.getElementById('work-order-details');
+        const detailsDiv = document.getElementById('job-order-details');
         
         if (selectedOption.value) {
             const customer = selectedOption.getAttribute('data-customer');
@@ -468,8 +468,8 @@
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
         // Trigger change events if there are old values
-        if (document.getElementById('work_order_id').value) {
-            document.getElementById('work_order_id').dispatchEvent(new Event('change'));
+        if (document.getElementById('job_order_id').value) {
+            document.getElementById('job_order_id').dispatchEvent(new Event('change'));
         }
         if (document.getElementById('quality_check_id').value) {
             document.getElementById('quality_check_id').dispatchEvent(new Event('change'));

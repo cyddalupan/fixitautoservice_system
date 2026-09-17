@@ -5,6 +5,21 @@
 @push('styles')
 <style>
 .module-invoices { --module-primary: #10b981; --module-primary-dark: #059669; --module-primary-light: #d1fae5; --module-primary-subtle: #ecfdf5; }
+
+
+    /* ===== Dark mode overrides ===== */
+    [data-theme="dark"] .stat-card {
+        background-color: var(--dark-card) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .stat-card-icon {
+        background: var(--dark-hover) !important;
+        color: var(--dark-text) !important;
+    }
+    [data-theme="dark"] .stat-card-info h3,
+    [data-theme="dark"] .stat-card-info p {
+        color: var(--dark-text) !important;
+    }
 </style>
 @endpush
 
@@ -180,9 +195,9 @@
                                     <small style="color:#94a3b8;font-size:0.75rem;">{{ $invoice->customer->phone ?? '' }}</small>
                                 </td>
                                 <td>
-                                    @if($invoice->workOrder)
-                                        <a href="{{ route('work-orders.show', $invoice->workOrder->id) }}">
-                                            {{ $invoice->workOrder->work_order_number }}
+                                    @if($invoice->jobOrder)
+                                        <a href="{{ route('job-orders.show', $invoice->jobOrder->id) }}">
+                                            {{ $invoice->jobOrder->job_order_number }}
                                         </a>
                                     @else
                                         <span style="color:#94a3b8;">N/A</span>

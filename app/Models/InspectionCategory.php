@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class InspectionCategory extends Model
 {
+    protected $table = 'inspection_categories';
+
     use HasFactory, SoftDeletes;
 
     protected $fillable = [

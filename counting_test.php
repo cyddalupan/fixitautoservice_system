@@ -27,7 +27,7 @@ $appts = App\Models\Appointment::where('appointment_date', '>=', $recent)
 $scheduledOnly = 0;
 echo "SCHEDULED/CONFIRMED APPOINTMENTS:\n";
 foreach ($appts as $a) {
-    $hasWO = WorkOrder::where('appointment_id', $a->id)->exists();
+    $hasWO = JobOrder::where('appointment_id', $a->id)->exists();
     $hasEst = Estimate::where('appointment_id', $a->id)->exists();
     $progressed = $hasWO || $hasEst;
     if (!$progressed) {
@@ -40,20 +40,20 @@ foreach ($appts as $a) {
 echo "A. Appointments total: $scheduledOnly\n\n";
 
 // B. Repair Orders: work orders NOT linked to a scheduled appointment
-$allWOs = WorkOrder::where('created_at', '>=', $recent)->get();
+$allWOs = JobOrder::where('created_at', '>=', $recent)->get();
 $repairOrders = 0;
 echo "REPAIR ORDERS:\n";
 foreach ($allWOs as $wo) {
     if (!$wo->appointment_id) {
-        echo "  [{$wo->id}] {$wo->work_order_number} - standalone (no appointment) = COUNTED\n";
+        echo "  [{$wo->id}] {$wo->job_order_number} - standalone (no appointment) = COUNTED\n";
         $repairOrders++;
     } else {
         $linkedAppt = App\Models\Appointment::find($wo->appointment_id);
         if ($linkedAppt && in_array($linkedAppt->appointment_status, ['scheduled','confirmed'])) {
-            echo "  [{$wo->id}] {$wo->work_order_number} - linked to scheduled appt [{$linkedAppt->id}] = SKIP (part of appointment)\n";
+            echo "  [{$wo->id}] {$wo->job_order_number} - linked to scheduled appt [{$linkedAppt->id}] = SKIP (part of appointment)\n";
         } else {
             $status = $linkedAppt ? $linkedAppt->appointment_status : 'deleted';
-            echo "  [{$wo->id}] {$wo->work_order_number} - linked to non-scheduled appt [{$wo->appointment_id}] status={$status} = COUNTED\n";
+            echo "  [{$wo->id}] {$wo->job_order_number} - linked to non-scheduled appt [{$wo->appointment_id}] status={$status} = COUNTED\n";
             $repairOrders++;
         }
     }

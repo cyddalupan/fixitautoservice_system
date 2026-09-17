@@ -34,7 +34,7 @@ return new class extends Migration
             $table->boolean('effectiveness_verified')->default(false);
             $table->date('effectiveness_check_date')->nullable();
             $table->text('effectiveness_notes')->nullable();
-            $table->foreignId('created_by')->constrained('users')->onDelete('set null');
+            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
             $table->softDeletes();
             

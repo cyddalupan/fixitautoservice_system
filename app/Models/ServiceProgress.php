@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class ServiceProgress extends Model
 {
+    protected $table = 'service_progress';
+
     use HasFactory;
 
     /**
@@ -30,9 +32,9 @@ class ServiceProgress extends Model
         'has_estimate',
         'estimate_id',
         'estimate_created_at',
-        'has_work_order',
-        'work_order_id',
-        'work_order_created_at',
+        'has_job_order',
+        'job_order_id',
+        'job_order_created_at',
         'has_invoice',
         'invoice_id',
         'invoice_created_at',
@@ -58,8 +60,8 @@ class ServiceProgress extends Model
         'inspection_created_at' => 'datetime',
         'has_estimate' => 'boolean',
         'estimate_created_at' => 'datetime',
-        'has_work_order' => 'boolean',
-        'work_order_created_at' => 'datetime',
+        'has_job_order' => 'boolean',
+        'job_order_created_at' => 'datetime',
         'has_invoice' => 'boolean',
         'invoice_created_at' => 'datetime',
         'has_payment' => 'boolean',
@@ -119,9 +121,9 @@ class ServiceProgress extends Model
     /**
      * Get the work order associated with the service progress.
      */
-    public function workOrder(): BelongsTo
+    public function jobOrder(): BelongsTo
     {
-        return $this->belongsTo(WorkOrder::class);
+        return $this->belongsTo(JobOrder::class);
     }
 
     /**
@@ -236,9 +238,9 @@ class ServiceProgress extends Model
             $stages[] = 'inspection';
         }
         
-        // Always include estimate, work_order, invoice, payment for full service
+        // Always include estimate, job_order, invoice, payment for full service
         $stages[] = 'estimate';
-        $stages[] = 'work_order';
+        $stages[] = 'job_order';
         $stages[] = 'invoice';
         $stages[] = 'payment';
         

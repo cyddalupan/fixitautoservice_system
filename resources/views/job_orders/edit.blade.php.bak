@@ -1,21 +1,21 @@
 @extends('layouts.app')
 
-@section('title', 'Edit Work Order ' . $workOrder->work_order_number . ' - Fix-It Auto Services')
+@section('title', 'Edit Work Order ' . $jobOrder->job_order_number . ' - Fix-It Auto Services')
 
 @section('content')
 <div class="page-header">
     <div class="d-flex justify-content-between align-items-center">
         <div>
             <h1 class="h3 mb-0">
-                <i class="fas fa-edit me-2"></i>Edit Work Order: {{ $workOrder->work_order_number }}
+                <i class="fas fa-edit me-2"></i>Edit Work Order: {{ $jobOrder->job_order_number }}
             </h1>
             <p class="text-muted mb-0">
-                {{ $workOrder->customer->first_name ?? 'Customer' }} {{ $workOrder->customer->last_name ?? '' }} - 
-                {{ $workOrder->vehicle->make ?? '' }} {{ $workOrder->vehicle->model ?? '' }}
+                {{ $jobOrder->customer->first_name ?? 'Customer' }} {{ $jobOrder->customer->last_name ?? '' }} - 
+                {{ $jobOrder->vehicle->make ?? '' }} {{ $jobOrder->vehicle->model ?? '' }}
             </p>
         </div>
         <div>
-            <a href="{{ route('work-orders.show', $workOrder) }}" class="btn btn-outline-secondary">
+            <a href="{{ route('job-orders.show', $jobOrder) }}" class="btn btn-outline-secondary">
                 <i class="fas fa-times me-1"></i> Cancel
             </a>
         </div>
@@ -29,7 +29,7 @@
                 <h5 class="mb-0">Work Order Details</h5>
             </div>
             <div class="card-body">
-                <form action="{{ route('work-orders.update', $workOrder) }}" method="POST">
+                <form action="{{ route('job-orders.update', $jobOrder) }}" method="POST">
                     @csrf
                     @method('PUT')
                     
@@ -41,7 +41,7 @@
                                 <select name="customer_id" id="customer_id" class="form-select" required>
                                     <option value="">Select Customer</option>
                                     @foreach($customers as $customer)
-                                        <option value="{{ $customer->id }}" {{ $workOrder->customer_id == $customer->id ? 'selected' : '' }}>
+                                        <option value="{{ $customer->id }}" {{ $jobOrder->customer_id == $customer->id ? 'selected' : '' }}>
                                             {{ $customer->first_name }} {{ $customer->last_name }} - {{ $customer->phone }}
                                         </option>
                                     @endforeach
@@ -56,7 +56,7 @@
                                 <select name="vehicle_id" id="vehicle_id" class="form-select" required>
                                     <option value="">Select Vehicle</option>
                                     @foreach($vehicles as $vehicle)
-                                        <option value="{{ $vehicle->id }}" {{ $workOrder->vehicle_id == $vehicle->id ? 'selected' : '' }}>
+                                        <option value="{{ $vehicle->id }}" {{ $jobOrder->vehicle_id == $vehicle->id ? 'selected' : '' }}>
                                             {{ $vehicle->make }} {{ $vehicle->model }} - {{ $vehicle->license_plate }}
                                         </option>
                                     @endforeach
@@ -69,23 +69,23 @@
                         <!-- Work Order Date -->
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label for="work_order_date" class="form-label">Work Order Date *</label>
-                                <input type="date" name="work_order_date" id="work_order_date" 
-                                       class="form-control" value="{{ old('work_order_date', $workOrder->work_order_date ? $workOrder->work_order_date->format('Y-m-d') : '') }}" required>
+                                <label for="job_order_date" class="form-label">Work Order Date *</label>
+                                <input type="date" name="job_order_date" id="job_order_date" 
+                                       class="form-control" value="{{ old('job_order_date', $jobOrder->job_order_date ? $jobOrder->job_order_date->format('Y-m-d') : '') }}" required>
                             </div>
                         </div>
                         
                         <!-- Status -->
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label for="work_order_status" class="form-label">Status *</label>
-                                <select name="work_order_status" id="work_order_status" class="form-select" required>
-                                    <option value="pending" {{ $workOrder->work_order_status == 'pending' ? 'selected' : '' }}>Pending</option>
-                                    <option value="repairing" {{ $workOrder->work_order_status == 'repairing' ? 'selected' : '' }}>Repairing</option>
-                                    <option value="waiting_parts" {{ $workOrder->work_order_status == 'waiting_parts' ? 'selected' : '' }}>Waiting Parts</option>
-                                    <option value="completed" {{ $workOrder->work_order_status == 'completed' ? 'selected' : '' }}>Completed</option>
-                                    <option value="released" {{ $workOrder->work_order_status == 'released' ? 'selected' : '' }}>Released</option>
-                                    <option value="cancelled" {{ $workOrder->work_order_status == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                                <label for="job_order_status" class="form-label">Status *</label>
+                                <select name="job_order_status" id="job_order_status" class="form-select" required>
+                                    <option value="pending" {{ $jobOrder->job_order_status == 'pending' ? 'selected' : '' }}>Pending</option>
+                                    <option value="repairing" {{ $jobOrder->job_order_status == 'repairing' ? 'selected' : '' }}>Repairing</option>
+                                    <option value="waiting_parts" {{ $jobOrder->job_order_status == 'waiting_parts' ? 'selected' : '' }}>Waiting Parts</option>
+                                    <option value="completed" {{ $jobOrder->job_order_status == 'completed' ? 'selected' : '' }}>Completed</option>
+                                    <option value="released" {{ $jobOrder->job_order_status == 'released' ? 'selected' : '' }}>Released</option>
+                                    <option value="cancelled" {{ $jobOrder->job_order_status == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                                 </select>
                             </div>
                         </div>
@@ -95,9 +95,9 @@
                             <div class="mb-3">
                                 <label for="priority" class="form-label">Priority *</label>
                                 <select name="priority" id="priority" class="form-select" required>
-                                    <option value="low" {{ $workOrder->priority == 'low' ? 'selected' : '' }}>Low</option>
-                                    <option value="normal" {{ $workOrder->priority == 'normal' ? 'selected' : '' }}>Normal</option>
-                                    <option value="high" {{ $workOrder->priority == 'high' ? 'selected' : '' }}>High</option>
+                                    <option value="low" {{ $jobOrder->priority == 'low' ? 'selected' : '' }}>Low</option>
+                                    <option value="normal" {{ $jobOrder->priority == 'normal' ? 'selected' : '' }}>Normal</option>
+                                    <option value="high" {{ $jobOrder->priority == 'high' ? 'selected' : '' }}>High</option>
                                 </select>
                             </div>
                         </div>
@@ -111,7 +111,7 @@
                                 <select name="technician_id" id="technician_id" class="form-select">
                                     <option value="">Select Technician</option>
                                     @foreach($technicians as $technician)
-                                        <option value="{{ $technician->id }}" {{ $workOrder->technician_id == $technician->id ? 'selected' : '' }}>
+                                        <option value="{{ $technician->id }}" {{ $jobOrder->technician_id == $technician->id ? 'selected' : '' }}>
                                             {{ $technician->name }}
                                         </option>
                                     @endforeach
@@ -126,7 +126,7 @@
                                 <select name="service_advisor_id" id="service_advisor_id" class="form-select">
                                     <option value="">Select Service Advisor</option>
                                     @foreach($advisors as $advisor)
-                                        <option value="{{ $advisor->id }}" {{ $workOrder->service_advisor_id == $advisor->id ? 'selected' : '' }}>
+                                        <option value="{{ $advisor->id }}" {{ $jobOrder->service_advisor_id == $advisor->id ? 'selected' : '' }}>
                                             {{ $advisor->name }}
                                         </option>
                                     @endforeach
@@ -138,18 +138,18 @@
                     <!-- Description -->
                     <div class="mb-3">
                         <label for="description" class="form-label">Description</label>
-                        <textarea name="description" id="description" class="form-control" rows="3">{{ old('description', $workOrder->description) }}</textarea>
+                        <textarea name="description" id="description" class="form-control" rows="3">{{ old('description', $jobOrder->description) }}</textarea>
                     </div>
                     
                     <!-- Notes -->
                     <div class="mb-3">
                         <label for="notes" class="form-label">Internal Notes</label>
-                        <textarea name="notes" id="notes" class="form-control" rows="3">{{ old('notes', $workOrder->notes) }}</textarea>
+                        <textarea name="notes" id="notes" class="form-control" rows="3">{{ old('notes', $jobOrder->notes) }}</textarea>
                     </div>
                     
                     <!-- Submit Buttons -->
                     <div class="d-flex justify-content-end">
-                        <a href="{{ route('work-orders.show', $workOrder) }}" class="btn btn-outline-secondary me-2">
+                        <a href="{{ route('job-orders.show', $jobOrder) }}" class="btn btn-outline-secondary me-2">
                             <i class="fas fa-times me-1"></i> Cancel
                         </a>
                         <button type="submit" class="btn btn-primary">
@@ -172,7 +172,7 @@
             // Reset to all vehicles
             vehicleSelect.innerHTML = '<option value="">Select Vehicle</option>' +
                 @foreach($vehicles as $vehicle)
-                    '<option value="{{ $vehicle->id }}" {{ $workOrder->vehicle_id == $vehicle->id ? 'selected' : '' }}>' +
+                    '<option value="{{ $vehicle->id }}" {{ $jobOrder->vehicle_id == $vehicle->id ? 'selected' : '' }}>' +
                     '{{ $vehicle->make }} {{ $vehicle->model }} - {{ $vehicle->license_plate }}' +
                     '</option>' +
                 @endforeach
@@ -189,7 +189,7 @@
                 const option = document.createElement('option');
                 option.value = vehicle.id;
                 option.textContent = vehicle.make + ' ' + vehicle.model + ' - ' + vehicle.license_plate;
-                if (vehicle.id == {{ $workOrder->vehicle_id }}) {
+                if (vehicle.id == {{ $jobOrder->vehicle_id }}) {
                     option.selected = true;
                 }
                 vehicleSelect.appendChild(option);

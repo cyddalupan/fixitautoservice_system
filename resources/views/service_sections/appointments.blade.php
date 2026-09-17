@@ -163,10 +163,10 @@
                                         </div>
                                     </div>
                                     <div class="col">
-                                        <div class="p-3 border rounded {{ !empty($workflow['work_orders']) ? 'bg-danger text-white' : 'bg-light' }}">
+                                        <div class="p-3 border rounded {{ !empty($workflow['job_orders']) ? 'bg-danger text-white' : 'bg-light' }}">
                                             <i class="fas fa-clipboard-check fa-2x mb-2"></i>
                                             <h6>Job Order</h6>
-                                            @if(!empty($workflow['work_orders']))
+                                            @if(!empty($workflow['job_orders']))
                                                 <small>Work Order Created</small>
                                             @else
                                                 <small class="text-muted">Pending</small>

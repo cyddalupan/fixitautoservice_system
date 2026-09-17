@@ -16,8 +16,8 @@ return new class extends Migration
             $table->string('part_number')->unique();
             $table->string('name');
             $table->text('description')->nullable();
-            $table->foreignId('category_id')->constrained('inventory_categories')->onDelete('cascade');
-            $table->foreignId('supplier_id')->constrained('inventory_suppliers')->onDelete('cascade');
+            $table->foreignId('category_id')->index('inventory_category_id_fk');
+            $table->foreignId('supplier_id')->index('inventory_supplier_id_fk');
             $table->string('manufacturer')->nullable();
             $table->string('oem_number')->nullable();
             $table->string('upc')->nullable();

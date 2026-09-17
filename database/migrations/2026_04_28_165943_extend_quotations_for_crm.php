@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -26,8 +27,11 @@ return new class extends Migration
             $table->string('chassis_number')->nullable()->after('transmission');
             $table->integer('mileage')->nullable()->after('chassis_number');
 
-            // New statuses for the pipeline
-            DB::statement("ALTER TABLE quotations MODIFY COLUMN status ENUM('new_lead','contacted','converted_to_customer','appointment_booked','won','lost','archived') NOT NULL DEFAULT 'new_lead'");
+            // New statuses for the pipeline (MySQL-only enum ALTER; no-op on sqlite)
+            if (DB::getDriverName() === 'mysql') {
+                DB::statement("ALTER TABLE quotations MODIFY COLUMN status ENUM('new_lead','contacted','converted_to_customer','appointment_booked','won','lost','archived') NOT NULL DEFAULT 'new_lead'");
+            }
+
         });
     }
 
@@ -51,7 +55,10 @@ return new class extends Migration
                 'chassis_number',
                 'mileage',
             ]);
-            DB::statement("ALTER TABLE quotations MODIFY COLUMN status ENUM('pending','reviewed','contacted','converted','rejected') NOT NULL DEFAULT 'pending'");
+            if (DB::getDriverName() === 'mysql') {
+                DB::statement("ALTER TABLE quotations MODIFY COLUMN status ENUM('pending','reviewed','contacted','converted','rejected') NOT NULL DEFAULT 'pending'");
+            }
+
         });
     }
 };

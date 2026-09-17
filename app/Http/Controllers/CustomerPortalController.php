@@ -133,7 +133,7 @@ class CustomerPortalController extends Controller
             ->limit(5)
             ->get();
             
-        $recentWorkOrders = $customer->workOrders()
+        $recentJobOrders = $customer->jobOrders()
             ->with(['vehicle', 'technician'])
             ->orderBy('created_at', 'desc')
             ->limit(5)
@@ -152,7 +152,7 @@ class CustomerPortalController extends Controller
         return view('portal.dashboard', compact(
             'customer',
             'recentAppointments',
-            'recentWorkOrders',
+            'recentJobOrders',
             'recentInspections',
             'unreadMessages',
             'pendingServiceRequests',
@@ -221,7 +221,7 @@ class CustomerPortalController extends Controller
         $customer = $user->customer;
         
         $vehicle = $customer->vehicles()->findOrFail($id);
-        $vehicle->load(['serviceRecords', 'appointments', 'workOrders', 'inspections']);
+        $vehicle->load(['serviceRecords', 'appointments', 'jobOrders', 'inspections']);
         
         return view('portal.vehicles.show', compact('vehicle'));
     }
@@ -251,7 +251,7 @@ class CustomerPortalController extends Controller
         $customer = $user->customer;
         
         $appointment = $customer->appointments()->findOrFail($id);
-        $appointment->load(['vehicle', 'technician', 'workOrder']);
+        $appointment->load(['vehicle', 'technician', 'jobOrder']);
         
         return view('portal.appointments.show', compact('appointment'));
     }
@@ -259,31 +259,31 @@ class CustomerPortalController extends Controller
     /**
      * Show customer work orders.
      */
-    public function workOrders()
+    public function jobOrders()
     {
         $user = Auth::guard('portal')->user();
         $customer = $user->customer;
         
-        $workOrders = $customer->workOrders()
+        $jobOrders = $customer->jobOrders()
             ->with(['vehicle', 'technician'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
         
-        return view('portal.work-orders.index', compact('workOrders', 'customer'));
+        return view('portal.job-orders.index', compact('jobOrders', 'customer'));
     }
 
     /**
      * Show work order details.
      */
-    public function showWorkOrder($id)
+    public function showJobOrder($id)
     {
         $user = Auth::guard('portal')->user();
         $customer = $user->customer;
         
-        $workOrder = $customer->workOrders()->findOrFail($id);
-        $workOrder->load(['vehicle', 'technician', 'items', 'tasks', 'appointment']);
+        $jobOrder = $customer->jobOrders()->findOrFail($id);
+        $jobOrder->load(['vehicle', 'technician', 'items', 'tasks', 'appointment']);
         
-        return view('portal.work-orders.show', compact('workOrder'));
+        return view('portal.job-orders.show', compact('jobOrder'));
     }
 
     /**
@@ -434,7 +434,7 @@ class CustomerPortalController extends Controller
         $customer = $user->customer;
         
         $invoices = $customer->invoices()
-            ->with(['workOrder', 'vehicle'])
+            ->with(['jobOrder', 'vehicle'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
         
@@ -450,7 +450,7 @@ class CustomerPortalController extends Controller
         $customer = $user->customer;
         
         $invoice = $customer->invoices()->findOrFail($id);
-        $invoice->load(['workOrder', 'vehicle', 'items', 'payments']);
+        $invoice->load(['jobOrder', 'vehicle', 'items', 'payments']);
         
         return view('portal.billing.invoice-show', compact('invoice'));
     }
@@ -777,7 +777,7 @@ class CustomerPortalController extends Controller
         $customer = $user->customer;
         
         $reviews = $customer->portalReviews()
-            ->with(['appointment', 'workOrder'])
+            ->with(['appointment', 'jobOrder'])
             ->orderBy('created_at', 'desc')
             ->paginate(20);
         
@@ -800,14 +800,14 @@ class CustomerPortalController extends Controller
             ->limit(10)
             ->get();
         
-        $recentWorkOrders = $customer->workOrders()
+        $recentJobOrders = $customer->jobOrders()
             ->where('status', 'completed')
             ->whereDoesntHave('portalReviews')
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
         
-        return view('portal.reviews.create', compact('recentAppointments', 'recentWorkOrders', 'customer'));
+        return view('portal.reviews.create', compact('recentAppointments', 'recentJobOrders', 'customer'));
     }
 
     /**
@@ -822,7 +822,7 @@ class CustomerPortalController extends Controller
             'rating' => 'required|integer|between:1,5',
             'review_text' => 'nullable|string|max:1000',
             'appointment_id' => 'nullable|exists:appointments,id',
-            'work_order_id' => 'nullable|exists:work_orders,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
             'is_anonymous' => 'boolean',
         ]);
         
@@ -837,9 +837,9 @@ class CustomerPortalController extends Controller
             }
         }
         
-        if ($request->work_order_id) {
+        if ($request->job_order_id) {
             $existingReview = $customer->portalReviews()
-                ->where('work_order_id', $request->work_order_id)
+                ->where('job_order_id', $request->job_order_id)
                 ->first();
             
             if ($existingReview) {
@@ -849,7 +849,7 @@ class CustomerPortalController extends Controller
         
         $review = $customer->portalReviews()->create([
             'appointment_id' => $request->appointment_id,
-            'work_order_id' => $request->work_order_id,
+            'job_order_id' => $request->job_order_id,
             'rating' => $request->rating,
             'review_text' => $request->review_text,
             'review_ratings' => json_encode([
@@ -1029,7 +1029,7 @@ class CustomerPortalController extends Controller
         
         $serviceHistory = [
             'appointments' => $vehicle->appointments()->orderBy('appointment_date', 'desc')->get(),
-            'workOrders' => $vehicle->workOrders()->orderBy('created_at', 'desc')->get(),
+            'jobOrders' => $vehicle->jobOrders()->orderBy('created_at', 'desc')->get(),
             'inspections' => $vehicle->inspections()->orderBy('created_at', 'desc')->get(),
             'serviceRecords' => $vehicle->serviceRecords()->orderBy('service_date', 'desc')->get(),
         ];
@@ -1077,24 +1077,24 @@ class CustomerPortalController extends Controller
     /**
      * Approve work order estimate.
      */
-    public function approveWorkOrderEstimate($id)
+    public function approveJobOrderEstimate($id)
     {
         $user = Auth::guard('portal')->user();
         $customer = $user->customer;
         
-        $workOrder = $customer->workOrders()->findOrFail($id);
+        $jobOrder = $customer->jobOrders()->findOrFail($id);
         
-        if ($workOrder->status !== 'estimate_pending') {
+        if ($jobOrder->status !== 'estimate_pending') {
             return back()->withErrors(['error' => 'Only estimates pending approval can be approved.']);
         }
         
-        $workOrder->update([
+        $jobOrder->update([
             'status' => 'estimate_approved',
             'estimate_approved_at' => now(),
             'estimate_approved_by' => 'customer_portal',
         ]);
         
-        return redirect()->route('portal.work-orders.show', $workOrder)
+        return redirect()->route('portal.job-orders.show', $jobOrder)
             ->with('success', 'Work order estimate approved successfully!');
     }
 

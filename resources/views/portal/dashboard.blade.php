@@ -144,30 +144,30 @@
                 <h6 class="m-0 font-weight-bold text-primary">
                     <i class="fas fa-clipboard-list me-2"></i>Recent Work Orders
                 </h6>
-                <a href="{{ route('portal.work-orders') }}" class="btn btn-sm btn-outline-primary">
+                <a href="{{ route('portal.job-orders') }}" class="btn btn-sm btn-outline-primary">
                     View All
                 </a>
             </div>
             <div class="card-body">
-                @if($recentWorkOrders->count() > 0)
+                @if($recentJobOrders->count() > 0)
                     <div class="list-group list-group-flush">
-                        @foreach($recentWorkOrders as $workOrder)
+                        @foreach($recentJobOrders as $jobOrder)
                             <div class="list-group-item">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="mb-1">WO-{{ $workOrder->id }}</h6>
+                                        <h6 class="mb-1">WO-{{ $jobOrder->id }}</h6>
                                         <small class="text-muted">
                                             <i class="fas fa-car me-1"></i>
-                                            {{ $workOrder->vehicle->year }} {{ $workOrder->vehicle->make }} {{ $workOrder->vehicle->model }}
+                                            {{ $jobOrder->vehicle->year }} {{ $jobOrder->vehicle->make }} {{ $jobOrder->vehicle->model }}
                                         </small>
                                         <br>
                                         <small class="text-muted">
                                             <i class="fas fa-dollar-sign me-1"></i>
-                                            ${{ number_format($workOrder->total_cost, 2) }}
+                                            ${{ number_format($jobOrder->total_cost, 2) }}
                                         </small>
                                     </div>
-                                    <span class="badge bg-{{ $workOrder->status === 'completed' ? 'success' : ($workOrder->status === 'in_progress' ? 'warning' : 'secondary') }}">
-                                        {{ ucfirst(str_replace('_', ' ', $workOrder->status)) }}
+                                    <span class="badge bg-{{ $jobOrder->status === 'completed' ? 'success' : ($jobOrder->status === 'in_progress' ? 'warning' : 'secondary') }}">
+                                        {{ ucfirst(str_replace('_', ' ', $jobOrder->status)) }}
                                     </span>
                                 </div>
                             </div>

@@ -75,9 +75,9 @@ class Payment extends Model
     /**
      * Get the work order through the invoice.
      */
-    public function workOrder(): BelongsTo
+    public function jobOrder(): BelongsTo
     {
-        return $this->belongsTo(WorkOrder::class, 'service_id', 'service_id');
+        return $this->belongsTo(JobOrder::class, 'service_id', 'service_id');
     }
 
     /**

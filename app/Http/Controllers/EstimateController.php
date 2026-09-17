@@ -8,7 +8,7 @@ use App\Models\Estimate;
 use App\Models\EstimateItem;
 use App\Models\User;
 use App\Models\Vehicle;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Inventory;
 use App\Models\VehicleInspection;
 use Illuminate\Http\Request;
@@ -280,15 +280,15 @@ class EstimateController extends Controller
                 ])->withInput();
             }
             
-            $existingWorkOrder = WorkOrder::where('vehicle_id', $vehicleId)
-                ->whereIn('work_order_status', ['pending', 'repairing', 'waiting_parts'])
+            $existingJobOrder = JobOrder::where('vehicle_id', $vehicleId)
+                ->whereIn('job_order_status', ['pending', 'repairing', 'waiting_parts'])
                 ->whereNull('deleted_at')
                 ->first();
             
-            if ($existingWorkOrder) {
+            if ($existingJobOrder) {
                 DB::rollBack();
                 return back()->withErrors([
-                    'vehicle_id' => 'This vehicle already has an active Work Order (' . ($existingWorkOrder->work_order_number ?? '#' . $existingWorkOrder->id) . ').'
+                    'vehicle_id' => 'This vehicle already has an active Work Order (' . ($existingJobOrder->job_order_number ?? '#' . $existingJobOrder->id) . ').'
                 ])->withInput();
             }
             
@@ -369,7 +369,7 @@ class EstimateController extends Controller
      */
     public function show(Estimate $estimate)
     {
-        $estimate->load(['customer', 'vehicle', 'items', 'user', 'serviceAdvisor', 'workOrder']);
+        $estimate->load(['customer', 'vehicle', 'items', 'user', 'serviceAdvisor', 'jobOrder']);
 
         // Mark as viewed if not yet viewed (keep existing status)
         if ($estimate->viewed_at === null) {
@@ -673,7 +673,7 @@ class EstimateController extends Controller
     /**
      * Convert approved estimate to work order.
      */
-    public function convertToWorkOrder(Estimate $estimate)
+    public function convertToJobOrder(Estimate $estimate)
     {
         if ($estimate->status !== 'approved') {
             return back()->with('error', 'Only approved estimates can be converted.');
@@ -681,7 +681,7 @@ class EstimateController extends Controller
 
         DB::beginTransaction();
         try {
-            $wo = \App\Models\WorkOrder::create([
+            $wo = \App\Models\JobOrder::create([
                 'customer_id' => $estimate->customer_id,
                 'vehicle_id' => $estimate->vehicle_id,
                 'estimate_id' => $estimate->id,
@@ -693,7 +693,7 @@ class EstimateController extends Controller
             $estimate->update(['status' => 'converted']);
 
             DB::commit();
-            return redirect()->route('work-orders.show', $wo)
+            return redirect()->route('job-orders.show', $wo)
                 ->with('success', 'Estimate converted to Work Order #' . $wo->id);
 
         } catch (\Exception $e) {
@@ -719,5 +719,56 @@ class EstimateController extends Controller
         $customerId = $request->input('customer_id');
         $vehicles = Vehicle::where('customer_id', $customerId)->get();
         return response()->json($vehicles);
+    }
+
+    /**
+     * Estimates statistics page (restored from git history — method was lost
+     * in a botched refactor but the route + view still exist).
+     */
+    public function statistics()
+    {
+        // Get overall statistics
+        $totalEstimates = Estimate::count();
+        $totalValue = Estimate::sum('total_amount') ?? 0;
+        $avgValue = $totalEstimates > 0 ? $totalValue / $totalEstimates : 0;
+
+        // Get status breakdown
+        $statusBreakdown = Estimate::selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->get()
+            ->pluck('count', 'status')
+            ->toArray();
+
+        // Get monthly statistics (last 6 months)
+        $monthlyStats = Estimate::selectRaw('
+                DATE_FORMAT(created_at, "%Y-%m") as month,
+                COUNT(*) as count,
+                SUM(total_amount) as total
+            ')
+            ->where('created_at', '>=', now()->subMonths(6))
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get();
+
+        // Get top customers by estimate count
+        $topCustomers = Estimate::with('customer')
+            ->selectRaw('customer_id, COUNT(*) as estimate_count, SUM(total_amount) as total_value')
+            ->groupBy('customer_id')
+            ->orderBy('estimate_count', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Estimates don't have technician_id, so this stays empty for now
+        $technicianStats = collect();
+
+        return view('estimates.statistics', compact(
+            'totalEstimates',
+            'totalValue',
+            'avgValue',
+            'statusBreakdown',
+            'monthlyStats',
+            'topCustomers',
+            'technicianStats'
+        ));
     }
 }

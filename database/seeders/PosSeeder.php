@@ -11,7 +11,7 @@ use App\Models\InvoiceItem;
 use App\Models\Payment;
 use App\Models\Customer;
 use App\Models\Vehicle;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\User;
 
 class PosSeeder extends Seeder
@@ -130,7 +130,7 @@ class PosSeeder extends Seeder
         // Get sample data
         $customers = Customer::take(5)->get();
         $vehicles = Vehicle::take(5)->get();
-        $workOrders = WorkOrder::take(5)->get();
+        $jobOrders = JobOrder::take(5)->get();
         $users = User::take(3)->get();
 
         if ($customers->isEmpty() || $users->isEmpty()) {
@@ -146,7 +146,7 @@ class PosSeeder extends Seeder
         for ($i = 1; $i <= 20; $i++) {
             $customer = $customers->random();
             $vehicle = $vehicles->random();
-            $workOrder = $workOrders->random();
+            $jobOrder = $jobOrders->random();
             $user = $users->random();
             
             $invoiceDate = now()->subDays(rand(1, 60));
@@ -157,7 +157,7 @@ class PosSeeder extends Seeder
                 'invoice_type' => $invoiceTypes[array_rand($invoiceTypes)],
                 'customer_id' => $customer->id,
                 'vehicle_id' => $vehicle->id ?? null,
-                'work_order_id' => $workOrder->id ?? null,
+                'job_order_id' => $jobOrder->id ?? null,
                 'invoice_date' => $invoiceDate,
                 'due_date' => $dueDate,
                 'subtotal' => 0, // Will be calculated
@@ -242,7 +242,7 @@ class PosSeeder extends Seeder
                     'payment_number' => 'PAY-' . str_pad($i, 6, '0', STR_PAD_LEFT),
                     'invoice_id' => $invoice->id,
                     'customer_id' => $customer->id,
-                    'work_order_id' => $workOrder->id ?? null,
+                    'job_order_id' => $jobOrder->id ?? null,
                     'payment_date' => $invoiceDate->copy()->addDays(rand(1, 7)),
                     'amount' => $amountPaid,
                     'payment_method_id' => $paymentMethod->id,

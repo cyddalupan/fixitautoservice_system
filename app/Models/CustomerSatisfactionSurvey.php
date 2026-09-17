@@ -13,7 +13,7 @@ class CustomerSatisfactionSurvey extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'work_order_id',
+        'job_order_id',
         'customer_id',
         'technician_id',
         'overall_rating',
@@ -327,7 +327,7 @@ class CustomerSatisfactionSurvey extends Model
     /**
      * Scope: Needs follow-up
      */
-    public function scopeNeedsFollowUp($query)
+    public function scopeRequiresFollowUp($query)
     {
         return $query->where('status', self::STATUS_FOLLOW_UP_NEEDED);
     }
@@ -375,9 +375,9 @@ class CustomerSatisfactionSurvey extends Model
     /**
      * Relationship: Work order
      */
-    public function workOrder(): BelongsTo
+    public function jobOrder(): BelongsTo
     {
-        return $this->belongsTo(WorkOrder::class);
+        return $this->belongsTo(JobOrder::class);
     }
 
     /**

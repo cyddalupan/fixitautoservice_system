@@ -375,5 +375,19 @@
     .table tbody tr:hover {
         background-color: #f5f5f5;
     }
+
+
+    /* ===== Dark mode overrides ===== */
+    [data-theme="dark"] .list-group-item.active {
+        background-color: var(--dark-hover) !important;
+        border-color: var(--dark-border) !important;
+        color: var(--dark-text) !important;
+    }
+    [data-theme="dark"] .table-info {
+        background-color: var(--dark-hover) !important;
+    }
+    [data-theme="dark"] .table tbody tr:hover {
+        background-color: var(--dark-hover) !important;
+    }
 </style>
 @endsection

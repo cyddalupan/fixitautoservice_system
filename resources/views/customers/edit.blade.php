@@ -177,7 +177,8 @@
                                 <select class="form-select @error('customer_type') is-invalid @enderror" 
                                         id="customer_type" name="customer_type">
                                     <option value="individual" {{ $customer->customer_type == 'individual' ? 'selected' : '' }}>Individual</option>
-                                    <option value="business" {{ $customer->customer_type == 'business' ? 'selected' : '' }}>Business</option>
+                                    <option value="commercial" {{ $customer->customer_type == 'commercial' ? 'selected' : '' }}>Commercial</option>
+                                    <option value="fleet" {{ $customer->customer_type == 'fleet' ? 'selected' : '' }}>Fleet</option>
                                 </select>
                                 @error('customer_type')
                                     <div class="invalid-feedback d-block">{{ $message }}</div>
@@ -216,10 +217,9 @@
                                 <label for="preferred_contact_method" class="form-label">Preferred Contact Method</label>
                                 <select class="form-select" id="preferred_contact_method" name="preferred_contact_method">
                                     <option value="">Select</option>
-                                    <option value="phone" {{ $customer->preferred_contact_method == 'phone' ? 'selected' : '' }}>Phone Call</option>
-                                    <option value="sms" {{ $customer->preferred_contact_method == 'sms' ? 'selected' : '' }}>SMS / Text</option>
-                                    <option value="email" {{ $customer->preferred_contact_method == 'email' ? 'selected' : '' }}>Email</option>
-                                    <option value="facebook" {{ $customer->preferred_contact_method == 'facebook' ? 'selected' : '' }}>Facebook Messenger</option>
+                                    <option value="phone" {{ $customer->preferred_contact == 'phone' ? 'selected' : '' }}>Phone Call</option>
+                                    <option value="sms" {{ $customer->preferred_contact == 'sms' ? 'selected' : '' }}>SMS / Text</option>
+                                    <option value="email" {{ $customer->preferred_contact == 'email' ? 'selected' : '' }}>Email</option>
                                 </select>
                             </div>
                         </div>

@@ -20,7 +20,7 @@ return new class extends Migration
             $table->integer('passing_score')->default(80); // Minimum score to pass
             $table->boolean('is_active')->default(true);
             $table->integer('version')->default(1);
-            $table->foreignId('created_by')->constrained('users')->onDelete('set null');
+            $table->foreignId('created_by')->nullable()->constrained('users')->onDelete('set null');
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');
             $table->timestamps();
             $table->softDeletes();

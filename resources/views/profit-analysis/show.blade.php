@@ -46,16 +46,16 @@
                                         </p>
                                     </div>
                                     <div class="col-md-4">
-                                        @if($analysis->workOrder)
-                                        <h5>Work Order: {{ $analysis->workOrder->work_order_number }}</h5>
+                                        @if($analysis->jobOrder)
+                                        <h5>Work Order: {{ $analysis->jobOrder->job_order_number }}</h5>
                                         <p class="mb-1">
                                             <strong>Customer:</strong> 
-                                            {{ $analysis->workOrder->customer->name ?? 'N/A' }}
+                                            {{ $analysis->jobOrder->customer->name ?? 'N/A' }}
                                         </p>
                                         <p class="mb-1">
                                             <strong>Vehicle:</strong>
-                                            @if($analysis->workOrder->vehicle)
-                                            {{ $analysis->workOrder->vehicle->make }} {{ $analysis->workOrder->vehicle->model }}
+                                            @if($analysis->jobOrder->vehicle)
+                                            {{ $analysis->jobOrder->vehicle->make }} {{ $analysis->jobOrder->vehicle->model }}
                                             @else
                                             N/A
                                             @endif
@@ -318,13 +318,13 @@
                                             <table class="table table-sm">
                                                 <tr>
                                                     <th width="40%">Service Type:</th>
-                                                    <td>{{ $analysis->workOrder->service_type ?? 'N/A' }}</td>
+                                                    <td>{{ $analysis->jobOrder->service_type ?? 'N/A' }}</td>
                                                 </tr>
                                                 <tr>
                                                     <th>Technician:</th>
                                                     <td>
-                                                        @if($analysis->workOrder && $analysis->workOrder->technician)
-                                                        {{ $analysis->workOrder->technician->name }}
+                                                        @if($analysis->jobOrder && $analysis->jobOrder->technician)
+                                                        {{ $analysis->jobOrder->technician->name }}
                                                         @else
                                                         N/A
                                                         @endif
@@ -385,8 +385,8 @@
                                         <a href="{{ route('profit-analysis.job-profitability') }}" class="btn btn-secondary">
                                             <i class="fas fa-arrow-left"></i> Back to Reports
                                         </a>
-                                        @if($analysis->workOrder)
-                                        <a href="{{ route('work-orders.show', $analysis->workOrder) }}" class="btn btn-info">
+                                        @if($analysis->jobOrder)
+                                        <a href="{{ route('job-orders.show', $analysis->jobOrder) }}" class="btn btn-info">
                                             <i class="fas fa-clipboard-list"></i> View Work Order
                                         </a>
                                         @endif

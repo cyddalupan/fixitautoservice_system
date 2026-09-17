@@ -286,7 +286,7 @@ class ComplianceDocument extends Model
     /**
      * Scope: Needs renewal
      */
-    public function scopeNeedsRenewal($query)
+    public function scopeDueForRenewal($query)
     {
         return $query->where(function ($q) {
             $q->whereNull('renewal_date')

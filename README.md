@@ -141,7 +141,7 @@ The application uses a comprehensive database schema with 40+ tables including:
 - `vehicles` - Vehicle information with VIN decoding
 - `service_records` - Service history
 - `appointments` - Appointment scheduling
-- `work_orders` - Work order management
+- `job_orders` - Work order management
 
 ### Inventory & Parts
 - `inventory` - Parts inventory

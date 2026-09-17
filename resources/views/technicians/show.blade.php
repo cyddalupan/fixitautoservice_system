@@ -217,11 +217,11 @@
                                                     <span class="info-box-text">Re-work Rate</span>
                                                     <span class="info-box-number">
                                                         @php
-                                                            $totalWorkOrders = $user->technicianServiceRecords()->count();
-                                                            $reworkWorkOrders = $user->technicianServiceRecords()
+                                                            $totalJobOrders = $user->technicianServiceRecords()->count();
+                                                            $reworkJobOrders = $user->technicianServiceRecords()
                                                                 ->where('requires_rework', true)
                                                                 ->count();
-                                                            $reworkRate = $totalWorkOrders > 0 ? round(($reworkWorkOrders / $totalWorkOrders) * 100, 1) : 0;
+                                                            $reworkRate = $totalJobOrders > 0 ? round(($reworkJobOrders / $totalJobOrders) * 100, 1) : 0;
                                                         @endphp
                                                         {{ $reworkRate }}%
                                                     </span>
@@ -240,14 +240,14 @@
                                 </div>
                                 <div class="card-body">
                                     @php
-                                        $recentWorkOrders = $user->technicianServiceRecords()
+                                        $recentJobOrders = $user->technicianServiceRecords()
                                             ->with(['vehicle', 'customer'])
                                             ->orderBy('created_at', 'desc')
                                             ->limit(5)
                                             ->get();
                                     @endphp
 
-                                    @if($recentWorkOrders->count() > 0)
+                                    @if($recentJobOrders->count() > 0)
                                         <div class="table-responsive">
                                             <table class="table table-sm">
                                                 <thead>
@@ -259,26 +259,26 @@
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    @foreach($recentWorkOrders as $workOrder)
+                                                    @foreach($recentJobOrders as $jobOrder)
                                                         <tr>
-                                                            <td>#{{ $workOrder->id }}</td>
+                                                            <td>#{{ $jobOrder->id }}</td>
                                                             <td>
-                                                                @if($workOrder->vehicle)
-                                                                    {{ $workOrder->vehicle->make }} {{ $workOrder->vehicle->model }}
+                                                                @if($jobOrder->vehicle)
+                                                                    {{ $jobOrder->vehicle->make }} {{ $jobOrder->vehicle->model }}
                                                                 @else
                                                                     N/A
                                                                 @endif
                                                             </td>
                                                             <td>
                                                                 <span class="badge 
-                                                                    @if($workOrder->status == 'completed') bg-success
-                                                                    @elseif($workOrder->status == 'in_progress') bg-warning
-                                                                    @elseif($workOrder->status == 'pending') bg-info
+                                                                    @if($jobOrder->status == 'completed') bg-success
+                                                                    @elseif($jobOrder->status == 'in_progress') bg-warning
+                                                                    @elseif($jobOrder->status == 'pending') bg-info
                                                                     @else bg-secondary @endif">
-                                                                    {{ ucfirst($workOrder->status) }}
+                                                                    {{ ucfirst($jobOrder->status) }}
                                                                 </span>
                                                             </td>
-                                                            <td>{{ $workOrder->created_at->format('M d, Y') }}</td>
+                                                            <td>{{ $jobOrder->created_at->format('M d, Y') }}</td>
                                                         </tr>
                                                     @endforeach
                                                 </tbody>

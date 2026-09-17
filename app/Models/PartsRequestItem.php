@@ -112,7 +112,7 @@ class PartsRequestItem extends Model
         }
 
         $inventory = Inventory::find($this->inventory_id);
-        return $inventory && $inventory->quantity_on_hand >= $this->quantity;
+        return $inventory && $inventory->quantity >= $this->quantity;
     }
 
     /**
@@ -129,10 +129,10 @@ class PartsRequestItem extends Model
             return 'Inventory not found';
         }
 
-        if ($inventory->quantity_on_hand >= $this->quantity) {
+        if ($inventory->quantity >= $this->quantity) {
             return 'In stock';
-        } elseif ($inventory->quantity_on_hand > 0) {
-            return 'Partial stock (' . $inventory->quantity_on_hand . ' available)';
+        } elseif ($inventory->quantity > 0) {
+            return 'Partial stock (' . $inventory->quantity . ' available)';
         } else {
             return 'Out of stock';
         }

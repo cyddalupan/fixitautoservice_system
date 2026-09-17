@@ -15,10 +15,10 @@
                 <p class="text-muted mb-0">Monitor and approve quality checks for work orders</p>
             </div>
             <div class="col-auto">
-                <a href="{{ route('work-order-quality.create') }}" class="btn btn-primary">
+                <a href="{{ route('quality-control.job-order-quality.create') }}" class="btn btn-primary">
                     <i class="fas fa-plus me-1"></i> New Quality Check
                 </a>
-                <a href="{{ route('work-order-quality.export') }}" class="btn btn-outline-secondary">
+                <a href="{{ route('quality-control.job-order-quality.export') }}" class="btn btn-outline-secondary">
                     <i class="fas fa-download me-1"></i> Export
                 </a>
             </div>
@@ -92,7 +92,7 @@
     <!-- Filters -->
     <div class="card mb-4">
         <div class="card-body">
-            <form method="GET" action="{{ route('work-order-quality.index') }}" class="row g-3">
+            <form method="GET" action="{{ route('quality-control.job-order-quality.index') }}" class="row g-3">
                 <div class="col-md-2">
                     <label for="status" class="form-label">Status</label>
                     <select name="status" id="status" class="form-select">
@@ -170,10 +170,10 @@
                                     <input type="checkbox" name="check_ids[]" value="{{ $check->id }}" class="check-select">
                                 </td>
                                 <td>
-                                    <strong>WO-{{ str_pad($check->work_order_id, 6, '0', STR_PAD_LEFT) }}</strong>
-                                    @if($check->workOrder)
+                                    <strong>WO-{{ str_pad($check->job_order_id, 6, '0', STR_PAD_LEFT) }}</strong>
+                                    @if($check->jobOrder)
                                         <p class="text-muted mb-0 small">
-                                            {{ $check->workOrder->customer->name ?? 'Unknown Customer' }}
+                                            {{ $check->jobOrder->customer->name ?? 'Unknown Customer' }}
                                         </p>
                                     @endif
                                 </td>
@@ -226,24 +226,24 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <a href="{{ route('work-order-quality.show', $check->id) }}" 
+                                        <a href="{{ route('quality-control.job-order-quality.show', $check->id) }}" 
                                            class="btn btn-sm btn-outline-primary" title="View">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         @if($check->status === 'pending' && auth()->user()->can('approve', $check))
-                                            <a href="{{ route('work-order-quality.approve', $check->id) }}" 
+                                            <a href="{{ route('quality-control.job-order-quality.approve', $check->id) }}" 
                                                class="btn btn-sm btn-outline-success" title="Approve"
                                                onclick="return confirm('Approve this quality check?')">
                                                 <i class="fas fa-check"></i>
                                             </a>
-                                            <a href="{{ route('work-order-quality.reject', $check->id) }}" 
+                                            <a href="{{ route('quality-control.job-order-quality.reject', $check->id) }}" 
                                                class="btn btn-sm btn-outline-danger" title="Reject"
                                                onclick="return confirm('Reject this quality check?')">
                                                 <i class="fas fa-times"></i>
                                             </a>
                                         @endif
                                         @if($check->status === 'pending' && auth()->id() == $check->technician_id)
-                                            <a href="{{ route('work-order-quality.edit', $check->id) }}" 
+                                            <a href="{{ route('quality-control.job-order-quality.edit', $check->id) }}" 
                                                class="btn btn-sm btn-outline-secondary" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
@@ -258,7 +258,7 @@
                                         <i class="fas fa-clipboard-check fa-3x mb-3"></i>
                                         <h5>No quality checks found</h5>
                                         <p>Create your first quality check for a work order.</p>
-                                        <a href="{{ route('work-order-quality.create') }}" class="btn btn-primary">
+                                        <a href="{{ route('quality-control.job-order-quality.create') }}" class="btn btn-primary">
                                             <i class="fas fa-plus me-1"></i> Create Quality Check
                                         </a>
                                     </div>
@@ -280,7 +280,7 @@
                             </button>
                             <ul class="dropdown-menu">
                                 <li>
-                                    <form action="{{ route('work-order-quality.bulk-approve') }}" method="POST" id="bulk-approve-form">
+                                    <form action="{{ route('quality-control.job-order-quality.bulk-approve') }}" method="POST" id="bulk-approve-form">
                                         @csrf
                                         <input type="hidden" name="check_ids" id="bulk-check-ids-approve">
                                         <button type="submit" class="dropdown-item" onclick="submitBulkForm('approve')">
@@ -289,7 +289,7 @@
                                     </form>
                                 </li>
                                 <li>
-                                    <form action="{{ route('work-order-quality.bulk-reject') }}" method="POST" id="bulk-reject-form">
+                                    <form action="{{ route('quality-control.job-order-quality.bulk-reject') }}" method="POST" id="bulk-reject-form">
                                         @csrf
                                         <input type="hidden" name="check_ids" id="bulk-check-ids-reject">
                                         <button type="submit" class="dropdown-item" onclick="submitBulkForm('reject')">
@@ -299,7 +299,7 @@
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    <form action="{{ route('work-order-quality.bulk-delete') }}" method="POST" id="bulk-delete-form">
+                                    <form action="{{ route('quality-control.job-order-quality.bulk-delete') }}" method="POST" id="bulk-delete-form">
                                         @csrf
                                         <input type="hidden" name="check_ids" id="bulk-check-ids-delete">
                                         <button type="submit" class="dropdown-item text-danger" 

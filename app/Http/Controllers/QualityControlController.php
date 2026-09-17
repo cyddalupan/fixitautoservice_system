@@ -6,7 +6,7 @@ use App\Models\QualityControlChecklist;
 use App\Models\QualityAudit;
 use App\Models\NonConformanceReport;
 use App\Models\CorrectiveAction;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Vehicle;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -15,6 +15,27 @@ use Carbon\Carbon;
 
 class QualityControlController extends Controller
 {
+    /**
+     * Get distinct service types for checklist filters.
+     */
+    private function getServiceTypes(): array
+    {
+        $types = JobOrder::whereNotNull('service_type')
+            ->distinct()
+            ->pluck('service_type');
+
+        if ($types->isEmpty()) {
+            $types = collect(['standard', 'preventive', 'diagnostic', 'body_repair', 'pms']);
+        }
+
+        return $types
+            ->map(fn ($type) => [
+                'value' => $type,
+                'label' => str_replace('_', ' ', ucfirst($type)),
+            ])
+            ->values()
+            ->toArray();
+    }
     /**
      * Display quality control dashboard
      */
@@ -83,7 +104,7 @@ class QualityControlController extends Controller
                 ];
             });
         
-        return view('quality-control.checklists', compact('checklists', 'serviceTypes'));
+        return view('quality-control.checklists.index', compact('checklists', 'serviceTypes'));
     }
     
     /**
@@ -92,7 +113,7 @@ class QualityControlController extends Controller
     public function createChecklist()
     {
         $serviceTypes = $this->getServiceTypes();
-        return view('quality-control.checklists-create', compact('serviceTypes'));
+        return view('quality-control.checklists.create', compact('serviceTypes'));
     }
     
     /**
@@ -131,7 +152,7 @@ class QualityControlController extends Controller
         $checklist = QualityControlChecklist::with(['creator', 'updater', 'audits'])->findOrFail($id);
         $auditStats = $this->getChecklistAuditStats($checklist);
         
-        return view('quality-control.checklists-show', compact('checklist', 'auditStats'));
+        return view('quality-control.checklists.show', compact('checklist', 'auditStats'));
     }
     
     /**
@@ -142,7 +163,7 @@ class QualityControlController extends Controller
         $checklist = QualityControlChecklist::findOrFail($id);
         $serviceTypes = $this->getServiceTypes();
         
-        return view('quality-control.checklists-edit', compact('checklist', 'serviceTypes'));
+        return view('quality-control.checklists.edit', compact('checklist', 'serviceTypes'));
     }
     
     /**
@@ -208,7 +229,7 @@ class QualityControlController extends Controller
      */
     public function audits(Request $request)
     {
-        $query = QualityAudit::with(['checklist', 'technician', 'auditor', 'vehicle', 'workOrder']);
+        $query = QualityAudit::with(['checklist', 'technician', 'auditor', 'vehicle', 'jobOrder']);
         
         // Apply filters
         if ($request->has('status')) {
@@ -233,13 +254,9 @@ class QualityControlController extends Controller
         
         $audits = $query->orderBy('audit_date', 'desc')->paginate(20);
         
-        $technicians = User::whereHas('roles', function($q) {
-            $q->where('name', 'technician');
-        })->get();
+        $technicians = User::where('role', 'technician')->get();
         
-        $auditors = User::whereHas('roles', function($q) {
-            $q->where('name', 'quality_auditor');
-        })->get();
+        $auditors = User::where('role', 'quality_auditor')->get();
         
         return view('quality-control.audits', compact('audits', 'technicians', 'auditors'));
     }
@@ -250,21 +267,17 @@ class QualityControlController extends Controller
     public function createAudit()
     {
         $checklists = QualityControlChecklist::active()->get();
-        $workOrders = WorkOrder::where('status', 'completed')
+        $jobOrders = JobOrder::where('status', 'completed')
             ->with(['vehicle', 'technician'])
             ->orderBy('completed_at', 'desc')
             ->limit(50)
             ->get();
         
-        $technicians = User::whereHas('roles', function($q) {
-            $q->where('name', 'technician');
-        })->get();
+        $technicians = User::where('role', 'technician')->get();
         
-        $auditors = User::whereHas('roles', function($q) {
-            $q->where('name', 'quality_auditor');
-        })->get();
+        $auditors = User::where('role', 'quality_auditor')->get();
         
-        return view('quality-control.audits-create', compact('checklists', 'workOrders', 'technicians', 'auditors'));
+        return view('quality-control.audits-create', compact('checklists', 'jobOrders', 'technicians', 'auditors'));
     }
     
     /**
@@ -276,7 +289,7 @@ class QualityControlController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'checklist_id' => 'required|exists:quality_control_checklists,id',
-            'work_order_id' => 'nullable|exists:work_orders,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
             'vehicle_id' => 'nullable|exists:vehicles,id',
             'technician_id' => 'nullable|exists:users,id',
             'auditor_id' => 'required|exists:users,id',
@@ -316,7 +329,7 @@ class QualityControlController extends Controller
             'technician', 
             'auditor', 
             'vehicle', 
-            'workOrder',
+            'jobOrder',
             'nonConformanceReports',
             'creator'
         ])->findOrFail($id);
@@ -354,7 +367,7 @@ class QualityControlController extends Controller
             'technician', 
             'auditor', 
             'vehicle', 
-            'workOrder'
+            'jobOrder'
         ])->findOrFail($id);
         
         $report = $audit->generateReport();
@@ -371,7 +384,7 @@ class QualityControlController extends Controller
      */
     public function nonConformanceReports(Request $request)
     {
-        $query = NonConformanceReport::with(['technician', 'assignee', 'vehicle', 'audit', 'workOrder']);
+        $query = NonConformanceReport::with(['technician', 'assignee', 'vehicle', 'audit', 'jobOrder']);
         
         // Apply filters
         if ($request->has('status')) {
@@ -392,9 +405,7 @@ class QualityControlController extends Controller
         
         $ncrs = $query->orderBy('reported_date', 'desc')->paginate(20);
         
-        $technicians = User::whereHas('roles', function($q) {
-            $q->whereIn('name', ['technician', 'quality_manager', 'service_manager']);
-        })->get();
+        $technicians = User::whereIn('role', ['technician', 'quality_manager', 'service_manager'])->get();
         
         return view('quality-control.non-conformance-reports', compact('ncrs', 'technicians'));
     }
@@ -410,7 +421,7 @@ class QualityControlController extends Controller
             'reporter',
             'vehicle',
             'audit',
-            'workOrder',
+            'jobOrder',
             'correctiveActions' => function($query) {
                 $query->with(['assignee', 'assigner', 'verifier']);
             },

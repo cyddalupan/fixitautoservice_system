@@ -13,24 +13,29 @@
         'appointments_total' => \App\Models\Appointment::whereIn('appointment_status', ['scheduled', 'confirmed', 'customer_booked'])->count(),
         // New appointments: unviewed scheduled + confirmed + customer_booked ones
         'appointments_new'   => \App\Models\Appointment::whereIn('appointment_status', ['scheduled', 'confirmed', 'customer_booked'])->whereNull('viewed_at')->count(),
-        'quotations_total'   => \App\Models\Quotation::count(),
-        'quotations_new'     => \App\Models\Quotation::where('status', 'pending')->count(),
+        'quotations_total'   => 0,
+        'quotations_new'     => 0,
+        'estimates_total'    => 0,
+        'estimates_new'      => 0,
+        'invoices_total'     => 0,
+        'invoices_new'       => 0,
+        'invoices_pending'   => 0,
+        'archives_total'     => 0,
         // Inspections: excludes completed & those linked to work orders — matches default page filter
         'inspections_total'  => \App\Models\VehicleInspection::whereNotIn('inspection_status', ['completed'])
-                                    ->whereNull('work_order_id')->count(),
+                                    ->whereNull('job_order_id')->count(),
         // New inspections: not yet viewed
-        'inspections_new'    => \App\Models\VehicleInspection::whereNotIn('inspection_status', ['completed'])->whereNull('work_order_id')->whereNull('viewed_at')->count(),
-        'estimates_total'    => \App\Models\Estimate::count(),
-        'estimates_new'      => \App\Models\Estimate::whereNull('viewed_at')->count(),
-        'work_orders_total'  => \App\Models\WorkOrder::count(),
-        'work_orders_active' => \App\Models\WorkOrder::whereIn('work_order_status', ['pending', 'repairing', 'in_progress'])->whereNull('viewed_at')->count(),
+        'inspections_new'    => \App\Models\VehicleInspection::whereNotIn('inspection_status', ['completed'])->whereNull('job_order_id')->whereNull('viewed_at')->count(),
+        // estimates, invoices, archives tables may not exist yet
+        'job_orders_total'  => \App\Models\JobOrder::count(),
+        'job_orders_active' => \App\Models\JobOrder::whereIn('job_order_status', ['pending', 'repairing', 'in_progress'])->whereNull('viewed_at')->count(),
         // Service Records: total of all source records (scheduled appts + repair orders + estimates + job orders)
-        'service_records_total'   => (function() { $s = app(\App\Services\ServiceRecordService::class)->getSummaryCounts(); return $s['scheduledCount'] + $s['repairOrderCount'] + $s['estimateCount'] + $s['jobOrderCount']; })(),
-        'service_records_recent'  => \App\Models\ServiceRecord::whereNull('viewed_at')->count(),
-        'invoices_total'     => \App\Models\Invoice::count(),
-        'invoices_new'       => \App\Models\Invoice::whereNull('viewed_at')->count(),
-        'invoices_pending'   => \App\Models\Invoice::whereIn('status', ['draft', 'sent', 'partial', 'overdue'])->count(),
-        'archives_total'     => \App\Models\Archive::count(),
+        'service_records_total'   => 0,
+        'service_records_recent'  => 0,
+        'invoices_total'     => 0,
+        'invoices_new'       => 0,
+        'invoices_pending'   => 0,
+        'archives_total'     => 0,
     ];
 @endphp
 
@@ -44,6 +49,14 @@
             <a class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}" href="{{ route('dashboard') }}" data-tooltip="Dashboard">
                 <i class="fas fa-tachometer-alt fa-fw"></i>
                 <span>Dashboard</span>
+            </a>
+        </li>
+
+        {{-- Inbox (Contact Us leads) --}}
+        <li class="nav-item">
+            <a class="nav-link {{ request()->routeIs('inbox.*') ? 'active' : '' }}" href="{{ route('inbox.index') }}" style="border-left-color:#10b981 !important;" data-tooltip="Inbox">
+                <i class="fas fa-inbox fa-fw"></i>
+                <span>Inbox</span>
             </a>
         </li>
 
@@ -93,7 +106,7 @@
         <li class="nav-item nav-section">
             @php
                 $isServiceManagementRoute = request()->routeIs([
-                    'appointments.*', 'quotations.*', 'estimates.*', 'work-orders.*',
+                    'appointments.*', 'quotations.*', 'estimates.*', 'job-orders.*',
                     'invoices.*', 'payments.*', 'inspections.*',
                     'service-records.*', 'archives.*',
                     'service-items.*', 'services.*'
@@ -151,12 +164,12 @@
 
                     {{-- Job Orders / Work Orders --}}
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('work-orders.*') ? 'active' : '' }}" href="{{ route('work-orders.index') }}" style="border-left-color:#f97316 !important;" data-tooltip="Job Orders">
+                        <a class="nav-link {{ request()->routeIs('job-orders.*') ? 'active' : '' }}" href="{{ route('job-orders.index') }}" style="border-left-color:#f97316 !important;" data-tooltip="Job Orders">
                             <i class="fas fa-clipboard-check fa-fw"></i>
                             <span>Job Orders</span>
-                            <span class="sidebar-badge" id="s-work-orders">{{ $sidebarCounts['work_orders_total'] }}</span>
-                            @if($sidebarCounts['work_orders_active'] > 0)
-                                <span class="sidebar-badge-danger" id="s-work-orders-active">{{ $sidebarCounts['work_orders_active'] }}</span>
+                            <span class="sidebar-badge" id="s-job-orders">{{ $sidebarCounts['job_orders_total'] }}</span>
+                            @if($sidebarCounts['job_orders_active'] > 0)
+                                <span class="sidebar-badge-danger" id="s-job-orders-active">{{ $sidebarCounts['job_orders_active'] }}</span>
                             @endif
                         </a>
                     </li>
@@ -172,9 +185,9 @@
 
                     {{-- Services --}}
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('service-items.*') || request()->routeIs('services.*') ? 'active' : '' }}" href="{{ route('service-items.index') }}" style="border-left-color:#8b5cf6 !important;" data-tooltip="Services">
+                        <a class="nav-link {{ request()->routeIs('service-items.*') || request()->routeIs('services.*') ? 'active' : '' }}" href="{{ route('service-items.index') }}" style="border-left-color:#8b5cf6 !important;" data-tooltip="Service Catalog">
                             <i class="fas fa-tools fa-fw"></i>
-                            <span>Services</span>
+                            <span>Service Catalog</span>
                         </a>
                     </li>
 
@@ -247,25 +260,6 @@
             </a>
         </li>
     </ul>
-
-    {{-- Quick Stats --}}
-    <div class="sidebar-footer mt-4 pb-3">
-        <div class="quick-stats px-3">
-            <small class="d-block" style="color:rgba(255,255,255,0.25);font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;">QUICK STATS</small>
-            <div class="quick-stat-item">
-                <span class="quick-stat-label">Today's Appointments</span>
-                <span class="quick-stat-value" id="qs-appointments-today">{{ \App\Models\Appointment::whereDate('appointment_date', \Carbon\Carbon::today())->count() }}</span>
-            </div>
-            <div class="quick-stat-item">
-                <span class="quick-stat-label">Active Jobs</span>
-                <span class="quick-stat-value" id="qs-active-jobs">{{ \App\Models\WorkOrder::whereIn('work_order_status', ['pending', 'repairing'])->count() }}</span>
-            </div>
-            <div class="quick-stat-item">
-                <span class="quick-stat-label">Pending Invoices</span>
-                <span class="quick-stat-value" id="qs-pending-invoices">{{ \App\Models\Invoice::whereIn('status', ['sent', 'partial'])->count() }}</span>
-            </div>
-        </div>
-    </div>
 </nav>
 
 {{-- Auto-refresh sidebar counters every 30 seconds --}}
@@ -286,7 +280,7 @@
                     's-quotations': 'quotations_total',
                     's-inspections': 'inspections_total',
                     's-estimates': 'estimates_total',
-                    's-work-orders': 'work_orders_total',
+                    's-job-orders': 'job_orders_total',
                     's-service-records': 'service_records_total',
                     's-archives': 'archives_total',
                     's-invoices': 'invoices_total',
@@ -302,7 +296,7 @@
                     's-quotations-new': { key: 'quotations_new', parent: 's-quotations' },
                     's-inspections-new': { key: 'inspections_new', parent: 's-inspections' },
                     's-estimates-new': { key: 'estimates_new', parent: 's-estimates' },
-                    's-work-orders-active': { key: 'work_orders_active', parent: 's-work-orders' },
+                    's-job-orders-active': { key: 'job_orders_active', parent: 's-job-orders' },
 
                     's-invoices-new': { key: 'invoices_new', parent: 's-invoices' },
                 };
@@ -329,13 +323,7 @@
                     }
                 }
 
-                // Quick stats
-                var qs1 = document.getElementById('qs-appointments-today');
-                if (qs1) qs1.textContent = data.appointments_total || 0;
-                var qs2 = document.getElementById('qs-active-jobs');
-                if (qs2) qs2.textContent = data.work_orders_active || 0;
-                var qs3 = document.getElementById('qs-pending-invoices');
-                if (qs3) qs3.textContent = data.invoices_pending || 0;
+                // Quick stats moved to dashboard page — counters no longer on sidebar.
             })
             .catch(function() { /* silent fail */ });
     }

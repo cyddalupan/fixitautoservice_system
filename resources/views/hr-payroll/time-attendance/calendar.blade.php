@@ -729,6 +729,18 @@
             font-size: 0.75rem;
         }
     }
+
+    /* ===== Dark mode overrides (auto-swept) ===== */
+    [data-theme="dark"] .calendar-day {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .calendar-no-data {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
 </style>
 @endpush
 

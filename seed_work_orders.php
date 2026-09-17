@@ -1,7 +1,7 @@
 <?php
 /**
  * Seed 2 sample work orders for testing the upgraded UI
- * Run: php seed_work_orders.php
+ * Run: php seed_job_orders.php
  */
 
 // Bootstrap Laravel with minimal setup - use HTTP kernel
@@ -14,7 +14,7 @@ $app = require __DIR__ . '/bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Customer;
 use App\Models\Vehicle;
 use App\Models\User;
@@ -50,15 +50,15 @@ echo "Using Advisor: {$advisor->name} (id:{$advisor->id})\n";
 echo "Using Technician: {$technician->name} (id:{$technician->id})\n\n";
 
 // WO #1 - PMS for Mark Angeles
-$wo1 = WorkOrder::create([
+$wo1 = JobOrder::create([
     'customer_id' => $customer1->id,
     'vehicle_id' => $vehicle1->id,
     'service_advisor_id' => $advisor->id,
     'technician_id' => $technician->id,
-    'work_order_number' => 'WO-' . date('Ymd') . '-001',
-    'work_order_date' => Carbon::today()->toDateString(),
-    'work_order_status' => 'repairing',
-    'work_order_type' => 'maintenance',
+    'job_order_number' => 'WO-' . date('Ymd') . '-001',
+    'job_order_date' => Carbon::today()->toDateString(),
+    'job_order_status' => 'repairing',
+    'job_order_type' => 'maintenance',
     'priority' => 'normal',
     'odometer_in' => 45123,
     'fuel_level' => '3/4',
@@ -81,19 +81,19 @@ $wo1 = WorkOrder::create([
     'requires_customer_approval' => true,
 ]);
 
-echo "✅ Created WO #1: {$wo1->work_order_number} - {$customer1->name} ({$wo1->work_order_status})\n";
+echo "✅ Created WO #1: {$wo1->job_order_number} - {$customer1->name} ({$wo1->job_order_status})\n";
 
 // WO #2 - Repair for John Smith
-$wo1_ref = WorkOrder::where('customer_id', $customer1->id)->latest()->first();
-$wo2 = WorkOrder::create([
+$wo1_ref = JobOrder::where('customer_id', $customer1->id)->latest()->first();
+$wo2 = JobOrder::create([
     'customer_id' => $customer2->id,
     'vehicle_id' => $vehicle2->id,
     'service_advisor_id' => $advisor->id,
     'technician_id' => $technician->id,
-    'work_order_number' => 'WO-' . date('Ymd') . '-002',
-    'work_order_date' => Carbon::today()->toDateString(),
-    'work_order_status' => 'completed',
-    'work_order_type' => 'repair',
+    'job_order_number' => 'WO-' . date('Ymd') . '-002',
+    'job_order_date' => Carbon::today()->toDateString(),
+    'job_order_status' => 'completed',
+    'job_order_type' => 'repair',
     'priority' => 'high',
     'odometer_in' => 72350,
     'fuel_level' => '1/2',
@@ -136,5 +136,5 @@ $wo2 = WorkOrder::create([
     ]),
 ]);
 
-echo "✅ Created WO #2: {$wo2->work_order_number} - {$customer2->name} ({$wo2->work_order_status})\n";
+echo "✅ Created WO #2: {$wo2->job_order_number} - {$customer2->name} ({$wo2->job_order_status})\n";
 echo "\nDone! 2 work orders created successfully.\n";

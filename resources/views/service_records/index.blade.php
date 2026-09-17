@@ -31,7 +31,7 @@
         $monthlyJobs = 0; $totalWorkflows = count($workflows);
 
         foreach ($workflows as $wf) {
-            foreach ($wf['work_orders'] as $wo) {
+            foreach ($wf['job_orders'] as $wo) {
                 $s = $wo['status'] ?? '';
                 if ($s === 'in_progress' || $s === 'pending') $activeJobs++;
                 if ($s === 'pending_approval') $waitingApproval++;
@@ -122,7 +122,7 @@
         $alerts = [];
         foreach ($workflows as $wf) {
             $cname = ($wf['customer']->first_name ?? '').' '.($wf['customer']->last_name ?? '');
-            foreach ($wf['work_orders'] as $wo) {
+            foreach ($wf['job_orders'] as $wo) {
                 if (($wo['payment_status']??'') === 'pending' && ($wo['status']??'') === 'completed') { $alerts[] = ['type'=>'payment','text'=>'Awaiting payment — '.trim($cname)]; break; }
                 if (($wo['status']??'') === 'waiting_parts') { $alerts[] = ['type'=>'parts','text'=>'Parts needed — '.trim($cname)]; break; }
             }
@@ -165,12 +165,12 @@
                 $hasAppts  = count($workflow['appointments'] ?? []) > 0;
                 $hasInsp   = count($workflow['inspections'] ?? []) > 0;
                 $hasEst    = count($workflow['estimates'] ?? []) > 0;
-                $hasWO     = count($workflow['work_orders'] ?? []) > 0;
+                $hasWO     = count($workflow['job_orders'] ?? []) > 0;
 
                 // Determine current stage
                 $currentStage = 'booked';
                 if ($hasWO) {
-                    $s = $workflow['work_orders'][0]['status'] ?? '';
+                    $s = $workflow['job_orders'][0]['status'] ?? '';
                     $currentStage = match($s) { 'pending'=>'checked_in', 'in_progress'=>'in_progress', 'completed'=>'completed', 'cancelled'=>'cancelled', default=>'checked_in' };
                 } elseif ($hasEst) {
                     $currentStage = ($workflow['estimates'][0]['status'] ?? '') === 'approved' ? 'approved' : 'estimate';
@@ -185,11 +185,11 @@
                 if ($hasAppts) $entryPoint = 'appointments';
                 elseif ($hasInsp) $entryPoint = 'inspections';
                 elseif ($hasEst) $entryPoint = 'estimates';
-                elseif ($hasWO) $entryPoint = 'work_orders';
+                elseif ($hasWO) $entryPoint = 'job_orders';
                 
                 // Helper: check if a section was skipped (upstream of entry point)
                 $isSkipped = function($sectionName) use ($entryPoint, $hasAppts, $hasInsp, $hasEst, $hasWO) {
-                    $order = ['appointments', 'inspections', 'estimates', 'work_orders'];
+                    $order = ['appointments', 'inspections', 'estimates', 'job_orders'];
                     $entryIdx = array_search($entryPoint, $order);
                     $sectionIdx = array_search($sectionName, $order);
                     return $sectionIdx < $entryIdx;
@@ -200,7 +200,7 @@
                 $stagePct = (($stageIdx + 1) / count($stageSteps)) * 100;
 
                 $balanceDue = 0;
-                foreach ($workflow['work_orders'] as $wo) { $balanceDue += $wo['balance_due'] ?? $wo['estimated_total'] ?? 0; }
+                foreach ($workflow['job_orders'] as $wo) { $balanceDue += $wo['balance_due'] ?? $wo['estimated_total'] ?? 0; }
 
                 $sc = match($currentStage) {
                     'booked'       => '#4361ee',
@@ -265,7 +265,7 @@
                             <button class="btn btn-sm btn-ghost" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-v"></i></button>
                             <ul class="dropdown-menu dropdown-menu-end shadow-sm wf-dropdown">
                                 @if($vehicle)
-                                    <li><a class="dropdown-item" href="{{ route('work-orders.create',['vehicle_id'=>$vehicle->id]) }}"><i class="fas fa-plus-circle me-2" style="color:#4361ee;"></i>New Job Order</a></li>
+                                    <li><a class="dropdown-item" href="{{ route('job-orders.create',['vehicle_id'=>$vehicle->id]) }}"><i class="fas fa-plus-circle me-2" style="color:#4361ee;"></i>New Job Order</a></li>
                                     <li><a class="dropdown-item" href="{{ route('estimates.create',['vehicle_id'=>$vehicle->id]) }}"><i class="fas fa-file-invoice me-2" style="color:#9b59b6;"></i>New Estimate</a></li>
                                     <li><hr class="dropdown-divider"></li>
                                     <li><a class="dropdown-item" href="{{ route('vehicles.show',$vehicle->id) }}"><i class="fas fa-eye me-2"></i>View Vehicle</a></li>
@@ -275,7 +275,7 @@
                                 @endif
                                 @if($hasWO)
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item" href="{{ route('work-orders.show',$workflow['work_orders'][0]['id']) }}"><i class="fas fa-clipboard-list me-2" style="color:#e63946;"></i>View Job Order</a></li>
+                                    <li><a class="dropdown-item" href="{{ route('job-orders.show',$workflow['job_orders'][0]['id']) }}"><i class="fas fa-clipboard-list me-2" style="color:#e63946;"></i>View Job Order</a></li>
                                 @endif
                             </ul>
                         </div>
@@ -414,9 +414,9 @@
                                 <div class="txn-card txn-wo">
                                     <div class="txn-header">
                                         <i class="fas fa-clipboard-list me-1"></i>Job Orders
-                                        <span class="txn-badge">{{ count($workflow['work_orders'] ?? []) }}</span>
+                                        <span class="txn-badge">{{ count($workflow['job_orders'] ?? []) }}</span>
                                     </div>
-                                    @forelse(($workflow['work_orders'] ?? []) as $wo)
+                                    @forelse(($workflow['job_orders'] ?? []) as $wo)
                                         <div class="txn-item">
                                             <div class="d-flex justify-content-between">
                                                 <span class="txn-label">
@@ -431,7 +431,7 @@
                                             </div>
                                         </div>
                                     @empty
-                                        @if($isSkipped('work_orders'))
+                                        @if($isSkipped('job_orders'))
                                             <div class="txn-empty txn-skipped"><span class="skipped-x">:x:</span> Skipped</div>
                                         @else
                                             <div class="txn-empty">No job orders</div>
@@ -444,7 +444,7 @@
                         <!-- Quick Actions Footer (Section 6) -->
                         <div class="mt-3 pt-2 d-flex flex-wrap gap-2" style="border-top:1px solid #eef0f2;">
                             @if($vehicle)
-                                <a href="{{ route('work-orders.create',['vehicle_id'=>$vehicle->id]) }}" class="btn btn-sm btn-action" style="color:#4361ee;border-color:#4361ee;">
+                                <a href="{{ route('job-orders.create',['vehicle_id'=>$vehicle->id]) }}" class="btn btn-sm btn-action" style="color:#4361ee;border-color:#4361ee;">
                                     <i class="fas fa-plus-circle me-1"></i>Job Order
                                 </a>
                                 <a href="{{ route('estimates.create',['vehicle_id'=>$vehicle->id]) }}" class="btn btn-sm btn-action" style="color:#9b59b6;border-color:#9b59b6;">

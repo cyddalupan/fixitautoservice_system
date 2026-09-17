@@ -6,7 +6,7 @@ use Tests\TestCase;
 use App\Models\Invoice;
 use App\Models\Customer;
 use App\Models\Vehicle;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\TaxRate;
 use App\Models\Discount;
 use App\Models\PaymentMethod;
@@ -28,7 +28,7 @@ class InvoiceTest extends TestCase
         // Create test data
         $this->customer = Customer::factory()->create();
         $this->vehicle = Vehicle::factory()->create(['customer_id' => $this->customer->id]);
-        $this->workOrder = WorkOrder::factory()->create([
+        $this->jobOrder = JobOrder::factory()->create([
             'customer_id' => $this->customer->id,
             'vehicle_id' => $this->vehicle->id,
             'status' => 'completed'
@@ -63,7 +63,7 @@ class InvoiceTest extends TestCase
         $response = $this->post('/invoices', [
             'customer_id' => $this->customer->id,
             'vehicle_id' => $this->vehicle->id,
-            'work_order_id' => $this->workOrder->id,
+            'job_order_id' => $this->jobOrder->id,
             'invoice_date' => now()->format('Y-m-d'),
             'due_date' => now()->addDays(30)->format('Y-m-d'),
             'notes' => 'Test invoice notes',
@@ -93,7 +93,7 @@ class InvoiceTest extends TestCase
         $this->assertDatabaseHas('invoices', [
             'customer_id' => $this->customer->id,
             'vehicle_id' => $this->vehicle->id,
-            'work_order_id' => $this->workOrder->id,
+            'job_order_id' => $this->jobOrder->id,
             'status' => 'draft',
             'payment_status' => 'pending',
         ]);

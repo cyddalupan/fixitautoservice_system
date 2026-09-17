@@ -269,6 +269,174 @@
 .fc-dayGridMonth-button, .fc-timeGridWeek-button, .fc-timeGridDay-button, .fc-listMonth-button {
     min-width: 70px !important;
 }
+
+/* ============================================
+   ALWAYS-VISIBLE EVENT INFO (full details, no hover needed)
+   ============================================ */
+/* Let calendar events grow so every line stays readable */
+.fc-daygrid-event {
+    white-space: normal !important;
+    overflow: visible !important;
+    height: auto !important;
+    padding: 3px 6px !important;
+    margin-bottom: 3px !important;
+    border-radius: 6px !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    transition: box-shadow 0.15s ease;
+}
+.fc-daygrid-event:hover {
+    box-shadow: 0 2px 7px rgba(0,0,0,0.16);
+}
+.fc-daygrid-event .fc-event-main,
+.fc-daygrid-event .fc-event-main-frame {
+    overflow: visible !important;
+}
+/* Time-grid (week/day) events: allow wrapping too */
+.fc-timegrid-event,
+.fc-timegrid-event .fc-event-main {
+    white-space: normal !important;
+    border-radius: 6px !important;
+}
+.fc-timegrid-event {
+    padding: 3px 6px !important;
+}
+
+/* Give month cells room for a multi-line event */
+.fc-daygrid-day-frame { min-height: 118px; }
+.fc-daygrid-day-top { margin-bottom: 2px; }
+.fc-daygrid-day-number {
+    font-weight: 600 !important;
+    color: #495057 !important;
+    font-size: 12px !important;
+    padding: 2px 6px !important;
+}
+.fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+    background: #0d6efd;
+    color: #fff !important;
+    border-radius: 50%;
+    min-width: 22px;
+    text-align: center;
+    margin: 2px;
+}
+
+/* Event inner layout: [status bar][text block] */
+.fc-ev-wrap { display: flex; align-items: stretch; gap: 5px; width: 100%; line-height: 1.2; }
+.fc-ev-text { min-width: 0; flex: 1; overflow: hidden; }
+.fc-ev-l1 {
+    font-weight: 700;
+    font-size: 10.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.fc-ev-l2 {
+    font-weight: 500;
+    font-size: 10px;
+    color: #212529;
+    overflow-wrap: anywhere;
+}
+.fc-ev-l3 {
+    font-size: 9.5px;
+    color: #495057;
+    overflow-wrap: anywhere;
+}
+.fc-ev-l4 {
+    font-size: 9px;
+    color: #6c757d;
+    font-style: italic;
+    overflow-wrap: anywhere;
+}
+.fc-ev-plate {
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    color: #343a40;
+}
+.fc-ev-chip {
+    display: inline-block;
+    padding: 0 4px;
+    border-radius: 3px;
+    background: #e9ecef;
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1.4;
+    color: #495057;
+    vertical-align: 1px;
+}
+.fc-ev-fuel { background: #e7f1ff; color: #0b5ed7; }
+.fc-ev-trans { background: #eaf7ee; color: #157347; }
+.fc-ev-sep { opacity: 0.4; }
+
+/* ============================================
+   RICH HOVER DETAILS CARD (appointment peek)
+   ============================================ */
+.fc-details-tooltip .tooltip-inner {
+    max-width: 360px;
+    text-align: left;
+    padding: 0;
+    background: #1f2937;
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+    overflow: hidden;
+}
+.fc-tt-card {
+    padding: 10px 12px;
+    color: #f8fafc;
+    font-size: 12px;
+    line-height: 1.35;
+}
+.fc-tt-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 13px;
+    padding-bottom: 6px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.22);
+}
+.fc-tt-time i { margin-right: 3px; }
+.fc-tt-row {
+    display: flex;
+    gap: 8px;
+    margin: 2px 0;
+}
+.fc-tt-k {
+    color: #cbd5e1;
+    min-width: 84px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.fc-tt-v {
+    color: #ffffff;
+    flex: 1;
+    word-break: break-word;
+}
+.fc-tt-badge {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+.fc-tt-badge.bg-scheduled { background: #198754; color: #fff; }
+.fc-tt-badge.bg-cancelled { background: #dc3545; color: #fff; }
+.fc-tt-badge.bg-completed { background: #0d6efd; color: #fff; }
+.fc-tt-badge.bg-progress  { background: #fd7e14; color: #fff; }
+.fc-tt-badge.bg-default   { background: #6c757d; color: #fff; }
+.fc-tt-hint {
+    margin-top: 7px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255,255,255,0.15);
+    color: #93c5fd;
+    font-size: 10.5px;
+}
+.fc-event:hover {
+    filter: brightness(0.97);
+}
 </style>
 @endpush
 
@@ -333,96 +501,107 @@ document.addEventListener("DOMContentLoaded", function() {
             editable: false,
             selectable: false,
             nowIndicator: true,
-            dayMaxEvents: true,
+            dayMaxEvents: 4, // show up to 4 appointments per day (full info); extra -> "+N more"
             height: "auto",
             windowResize: function(view) {
                 calendar.updateSize();
             },
             eventContent: function(arg) {
-                // Custom event rendering to ensure text is visible
-                let title = arg.event.title || "Appointment";
-                
-                // Get appointment status from extendedProps
-                let status = arg.event.extendedProps?.status || '';
-                let textColor = '#000000'; // Default black
-                let icon = '';
-                let isStrikethrough = false;
-                let opacity = '1';
-                
-                // Set text color, icon, and styling based on status
-                switch(status) {
+                // Always-visible info block — shows EVERYTHING except address,
+                // phone number and notes (those stay in the hover card / detail page).
+                //   line 1: time · customer        (bold, status-colored)
+                //   line 2: vehicle · plate
+                //   line 3: service · technician
+                //   line 4: progress (workflow) · appt #
+                var p = arg.event.extendedProps || {};
+                var esc = function(s) {
+                    if (s === null || s === undefined) return '';
+                    return String(s).replace(/[&<>"']/g, function(c) {
+                        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                    });
+                };
+                var titleCase = function(s) {
+                    return String(s || '').replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+                };
+
+                // Status -> text color + icon
+                var status = p.status || '';
+                var textColor = '#198754';
+                var icon = '\u2705';
+                var isStrikethrough = false;
+                var opacity = '1';
+                switch (status) {
                     case 'scheduled':
-                    case 'confirmed':
-                        textColor = '#198754'; // Bootstrap green
-                        icon = '✅'; // Check mark
-                        break;
-                    case 'cancelled':
-                        textColor = '#dc3545'; // Bootstrap red
-                        icon = '❌'; // X mark
-                        isStrikethrough = true;
-                        opacity = '0.8';
-                        break;
-                    case 'no_show':
-                        textColor = '#6c757d'; // Bootstrap gray
-                        icon = '👤❌'; // Person X
-                        isStrikethrough = true;
-                        opacity = '0.7';
-                        break;
-                    case 'rescheduled':
-                        textColor = '#fd7e14'; // Bootstrap orange
-                        icon = '🔄'; // Refresh/recycle
-                        break;
-                    case 'completed':
-                        textColor = '#198754'; // Bootstrap green
-                        icon = '✔️'; // Heavy check mark
-                        break;
-                    case 'in_progress':
-                        textColor = '#0dcaf0'; // Bootstrap info blue
-                        icon = '⚙️'; // Gear
-                        break;
-                    case 'arrived':
-                        textColor = '#20c997'; // Bootstrap teal
-                        icon = '🚗'; // Car
-                        break;
-                    default:
-                        textColor = '#6c757d'; // Default gray
-                        icon = '📅'; // Calendar
+                    case 'confirmed': textColor = '#198754'; icon = '\u2705'; break;
+                    case 'cancelled': textColor = '#dc3545'; icon = '\u274C'; isStrikethrough = true; opacity = '0.92'; break;
+                    case 'no_show': textColor = '#6c757d'; icon = '\uD83D\uDEAB'; isStrikethrough = true; opacity = '0.85'; break;
+                    case 'rescheduled': textColor = '#fd7e14'; icon = '\uD83D\uDD04'; break;
+                    case 'completed': textColor = '#198754'; icon = '\u2714\uFE0F'; break;
+                    case 'in_progress': textColor = '#0d6efd'; icon = '\u2699\uFE0F'; break;
+                    case 'arrived': textColor = '#20c997'; icon = '\uD83D\uDE97'; break;
+                    default: textColor = '#6c757d'; icon = '\uD83D\uDCC5';
                 }
-                
-                // Create custom content with better visibility
-                let arrayOfDomNodes = [];
-                
-                // Create a container div
-                let containerEl = document.createElement('div');
-                containerEl.className = 'fc-event-content-container';
-                containerEl.style.cssText = 'display: flex; align-items: center; gap: 3px;';
-                
-                // Add icon if defined
-                if (icon) {
-                    let iconEl = document.createElement('span');
-                    iconEl.innerHTML = icon;
-                    iconEl.style.cssText = 'font-size: 10px; line-height: 1;';
-                    containerEl.appendChild(iconEl);
-                }
-                
-                // Create a span with the title
-                let titleEl = document.createElement('span');
-                titleEl.className = 'fc-event-title-custom';
-                titleEl.innerText = title;
-                
-                // Apply styles
-                let titleStyles = 'font-weight: bold; font-size: 11px; padding: 1px 3px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: ' + textColor + ' !important; opacity: ' + opacity + ';';
-                
-                if (isStrikethrough) {
-                    titleStyles += ' text-decoration: line-through;';
-                }
-                
-                titleEl.style.cssText = titleStyles;
-                containerEl.appendChild(titleEl);
-                
-                arrayOfDomNodes.push(containerEl);
-                
-                return { domNodes: arrayOfDomNodes };
+
+                var time = p.time_display || (arg.event.start
+                    ? arg.event.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+                    : '');
+                var name = p.customer_short || (p.customer_name ? String(p.customer_name).split(' ')[0] : '') || 'Walk-in';
+                var veh = (p.vehicle_info && p.vehicle_info !== 'Vehicle info not available') ? p.vehicle_info : '';
+                var plate = p.plate || '';
+                var svc = p.service_label || (p.service_type ? titleCase(p.service_type) : '');
+                var tech = (p.technician_name && p.technician_name !== 'Not Assigned') ? p.technician_name : '';
+                var progress = p.workflow_status_display || '';
+                var number = p.number || '';
+
+                var sep = '<span class="fc-ev-sep"> \u00b7 </span>';
+                var join = function(arr) { return arr.join(sep); };
+
+                var l1 = '<div class="fc-ev-l1" style="color:' + textColor +
+                    (isStrikethrough ? ';text-decoration:line-through' : '') + ';">' +
+                    icon + ' ' + esc(time) + sep + esc(name) + '</div>';
+
+                // line 2: vehicle · fuel (Gas/Diesel) · transmission (MT/AT)
+                var fuelMap = { gasoline: 'Gas', gas: 'Gas', diesel: 'Diesel', hybrid: 'Hybrid', electric: 'EV' };
+                var transMap = { automatic: 'AT', auto: 'AT', manual: 'MT' };
+                var fuelRaw = String(p.fuel_type || '').toLowerCase();
+                var transRaw = String(p.transmission || '').toLowerCase();
+                var fuel = fuelMap[fuelRaw] || '';
+                var trans = transMap[transRaw] || '';
+                var vehBits = [];
+                if (veh) vehBits.push(esc(veh));
+                if (fuel) vehBits.push('<span class="fc-ev-chip fc-ev-fuel">' + esc(fuel) + '</span>');
+                if (trans) vehBits.push('<span class="fc-ev-chip fc-ev-trans">' + esc(trans) + '</span>');
+                var l2 = vehBits.length ? '<div class="fc-ev-l2">' + join(vehBits) + '</div>' : '';
+
+                // line 3: service type · technician
+                var svcBits = [];
+                if (svc) svcBits.push(esc(svc));
+                if (tech) svcBits.push(esc(tech));
+                var l3 = svcBits.length ? '<div class="fc-ev-l3">' + join(svcBits) + '</div>' : '';
+
+                // line 4: service description (falls back to workflow progress)
+                var desc = p.service_description ? String(p.service_description) : '';
+                if (desc.length > 90) desc = desc.slice(0, 90) + '\u2026';
+                var metaBits = [];
+                if (desc) metaBits.push(esc(desc));
+                else if (progress) metaBits.push(esc(progress));
+                var l4 = metaBits.length ? '<div class="fc-ev-l4">' + join(metaBits) + '</div>' : '';
+
+                var wrap = document.createElement('div');
+                wrap.className = 'fc-ev-wrap';
+                wrap.style.cssText = 'opacity:' + opacity + ';';
+
+                var bar = document.createElement('span');
+                bar.className = 'fc-ev-bar';
+                bar.style.cssText = 'flex:0 0 3px; width:3px; border-radius:3px; background:' + textColor + ';';
+                wrap.appendChild(bar);
+
+                var txt = document.createElement('div');
+                txt.className = 'fc-ev-text';
+                txt.innerHTML = l1 + l2 + l3 + l4;
+                wrap.appendChild(txt);
+
+                return { domNodes: [wrap] };
             },
             events: function(fetchInfo, successCallback, failureCallback) {
                 fetchAppointments(fetchInfo.start, fetchInfo.end)
@@ -433,13 +612,71 @@ document.addEventListener("DOMContentLoaded", function() {
                     });
             },
             eventDidMount: function(info) {
-                // Add tooltip
-                if (info.event.extendedProps.tooltip) {
-                    info.el.setAttribute("title", info.event.extendedProps.tooltip);
-                    info.el.setAttribute("data-bs-toggle", "tooltip");
-                    new bootstrap.Tooltip(info.el);
+                // ===== Rich hover details card =====
+                // Build an HTML tooltip from extendedProps so peeking at an
+                // appointment reveals full details, not just time + customer name.
+                var p = info.event.extendedProps || {};
+                var esc = function(s) {
+                    if (s === null || s === undefined) return '';
+                    return String(s).replace(/[&<>"']/g, function(c) {
+                        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+                    });
+                };
+                var row = function(label, value) {
+                    if (value === null || value === undefined || value === '') return '';
+                    return '<div class="fc-tt-row"><span class="fc-tt-k">' + esc(label) + '</span><span class="fc-tt-v">' + esc(value) + '</span></div>';
+                };
+                var titleCase = function(s) {
+                    return String(s || '').replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); });
+                };
+
+                var status = (p.status || '').toLowerCase();
+                var badgeClass = 'fc-tt-badge bg-default';
+                if (status === 'scheduled' || status === 'confirmed') badgeClass = 'fc-tt-badge bg-scheduled';
+                else if (status === 'cancelled' || status === 'no_show') badgeClass = 'fc-tt-badge bg-cancelled';
+                else if (status === 'completed') badgeClass = 'fc-tt-badge bg-completed';
+                else if (status === 'in_progress') badgeClass = 'fc-tt-badge bg-progress';
+
+                var timeStr = '';
+                if (info.event.start) {
+                    timeStr = info.event.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
                 }
-                
+
+                var head = '<div class="fc-tt-head">' +
+                    '<span class="fc-tt-time"><i class="fas fa-clock"></i> ' + esc(timeStr) + '</span>' +
+                    (p.status_display ? '<span class="' + badgeClass + '">' + esc(p.status_display) + '</span>' : '') +
+                    '</div>';
+
+                var body = '';
+                body += row('Appt #', p.number);
+                body += row('Customer', p.customer_name);
+                body += row('Contact', p.customer_phone);
+                body += row('Vehicle', p.vehicle_info);
+                body += row('Service', p.service_label || titleCase(p.service_type));
+                if (p.service_description) body += row('Details', p.service_description);
+                body += row('Technician', p.technician_name);
+                body += row('Progress', p.workflow_status_display);
+                if (p.notes) {
+                    var notes = String(p.notes);
+                    if (notes.length > 140) notes = notes.substring(0, 140) + '…';
+                    body += row('Notes', notes);
+                }
+
+                var tipHtml = '<div class="fc-tt-card">' + head + body +
+                    '<div class="fc-tt-hint"><i class="fas fa-mouse-pointer"></i> Click to open appointment</div></div>';
+
+                // Bootstrap tooltip with HTML content (values are escaped above)
+                new bootstrap.Tooltip(info.el, {
+                    html: true,
+                    sanitize: false,
+                    title: tipHtml,
+                    container: 'body',
+                    customClass: 'fc-details-tooltip',
+                    placement: 'auto',
+                    fallbackPlacements: ['top', 'bottom', 'left', 'right'],
+                    delay: { show: 120, hide: 80 }
+                });
+
                 // Add click handler
                 info.el.addEventListener("click", function() {
                     const appointmentId = info.event.id;
@@ -919,6 +1156,36 @@ function restoreAppointment(appointmentId, appointmentNumber, customerName) {
         }
     });
 }
+
+// Start appointment: ipakita muna lahat ng info para ma-verify bago mag-start
+function startAppointment(appointmentId) {
+    var infoEl = document.getElementById('start-info-' + appointmentId);
+    var html = infoEl ? infoEl.innerHTML : '';
+    var form = document.getElementById('start-form-' + appointmentId);
+    if (!form) { return; }
+
+    if (typeof Swal === 'undefined') {
+        if (confirm('Simulan na ang trabaho? Siguraduhin tama lahat ng information.')) {
+            form.submit();
+        }
+        return;
+    }
+
+    Swal.fire({
+        title: 'Tama ba lahat ng information?',
+        html: '<div style="text-align:left">' + html + '</div>',
+        icon: 'question',
+        width: 620,
+        showCancelButton: true,
+        confirmButtonText: 'Oo, Start',
+        cancelButtonText: 'Cancel',
+        confirmButtonColor: '#0dcaf0',
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            form.submit();
+        }
+    });
+}
 </script>
 
 <div class="page-header">
@@ -937,6 +1204,53 @@ function restoreAppointment(appointmentId, appointmentNumber, customerName) {
     </div>
 </div>
 
+<!-- Filter Bar -->
+<div class="card mb-3">
+    <div class="card-body py-3">
+        <form method="GET" action="{{ route('appointments.index') }}" class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">All Statuses</option>
+                    @foreach(['scheduled', 'confirmed', 'customer_booked', 'checked_in', 'in_progress', 'completed', 'cancelled', 'no_show', 'rescheduled'] as $st)
+                        <option value="{{ $st }}" {{ ($filters['status'] ?? '') == $st ? 'selected' : '' }}>{{ ucfirst(str_replace('_', ' ', $st)) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">From</label>
+                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ $filters['date_from'] ?? '' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">To</label>
+                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ $filters['date_to'] ?? '' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Customer</label>
+                <select name="customer_id" class="form-select form-select-sm">
+                    <option value="">All Customers</option>
+                    @foreach($customers as $customer)
+                        <option value="{{ $customer->id }}" {{ ($filters['customer_id'] ?? '') == $customer->id ? 'selected' : '' }}>{{ $customer->first_name }} {{ $customer->last_name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Vehicle</label>
+                <select name="vehicle_id" class="form-select form-select-sm">
+                    <option value="">All Vehicles</option>
+                    @foreach($vehicles as $vehicle)
+                        <option value="{{ $vehicle->id }}" {{ ($filters['vehicle_id'] ?? '') == $vehicle->id ? 'selected' : '' }}>{{ $vehicle->year }} {{ $vehicle->make }} {{ $vehicle->model }}{{ $vehicle->license_plate ? ' ['.$vehicle->license_plate.']' : '' }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-2 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-filter me-1"></i> Filter</button>
+                <a href="{{ route('appointments.index') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Status Tabs -->
 <div class="card mb-4">
     <div class="card-body p-0">
@@ -944,6 +1258,11 @@ function restoreAppointment(appointmentId, appointmentNumber, customerName) {
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="scheduled-tab" data-bs-toggle="tab" data-bs-target="#scheduled" type="button" role="tab">
                     <i class="fas fa-clock me-1"></i> Scheduled ({{ $stats['scheduled'] }})
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="arrived-tab" data-bs-toggle="tab" data-bs-target="#arrived" type="button" role="tab">
+                    <i class="fas fa-car me-1"></i> Arrived ({{ $stats['arrived'] }})
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -1181,6 +1500,113 @@ function restoreAppointment(appointmentId, appointmentNumber, customerName) {
                         <i class="fas fa-calendar-times fa-4x text-muted mb-3"></i>
                         <h4 class="text-muted">No scheduled appointments</h4>
                         <p class="text-muted">All appointments have been processed or cancelled</p>
+                    </div>
+                @endif
+            </div>
+            
+            <!-- Arrived Tab -->
+            <div class="tab-pane fade" id="arrived" role="tabpanel">
+                @if($arrivedAppointments->count() > 0)
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <span class="text-muted">{{ $arrivedAppointments->count() }} arrived / checked-in appointments</span>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Appointment #</th>
+                                    <th>Customer & Vehicle</th>
+                                    <th>Date & Time</th>
+                                    <th>Service Type</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($arrivedAppointments as $appointment)
+                                <tr data-id="{{ $appointment->id }}">
+                                    <td>
+                                        <strong>{{ $appointment->appointment_number }}</strong>
+                                    </td>
+                                    <td>
+                                        <strong class="text-teal">🚗 {{ $appointment->customer->full_name }}</strong>
+                                        <br>
+                                        <small class="text-muted">
+                                            <i class="fas fa-car me-1"></i>
+                                            {{ $appointment->vehicle_description }}
+                                        </small>
+                                    </td>
+                                    <td>
+                                        <strong>{{ $appointment->appointment_date->format('M d, Y') }}</strong>
+                                        <br>
+                                        <span class="text-muted">
+                                            @if($appointment->checked_in_at)
+                                                Checked in {{ $appointment->checked_in_at->format('g:i A') }}
+                                            @else
+                                                {{ date('g:i A', strtotime($appointment->appointment_time)) }}
+                                            @endif
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-info">{{ ucfirst(str_replace('_', ' ', $appointment->appointment_type)) }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark">🚗 Arrived</span>
+                                    </td>
+                                    <td>
+                                        <div id="start-info-{{ $appointment->id }}" class="d-none">
+                                            <table class="table table-sm mb-0" style="font-size:12.5px">
+                                                <tr><th class="text-start">Appointment #</th><td>{{ $appointment->appointment_number }}</td></tr>
+                                                <tr><th class="text-start">Schedule</th><td>{{ $appointment->appointment_date ? $appointment->appointment_date->format('M d, Y') : '' }} {{ $appointment->appointment_time }}</td></tr>
+                                                <tr><th class="text-start">Customer</th><td>{{ $appointment->customer->full_name ?? '' }}</td></tr>
+                                                <tr><th class="text-start">Phone</th><td>{{ $appointment->customer->phone ?? '' }}</td></tr>
+                                                <tr><th class="text-start">Address</th><td>{{ $appointment->customer->address ?? '' }}</td></tr>
+                                                <tr><th class="text-start">Vehicle</th><td>{{ trim(($appointment->vehicle->year ?? '') . ' ' . ($appointment->vehicle->make ?? '') . ' ' . ($appointment->vehicle->model ?? '')) ?: ($appointment->vehicle_description ?? '') }}</td></tr>
+                                                <tr><th class="text-start">Plate No.</th><td>{{ $appointment->vehicle->license_plate ?? '' }}</td></tr>
+                                                <tr><th class="text-start">VIN</th><td>{{ $appointment->vehicle->vin ?? '' }}</td></tr>
+                                                <tr><th class="text-start">Engine No.</th><td>{{ $appointment->vehicle->engine_no ?? '' }}</td></tr>
+                                                <tr><th class="text-start">Transmission</th><td>{{ $appointment->vehicle->transmission ?? '' }}</td></tr>
+                                                <tr><th class="text-start">Fuel</th><td>{{ $appointment->vehicle->fuel_type ?? '' }}</td></tr>
+                                                <tr><th class="text-start">Odometer</th><td>{{ $appointment->vehicle->odometer ?? '' }}</td></tr>
+                                                <tr><th class="text-start">Service</th><td>{{ ucfirst(str_replace('_', ' ', $appointment->appointment_type)) }}</td></tr>
+                                                <tr><th class="text-start">Request</th><td>{{ $appointment->service_request ?? '' }}</td></tr>
+                                            </table>
+                                        </div>
+                                        <div class="btn-group" role="group">
+                                            <a href="{{ route('appointments.update-info.form', $appointment) }}" class="btn btn-warning btn-sm">
+                                                <i class="fas fa-edit me-1"></i> Update Info
+                                            </a>
+                                            <button type="button" class="btn btn-info btn-sm"
+                                                    onclick="startAppointment({{ $appointment->id }})">
+                                                <i class="fas fa-play me-1"></i> Start
+                                            </button>
+                                            <a href="{{ route('appointments.show', $appointment) }}" class="btn btn-outline-primary btn-sm">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-outline-danger btn-sm cancel-btn"
+                                                    onclick="cancelAppointment({{ $appointment->id }}, '{{ $appointment->appointment_number }}', '{{ addslashes($appointment->customer->full_name) }}')"
+                                                    data-appointment-id="{{ $appointment->id }}"
+                                                    data-appointment-number="{{ $appointment->appointment_number }}"
+                                                    title="Cancel Appointment">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                        <form id="start-form-{{ $appointment->id }}" action="{{ route('appointments.start', $appointment) }}" method="POST" class="d-none">
+                                            @csrf
+                                        </form>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                @else
+                    <div class="text-center py-5">
+                        <i class="fas fa-car fa-4x text-muted mb-3"></i>
+                        <h4 class="text-muted">No arrived appointments</h4>
+                        <p class="text-muted">Checked-in appointments will appear here</p>
                     </div>
                 @endif
             </div>

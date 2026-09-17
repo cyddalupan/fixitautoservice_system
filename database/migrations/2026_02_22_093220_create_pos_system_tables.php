@@ -244,7 +244,7 @@ return new class extends Migration
             $table->enum('invoice_type', ['service', 'parts', 'combined', 'estimate', 'deposit'])->default('service');
             $table->foreignId('customer_id')->constrained('customers')->onDelete('cascade');
             $table->foreignId('vehicle_id')->nullable()->constrained('vehicles')->onDelete('set null');
-            $table->foreignId('work_order_id')->nullable()->constrained('work_orders')->onDelete('set null');
+            $table->foreignId('job_order_id')->nullable()->constrained('job_orders')->onDelete('set null');
             $table->foreignId('appointment_id')->nullable()->constrained('appointments')->onDelete('set null');
             $table->date('invoice_date');
             $table->date('due_date')->nullable();
@@ -306,7 +306,7 @@ return new class extends Migration
             $table->decimal('total_amount', 10, 2)->default(0);
             $table->foreignId('service_id')->nullable()->constrained('service_records')->onDelete('set null');
             $table->foreignId('part_id')->nullable()->constrained('inventory')->onDelete('set null');
-            $table->foreignId('labor_id')->nullable()->constrained('work_order_tasks')->onDelete('set null');
+            $table->foreignId('labor_id')->nullable()->constrained('job_order_tasks')->onDelete('set null');
             $table->foreignId('technician_id')->nullable()->constrained('users')->onDelete('set null');
             $table->boolean('has_warranty')->default(false);
             $table->integer('warranty_months')->nullable();
@@ -331,7 +331,7 @@ return new class extends Migration
             $table->enum('payment_type', ['invoice', 'deposit', 'advance', 'refund', 'adjustment'])->default('invoice');
             $table->foreignId('invoice_id')->nullable()->constrained('invoices')->onDelete('cascade');
             $table->foreignId('customer_id')->constrained('customers')->onDelete('cascade');
-            $table->foreignId('work_order_id')->nullable()->constrained('work_orders')->onDelete('set null');
+            $table->foreignId('job_order_id')->nullable()->constrained('job_orders')->onDelete('set null');
             $table->date('payment_date');
             $table->decimal('amount', 10, 2);
             $table->decimal('processing_fee', 10, 2)->default(0);

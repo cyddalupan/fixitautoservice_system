@@ -34,9 +34,9 @@ return new class extends Migration
             $table->foreignId('estimate_id')->nullable()->constrained('estimates')->onDelete('set null');
             $table->timestamp('estimate_created_at')->nullable();
             
-            $table->boolean('has_work_order')->default(false);
-            $table->foreignId('work_order_id')->nullable()->constrained('work_orders')->onDelete('set null');
-            $table->timestamp('work_order_created_at')->nullable();
+            $table->boolean('has_job_order')->default(false);
+            $table->foreignId('job_order_id')->nullable()->constrained('job_orders')->onDelete('set null');
+            $table->timestamp('job_order_created_at')->nullable();
             
             $table->boolean('has_invoice')->default(false);
             $table->foreignId('invoice_id')->nullable()->constrained('invoices')->onDelete('set null');
@@ -47,7 +47,7 @@ return new class extends Migration
             $table->timestamp('payment_created_at')->nullable();
             
             // Current status and progress percentage
-            $table->enum('current_stage', ['appointment', 'inspection', 'estimate', 'work_order', 'invoice', 'payment', 'completed'])->default('appointment');
+            $table->enum('current_stage', ['appointment', 'inspection', 'estimate', 'job_order', 'invoice', 'payment', 'completed'])->default('appointment');
             $table->integer('progress_percentage')->default(0);
             
             // Service type: full_service or parts_purchase

@@ -36,7 +36,7 @@
                     
                     <!-- Make Job Order Button (for approved estimates) -->
                     @if($estimate->status === 'approved')
-                    <form action="{{ route('estimates.convert-to-work-order', $estimate->id) }}" method="POST" style="display: inline;">
+                    <form action="{{ route('estimates.convert-to-job-order', $estimate->id) }}" method="POST" style="display: inline;">
                         @csrf
                         <button type="submit" class="btn btn-warning">
                             <i class="fas fa-clipboard-check"></i> Make Job Order

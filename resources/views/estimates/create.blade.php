@@ -70,6 +70,48 @@ body{background:var(--ebg)}
 .sb .bg{display:flex;gap:8px}
 .sb .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:8px;font-size:.8rem;font-weight:600;transition:all .15s}
 @media(max-width:768px){.igh{display:none}.ir{grid-template-columns:1fr;gap:6px;padding:12px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;position:relative}.ir .dh{display:none}.ir .rm{position:absolute;top:8px;right:8px}.sc .ig{grid-template-columns:1fr}.sb{flex-direction:column}.sb .bg{width:100%}.sb .bg .btn{flex:1}}
+
+    /* ===== Dark mode overrides (auto-swept) ===== */
+    [data-theme="dark"] .autocomplete-dropdown {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .igh {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .ir input {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .ir select {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .sn {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .sn .p {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .sn .p.active {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
+    [data-theme="dark"] .tr .tl {
+        background-color: var(--dark-card) !important;
+        color: var(--dark-text) !important;
+        border-color: var(--dark-border) !important;
+    }
 </style>
 @endpush
 

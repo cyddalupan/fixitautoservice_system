@@ -190,7 +190,7 @@
                         <!-- View All Categories -->
                         <div class="dropdown">
                             <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" 
-                                    id="categoryQuickFilter" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    id="categoryQuickFilter" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 <i class="fas fa-tags"></i> View All Category
                             </button>
                             <div class="dropdown-menu" aria-labelledby="categoryQuickFilter">
@@ -212,7 +212,7 @@
                         <!-- View All Suppliers -->
                         <div class="dropdown">
                             <button class="btn btn-sm btn-outline-primary dropdown-toggle" type="button" 
-                                    id="supplierQuickFilter" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                    id="supplierQuickFilter" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                 <i class="fas fa-truck"></i> View All Supplier
                             </button>
                             <div class="dropdown-menu" aria-labelledby="supplierQuickFilter">

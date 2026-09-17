@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Service;
 use App\Models\Appointment;
 use App\Models\Estimate;
-use App\Models\WorkOrder;
+use App\Models\JobOrder;
 use App\Models\Invoice;
 use App\Models\Payment;
 use Illuminate\Http\Request;
@@ -39,8 +39,8 @@ class ServiceController extends Controller
                 case 'estimate':
                     $query->whereHas('estimate');
                     break;
-                case 'work_order':
-                    $query->whereHas('workOrder');
+                case 'job_order':
+                    $query->whereHas('jobOrder');
                     break;
                 case 'invoice':
                     $query->whereHas('invoice');
@@ -108,7 +108,7 @@ class ServiceController extends Controller
             'vehicle',
             'appointment',
             'estimate',
-            'workOrder',
+            'jobOrder',
             'invoice',
             'payments'
         ])->findOrFail($serviceId);
@@ -124,7 +124,7 @@ class ServiceController extends Controller
         $service = Service::with([
             'appointment',
             'estimate',
-            'workOrder',
+            'jobOrder',
             'invoice',
             'payments'
         ])->findOrFail($serviceId);
@@ -156,14 +156,14 @@ class ServiceController extends Controller
         }
         
         // Work Order
-        if ($service->workOrder) {
+        if ($service->jobOrder) {
             $timeline[] = [
-                'stage' => 'work_order',
+                'stage' => 'job_order',
                 'title' => 'Work Order Created',
                 'description' => 'Work order was created for service',
-                'date' => $service->workOrder->created_at,
-                'status' => $service->workOrder->work_order_status,
-                'data' => $service->workOrder,
+                'date' => $service->jobOrder->created_at,
+                'status' => $service->jobOrder->job_order_status,
+                'data' => $service->jobOrder,
             ];
         }
         
@@ -212,14 +212,14 @@ class ServiceController extends Controller
         $totalServices = Service::count();
         $servicesWithAppointment = Service::has('appointment')->count();
         $servicesWithEstimate = Service::has('estimate')->count();
-        $servicesWithWorkOrder = Service::has('workOrder')->count();
+        $servicesWithJobOrder = Service::has('jobOrder')->count();
         $servicesWithInvoice = Service::has('invoice')->count();
         $servicesWithPayments = Service::has('payments')->count();
         
         $stageDistribution = [
             'appointment_scheduled' => Service::whereHas('appointment')->whereDoesntHave('estimate')->count(),
-            'estimated' => Service::whereHas('estimate')->whereDoesntHave('workOrder')->count(),
-            'work_in_progress' => Service::whereHas('workOrder')->whereDoesntHave('invoice')->count(),
+            'estimated' => Service::whereHas('estimate')->whereDoesntHave('jobOrder')->count(),
+            'work_in_progress' => Service::whereHas('jobOrder')->whereDoesntHave('invoice')->count(),
             'invoiced' => Service::whereHas('invoice')->whereDoesntHave('payments')->count(),
             'payment_completed' => Service::whereHas('payments', function($q) {
                 $q->select(DB::raw('SUM(amount) as total_paid'))
@@ -299,7 +299,7 @@ class ServiceController extends Controller
     public function advanceStage(Request $request, $serviceId)
     {
         $request->validate([
-            'stage' => 'required|in:estimate,work_order,invoice,payment',
+            'stage' => 'required|in:estimate,job_order,invoice,payment',
             'data' => 'required|array',
         ]);
         
@@ -319,14 +319,14 @@ class ServiceController extends Controller
                     ]));
                     break;
                     
-                case 'work_order':
+                case 'job_order':
                     // Create work order
-                    $workOrder = WorkOrder::create(array_merge($request->data, [
+                    $jobOrder = JobOrder::create(array_merge($request->data, [
                         'service_id' => $serviceId,
                         'appointment_id' => $service->appointment->id,
                         'estimate_id' => $service->estimate->id,
-                        'work_order_number' => WorkOrder::generateWorkOrderNumber(),
-                        'work_order_status' => 'draft',
+                        'job_order_number' => JobOrder::generateJobOrderNumber(),
+                        'job_order_status' => 'draft',
                     ]));
                     break;
                     
@@ -336,7 +336,7 @@ class ServiceController extends Controller
                         'service_id' => $serviceId,
                         'appointment_id' => $service->appointment->id,
                         'estimate_id' => $service->estimate->id,
-                        'work_order_id' => $service->workOrder->id,
+                        'job_order_id' => $service->jobOrder->id,
                         'invoice_number' => 'INV-' . date('Ymd') . '-' . str_pad(Invoice::count() + 1, 4, '0', STR_PAD_LEFT),
                         'status' => 'draft',
                     ]));
@@ -380,7 +380,7 @@ class ServiceController extends Controller
             'vehicle',
             'appointment',
             'estimate.items',
-            'workOrder.items',
+            'jobOrder.items',
             'invoice.items',
             'payments'
         ])->findOrFail($serviceId);
@@ -391,7 +391,7 @@ class ServiceController extends Controller
             'relationships' => [
                 'appointment_id' => $service->appointment->id ?? null,
                 'estimate_id' => $service->estimate->id ?? null,
-                'work_order_id' => $service->workOrder->id ?? null,
+                'job_order_id' => $service->jobOrder->id ?? null,
                 'invoice_id' => $service->invoice->id ?? null,
                 'payment_ids' => $service->payments->pluck('id')->toArray(),
             ],

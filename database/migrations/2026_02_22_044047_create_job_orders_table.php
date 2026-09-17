@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('work_orders', function (Blueprint $table) {
+        Schema::create('job_orders', function (Blueprint $table) {
             $table->id();
             
             // Relationships
@@ -22,11 +22,11 @@ return new class extends Migration
             $table->foreignId('technician_id')->nullable()->constrained('users')->onDelete('set null');
             
             // Work Order Information
-            $table->string('work_order_number')->unique();
-            $table->date('work_order_date');
-            $table->enum('work_order_status', ['draft', 'pending_approval', 'approved', 'in_progress', 'on_hold', 'completed', 'cancelled', 'invoiced'])->default('draft');
+            $table->string('job_order_number')->unique();
+            $table->date('job_order_date');
+            $table->enum('job_order_status', ['draft', 'pending_approval', 'approved', 'in_progress', 'on_hold', 'completed', 'cancelled', 'invoiced'])->default('draft');
             $table->enum('priority', ['low', 'normal', 'high', 'emergency'])->default('normal');
-            $table->string('work_order_type')->default('repair'); // repair, maintenance, inspection, diagnostic, recall
+            $table->string('job_order_type')->default('repair'); // repair, maintenance, inspection, diagnostic, recall
             
             // Vehicle Information
             $table->integer('odometer_in')->nullable();
@@ -147,19 +147,19 @@ return new class extends Migration
             $table->softDeletes();
             
             // Indexes
-            $table->index('work_order_number');
-            $table->index('work_order_status');
-            $table->index('work_order_date');
+            $table->index('job_order_number');
+            $table->index('job_order_status');
+            $table->index('job_order_date');
             $table->index('customer_id');
             $table->index('vehicle_id');
             $table->index('technician_id');
-            $table->index(['work_order_status', 'priority']);
+            $table->index(['job_order_status', 'priority']);
         });
         
         // Create work order items table for line items
-        Schema::create('work_order_items', function (Blueprint $table) {
+        Schema::create('job_order_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('work_order_id')->constrained()->onDelete('cascade');
+            $table->foreignId('job_order_id')->constrained()->onDelete('cascade');
             $table->string('item_type'); // labor, part, sublet, fee, tax, discount
             $table->string('description');
             $table->string('part_number')->nullable();
@@ -178,16 +178,17 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->json('metadata')->nullable();
             $table->timestamps();
+            $table->softDeletes();
             
-            $table->index('work_order_id');
+            $table->index('job_order_id');
             $table->index('item_type');
             $table->index('is_estimate');
         });
         
         // Create work order tasks table for task tracking
-        Schema::create('work_order_tasks', function (Blueprint $table) {
+        Schema::create('job_order_tasks', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('work_order_id')->constrained()->onDelete('cascade');
+            $table->foreignId('job_order_id')->constrained()->onDelete('cascade');
             $table->string('task_name');
             $table->text('description')->nullable();
             $table->enum('task_status', ['pending', 'assigned', 'in_progress', 'completed', 'on_hold', 'cancelled'])->default('pending');
@@ -205,11 +206,12 @@ return new class extends Migration
             $table->timestamp('quality_check_at')->nullable();
             $table->json('attachments')->nullable();
             $table->timestamps();
+            $table->softDeletes();
             
-            $table->index('work_order_id');
+            $table->index('job_order_id');
             $table->index('task_status');
             $table->index('assigned_technician_id');
-            $table->index(['work_order_id', 'sequence']);
+            $table->index(['job_order_id', 'sequence']);
         });
     }
 
@@ -218,8 +220,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('work_order_tasks');
-        Schema::dropIfExists('work_order_items');
-        Schema::dropIfExists('work_orders');
+        Schema::dropIfExists('job_order_tasks');
+        Schema::dropIfExists('job_order_items');
+        Schema::dropIfExists('job_orders');
     }
 };

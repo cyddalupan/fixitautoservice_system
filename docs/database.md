@@ -170,7 +170,7 @@ Customer appointment scheduling.
 - INDEX `appointments_appointment_date_index` (`appointment_date`)
 - INDEX `appointments_status_index` (`status`)
 
-#### `work_orders`
+#### `job_orders`
 Work order management.
 
 | Column | Type | Description |
@@ -179,7 +179,7 @@ Work order management.
 | customer_id | bigint(20) UNSIGNED | Foreign key to customers |
 | vehicle_id | bigint(20) UNSIGNED | Foreign key to vehicles |
 | appointment_id | bigint(20) UNSIGNED | Foreign key to appointments |
-| work_order_number | varchar(50) | Unique work order number |
+| job_order_number | varchar(50) | Unique work order number |
 | status | enum('pending','in_progress','waiting_parts','completed','closed') | Work order status |
 | priority | enum('low','medium','high','urgent') | Priority level |
 | estimated_completion | datetime | Estimated completion time |
@@ -199,8 +199,8 @@ Work order management.
 - FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`)
 - FOREIGN KEY (`vehicle_id`) REFERENCES `vehicles`(`id`)
 - FOREIGN KEY (`appointment_id`) REFERENCES `appointments`(`id`)
-- UNIQUE KEY `work_orders_work_order_number_unique` (`work_order_number`)
-- INDEX `work_orders_status_index` (`status`)
+- UNIQUE KEY `job_orders_job_order_number_unique` (`job_order_number`)
+- INDEX `job_orders_status_index` (`status`)
 
 ### Inventory & Parts Tables
 
@@ -283,7 +283,7 @@ Customer invoicing.
 | id | bigint(20) UNSIGNED | Primary key |
 | invoice_number | varchar(50) | Unique invoice number |
 | customer_id | bigint(20) UNSIGNED | Foreign key to customers |
-| work_order_id | bigint(20) UNSIGNED | Foreign key to work_orders |
+| job_order_id | bigint(20) UNSIGNED | Foreign key to job_orders |
 | invoice_date | date | Invoice date |
 | due_date | date | Payment due date |
 | subtotal | decimal(10,2) | Subtotal amount |
@@ -300,7 +300,7 @@ Customer invoicing.
 **Indexes:**
 - PRIMARY KEY (`id`)
 - FOREIGN KEY (`customer_id`) REFERENCES `customers`(`id`)
-- FOREIGN KEY (`work_order_id`) REFERENCES `work_orders`(`id`)
+- FOREIGN KEY (`job_order_id`) REFERENCES `job_orders`(`id`)
 - UNIQUE KEY `invoices_invoice_number_unique` (`invoice_number`)
 - INDEX `invoices_status_index` (`status`)
 

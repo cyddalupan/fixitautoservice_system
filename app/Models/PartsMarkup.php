@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class PartsMarkup extends Model
 {
+    protected $table = 'parts_markup';
+
     use HasFactory, SoftDeletes;
 
     protected $fillable = [

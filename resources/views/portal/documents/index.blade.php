@@ -107,8 +107,8 @@
                                                             @if($document->vehicle)
                                                                 {{ $document->vehicle->make }} {{ $document->vehicle->model }}
                                                             @endif
-                                                            @if($document->workOrder)
-                                                                • Work Order #{{ $document->workOrder->id }}
+                                                            @if($document->jobOrder)
+                                                                • Work Order #{{ $document->jobOrder->id }}
                                                             @endif
                                                         </div>
                                                     </div>

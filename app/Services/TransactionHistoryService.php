@@ -9,7 +9,7 @@ class TransactionHistoryService
     /**
      * Types of transactions to include.
      */
-    const TYPES = ['appointment', 'inspection', 'work_order', 'estimate', 'invoice', 'archived_inspection'];
+    const TYPES = ['appointment', 'inspection', 'job_order', 'estimate', 'invoice', 'archived_inspection'];
 
     /**
      * Get unified transaction history for a customer.
@@ -114,13 +114,13 @@ class TransactionHistoryService
         }
 
         // --- Work Orders ---
-        $wos = DB::table('work_orders')
+        $wos = DB::table('job_orders')
             ->where('customer_id', $customerId)
             ->select(
-                DB::raw("'work_order' as type"),
+                DB::raw("'job_order' as type"),
                 'id',
                 'service_type',
-                'work_order_status as status',
+                'job_order_status as status',
                 'customer_concerns as description',
                 'vehicle_id',
                 'created_at',
@@ -133,7 +133,7 @@ class TransactionHistoryService
         foreach ($wos as $wo) {
             $vehicle = DB::table('vehicles')->find($wo->vehicle_id);
             $wo->vehicle_label = $vehicle ? "{$vehicle->make} {$vehicle->model}" : "Vehicle #{$wo->vehicle_id}";
-            $wo->url = route('work-orders.show', $wo->id, false);
+            $wo->url = route('job-orders.show', $wo->id, false);
             $wo->ref_number = 'WO-' . str_pad($wo->id, 5, '0', STR_PAD_LEFT);
             $transactions[] = $wo;
         }

@@ -14,8 +14,8 @@ class NewJobOrderController extends BaseServiceController
         $customerId = $request->input('customer_id');
         $vehicleId = $request->input('vehicle_id');
         
-        // Get common data for work_orders section (job orders = work orders)
-        $data = $this->getCommonData('work_orders', $customerId, $vehicleId);
+        // Get common data for job_orders section (job orders = work orders)
+        $data = $this->getCommonData('job_orders', $customerId, $vehicleId);
         
         // Add section-specific data
         $data['pageTitle'] = 'Job Orders';

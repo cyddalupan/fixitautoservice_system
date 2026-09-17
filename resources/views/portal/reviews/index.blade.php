@@ -229,8 +229,8 @@
                                                 <div class="col-md-8">
                                                     <div class="mb-2">
                                                         <h6 class="mb-1">
-                                                            @if($review->work_order)
-                                                                <a href="{{ route('portal.work-orders.show', $review->work_order->id) }}" class="text-decoration-none">
+                                                            @if($review->job_order)
+                                                                <a href="{{ route('portal.job-orders.show', $review->job_order->id) }}" class="text-decoration-none">
                                                                     {{ $review->title }}
                                                                 </a>
                                                             @else
@@ -247,10 +247,10 @@
                                                         <p class="mb-2 text-muted small">
                                                             <i class="fas fa-calendar me-1"></i>
                                                             {{ $review->created_at->format('F j, Y') }}
-                                                            @if($review->work_order)
+                                                            @if($review->job_order)
                                                                 <span class="ms-3">
                                                                     <i class="fas fa-wrench me-1"></i>
-                                                                    Work Order #{{ $review->work_order->id }}
+                                                                    Work Order #{{ $review->job_order->id }}
                                                                 </span>
                                                             @endif
                                                         </p>
@@ -361,8 +361,8 @@
                                                     <div class="d-flex justify-content-between align-items-start">
                                                         <div>
                                                             <h6 class="card-title mb-1">
-                                                                @if($service->work_order)
-                                                                    Work Order #{{ $service->work_order->id }}
+                                                                @if($service->job_order)
+                                                                    Work Order #{{ $service->job_order->id }}
                                                                 @else
                                                                     {{ $service->service_type }}
                                                                 @endif
@@ -378,7 +378,7 @@
                                                             @endif
                                                         </div>
                                                         <div>
-                                                            <a href="{{ route('portal.reviews.create', ['work_order_id' => $service->work_order_id ?? null]) }}" 
+                                                            <a href="{{ route('portal.reviews.create', ['job_order_id' => $service->job_order_id ?? null]) }}" 
                                                                class="btn btn-sm btn-primary">
                                                                 <i class="fas fa-star me-1"></i> Review
                                                             </a>

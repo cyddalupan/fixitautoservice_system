@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Carbon\Carbon;
 
-class WorkOrder extends Model
+class JobOrder extends Model
 {
     use HasFactory, SoftDeletes;
 
@@ -18,12 +18,13 @@ class WorkOrder extends Model
         'vehicle_id',
         'service_advisor_id',
         'technician_id',
-        'work_order_number',
-        'work_order_date',
-        'work_order_status',
+        'job_order_number',
+        'job_order_date',
+        'job_order_status',
+        'status',
         'repair_approval_status',
         'priority',
-        'work_order_type',
+        'job_order_type',
         'invoice_id',
         'odometer_in',
         'odometer_out',
@@ -110,7 +111,7 @@ class WorkOrder extends Model
     ];
 
     protected $casts = [
-        'work_order_date' => 'date',
+        'job_order_date' => 'date',
         'payment_due_date' => 'date',
         'warranty_expiry' => 'date',
         'check_in_time' => 'datetime',
@@ -169,21 +170,59 @@ class WorkOrder extends Model
     /**
      * Generate a unique work order number.
      */
-    public static function generateWorkOrderNumber(): string
+    /**
+     * Alias: `status` maps to `job_order_status` (column is job_order_status).
+     */
+    public function setStatusAttribute($value): void
+    {
+        $this->attributes['job_order_status'] = $value;
+        unset($this->attributes['status']);
+    }
+
+    public function getStatusAttribute()
+    {
+        return $this->job_order_status;
+    }
+
+    public static function generateJobOrderNumber(): string
     {
         $prefix = 'WO-' . date('Y') . '-';
-        $lastOrder = self::where('work_order_number', 'like', $prefix . '%')
-            ->orderBy('work_order_number', 'desc')
+        $lastOrder = self::where('job_order_number', 'like', $prefix . '%')
+            ->orderBy('job_order_number', 'desc')
             ->first();
         
         if ($lastOrder) {
-            $lastNumber = (int) str_replace($prefix, '', $lastOrder->work_order_number);
+            $lastNumber = (int) str_replace($prefix, '', $lastOrder->job_order_number);
             $nextNumber = str_pad($lastNumber + 1, 5, '0', STR_PAD_LEFT);
         } else {
             $nextNumber = '00001';
         }
         
         return $prefix . $nextNumber;
+    }
+
+    /**
+     * Generate a blueprint-compliant admin job order number: JO-YYYY-NNNN.
+     *
+     * The legacy generator above uses a WO-YYYY-NNNNN work-order prefix.
+     * The P6 blueprint requires the JO-YYYY-NNNN format, so the admin flow
+     * uses this dedicated generator rather than mutating legacy numbering.
+     */
+    public static function generateAdminJobOrderNumber(): string
+    {
+        $prefix = 'JO-' . date('Y') . '-';
+        $last = self::where('job_order_number', 'like', $prefix . '%')
+            ->orderBy('job_order_number', 'desc')
+            ->first();
+
+        if ($last) {
+            $lastNum = (int) substr($last->job_order_number, strlen($prefix));
+            $next = str_pad($lastNum + 1, 4, '0', STR_PAD_LEFT);
+        } else {
+            $next = '0001';
+        }
+
+        return $prefix . $next;
     }
 
     /**
@@ -201,7 +240,7 @@ class WorkOrder extends Model
 
     public function invoice()
     {
-        return $this->hasOne(Invoice::class, 'work_order_id');
+        return $this->hasOne(Invoice::class, 'job_order_id');
     }
 
     public function customer()
@@ -231,17 +270,17 @@ class WorkOrder extends Model
 
     public function items()
     {
-        return $this->hasMany(WorkOrderItem::class);
+        return $this->hasMany(JobOrderItem::class);
     }
 
     public function tasks()
     {
-        return $this->hasMany(WorkOrderTask::class);
+        return $this->hasMany(JobOrderTask::class);
     }
 
     public function vehicleInspection()
     {
-        return $this->hasOne(VehicleInspection::class, 'work_order_id');
+        return $this->hasOne(VehicleInspection::class, 'job_order_id');
     }
 
     /**
@@ -249,12 +288,12 @@ class WorkOrder extends Model
      */
     public function scopeToday($query)
     {
-        return $query->whereDate('work_order_date', Carbon::today());
+        return $query->whereDate('job_order_date', Carbon::today());
     }
 
     public function scopeThisWeek($query)
     {
-        return $query->whereBetween('work_order_date', [
+        return $query->whereBetween('job_order_date', [
             Carbon::now()->startOfWeek(),
             Carbon::now()->endOfWeek()
         ]);
@@ -262,7 +301,7 @@ class WorkOrder extends Model
 
     public function scopeThisMonth($query)
     {
-        return $query->whereBetween('work_order_date', [
+        return $query->whereBetween('job_order_date', [
             Carbon::now()->startOfMonth(),
             Carbon::now()->endOfMonth()
         ]);
@@ -270,27 +309,27 @@ class WorkOrder extends Model
 
     public function scopePending($query)
     {
-        return $query->where('work_order_status', 'pending');
+        return $query->where('job_order_status', 'pending');
     }
 
     public function scopeRepairing($query)
     {
-        return $query->where('work_order_status', 'repairing');
+        return $query->where('job_order_status', 'repairing');
     }
 
     public function scopeWaitingParts($query)
     {
-        return $query->where('work_order_status', 'waiting_parts');
+        return $query->where('job_order_status', 'waiting_parts');
     }
 
     public function scopeCompleted($query)
     {
-        return $query->where('work_order_status', 'completed');
+        return $query->where('job_order_status', 'completed');
     }
 
     public function scopeReleased($query)
     {
-        return $query->where('work_order_status', 'released');
+        return $query->where('job_order_status', 'released');
     }
 
     public function scopeOverdue($query)
@@ -328,7 +367,7 @@ class WorkOrder extends Model
      */
     public function getStatusColorAttribute(): string
     {
-        return match($this->work_order_status) {
+        return match($this->job_order_status) {
             'pending' => 'warning',
             'repairing' => 'primary',
             'waiting_parts' => 'info',
@@ -399,7 +438,7 @@ class WorkOrder extends Model
 
     public function getCompletionPercentageAttribute(): int
     {
-        if ($this->work_order_status === 'completed') {
+        if ($this->job_order_status === 'completed') {
             return 100;
         }
         
@@ -436,9 +475,9 @@ class WorkOrder extends Model
      */
     public function startWork(): bool
     {
-        if ($this->work_order_status === 'pending') {
+        if ($this->job_order_status === 'pending') {
             $this->update([
-                'work_order_status' => 'repairing',
+                'job_order_status' => 'repairing',
                 'work_start_time' => now(),
                 'bay_status' => 'occupied',
             ]);
@@ -449,9 +488,9 @@ class WorkOrder extends Model
 
     public function completeWork(): bool
     {
-        if ($this->work_order_status === 'repairing') {
+        if ($this->job_order_status === 'repairing') {
             $this->update([
-                'work_order_status' => 'completed',
+                'job_order_status' => 'completed',
                 'work_complete_time' => now(),
                 'bay_status' => 'available',
             ]);
@@ -462,9 +501,9 @@ class WorkOrder extends Model
 
     public function approveEstimate(): bool
     {
-        if ($this->work_order_status === 'pending_approval') {
+        if ($this->job_order_status === 'pending_approval') {
             $this->update([
-                'work_order_status' => 'approved',
+                'job_order_status' => 'approved',
                 'estimate_approved' => true,
                 'estimate_approved_at' => now(),
             ]);
@@ -495,9 +534,9 @@ class WorkOrder extends Model
 
     public function markAsReleased(): bool
     {
-        if ($this->work_order_status === 'completed') {
+        if ($this->job_order_status === 'completed') {
             $this->update([
-                'work_order_status' => 'released',
+                'job_order_status' => 'released',
                 'invoice_sent_time' => now(),
             ]);
             return true;
@@ -622,11 +661,11 @@ class WorkOrder extends Model
     public function getSummary(): array
     {
         return [
-            'work_order_number' => $this->work_order_number,
+            'job_order_number' => $this->job_order_number,
             'customer_name' => $this->customer->full_name,
             'vehicle' => $this->vehicle->year . ' ' . $this->vehicle->make . ' ' . $this->vehicle->model,
             'license_plate' => $this->vehicle->license_plate,
-            'status' => $this->work_order_status,
+            'status' => $this->job_order_status,
             'status_color' => $this->status_color,
             'priority' => $this->priority,
             'priority_color' => $this->priority_color,
@@ -647,6 +686,6 @@ class WorkOrder extends Model
      */
     public function serviceProgress(): HasOne
     {
-        return $this->hasOne(ServiceProgress::class, 'work_order_id');
+        return $this->hasOne(ServiceProgress::class, 'job_order_id');
     }
 }

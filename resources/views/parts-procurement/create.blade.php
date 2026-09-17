@@ -45,17 +45,17 @@
                             </div>
                             
                             <div class="form-group mb-3">
-                                <label for="work_order_id" class="form-label">Work Order</label>
-                                <select class="form-select @error('work_order_id') is-invalid @enderror" 
-                                        id="work_order_id" name="work_order_id">
+                                <label for="job_order_id" class="form-label">Work Order</label>
+                                <select class="form-select @error('job_order_id') is-invalid @enderror" 
+                                        id="job_order_id" name="job_order_id">
                                     <option value="">Select Work Order</option>
-                                    @foreach($workOrders as $workOrder)
-                                        <option value="{{ $workOrder->id }}" {{ old('work_order_id') == $workOrder->id ? 'selected' : '' }}>
-                                            WO-{{ $workOrder->id }} - {{ $workOrder->customer->first_name ?? 'N/A' }} {{ $workOrder->customer->last_name ?? '' }}
+                                    @foreach($jobOrders as $jobOrder)
+                                        <option value="{{ $jobOrder->id }}" {{ old('job_order_id') == $jobOrder->id ? 'selected' : '' }}>
+                                            WO-{{ $jobOrder->id }} - {{ $jobOrder->customer->first_name ?? 'N/A' }} {{ $jobOrder->customer->last_name ?? '' }}
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('work_order_id')
+                                @error('job_order_id')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror>
                             </div>

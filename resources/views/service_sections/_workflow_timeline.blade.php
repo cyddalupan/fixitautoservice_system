@@ -46,7 +46,7 @@
                                             'appointments' => ['icon' => 'calendar-check', 'color' => 'primary', 'title' => 'Appointment'],
                                             'inspections' => ['icon' => 'tools', 'color' => 'warning', 'title' => 'Repair Order'],
                                             'estimates' => ['icon' => 'file-invoice-dollar', 'color' => 'success', 'title' => 'Estimate'],
-                                            'work_orders' => ['icon' => 'clipboard-check', 'color' => 'danger', 'title' => 'Job Order'],
+                                            'job_orders' => ['icon' => 'clipboard-check', 'color' => 'danger', 'title' => 'Job Order'],
                                             'payments' => ['icon' => 'credit-card', 'color' => 'purple', 'title' => 'Payment'],
                                             'complete' => ['icon' => 'flag-checkered', 'color' => 'secondary', 'title' => 'Complete']
                                         ];
@@ -62,7 +62,7 @@
                                                 </div>
                                                 <div class="card-body text-center">
                                                     @if($sectionKey == 'complete')
-                                                        @if(!empty($workflow['work_orders']) && array_reduce($workflow['work_orders'], function($carry, $wo) { return $carry + count($wo['payments']); }, 0) > 0)
+                                                        @if(!empty($workflow['job_orders']) && array_reduce($workflow['job_orders'], function($carry, $wo) { return $carry + count($wo['payments']); }, 0) > 0)
                                                             <div class="text-success">
                                                                 <i class="fas fa-check-circle fa-2x mb-2"></i><br>
                                                                 <small>Complete</small>

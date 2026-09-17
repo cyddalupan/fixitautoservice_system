@@ -50,6 +50,19 @@
     .ui-autocomplete-loading {
         background: white url('https://cdnjs.cloudflare.com/ajax/libs/galleriffic/2.0.1/css/loader.gif') no-repeat right center;
     }
+
+    /* ===== Dark mode overrides ===== */
+    [data-theme="dark"] .ui-autocomplete {
+        background: var(--dark-card) !important;
+        border-color: var(--dark-border) !important;
+        color: var(--dark-text) !important;
+    }
+    [data-theme="dark"] .ui-autocomplete .ui-menu-item.ui-state-focus,
+    [data-theme="dark"] .ui-autocomplete .ui-menu-item:hover,
+    [data-theme="dark"] .ui-autocomplete .ui-menu-item-wrapper.ui-state-active {
+        background: var(--dark-hover) !important;
+        color: var(--dark-text) !important;
+    }
 </style>
 @endpush
 

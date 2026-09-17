@@ -153,12 +153,12 @@ class InventoryController extends Controller
             $inventory->setRelation('purchaseOrderItems', collect());
         }
         
-        // Try to load workOrderItems if the table exists
+        // Try to load jobOrderItems if the table exists
         try {
-            $inventory->load(['workOrderItems.workOrder']);
+            $inventory->load(['jobOrderItems.jobOrder']);
         } catch (\Exception $e) {
             // Table doesn't exist or other error - set empty collection
-            $inventory->setRelation('workOrderItems', collect());
+            $inventory->setRelation('jobOrderItems', collect());
         }
         
         // Statistics for this item
@@ -188,14 +188,14 @@ class InventoryController extends Controller
         }
         
         // Add work order items (sales)
-        foreach ($inventory->workOrderItems as $item) {
-            if ($item->workOrder) {
+        foreach ($inventory->jobOrderItems as $item) {
+            if ($item->jobOrder) {
                 $transactions->push([
                     'date' => $item->created_at,
                     'type' => 'sale',
                     'quantity' => $item->quantity,
-                    'reference' => $item->workOrder->work_order_number,
-                    'status' => $item->workOrder->status,
+                    'reference' => $item->jobOrder->job_order_number,
+                    'status' => $item->jobOrder->status,
                 ]);
             }
         }
@@ -263,7 +263,7 @@ class InventoryController extends Controller
     public function destroy(Inventory $inventory)
     {
         // Check if item has transactions
-        if ($inventory->purchaseOrderItems()->count() > 0 || $inventory->workOrderItems()->count() > 0) {
+        if ($inventory->purchaseOrderItems()->count() > 0 || $inventory->jobOrderItems()->count() > 0) {
             return redirect()->route('inventory.index')
                              ->with('error', 'Cannot delete inventory item with existing transactions.');
         }

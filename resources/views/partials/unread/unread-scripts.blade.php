@@ -10,7 +10,7 @@
  * Mark a single record as read via AJAX.
  * Updates the row styling immediately and syncs the sidebar counter.
  *
- * @param {string} module  - Module name (appointments, inspections, estimates, work-orders, service-records)
+ * @param {string} module  - Module name (appointments, inspections, estimates, job-orders, service-records)
  * @param {number} id      - Record ID
  * @param {HTMLElement|null} rowEl - Optional table row element to update in-place
  */
@@ -76,8 +76,8 @@ function syncSidebarCounter(module, delta) {
         'appointments': '#s-appointments-new',
         'inspections': '#s-inspections-new',
         'estimates': '#s-estimates-new',
-        'work-orders': '#s-work-orders-active',
-        'work_orders': '#s-work-orders-active',
+        'job-orders': '#s-job-orders-active',
+        'job_orders': '#s-job-orders-active',
         'service-records': null,
         'service_records': null,
         'invoices': '#s-invoices-new',
@@ -115,8 +115,8 @@ function syncSidebarCounter(module, delta) {
                     's-inspections-new': 'inspections_new',
                     's-estimates': 'estimates_total',
                     's-estimates-new': 'estimates_new',
-                    's-work-orders': 'work_orders_total',
-                    's-work-orders-active': 'work_orders_active',
+                    's-job-orders': 'job_orders_total',
+                    's-job-orders-active': 'job_orders_active',
                     's-service-records': 'service_records_total',
                     's-invoices': 'invoices_total',
                     's-invoices-new': 'invoices_new',
@@ -125,7 +125,7 @@ function syncSidebarCounter(module, delta) {
                     const el = document.getElementById(elId);
                     if (el && data[key] !== undefined) {
                         el.textContent = data[key];
-                        if (key.includes('_new') || key === 'work_orders_active') {
+                        if (key.includes('_new') || key === 'job_orders_active') {
                             el.style.display = data[key] > 0 ? '' : 'none';
                         }
                     }

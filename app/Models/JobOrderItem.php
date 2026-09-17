@@ -5,12 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class WorkOrderItem extends Model
+class JobOrderItem extends Model
 {
     use HasFactory;
 
     protected $fillable = [
-        'work_order_id',
+        'job_order_id',
         'item_type',
         'description',
         'part_number',
@@ -48,9 +48,9 @@ class WorkOrderItem extends Model
     /**
      * Relationships
      */
-    public function workOrder()
+    public function jobOrder()
     {
-        return $this->belongsTo(WorkOrder::class);
+        return $this->belongsTo(JobOrder::class);
     }
 
     /**
@@ -108,10 +108,10 @@ class WorkOrderItem extends Model
         $this->final_amount = $this->total_cost - $this->discount_amount + $this->tax_amount;
     }
 
-    public static function createFromTemplate(array $template, int $workOrderId, bool $isEstimate = true): self
+    public static function createFromTemplate(array $template, int $jobOrderId, bool $isEstimate = true): self
     {
         $item = new self([
-            'work_order_id' => $workOrderId,
+            'job_order_id' => $jobOrderId,
             'item_type' => $template['item_type'] ?? 'part',
             'description' => $template['description'],
             'part_number' => $template['part_number'] ?? null,
