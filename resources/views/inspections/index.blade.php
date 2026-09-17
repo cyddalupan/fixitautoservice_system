@@ -114,12 +114,12 @@
     <!-- Filters -->
     <div class="filter-bar">
         <form method="GET" action="{{ route('inspections.index') }}" class="row g-2 align-items-end">
-            <div class="col-md-3">
+            <div class="col-12 col-md-6 col-xl-4">
                 <label class="form-label">Search</label>
                 <input type="text" name="search" class="form-control" placeholder="Search customers, vehicles..." 
                        value="{{ request('search') }}">
             </div>
-            <div class="col-md-2">
+            <div class="col-6 col-md-3 col-xl-2">
                 <label class="form-label">Status</label>
                 <select name="status" class="form-select">
                     <option value="">All Status</option>
@@ -129,7 +129,7 @@
                     <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-6 col-md-3 col-xl-2">
                 <label class="form-label">Type</label>
                 <select name="type" class="form-select">
                     <option value="">All Types</option>
@@ -140,7 +140,7 @@
                     <option value="pre_purchase" {{ request('type') == 'pre_purchase' ? 'selected' : '' }}>Pre-Purchase</option>
                 </select>
             </div>
-            <div class="col-md-3 d-flex gap-2" style="padding-top:1.5rem;">
+            <div class="col-12 col-md-6 col-xl-4 d-flex gap-2 align-items-end">
                 <button type="submit" class="btn-filter-primary">
                     <i class="fas fa-filter"></i> Filter
                 </button>

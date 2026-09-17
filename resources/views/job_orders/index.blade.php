@@ -229,12 +229,12 @@
     <!-- Filters -->
     <div class="filter-bar">
         <form method="GET" action="{{ route('job-orders.index') }}" class="row g-2 align-items-end">
-            <div class="col-md-3">
+            <div class="col-12 col-md-6 col-xl-3">
                 <label class="form-label">Search</label>
                 <input type="text" name="search" class="form-control" placeholder="Search work orders..." 
                        value="{{ request('search') }}">
             </div>
-            <div class="col-md-2">
+            <div class="col-6 col-md-3 col-xl-2">
                 <label class="form-label">Status</label>
                 <select name="status" class="form-select">
                     <option value="">All Status</option>
@@ -246,7 +246,7 @@
                     <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-6 col-md-3 col-xl-2">
                 <label class="form-label">Priority</label>
                 <select name="priority" class="form-select">
                     <option value="">All Priority</option>
@@ -256,7 +256,7 @@
                     <option value="emergency" {{ request('priority') == 'emergency' ? 'selected' : '' }}>Emergency</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-12 col-md-6 col-xl-2">
                 <label class="form-label">Technician</label>
                 <select name="technician_id" class="form-select">
                     <option value="">All Technicians</option>
@@ -267,7 +267,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-3 d-flex gap-2" style="padding-top:1.5rem;">
+            <div class="col-12 col-md-6 col-xl-3 d-flex gap-2 align-items-end">
                 <button type="submit" class="btn-filter-primary">
                     <i class="fas fa-filter"></i> Filter
                 </button>

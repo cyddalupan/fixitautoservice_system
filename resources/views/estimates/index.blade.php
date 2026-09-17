@@ -113,12 +113,12 @@
     <!-- Filters -->
     <div class="filter-bar">
         <form method="GET" action="{{ route('estimates.index') }}" class="row g-2 align-items-end">
-            <div class="col-md-3">
+            <div class="col-12 col-md-6 col-xl-3">
                 <label class="form-label">Search</label>
                 <input type="text" name="search" class="form-control" placeholder="Search estimates..."
                        value="{{ request('search') }}">
             </div>
-            <div class="col-md-2">
+            <div class="col-6 col-md-3 col-xl-2">
                 <label class="form-label">Status</label>
                 <select name="status" class="form-select">
                     <option value="">All Status</option>
@@ -131,15 +131,15 @@
                     <option value="expired" {{ request('status') == 'expired' ? 'selected' : '' }}>Expired</option>
                 </select>
             </div>
-            <div class="col-md-2">
+            <div class="col-6 col-md-3 col-xl-2">
                 <label class="form-label">Date From</label>
                 <input type="date" name="date_from" class="form-control" value="{{ request('date_from') }}">
             </div>
-            <div class="col-md-2">
+            <div class="col-12 col-md-6 col-xl-2">
                 <label class="form-label">Date To</label>
                 <input type="date" name="date_to" class="form-control" value="{{ request('date_to') }}">
             </div>
-            <div class="col-md-3 d-flex gap-2" style="padding-top:1.5rem;">
+            <div class="col-12 col-md-6 col-xl-3 d-flex gap-2 align-items-end">
                 <button type="submit" class="btn-filter-primary">
                     <i class="fas fa-filter"></i> Filter
                 </button>
