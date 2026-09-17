@@ -921,21 +921,14 @@ function checkInCustomer(appointmentId, appointmentNumber, customerName) {
                     console.log('AJAX success:', response);
                     if (response.success) {
                         Swal.fire({
-                            title: 'Success!',
-                            html: response.message + '<br><br>' + (response.redirect_message || ''),
+                            title: 'Checked In!',
+                            html: response.message,
                             icon: 'success',
-                            showCancelButton: true,
-                            confirmButtonText: 'Go to Inspection',
-                            cancelButtonText: 'Stay Here',
+                            confirmButtonText: 'OK',
                             confirmButtonColor: '#198754',
-                        }).then((result) => {
-                            if (result.isConfirmed && response.inspection_url) {
-                                // Redirect to the vehicle inspection
-                                window.location.href = response.inspection_url;
-                            } else {
-                                // Reload the page to show updated status
-                                location.reload();
-                            }
+                        }).then(() => {
+                            // Reload so the appointment shows under the Arrived tab
+                            location.reload();
                         });
                     } else {
                         Swal.fire('Error', response.message, 'error');

@@ -620,83 +620,22 @@ class AppointmentController extends Controller
         
         return view("appointments.calendar", compact("date", "calendarData", "technicians"));
     }
-    public function checkIn(Appointment $appointment)
+        public function checkIn(Appointment $appointment)
     {
         if (!in_array($appointment->appointment_status, ['scheduled', 'confirmed'])) {
             return redirect()->back()->with('error', 'Only confirmed appointments can be checked in.');
         }
-        
-        // Update appointment status
+
+        // Move the appointment to the Arrived tab. The Repair Order is NOT
+        // created here anymore: it is created only when the job is STARTED
+        // (see start()), after staff have gathered all the details on Arrived.
         $appointment->update([
             'appointment_status' => 'checked_in',
             'checked_in_at' => now(),
         ]);
-        
-        // Get customer name safely
-        $customerName = 'Customer';
-        if ($appointment->customer) {
-            $customerName = $appointment->customer->full_name;
-        } elseif ($appointment->customer_id) {
-            $customer = \App\Models\Customer::find($appointment->customer_id);
-            if ($customer) {
-                $customerName = $customer->full_name;
-            }
-        }
-        
-        // Inherit service type from appointment
-        // service_types (JSON array of service-types.list keys) takes priority
-        // Fallback: map appointment_type back to a service-types.list key
-        $serviceTypeLookup = [
-            'maintenance' => 'preventive_maintenance',
-            'repair' => 'engine_service',
-            'emergency' => 'engine_service',
-            'inspection' => 'preventive_maintenance',
-            'diagnostic' => 'engine_service',
-            'tire_service' => 'underchassis_service',
-            'oil_change' => 'preventive_maintenance',
-            'brake_service' => 'underchassis_service',
-            'regular_service' => 'preventive_maintenance',
-            'other' => 'engine_service',
-        ];
-        // service_types is a JSON array; service_type is a single varchar column.
-        $serviceTypes = $appointment->service_types;
-        $serviceType = is_array($serviceTypes)
-            ? (reset($serviceTypes) ?: null)
-            : $serviceTypes;
-        if (!$serviceType) {
-            $serviceType = $serviceTypeLookup[$appointment->appointment_type] ?? null;
-        }
-        
-        $inspection = \App\Models\VehicleInspection::create([
-            'appointment_id' => $appointment->id,
-            'customer_id' => $appointment->customer_id,
-            'vehicle_id' => $appointment->vehicle_id, // May be null
-            'technician_id' => $appointment->assigned_technician_id,
-            'service_advisor_id' => $appointment->service_advisor_id,
-            'service_type' => $serviceType,
-            'inspection_type' => 'pre_service',
-            'inspection_status' => 'draft',
-            'inspection_name' => 'Pre-Service Inspection for ' . $customerName,
-            'customer_concerns' => $appointment->service_request,
-            'inspection_started_at' => now(),
-            'created_by' => auth()->id(),
-        ]);
-        
-        // Copy additional technicians from appointment to inspection
-        if ($appointment->technicians()->exists()) {
-            foreach ($appointment->technicians as $tech) {
-                $inspection->technicians()->attach($tech->id, ['role' => $tech->pivot->role ?? 'technician']);
-            }
-        }
-        
-        // If appointment has a service_id, link it to the inspection
-        if ($appointment->service_id) {
-            $inspection->update(['service_id' => $appointment->service_id]);
-        }
-        
-        // Redirect to the newly created vehicle inspection
-        return redirect()->route('inspections.show', $inspection->id)
-            ->with('success', 'Appointment checked in successfully. Vehicle inspection created.');
+
+        return redirect()->back()
+            ->with('success', 'Appointment checked in. Nasa Arrived tab na — i-update ang information bago mag-Start.');
     }
     
     /**
@@ -1305,7 +1244,7 @@ class AppointmentController extends Controller
     /**
      * AJAX: Check in appointment and create vehicle inspection.
      */
-    public function ajaxCheckIn(Request $request, $id)
+        public function ajaxCheckIn(Request $request, $id)
     {
         try {
             $appointment = Appointment::findOrFail($id);
@@ -1317,125 +1256,24 @@ class AppointmentController extends Controller
                 ], 400);
             }
 
-            // Get customer name safely
-            $customerName = 'Customer';
-            if ($appointment->customer) {
-                $customerName = $appointment->customer->full_name;
-            } elseif ($appointment->customer_id) {
-                $customer = \App\Models\Customer::find($appointment->customer_id);
-                if ($customer) {
-                    $customerName = $customer->full_name;
-                }
-            }
-
-            $serviceTypeLookup = [
-                'maintenance' => 'preventive_maintenance',
-                'repair' => 'engine_service',
-                'emergency' => 'engine_service',
-                'inspection' => 'preventive_maintenance',
-                'diagnostic' => 'engine_service',
-                'tire_service' => 'underchassis_service',
-                'oil_change' => 'preventive_maintenance',
-                'brake_service' => 'underchassis_service',
-                'regular_service' => 'preventive_maintenance',
-                'other' => 'engine_service',
-            ];
-
-            // NOTE: appointments.service_types is a JSON array (cast to array by the
-            // model) while vehicle_inspections.service_type is a single varchar column.
-            // Passing the whole array caused "Array to string conversion" and made the
-            // whole check-in fail. Take the first entry instead.
-            $serviceTypes = $appointment->service_types;
-            $serviceType = is_array($serviceTypes)
-                ? (reset($serviceTypes) ?: null)
-                : $serviceTypes;
-            if (!$serviceType) {
-                $serviceType = $serviceTypeLookup[$appointment->appointment_type] ?? null;
-            }
-
-            $inspection = \Illuminate\Support\Facades\DB::transaction(function () use ($appointment, $customerName, $serviceType) {
-                // Get or create a vehicle for the customer
-                $vehicleId = $appointment->vehicle_id;
-                if (!$vehicleId) {
-                    $customerVehicle = \App\Models\Vehicle::where('customer_id', $appointment->customer_id)->first();
-                    if ($customerVehicle) {
-                        $vehicleId = $customerVehicle->id;
-                    } else {
-                        $defaultVehicle = \App\Models\Vehicle::create([
-                            'customer_id' => $appointment->customer_id,
-                            'make' => 'Unknown',
-                            'model' => 'Vehicle',
-                            'year' => date('Y'),
-                            'license_plate' => 'TEMP-' . $appointment->id,
-                        ]);
-                        $vehicleId = $defaultVehicle->id;
-                    }
-                }
-
-                $inspection = \App\Models\VehicleInspection::create([
-                    'appointment_id' => $appointment->id,
-                    'customer_id' => $appointment->customer_id,
-                    'vehicle_id' => $vehicleId,
-                    'technician_id' => $appointment->assigned_technician_id,
-                    'service_advisor_id' => $appointment->service_advisor_id,
-                    'service_type' => $serviceType,
-                    'inspection_type' => 'pre_service',
-                    'inspection_status' => 'draft',
-                    'inspection_name' => 'Pre-Service Inspection for ' . $customerName,
-                    'customer_concerns' => $appointment->service_request,
-                    'inspection_started_at' => now(),
-                    'created_by' => auth()->id(),
-                    'total_items_checked' => 0,
-                    'items_passed' => 0,
-                    'items_failed' => 0,
-                    'items_attention_needed' => 0,
-                    'items_not_applicable' => 0,
-                    'has_safety_concerns' => 0,
-                    'has_urgent_issues' => 0,
-                    'has_critical_issues' => 0,
-                    'requires_customer_approval' => 1,
-                    'customer_approved' => 0,
-                    'has_upsell_opportunities' => 0,
-                ]);
-
-                // Copy additional technicians from appointment to inspection
-                if ($appointment->technicians()->exists()) {
-                    foreach ($appointment->technicians as $tech) {
-                        $inspection->technicians()->attach($tech->id, ['role' => $tech->pivot->role ?? 'technician']);
-                    }
-                }
-
-                // If appointment has a service_id, link it to the inspection
-                if ($appointment->service_id) {
-                    $inspection->update(['service_id' => $appointment->service_id]);
-                }
-
-                // Mark the appointment checked in LAST: if anything above throws,
-                // the appointment stays in Scheduled instead of a half-checked-in state.
-                $appointment->update([
-                    'appointment_status' => 'checked_in',
-                    'checked_in_at' => now(),
-                ]);
-
-                return $inspection;
-            });
+            // Move the appointment to the Arrived tab. No Repair Order is
+            // created here — that only happens when the job is STARTED, once
+            // everything has been gathered/updated on the Arrived tab.
+            $appointment->update([
+                'appointment_status' => 'checked_in',
+                'checked_in_at' => now(),
+            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Appointment checked in successfully. Vehicle inspection created.',
+                'message' => 'Appointment checked in. Nasa Arrived tab na.',
                 'appointment_id' => $appointment->id,
                 'appointment_number' => $appointment->appointment_number,
                 'new_status' => 'checked_in',
                 'new_status_label' => 'Arrived',
                 'new_status_color' => 'warning',
                 'checked_in_at' => $appointment->checked_in_at->format('M d, Y g:i A'),
-                'inspection_id' => $inspection->id,
-                'inspection_created' => true,
-                'inspection_url' => route('inspections.show', $inspection->id),
-                'inspection_edit_url' => route('inspections.edit', $inspection->id),
-                'redirect_message' => 'Redirecting to vehicle inspection...',
             ]);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
