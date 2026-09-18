@@ -7,7 +7,7 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h4 class="fw-bold mb-1" style="color: #1a237e;">
-                <i class="fas fa-search me-2"></i>Inspection #{{ $inspection->id }}
+                <i class="fas fa-wrench me-2"></i>Repair Order {{ $inspection->appointment->appointment_number ?? '#'.$inspection->id }}
             </h4>
             <p class="text-muted mb-0">
                 <i class="fas fa-calendar me-1"></i>
@@ -16,23 +16,6 @@
             </p>
         </div>
         <div class="d-flex gap-2">
-            <div class="dropdown">
-                <button class="btn btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    <i class="fas fa-forward me-1"></i>Proceed To
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end">
-                    <li>
-                        <a class="dropdown-item" href="{{ route('estimates.create', ['customer_id' => $inspection->customer_id, 'vehicle_id' => $inspection->vehicle_id]) }}">
-                            <i class="fas fa-file-invoice me-2 text-primary"></i> Create Estimate
-                        </a>
-                    </li>
-                    <li>
-                        <a class="dropdown-item" href="{{ route('job-orders.create', ['customer_id' => $inspection->customer_id, 'vehicle_id' => $inspection->vehicle_id, 'inspection_id' => $inspection->id]) }}">
-                            <i class="fas fa-wrench me-2 text-warning"></i> Create Job Order
-                        </a>
-                    </li>
-                </ul>
-            </div>
             <a href="{{ route('inspections.edit', $inspection) }}" class="btn btn-primary">
                 <i class="fas fa-edit me-1"></i>Edit
             </a>
@@ -62,11 +45,6 @@
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="items-tab" data-bs-toggle="pill" data-bs-target="#items" type="button" role="tab">
-                <i class="fas fa-list me-1"></i>Inspection Items
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
             <button class="nav-link" id="photos-tab" data-bs-toggle="pill" data-bs-target="#photos" type="button" role="tab">
                 <i class="fas fa-camera me-1"></i>Photos
             </button>
@@ -83,70 +61,54 @@
         <!-- === OVERVIEW TAB === -->
         <div class="tab-pane fade show active" id="overview" role="tabpanel">
             <div class="row g-3">
-                <!-- Customer Summary -->
-                @if($inspection->customer)
-                    @include('partials.customer-summary-card', ['customer' => $inspection->customer])
-                @endif
+                @php
+                    $ro = $inspection->appointment ?? null;
+                    $svcList = config('service-types.list', []);
+                    $roServices = [];
+                    if ($ro) {
+                        $rawSvc = $ro->service_types;
+                        if (is_string($rawSvc)) {
+                            $dec = json_decode($rawSvc, true);
+                            $roServices = is_array($dec) ? $dec : ($rawSvc !== '' ? [$rawSvc] : []);
+                        } elseif (is_array($rawSvc)) {
+                            $roServices = $rawSvc;
+                        }
+                    }
+                    $roJob = ($ro && is_array($ro->job_description_items)) ? $ro->job_description_items : [];
+                    $roParts = ($ro && is_array($ro->parts_items)) ? $ro->parts_items : [];
+                @endphp
 
                 <!-- Left Column -->
                 <div class="col-lg-8">
-                    <!-- Basic Info -->
+
+                    <!-- Customer Information -->
+                    @if($inspection->customer)
                     <div class="form-section">
                         <div class="form-section-header no-collapse">
-                            <h6><i class="fas fa-info-circle"></i>Inspection Details</h6>
-                            <span class="badge bg-{{ $inspection->status_badge ?? 'secondary' }}">
-                                {{ ucfirst($inspection->inspection_status ?? 'unknown') }}
-                            </span>
+                            <h6><i class="fas fa-user"></i>Customer Information</h6>
                         </div>
                         <div class="form-section-body">
                             <div class="row g-3">
-                                <div class="col-md-4">
-                                    <label class="text-muted small text-uppercase">Type</label>
-                                    <p class="fw-semibold mb-0">{{ is_string($inspection->inspection_type) ? ucfirst(str_replace('_', ' ', $inspection->inspection_type)) : 'Multi-Type' }}</p>
+                                <div class="col-md-6">
+                                    <label class="text-muted small text-uppercase">Name</label>
+                                    <p class="fw-semibold mb-0">{{ $inspection->customer->full_name ?? trim(($inspection->customer->first_name ?? '').' '.($inspection->customer->last_name ?? '')) }}</p>
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="text-muted small text-uppercase">Status</label>
-                                    <p class="fw-semibold mb-0">
-                                        <span class="badge bg-{{ $inspection->status_badge ?? 'secondary' }}">
-                                            {{ ucfirst($inspection->inspection_status ?? 'unknown') }}
-                                        </span>
-                                    </p>
+                                <div class="col-md-6">
+                                    <label class="text-muted small text-uppercase">Mobile No.</label>
+                                    <p class="fw-semibold mb-0">{{ $inspection->customer->phone ?? 'N/A' }}</p>
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="text-muted small text-uppercase">Mileage</label>
-                                    <p class="fw-semibold mb-0">
-                                        <i class="fas fa-tachometer-alt me-1 text-primary"></i>
-                                        {{ $inspection->vehicle_mileage ? number_format($inspection->vehicle_mileage) . ' mi' : 'N/A' }}
-                                    </p>
+                                <div class="col-md-6">
+                                    <label class="text-muted small text-uppercase">Email</label>
+                                    <p class="fw-semibold mb-0">{{ $inspection->customer->email ?? 'N/A' }}</p>
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="text-muted small text-uppercase">Service Type</label>
-                                    <p class="fw-semibold mb-0">
-                                        @if($inspection->service_type)
-                                            <span class="badge bg-soft-primary text-primary">
-                                                @php
-                                                    $st = $inspection->service_type;
-                                                    $stArr = is_string($st) && str_starts_with($st, '[') ? json_decode($st, true) : (is_array($st) ? $st : [$st]);
-                                                    $stArr = array_filter((array)$stArr);
-                                                @endphp
-                                                @if(!empty($stArr))
-                                                    @foreach($stArr as $stItem)
-                                                        <span class="badge bg-soft-primary text-primary me-1" style="font-weight:500;font-size:.75rem">
-                                                            {{ \App\Models\ServiceType::name($stItem) }}
-                                                        </span>
-                                                    @endforeach
-                                                @else
-                                                    <span class="text-muted">N/A</span>
-                                                @endif
-                                            </span>
-                                        @else
-                                            <span class="text-muted">N/A</span>
-                                        @endif
-                                    </p>
+                                <div class="col-md-6">
+                                    <label class="text-muted small text-uppercase">Address</label>
+                                    <p class="fw-semibold mb-0">{{ ($inspection->customer->address ?? null) ?: 'N/A' }}{{ ($inspection->customer->city ?? null) ? ', '.$inspection->customer->city : '' }}</p>
                                 </div>
                             </div>
                         </div>
                     </div>
+                    @endif
 
                     <!-- Vehicle Info -->
                     <div class="form-section">
@@ -169,6 +131,22 @@
                                         <p class="fw-semibold mb-0 text-monospace">{{ $inspection->vehicle->vin ?? 'N/A' }}</p>
                                     </div>
                                     <div class="col-md-6">
+                                        <label class="text-muted small text-uppercase">Engine No.</label>
+                                        <p class="fw-semibold mb-0 text-monospace">{{ $inspection->vehicle->engine_no ?? 'N/A' }}</p>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="text-muted small text-uppercase">Transmission</label>
+                                        <p class="fw-semibold mb-0">{{ $inspection->vehicle->transmission ?? 'N/A' }}</p>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="text-muted small text-uppercase">Fuel</label>
+                                        <p class="fw-semibold mb-0">{{ $inspection->vehicle->fuel_type ?? 'N/A' }}</p>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="text-muted small text-uppercase">Odometer</label>
+                                        <p class="fw-semibold mb-0">{{ $inspection->vehicle->odometer ? number_format((float) $inspection->vehicle->odometer) : ($inspection->vehicle_mileage ? number_format((float) $inspection->vehicle_mileage) : 'N/A') }}</p>
+                                    </div>
+                                    <div class="col-md-4">
                                         <label class="text-muted small text-uppercase">Color</label>
                                         <p class="fw-semibold mb-0">{{ $inspection->vehicle->color ?? 'N/A' }}</p>
                                     </div>
@@ -178,6 +156,93 @@
                             @endif
                         </div>
                     </div>
+
+                    <!-- Services & Job Description -->
+                    <div class="form-section">
+                        <div class="form-section-header no-collapse">
+                            <h6><i class="fas fa-clipboard-list"></i>Services &amp; Job Description</h6>
+                        </div>
+                        <div class="form-section-body">
+                            @if(!empty($roServices))
+                                <div class="mb-3">
+                                    @foreach($roServices as $svc)
+                                        <span class="badge bg-soft-primary text-primary me-1 mb-1" style="font-weight:500;">{{ $svcList[$svc] ?? ucwords(str_replace('_', ' ', $svc)) }}</span>
+                                    @endforeach
+                                </div>
+                            @endif
+                            @if(count($roJob) > 0)
+                                <div class="table-responsive">
+                                    <table class="table table-sm align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width:42%">Job Description</th>
+                                                <th style="width:12%">MH</th>
+                                                <th style="width:18%">Unit Price</th>
+                                                <th style="width:20%">Labor Cost</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($roJob as $row)
+                                                <tr>
+                                                    <td>{{ is_array($row) ? ($row['description'] ?? '') : $row }}</td>
+                                                    <td>{{ is_array($row) ? ($row['mh'] ?? '') : '' }}</td>
+                                                    <td>{{ is_array($row) ? ($row['unit_price'] ?? '') : '' }}</td>
+                                                    <td>{{ is_array($row) ? ($row['labor_cost'] ?? '') : '' }}</td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @elseif(empty($roServices))
+                                <p class="text-muted mb-0 small">No job description recorded.</p>
+                            @endif
+                        </div>
+                    </div>
+
+                    <!-- Parts / Supplies -->
+                    @if(count($roParts) > 0)
+                    <div class="form-section">
+                        <div class="form-section-header no-collapse">
+                            <h6><i class="fas fa-boxes-stacked"></i>Parts / Supplies</h6>
+                        </div>
+                        <div class="form-section-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th style="width:46%">Parts / Supplies Description</th>
+                                            <th style="width:12%">Qty</th>
+                                            <th style="width:18%">Unit Price</th>
+                                            <th style="width:16%">Cost</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach($roParts as $row)
+                                            <tr>
+                                                <td>{{ is_array($row) ? ($row['description'] ?? '') : $row }}</td>
+                                                <td>{{ is_array($row) ? ($row['qty'] ?? '') : '' }}</td>
+                                                <td>{{ is_array($row) ? ($row['unit_price'] ?? '') : '' }}</td>
+                                                <td>{{ is_array($row) ? ($row['cost'] ?? '') : '' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
+                    <!-- Concern / Request -->
+                    @if(($ro && $ro->service_request) || $inspection->customer_concerns)
+                    <div class="form-section">
+                        <div class="form-section-header no-collapse">
+                            <h6><i class="fas fa-comment-dots"></i>Concern / Request</h6>
+                        </div>
+                        <div class="form-section-body">
+                            <p class="mb-0" style="white-space: pre-wrap;">{{ ($ro && $ro->service_request) ? $ro->service_request : $inspection->customer_concerns }}</p>
+                        </div>
+                    </div>
+                    @endif
 
                     <!-- Assigned Team -->
                     <div class="form-section">
@@ -212,18 +277,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Customer Concerns -->
-                    @if($inspection->customer_concerns)
-                    <div class="form-section">
-                        <div class="form-section-header no-collapse">
-                            <h6><i class="fas fa-question-circle"></i>Customer Concerns</h6>
-                        </div>
-                        <div class="form-section-body">
-                            <p class="mb-0">{{ $inspection->customer_concerns }}</p>
-                        </div>
-                    </div>
-                    @endif
 
                     <!-- Technician Findings -->
                     @if($inspection->technician_notes)
@@ -268,45 +321,6 @@
                                     </div>
                                 @endforeach
                             @endif
-                        </div>
-                    </div>
-
-                    <!-- Inspection Notes -->
-                    @if($inspection->inspection_notes)
-                    <div class="form-section">
-                        <div class="form-section-header no-collapse">
-                            <h6><i class="fas fa-sticky-note"></i>Inspection Notes</h6>
-                        </div>
-                        <div class="form-section-body">
-                            <p class="mb-0 small" style="white-space: pre-wrap;">{{ $inspection->inspection_notes }}</p>
-                        </div>
-                    </div>
-                    @endif
-
-                    <!-- Quick Stats -->
-                    <div class="form-section">
-                        <div class="form-section-header no-collapse">
-                            <h6><i class="fas fa-chart-bar"></i>Summary</h6>
-                        </div>
-                        <div class="form-section-body">
-                            <div class="d-flex justify-content-around text-center">
-                                <div>
-                                    <div class="fw-bold fs-5 text-primary">{{ $inspection->items->count() }}</div>
-                                    <small class="text-muted">Items</small>
-                                </div>
-                                <div>
-                                    <div class="fw-bold fs-5 text-success">
-                                        {{ $inspection->items->where('status', 'passed')->count() }}
-                                    </div>
-                                    <small class="text-muted">Passed</small>
-                                </div>
-                                <div>
-                                    <div class="fw-bold fs-5 text-danger">
-                                        {{ $inspection->items->where('status', 'failed')->count() }}
-                                    </div>
-                                    <small class="text-muted">Failed</small>
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -641,62 +655,6 @@
             </div>
         </div>
 
-        <!-- === INSPECTION ITEMS TAB === -->
-        <div class="tab-pane fade" id="items" role="tabpanel">
-            @if($inspection->items && $inspection->items->count() > 0)
-                <div class="form-section">
-                    <div class="form-section-header no-collapse">
-                        <h6><i class="fas fa-list"></i>Inspection Items ({{ $inspection->items->count() }})</h6>
-                    </div>
-                    <div class="form-section-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-hover align-middle mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th style="width: 40px;">#</th>
-                                        <th>Category</th>
-                                        <th>Item</th>
-                                        <th>Status</th>
-                                        <th>Notes</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($inspection->items as $index => $item)
-                                        <tr>
-                                            <td class="text-muted">{{ $index + 1 }}</td>
-                                            <td><span class="badge bg-secondary-subtle text-secondary">{{ $item->category ?? 'General' }}</span></td>
-                                            <td class="fw-medium">{{ $item->item_name ?? $item->name ?? 'Item' }}</td>
-                                            <td>
-                                                @if($item->status == 'passed')
-                                                    <span class="badge bg-success"><i class="fas fa-check me-1"></i>Passed</span>
-                                                @elseif($item->status == 'failed')
-                                                    <span class="badge bg-danger"><i class="fas fa-times me-1"></i>Failed</span>
-                                                @elseif($item->status == 'warning')
-                                                    <span class="badge bg-warning text-dark"><i class="fas fa-exclamation me-1"></i>Warning</span>
-                                                @else
-                                                    <span class="badge bg-secondary"><i class="fas fa-clock me-1"></i>Pending</span>
-                                                @endif
-                                            </td>
-                                            <td class="small text-muted">{{ $item->notes ?? '' }}</td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            @else
-                <div class="form-section">
-                    <div class="form-section-header no-collapse">
-                        <h6><i class="fas fa-list"></i>Inspection Items</h6>
-                    </div>
-                    <div class="form-section-body text-center py-4">
-                        <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
-                        <p class="text-muted mb-0">No inspection items recorded yet.</p>
-                    </div>
-                </div>
-            @endif
-        </div>
 
         <!-- === PHOTOS TAB === -->
         <div class="tab-pane fade" id="photos" role="tabpanel">

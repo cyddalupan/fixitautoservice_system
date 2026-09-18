@@ -171,6 +171,7 @@
                             window.location.pathname.includes('/invoices') ||
                             window.location.pathname.includes('/payments') ||
                             window.location.pathname.includes('/inspections') ||
+                            window.location.pathname.includes('/repair-orders') ||
                             window.location.pathname.includes('/service-records') ||
                             window.location.pathname.includes('/archives') ||
                             window.location.pathname.includes('/service-items') ||

@@ -14,6 +14,43 @@
     --module-active-light: #e0f2fe;
 }
 
+    /* ===== Row action buttons ===== */
+    .module-inspections .action-group {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+    }
+    .module-inspections .btn-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        padding: 0;
+        border: 1px solid #d8dee6;
+        border-radius: 10px;
+        background: #fff;
+        color: #475569;
+        font-size: .95rem;
+        line-height: 1;
+        cursor: pointer;
+        text-decoration: none;
+        transition: background .15s ease, transform .15s ease, box-shadow .15s ease;
+    }
+    .module-inspections .btn-action:hover {
+        background: #f1f5f9;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(15,23,42,.08);
+    }
+    .module-inspections .btn-action i { pointer-events: none; }
+    [data-theme="dark"] .module-inspections .btn-action {
+        background: var(--dark-elevated, #1e293b);
+        border-color: var(--dark-border, #334155);
+        color: var(--dark-text-secondary, #cbd5e1);
+    }
+    [data-theme="dark"] .module-inspections .btn-action:hover {
+        background: var(--dark-hover, #334155);
+    }
 
     /* ===== Dark mode overrides ===== */
     [data-theme="dark"] .stat-card {
@@ -40,31 +77,15 @@
                 <span class="module-badge"><i class="fas fa-tools"></i></span>
                 <div>
                     <h1 class="module-title">Repair Orders</h1>
-                    <p class="module-subtitle">Vehicle inspections and repair order management</p>
+                    <p class="module-subtitle">Vehicle repair orders and inspection management</p>
                 </div>
             </div>
-            <div class="d-flex gap-2 mt-2 mt-sm-0">
-                <a href="{{ route('inspections.create') }}" class="btn-create">
-                    <i class="fas fa-plus"></i> New Repair Order
-                </a>
-                <a href="{{ route('inspections.statistics') }}" class="btn-secondary-action">
-                    <i class="fas fa-chart-bar"></i> Statistics
-                </a>
-            </div>
+
         </div>
     </div>
 
     <!-- Quick Stats -->
     <div class="stats-row">
-        <div class="stat-card">
-            <div class="stat-card-body">
-                <div class="stat-card-icon"><i class="fas fa-clipboard-list"></i></div>
-                <div class="stat-card-info">
-                    <h3>{{ $stats['today'] ?? $inspections->count() }}</h3>
-                    <p>Today's Inspections</p>
-                </div>
-            </div>
-        </div>
         <div class="stat-card" style="border-left-color:#f59e0b;">
             <div class="stat-card-body">
                 <div class="stat-card-icon" style="background:#fef3c7;color:#d97706;">
@@ -175,7 +196,7 @@
                                 <th>#</th>
                                 <th>Customer</th>
                                 <th>Vehicle</th>
-                                <th>Inspection Type</th>
+                                <th>Service Type</th>
                                 <th>Status</th>
                                 <th>Date Received</th>
                                 <th>Created</th>
@@ -275,7 +296,7 @@
                                         <a href="{{ route('inspections.edit', $inspection) }}" class="btn-action" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <form action="{{ route('inspections.destroy', $inspection) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this inspection?')">
+                                        <form action="{{ route('inspections.destroy', $inspection) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this repair order?')">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn-action" style="border-color:#fde68a;color:#d97706;" title="Delete">
@@ -293,7 +314,7 @@
                 <!-- Pagination -->
                 <div class="d-flex justify-content-between align-items-center px-3 py-3 border-top">
                     <div class="pagination-info">
-                        Showing {{ $inspections->firstItem() }} to {{ $inspections->lastItem() }} of {{ $inspections->total() }} inspections
+                        Showing {{ $inspections->firstItem() }} to {{ $inspections->lastItem() }} of {{ $inspections->total() }} repair orders
                     </div>
                     <div>
                         {{ $inspections->links() }}
@@ -304,8 +325,8 @@
                     <div class="empty-state-icon">
                         <i class="fas fa-tools"></i>
                     </div>
-                    <h4>No inspections found</h4>
-                    <p>Try adjusting your filters or create a new inspection to get started.</p>
+                    <h4>No repair orders found</h4>
+                    <p>Try adjusting your filters or create a new repair order to get started.</p>
                     <a href="{{ route('inspections.create') }}" class="btn-create">
                         <i class="fas fa-plus"></i> New Repair Order
                     </a>

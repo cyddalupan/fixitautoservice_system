@@ -486,22 +486,30 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::get('/payments/statistics', [PaymentController::class, 'statistics'])->name('payments.statistics');
     Route::get('/payments/by-date-range', [PaymentController::class, 'byDateRange'])->name('payments.by-date-range');
 
-    // Vehicle Inspection Routes
-    Route::resource('inspections', VehicleInspectionController::class);
-    Route::get('/inspections/statistics', [VehicleInspectionController::class, 'statistics'])->name('inspections.statistics');
-    Route::post('/inspections/{inspection}/start', [VehicleInspectionController::class, 'startInspection'])->name('inspections.start');
-    Route::post('/inspections/{inspection}/complete', [VehicleInspectionController::class, 'completeInspection'])->name('inspections.complete');
-    Route::post('/inspections/{inspection}/undo-complete', [VehicleInspectionController::class, 'undoCompleteInspection'])->name('inspections.undo-complete');
-    Route::post('/inspections/{inspection}/approve', [VehicleInspectionController::class, 'approveInspection'])->name('inspections.approve');
-    Route::post('/inspections/{inspection}/request-customer-approval', [VehicleInspectionController::class, 'requestCustomerApproval'])->name('inspections.request-customer-approval');
-    Route::post('/inspections/{inspection}/approve-by-customer', [VehicleInspectionController::class, 'approveByCustomer'])->name('inspections.approve-by-customer');
-    Route::get('/inspections/{inspection}/report', [VehicleInspectionController::class, 'generateReport'])->name('inspections.report');
-    Route::get('/inspections/{inspection}/manage-items', [VehicleInspectionController::class, 'manageItems'])->name('inspections.manage-items');
-    Route::post('/inspections/{inspection}/items', [VehicleInspectionController::class, 'storeItem'])->name('inspections.store-item');
-    Route::post('/inspections/{inspection}/items/{item}/update', [VehicleInspectionController::class, 'updateItem'])->name('inspections.update-item');
-    Route::post('/inspections/{inspection}/upload-photo', [VehicleInspectionController::class, 'uploadPhoto'])->name('inspections.upload-photo');
-    Route::post('/inspections/{inspection}/update-mileage', [VehicleInspectionController::class, 'updateMileage'])->name('inspections.update-mileage');
-    Route::put('/inspections/{inspection}/update-team', [VehicleInspectionController::class, 'updateTeam'])->name('inspections.update-team');
+    // Vehicle Inspection / Repair Order Routes
+    // Public URL prefix is /repair-orders, but route names stay inspections.* (compatibility).
+    Route::resource('repair-orders', VehicleInspectionController::class)->parameters(['repair-orders' => 'inspection'])->names('inspections');
+    Route::get('/repair-orders/statistics', [VehicleInspectionController::class, 'statistics'])->name('inspections.statistics');
+    Route::post('/repair-orders/{inspection}/start', [VehicleInspectionController::class, 'startInspection'])->name('inspections.start');
+    Route::post('/repair-orders/{inspection}/complete', [VehicleInspectionController::class, 'completeInspection'])->name('inspections.complete');
+    Route::post('/repair-orders/{inspection}/undo-complete', [VehicleInspectionController::class, 'undoCompleteInspection'])->name('inspections.undo-complete');
+    Route::post('/repair-orders/{inspection}/approve', [VehicleInspectionController::class, 'approveInspection'])->name('inspections.approve');
+    Route::post('/repair-orders/{inspection}/request-customer-approval', [VehicleInspectionController::class, 'requestCustomerApproval'])->name('inspections.request-customer-approval');
+    Route::post('/repair-orders/{inspection}/approve-by-customer', [VehicleInspectionController::class, 'approveByCustomer'])->name('inspections.approve-by-customer');
+    Route::get('/repair-orders/{inspection}/report', [VehicleInspectionController::class, 'generateReport'])->name('inspections.report');
+    Route::get('/repair-orders/{inspection}/manage-items', [VehicleInspectionController::class, 'manageItems'])->name('inspections.manage-items');
+    Route::post('/repair-orders/{inspection}/items', [VehicleInspectionController::class, 'storeItem'])->name('inspections.store-item');
+    Route::post('/repair-orders/{inspection}/items/{item}/update', [VehicleInspectionController::class, 'updateItem'])->name('inspections.update-item');
+    Route::post('/repair-orders/{inspection}/upload-photo', [VehicleInspectionController::class, 'uploadPhoto'])->name('inspections.upload-photo');
+    Route::post('/repair-orders/{inspection}/update-mileage', [VehicleInspectionController::class, 'updateMileage'])->name('inspections.update-mileage');
+    Route::put('/repair-orders/{inspection}/update-team', [VehicleInspectionController::class, 'updateTeam'])->name('inspections.update-team');
+
+    // Legacy URL redirects: old /inspections* -> /repair-orders* (kept so bookmarks/links don't 404)
+    Route::get('/inspections/{any?}', function (\Illuminate\Http\Request $request, $any = null) {
+        $target = '/repair-orders' . (($any !== null && $any !== '') ? '/' . $any : '');
+        $qs = $request->getQueryString();
+        return redirect()->to($qs ? $target . '?' . $qs : $target, 301);
+    })->where('any', '.*')->name('inspections.legacy');
 
     // Inventory Routes
     Route::get('/inventory/low-stock', [InventoryController::class, 'lowStock'])->name('inventory.low-stock');

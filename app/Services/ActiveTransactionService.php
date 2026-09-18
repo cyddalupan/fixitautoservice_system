@@ -77,7 +77,7 @@ class ActiveTransactionService
                 'record_id' => $inspection->id,
                 'status' => $inspection->inspection_type ?? 'pending',
                 'created_at' => $inspection->created_at,
-                'route' => route('inspections.show', $inspection->id) ?? '/inspections/' . $inspection->id,
+                'route' => route('inspections.show', $inspection->id) ?? '/repair-orders/' . $inspection->id,
                 'customer' => optional($inspection->customer)->name,
                 'customer_id' => optional($inspection->customer)->id,
             ];

@@ -106,7 +106,6 @@ class VehicleInspectionController extends Controller
         // Get statistics
         $stats = [
             'total' => VehicleInspection::count(),
-            'today' => VehicleInspection::whereDate('created_at', Carbon::today())->count(),
             'in_progress' => VehicleInspection::inProgress()->count(),
             'completed' => VehicleInspection::completed()->count(),
             'approved' => VehicleInspection::approved()->count(),
