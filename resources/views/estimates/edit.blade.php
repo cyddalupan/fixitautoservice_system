@@ -22,7 +22,7 @@
         <div class="d-flex gap-2 flex-wrap">
             @if($inspection)
                 <a href="{{ route('inspections.show', $inspection) }}" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left me-1"></i>Back to Repair Order
+                    <i class="fas fa-arrow-left me-1"></i>Back to Repair Order {{ $inspection->reference_label }}
                 </a>
                 <a href="{{ route('inspections.quotation-slip', $inspection) }}" class="btn btn-outline-success" target="_blank" title="Printable Repair Quotation slip (same as the Repair Order slip)">
                     <i class="fas fa-print me-1"></i>Repair Quotation Slip
