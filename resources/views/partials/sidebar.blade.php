@@ -140,7 +140,7 @@
 
                     {{-- Inspections / Repair Orders --}}
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('inspections.*') ? 'active' : '' }}" href="{{ route('inspections.index') }}" style="border-left-color:#0ea5e9 !important;" data-tooltip="Repair Orders">
+                        <a class="nav-link {{ request()->routeIs('inspections.*') ? 'active' : '' }}" href="{{ route('inspections.index') }}" style="border-left-color:#dc2626 !important;" data-tooltip="Repair Orders">
                             <i class="fas fa-tools fa-fw"></i>
                             <span>Repair Orders</span>
                             <span class="sidebar-badge" id="s-inspections">{{ $sidebarCounts['inspections_total'] }}</span>
@@ -152,9 +152,9 @@
 
                     {{-- Estimates --}}
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('estimates.*') ? 'active' : '' }}" href="{{ route('estimates.index') }}" style="border-left-color:#8b5cf6 !important;" data-tooltip="Estimates">
+                        <a class="nav-link {{ request()->routeIs('estimates.*') ? 'active' : '' }}" href="{{ route('estimates.index') }}" style="border-left-color:#8b5cf6 !important;" data-tooltip="Repair Quotations">
                             <i class="fas fa-file-invoice-dollar fa-fw"></i>
-                            <span>Estimates</span>
+                            <span>Repair Quotations</span>
                             <span class="sidebar-badge" id="s-estimates">{{ $sidebarCounts['estimates_total'] }}</span>
                             @if($sidebarCounts['estimates_new'] > 0)
                                 <span class="sidebar-badge-danger" id="s-estimates-new">{{ $sidebarCounts['estimates_new'] }}</span>

@@ -1,13 +1,17 @@
 @php
-    $customer = $appointment->customer ?? null;
-    $vehicle  = $appointment->vehicle ?? null;
+    // The slip partial is shared by the appointment slip and the walk-in
+    // Repair Order slip. Parents pass these generic variables.
+    $customer = $slipCustomer ?? ($appointment->customer ?? null);
+    $vehicle  = $slipVehicle ?? ($appointment->vehicle ?? null);
+    $selectedTypes = $selectedTypes ?? ($appointment->service_types ?? []);
+    $selectedTypes = is_array($selectedTypes) ? array_values(array_filter($selectedTypes, 'is_string')) : [];
     $vehicleDesc = trim(($vehicle->make ?? '') . ' ' . ($vehicle->model ?? ''));
     if ($vehicle && !empty($vehicle->year)) {
         $vehicleDesc = trim($vehicleDesc . ' ' . $vehicle->year);
     }
 
     // ---- Job Description rows (fallback: the checked Services) ----
-    $jdItems = $appointment->job_description_items ?? [];
+    $jdItems = $slipJdItems ?? ($appointment->job_description_items ?? []);
     if (!is_array($jdItems)) { $jdItems = []; }
     if (count($jdItems) === 0) {
         foreach ($selectedTypes as $k) {
@@ -16,7 +20,7 @@
     }
 
     // ---- Parts / Supplies rows ----
-    $partsItems = $appointment->parts_items ?? [];
+    $partsItems = $slipPartsItems ?? ($appointment->parts_items ?? []);
     if (!is_array($partsItems)) { $partsItems = []; }
 
     $laborTotal = 0.0;
@@ -24,9 +28,13 @@
     $partsTotal = 0.0;
     foreach ($partsItems as $row) { $partsTotal += (float) ($row['cost'] ?? 0); }
 
-    $discount = (float) ($appointment->discount ?? 0);
+    $discount = (float) ($slipDiscount ?? ($appointment->discount ?? 0));
     $subtotal = $laborTotal + $partsTotal;
     $grandTotal = max(0, $subtotal - $discount);
+
+    $slipReference = $slipReference ?? ($appointment->appointment_number ?? null);
+    $slipDate = $slipDate ?? ($appointment->appointment_date ?? null);
+    $slipConcern = $slipConcern ?? ($appointment->service_request ?? null);
 
     $money = function ($n) { return '&#8369; ' . number_format((float) $n, 2); };
 
@@ -74,7 +82,7 @@
         </div>
         <div class="ro-title">
             REPAIR ORDER
-            <small>No. {{ $appointment->appointment_number }} &bull; {{ $appointment->appointment_date ? $appointment->appointment_date->format('M d, Y') : now()->format('M d, Y') }}</small>
+            <small>No. {{ $slipReference }} &bull; {{ $slipDate ? $slipDate->format('M d, Y') : now()->format('M d, Y') }}</small>
         </div>
     </div>
 
@@ -177,7 +185,7 @@
             <td style="width:56%; vertical-align:top; border:0; padding:0 10px 0 0;">
                 <div class="ros-concern">
                     <p class="ros-sec">Concern / Request</p>
-                    <div class="ros-concern-body">{{ $appointment->service_request ?? '' }}</div>
+                    <div class="ros-concern-body">{{ $slipConcern ?? '' }}</div>
                 </div>
             </td>
             <td style="width:44%; vertical-align:top; border:0; padding:0;">

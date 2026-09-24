@@ -875,8 +875,25 @@ function initAutoSave() {
     var $form = $('form');
     if (!$form.length) return;
     
-    // Load saved draft
-    var saved = localStorage.getItem('draft_' + pageKey);
+    // Create pages must always open EMPTY.
+    // The auto-save draft is meant to survive an accidental refresh mid-entry;
+    // but on a "Create" form a lingering draft makes old service types /
+    // description reappear and looks like the form "never resets".
+    // So on create pages: purge any lingering draft and never restore one.
+    // (Andrew 2026-09-23)
+    var isCreatePage = /\/create\/?$/.test(window.location.pathname);
+    if (isCreatePage) {
+        var draftPrefix = 'draft_' + window.location.pathname;
+        for (var di = localStorage.length - 1; di >= 0; di--) {
+            var dk = localStorage.key(di);
+            if (dk && dk.indexOf(draftPrefix) === 0) {
+                localStorage.removeItem(dk);
+            }
+        }
+    }
+
+    // Load saved draft (never on create pages)
+    var saved = isCreatePage ? null : localStorage.getItem('draft_' + pageKey);
     if (saved) {
         try {
             var data = JSON.parse(saved);
@@ -934,7 +951,9 @@ function initAutoSave() {
     
     // Save draft on input change (debounced)
     var saveTimer;
+    var saveDisabled = false;
     var saveTrigger = function() {
+        if (saveDisabled) return;
         clearTimeout(saveTimer);
         saveTimer = setTimeout(function() {
             saveDraft(pageKey, $form);
@@ -949,8 +968,15 @@ function initAutoSave() {
     $(document).on('click', '.tech-option', saveTrigger);
     $(document).on('click', '.remove-tech', saveTrigger);
     
-    // Clear draft on successful form submit
+    // Clear draft on form submit.
+    // IMPORTANT: also cancel the pending debounced save and disable further saves.
+    // Otherwise the 2s timer scheduled by the last keystroke fires a moment later
+    // and RE-WRITES the draft with the just-submitted data — so the next visit to
+    // "Create Appointment" restores the old info and looks like it "never resets".
+    // (Andrew 2026-09-23)
     $form.on('submit', function() {
+        clearTimeout(saveTimer);
+        saveDisabled = true;
         localStorage.removeItem('draft_' + pageKey);
     });
     
@@ -1462,9 +1488,20 @@ function loadVehicles(customerId, $select) {
                 if (v.license_plate) label += ' - ' + v.license_plate;
                 if (v.color) label += ' [' + v.color + ']';
                 var selected = (prevVal && prevVal == v.id) ? ' selected' : '';
-                html += '<option value="' + v.id + '"' + selected + '>' + label + '</option>';
+                // Keep the same data-* attributes the server-rendered options carry so
+                // page-specific summaries (e.g. Repair Quotation Make/Model/Year/Plate)
+                // still resolve after the list is rebuilt.
+                html += '<option value="' + v.id + '"' + selected
+                     + ' data-make="' + (v.make || '') + '"'
+                     + ' data-model="' + (v.model || '') + '"'
+                     + ' data-year="' + (v.year || '') + '"'
+                     + ' data-plate="' + (v.license_plate || '') + '"'
+                     + ' data-miles="' + (v.odometer || '') + '">'
+                     + label + '</option>';
             });
             $select.html(html).prop('disabled', false);
+            // Let page-specific handlers refresh derived fields after the rebuild.
+            $select.trigger('change');
         })
         .fail(function() {
             $select.html('<option value="">Error loading vehicles</option>').prop('disabled', false);

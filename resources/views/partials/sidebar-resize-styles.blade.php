@@ -293,8 +293,13 @@
 
 /* Fix: Restore Bootstrap collapse visibility over Tailwind v4's `.collapse { visibility: collapse }` */
 /* Tailwind v4 defines `.collapse { visibility: collapse }` which breaks Bootstrap's
-   collapse class. This override restores Bootstrap's intended behavior for all
-   navbar and sidebar collapse elements. */
+   collapse component: the element opens (height animates -> the "slide") but its
+   content stays invisible, so panels appear blank. This override restores Bootstrap's
+   intended behavior for ALL collapse elements (navbar, sidebar, and in-page panels). */
+.collapse,
+.collapsing {
+    visibility: visible;
+}
 .navbar-collapse.collapse,
 .navbar-collapse.collapsing {
     visibility: visible;

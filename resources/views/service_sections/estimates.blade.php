@@ -1,14 +1,14 @@
 @extends('service_sections.base')
 
 @section('section_content')
-<!-- Estimates List -->
+<!-- Repair Quotations List -->
 <div class="row mt-4">
     <div class="col-12">
         <div class="card border-success">
             <div class="card-header bg-success text-white">
                 <h5 class="mb-0">
-                    <i class="fas fa-file-invoice-dollar me-2"></i>Estimates List
-                    <span class="badge bg-light text-dark ms-2">{{ count($sectionData) }} estimate(s)</span>
+                    <i class="fas fa-file-invoice-dollar me-2"></i>Repair Quotations List
+                    <span class="badge bg-light text-dark ms-2">{{ count($sectionData) }} repair quotation(s)</span>
                 </h5>
             </div>
             <div class="card-body">
@@ -72,10 +72,10 @@
                 @else
                     <div class="text-center py-5">
                         <i class="fas fa-file-invoice-dollar fa-3x text-muted mb-3"></i>
-                        <h4>No Estimates Found</h4>
+                        <h4>No Repair Quotations Found</h4>
                         <p class="text-muted">No estimates match your current filters.</p>
                         <a href="{{ route('estimates.create') }}" class="btn btn-success">
-                            <i class="fas fa-plus me-1"></i> Create New Estimate
+                            <i class="fas fa-plus me-1"></i> Create New Repair Quotation
                         </a>
                     </div>
                 @endif

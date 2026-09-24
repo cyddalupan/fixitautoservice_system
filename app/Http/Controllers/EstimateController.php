@@ -6,6 +6,7 @@ use App\Models\Appointment;
 use App\Models\Customer;
 use App\Models\Estimate;
 use App\Models\EstimateItem;
+use App\Models\EstimateItemGroup;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\JobOrder;
@@ -22,7 +23,14 @@ class EstimateController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Estimate::with(['customer', 'vehicle', 'items'])
+        $query = Estimate::with([
+                'customer', 'vehicle', 'items',
+                // Needed so the Amount column can read the linked Repair Order's
+                // findings (parts + labor, excluding "Not Pursued").
+                'inspection.inspectionFindings', 'inspection.findingGroups',
+                // Payment badge reads the linked Repair Order's payment records.
+                'inspection.repairOrderPayments',
+            ])
             ->whereNull('deleted_at');
 
         // Filters
@@ -58,7 +66,11 @@ class EstimateController extends Controller
     {
         $customers = Customer::orderBy('first_name')->get();
         $advisors = User::whereIn('role', ['admin', 'staff', 'service_advisor'])->get();
-        $lastNum = Estimate::where('estimate_number', 'like', 'EST-' . now()->format('Ymd') . '-%')
+        // NOTE: estimates.estimate_number has a DB UNIQUE index while the model
+        // soft-deletes. Count WITH trashed so the suggested number never collides
+        // with a deleted quotation (which would make every save bounce back).
+        $lastNum = Estimate::withTrashed()
+            ->where('estimate_number', 'like', 'EST-' . now()->format('Ymd') . '-%')
             ->count();
         $inventoryItems = \App\Models\Inventory::with("category")->whereNull("deleted_at")->get();
         $inventoryItemsJson = $inventoryItems->map(function ($item) {
@@ -109,6 +121,29 @@ class EstimateController extends Controller
             }
         }
 
+        // ---- Prefill from a Repair Order ("Create Repair Quotation" button) ----
+        // When launched from a Repair Order we know exactly which inspection to
+        // quote, so use ITS customer/vehicle/findings instead of the "latest" guess.
+        $prefillInspection = null;
+        if ($request->filled('inspection_id')) {
+            $prefillInspection = \App\Models\VehicleInspection::with(['inspectionFindings.group'])
+                ->find($request->inspection_id);
+            if ($prefillInspection) {
+                if (!$selectedCustomer && $prefillInspection->customer_id) {
+                    $selectedCustomer = Customer::find($prefillInspection->customer_id);
+                    if ($selectedCustomer) {
+                        $customerVehicles = Vehicle::where('customer_id', $selectedCustomer->id)->get();
+                        $customerHistory = Estimate::where('customer_id', $selectedCustomer->id)
+                            ->whereNull('deleted_at')->orderBy('created_at', 'desc')->limit(5)->get();
+                    }
+                }
+                if (!$selectedVehicle && $prefillInspection->vehicle_id) {
+                    $selectedVehicle = Vehicle::find($prefillInspection->vehicle_id);
+                }
+                $inspectionFindings = $prefillInspection->inspectionFindings;
+            }
+        }
+
         // Load quotation data for auto-fill
         $quotationData = null;
         if ($request->filled('quotation_id')) {
@@ -127,12 +162,19 @@ class EstimateController extends Controller
         $activeTransaction = null;
         if ($selectedVehicle) {
             $activeTransaction = \App\Services\ActiveTransactionService::checkActiveTransaction($selectedVehicle->id);
+            // When launched from a Repair Order, that RO's own service chain
+            // (inspection/appointment/estimate) is the SOURCE being quoted — not a
+            // duplicate. Suppress the warning modal for it, but still show it for a
+            // genuinely downstream conflict (an active Work Order).
+            if ($prefillInspection && $activeTransaction && ($activeTransaction['stage_key'] ?? null) !== 'job_order') {
+                $activeTransaction = null;
+            }
         }
 
         return view('estimates.create', compact(
             'customers', 'advisors', 'lastNum', 'inventoryItems', 'inventoryItemsJson',
             'selectedCustomer', 'selectedVehicle', 'customerVehicles', 'customerHistory',
-            'inspectionFindings', 'quotationData', 'activeTransaction'
+            'inspectionFindings', 'quotationData', 'activeTransaction', 'prefillInspection'
         ));
     }
 
@@ -144,7 +186,10 @@ class EstimateController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'vehicle_id' => 'required|exists:vehicles,id',
-            'estimate_number' => 'nullable|string|max:50|unique:estimates,estimate_number',
+            // Ignore soft-deleted rows here (the DB unique index still applies at
+            // insert time; store() guarantees a free number before inserting).
+            'estimate_number' => ['nullable', 'string', 'max:50',
+                \Illuminate\Validation\Rule::unique('estimates', 'estimate_number')->whereNull('deleted_at')],
             'issue_date' => 'nullable|date',
             'expiry_date' => 'nullable|date',
             'status' => 'nullable|string|max:50',
@@ -159,10 +204,20 @@ class EstimateController extends Controller
             'discount_value' => 'nullable|numeric|min:0',
             'deposit_required' => 'nullable|numeric|min:0',
             'items_json' => 'nullable|json',
+            'inspection_id' => 'nullable|integer|exists:vehicle_inspections,id',
         ]);
 
+        // Detect "launched from Repair Order": converting that RO's own findings
+        // into a quotation. In that case the RO/Appointment chain IS the source we
+        // are quoting, so the duplicate-active-transaction guards must not block it.
+        $launchedFromInspection = $request->filled('inspection_id')
+            && $request->filled('vehicle_id')
+            && \App\Models\VehicleInspection::where('id', $request->inspection_id)
+                ->where('vehicle_id', $request->vehicle_id)
+                ->exists();
+
         // Check for duplicate active transaction (skip if override_duplicate is set)
-        if (!$request->filled('override_duplicate') || $request->override_duplicate !== '1') {
+        if (!$launchedFromInspection && (!$request->filled('override_duplicate') || $request->override_duplicate !== '1')) {
             if ($request->filled('vehicle_id')) {
                 $activeTransaction = \App\Services\ActiveTransactionService::checkActiveTransaction($request->vehicle_id);
                 if ($activeTransaction) {
@@ -173,11 +228,22 @@ class EstimateController extends Controller
 
         DB::beginTransaction();
         try {
-            // Generate estimate number if not provided
-            if (empty($validated['estimate_number'])) {
-                $count = Estimate::where('estimate_number', 'like', 'EST-' . now()->format('Ymd') . '-%')->count();
-                $validated['estimate_number'] = 'EST-' . now()->format('Ymd') . '-' . str_pad($count + 1, 4, '0', STR_PAD_LEFT);
+            // Guarantee a free estimate number. estimates.estimate_number has a DB
+            // UNIQUE index; because the model soft-deletes, a DELETED quotation still
+            // reserves its number. If the submitted/suggested number is taken by any
+            // row (incl. trashed), bump to the next free one so the insert never
+            // fails and the form never silently bounces back.
+            $num = $validated['estimate_number'] ?? null;
+            if (empty($num) || Estimate::withTrashed()->where('estimate_number', $num)->exists()) {
+                $seq = Estimate::withTrashed()
+                    ->where('estimate_number', 'like', 'EST-' . now()->format('Ymd') . '-%')
+                    ->count();
+                do {
+                    $seq++;
+                    $num = 'EST-' . now()->format('Ymd') . '-' . str_pad($seq, 4, '0', STR_PAD_LEFT);
+                } while (Estimate::withTrashed()->where('estimate_number', $num)->exists());
             }
+            $validated['estimate_number'] = $num;
 
             // Compute totals from items
             $subtotal = 0;
@@ -263,6 +329,7 @@ class EstimateController extends Controller
                     ->pluck('appointment_id')->toArray();
             }
 
+            if (!$launchedFromInspection) {
             $existingAppointment = Appointment::where('vehicle_id', $vehicleId)
                 ->whereIn('appointment_status', ['scheduled', 'checked_in', 'in_progress'])
                 ->whereNull('deleted_at')
@@ -278,6 +345,7 @@ class EstimateController extends Controller
                 return back()->withErrors([
                     'vehicle_id' => 'This vehicle already has an active Appointment (' . $existingAppointment->appointment_number . ').'
                 ])->withInput();
+            }
             }
             
             $existingJobOrder = JobOrder::where('vehicle_id', $vehicleId)
@@ -296,7 +364,7 @@ class EstimateController extends Controller
                 ->whereIn('status', ['draft', 'pending', 'sent'])
                 ->whereNull('deleted_at');
             
-            if ($existingEstimate->exists()) {
+            if (!$launchedFromInspection && $existingEstimate->exists()) {
                 DB::rollBack();
                 return back()->withErrors([
                     'vehicle_id' => 'This vehicle already has an active Estimate (' . ($existingEstimate->first()->estimate_number ?? '#' . $existingEstimate->first()->id) . ').'
@@ -331,6 +399,7 @@ class EstimateController extends Controller
                 'terms' => $validated['terms'] ?? null,
                 'mileage' => $validated['mileage'] ?? null,
                 'service_advisor_id' => $validated['service_advisor_id'] ?? null,
+                'inspection_id' => $validated['inspection_id'] ?? null,
                 'sent_at' => $sentAt,
                 'user_id' => auth()->id(),
             ]);
@@ -344,6 +413,7 @@ class EstimateController extends Controller
                     'category' => $item['category'] ?? 'parts',
                     'quantity' => $item['quantity'] ?? 1,
                     'unit_price' => $item['unit_price'] ?? 0,
+                    'total_price' => $item['line_total'] ?? (($item['quantity'] ?? 1) * ($item['unit_price'] ?? 0)),
                     'discount' => $item['discount'] ?? 0,
                     'discount_type' => 'percentage',
                     'tax_rate' => $item['tax_rate'] ?? 0,
@@ -355,7 +425,7 @@ class EstimateController extends Controller
             DB::commit();
 
             return redirect()->route('estimates.show', $estimate)
-                ->with('success', 'Estimate #' . $estimate->estimate_number . ' created successfully.');
+                ->with('success', 'Repair Quotation #' . $estimate->estimate_number . ' created successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -369,7 +439,7 @@ class EstimateController extends Controller
      */
     public function show(Estimate $estimate)
     {
-        $estimate->load(['customer', 'vehicle', 'items', 'user', 'serviceAdvisor', 'jobOrder']);
+        $estimate->load(['customer', 'vehicle', 'items', 'itemGroups.items', 'user', 'serviceAdvisor', 'jobOrder']);
 
         // Mark as viewed if not yet viewed (keep existing status)
         if ($estimate->viewed_at === null) {
@@ -393,8 +463,22 @@ class EstimateController extends Controller
         $customers = Customer::orderBy('first_name')->get();
         $advisors = User::whereIn('role', ['admin', 'staff', 'service_advisor'])->get();
         $customerVehicles = Vehicle::where('customer_id', $estimate->customer_id)->get();
-        $lastNum = Estimate::where('estimate_number', 'like', 'EST-' . now()->format('Ymd') . '-%')->count();
+        // Count WITH trashed (soft-deleted rows keep their number in the DB UNIQUE index).
+        $lastNum = Estimate::withTrashed()
+            ->where('estimate_number', 'like', 'EST-' . now()->format('Ymd') . '-%')
+            ->count();
         $inventoryItems = \App\Models\Inventory::with("category")->whereNull("deleted_at")->get();
+        $inventoryItemsJson = $inventoryItems->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'name' => $item->name,
+                'part_number' => $item->part_number,
+                'description' => $item->description,
+                'retail_price' => floatval($item->retail_price),
+                'quantity' => intval($item->quantity),
+                'manufacturer' => $item->manufacturer ?? '',
+            ];
+        })->values();
         $customerHistory = Estimate::where('customer_id', $estimate->customer_id)
             ->where('id', '!=', $estimate->id)
             ->whereNull('deleted_at')
@@ -405,9 +489,21 @@ class EstimateController extends Controller
         $selectedCustomer = $estimate->customer;
         $selectedVehicle = $estimate->vehicle;
 
-        return view('estimates.create', compact(
+        // Repair Quotation Edit page = the Findings editor of the linked Repair Order.
+        // Customer / Vehicle / service items are intentionally NOT editable here.
+        $inspection = null;
+        if ($estimate->inspection_id) {
+            $inspection = \App\Models\VehicleInspection::with([
+                'inspectionFindings.group',
+                'findingGroups.findings',
+                'repairOrderPayments.uploadedBy',
+                'repairOrderPayments.verifiedBy',
+            ])->find($estimate->inspection_id);
+        }
+
+        return view('estimates.edit', compact(
             'estimate', 'customers', 'advisors', 'lastNum', 'inventoryItems', 'inventoryItemsJson',
-            'selectedCustomer', 'selectedVehicle', 'customerVehicles', 'customerHistory'
+            'selectedCustomer', 'selectedVehicle', 'customerVehicles', 'customerHistory', 'inspection'
         ));
     }
 
@@ -534,28 +630,49 @@ class EstimateController extends Controller
                 $estimate->update(['status' => $request->status]);
             }
 
+            // Preserve group links + customer decisions across item re-save.
+            // Snapshot by sort_order (stable ordering used by the form).
+            $linkSnapshot = $estimate->items()->get()
+                ->mapWithKeys(function ($i) {
+                    return [(string) $i->sort_order => [
+                        'group_id' => $i->group_id,
+                        'item_status' => $i->item_status,
+                    ]];
+                });
+
             // Delete old items and recreate
             $estimate->items()->delete();
             foreach ($items as $item) {
-                $estimate->items()->create([
+                $sortOrder = $item['sort_order'] ?? 0;
+                $saved = $estimate->items()->create([
                     'estimate_id' => $estimate->id,
                     'item_name' => $item['description'] ?? '',
                     'description' => $item['description'] ?? '',
                     'category' => $item['category'] ?? 'parts',
                     'quantity' => $item['quantity'] ?? 1,
                     'unit_price' => $item['unit_price'] ?? 0,
+                    'total_price' => $item['line_total'] ?? (($item['quantity'] ?? 1) * ($item['unit_price'] ?? 0)),
                     'discount' => $item['discount'] ?? 0,
                     'discount_type' => 'percentage',
                     'tax_rate' => $item['tax_rate'] ?? 0,
                     'subtotal' => $item['subtotal'] ?? 0,
-                    'sort_order' => $item['sort_order'] ?? 0,
+                    'sort_order' => $sortOrder,
                 ]);
+
+                // Re-apply prior grouping / decision when the row position is unchanged
+                $prev = $linkSnapshot->get((string) $sortOrder);
+                if ($prev && ($prev['group_id'] || ($prev['item_status'] && $prev['item_status'] !== 'quoted'))) {
+                    $saved->update([
+                        'group_id' => $prev['group_id'],
+                        'item_status' => $prev['item_status'] ?? 'quoted',
+                    ]);
+                }
             }
 
             DB::commit();
 
             return redirect()->route('estimates.show', $estimate)
-                ->with('success', 'Estimate #' . $estimate->estimate_number . ' updated successfully.');
+                ->with('success', 'Repair Quotation #' . $estimate->estimate_number . ' updated successfully.');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -571,7 +688,7 @@ class EstimateController extends Controller
     {
         $estimate->delete();
         return redirect()->route('estimates.index')
-            ->with('success', 'Estimate #' . $estimate->estimate_number . ' archived.');
+            ->with('success', 'Repair Quotation #' . $estimate->estimate_number . ' archived.');
     }
 
     /**
@@ -589,7 +706,7 @@ class EstimateController extends Controller
             // Mail::to($estimate->customer->email)->send(new EstimateMail($estimate));
 
             return redirect()->route('estimates.show', $estimate)
-                ->with('success', 'Estimate #' . $estimate->estimate_number . ' sent to customer.');
+                ->with('success', 'Repair Quotation #' . $estimate->estimate_number . ' sent to customer.');
         }
 
         return back()->with('error', 'Estimate must be in Draft status to send.');
@@ -598,6 +715,42 @@ class EstimateController extends Controller
     /**
      * Approve estimate.
      */
+    /**
+     * Inline status change from the Repair Quotations list (dropdown).
+     */
+    public function updateStatus(Request $request, Estimate $estimate)
+    {
+        $validated = $request->validate([
+            'status' => 'required|string|in:' . implode(',', array_keys(Estimate::STATUSES)),
+        ]);
+
+        $status = $validated['status'];
+        $data = ['status' => $status];
+
+        // Keep sent_at in sync the same way the rest of the flow does.
+        if ($status === 'sent' && !$estimate->sent_at) {
+            $data['sent_at'] = now();
+        }
+        if ($status === 'approved' && !$estimate->approved_at) {
+            $data['approved_at'] = now();
+            $data['approved_by'] = auth()->id();
+        }
+
+        $estimate->update($data);
+
+        $label = Estimate::STATUSES[$status] ?? ucfirst($status);
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'status'  => $status,
+                'label'   => $label,
+            ]);
+        }
+
+        return back()->with('success', 'Repair Quotation #' . $estimate->estimate_number . ' status updated to ' . $label . '.');
+    }
+
     public function approve(Request $request, Estimate $estimate)
     {
         if (in_array($estimate->status, ['sent', 'viewed'])) {
@@ -608,7 +761,7 @@ class EstimateController extends Controller
             ]);
 
             return redirect()->route('estimates.show', $estimate)
-                ->with('success', 'Estimate #' . $estimate->estimate_number . ' approved.');
+                ->with('success', 'Repair Quotation #' . $estimate->estimate_number . ' approved.');
         }
 
         return back()->with('error', 'Estimate cannot be approved from current status.');
@@ -627,7 +780,7 @@ class EstimateController extends Controller
             ]);
 
             return redirect()->route('estimates.show', $estimate)
-                ->with('success', 'Estimate #' . $estimate->estimate_number . ' rejected.');
+                ->with('success', 'Repair Quotation #' . $estimate->estimate_number . ' rejected.');
         }
 
         return back()->with('error', 'Estimate cannot be rejected from current status.');
@@ -700,6 +853,252 @@ class EstimateController extends Controller
             DB::rollBack();
             return back()->with('error', 'Conversion failed: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Promote a Repair Quotation into a Repair Order.
+     *
+     * The quotation is the pre-approval stage; once the customer proceeds the
+     * job moves back into the workshop as a Repair Order. Two cases:
+     *   A) The quotation already has a linked Repair Order (created from it) —
+     *      we re-activate that RO and issue a reference number if missing.
+     *   B) The quotation is standalone (no RO yet) — we create one from the
+     *      quotation's customer/vehicle + items (findings), then link it back.
+     * Payments already live on the shared ledger (repair_order_payments keyed by
+     * the RO), so nothing is duplicated.
+     */
+    public function convertToRepairOrder(Request $request, Estimate $estimate)
+    {
+        if (in_array($estimate->status, ['converted_to_repair_order', 'converted_to_job_order', 'converted'], true)) {
+            return back()->with('error', 'This quotation has already been converted.');
+        }
+        if ($estimate->status === 'rejected') {
+            return back()->with('error', 'A rejected quotation cannot be moved to a Repair Order.');
+        }
+
+        $validated = $request->validate([
+            'repair_status' => 'nullable|string|in:' . implode(',', array_keys(VehicleInspection::REPAIR_STATUSES)),
+        ]);
+        $repairStatus = $validated['repair_status'] ?? 'received';
+
+        DB::beginTransaction();
+        try {
+            $inspection = $estimate->inspection_id
+                ? VehicleInspection::find($estimate->inspection_id)
+                : null;
+
+            $createdNew = false;
+
+            if ($inspection) {
+                // Case A — reuse the existing Repair Order and re-activate it.
+                $inspection->update(array_filter([
+                    'repair_status' => $repairStatus,
+                    'reference_number' => $inspection->reference_number ?: VehicleInspection::generateReferenceNumber(),
+                    'inspection_status' => $inspection->inspection_status ?: 'in_progress',
+                    'customer_approved' => 1,
+                    'customer_approved_at' => $inspection->customer_approved_at ?: now(),
+                    'workshop_released_at' => null,
+                ], fn ($v) => $v !== null));
+            } else {
+                // Case B — build a Repair Order from the quotation itself.
+                $inspection = VehicleInspection::create([
+                    'reference_number' => VehicleInspection::generateReferenceNumber(),
+                    'appointment_id' => $estimate->appointment_id,
+                    'customer_id' => $estimate->customer_id,
+                    'vehicle_id' => $estimate->vehicle_id,
+                    'service_advisor_id' => $estimate->service_advisor_id,
+                    'service_type' => $estimate->service_type,
+                    'inspection_type' => 'pre_service',
+                    'inspection_status' => 'in_progress',
+                    'repair_status' => $repairStatus,
+                    'source' => 'quotation',
+                    'inspection_name' => 'Repair Order for ' . ($estimate->customer->full_name ?? 'Customer'),
+                    'customer_concerns' => $estimate->getRawOriginal('customer_notes') ?: $estimate->notes,
+                    'inspection_started_at' => now(),
+                    'date_received' => now()->toDateString(),
+                    'created_by' => auth()->id(),
+                    'requires_customer_approval' => 1,
+                    'customer_approved' => 1,
+                    'customer_approved_at' => now(),
+                ]);
+                $createdNew = true;
+
+                // Carry the quotation lines across as findings so the Repair Order
+                // shows the same parts/labour the customer approved.
+                $estimate->loadMissing(['items.group']);
+                $sort = 0;
+                foreach ($estimate->items as $item) {
+                    \App\Models\InspectionFinding::create([
+                        'inspection_id' => $inspection->id,
+                        'category' => in_array($item->category, ['parts', 'materials']) ? 'Parts' : 'Labor',
+                        'issue_title' => $item->item_name ?: ($item->description ?: 'Quotation item'),
+                        'part_name' => $item->item_name,
+                        'detailed_notes' => $item->description,
+                        'quantity' => $item->quantity ?: 1,
+                        'unit_price' => $item->unit_price ?: 0,
+                        'sort_order' => $sort++,
+                        'is_quotation_added' => 1,
+                        'is_linked_to_estimate' => 1,
+                    ]);
+                }
+
+                $estimate->inspection_id = $inspection->id;
+            }
+
+            $estimate->status = 'converted_to_repair_order';
+            $estimate->approved_at = $estimate->approved_at ?: now();
+            $estimate->approved_by = $estimate->approved_by ?: auth()->id();
+            $estimate->save();
+
+            DB::commit();
+
+            return redirect()->route('inspections.show', $inspection)
+                ->with('success', 'Quotation ' . $estimate->estimate_number . ' moved to Repair Order ' . $inspection->reference_label . '.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Estimate -> Repair Order conversion failed', [
+                'estimate_id' => $estimate->id,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Conversion failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Recalculate an estimate's stored totals from its items + group labour.
+     * Called after any item/group mutation. With no groups the result is
+     * identical to the original item-only computation.
+     */
+    private function recomputeTotals(Estimate $estimate): void
+    {
+        $estimate->load(['items', 'itemGroups']);
+        $subtotal = 0; $partsTotal = 0; $laborTotal = 0; $discountAmount = 0; $taxTotal = 0;
+        foreach ($estimate->items as $item) {
+            $qty = (float) $item->quantity;
+            $price = (float) $item->unit_price;
+            $lineTotal = $qty * $price;
+            $discPct = (float) $item->discount;
+            $taxPct = (float) $item->tax_rate;
+            $lineDiscount = $discPct > 0 ? $lineTotal * (min($discPct, 100) / 100) : 0;
+            $afterDisc = $lineTotal - $lineDiscount;
+            $lineTax = $taxPct > 0 ? $afterDisc * ($taxPct / 100) : 0;
+            $lineSubtotal = $afterDisc + $lineTax;
+            $subtotal += $afterDisc;
+            $discountAmount += $lineDiscount;
+            $taxTotal += $lineTax;
+            if (in_array($item->category, ['parts', 'materials'])) { $partsTotal += $lineSubtotal; }
+            else { $laborTotal += $lineSubtotal; }
+        }
+        // Shared labour (one price per group)
+        $groupLabor = (float) $estimate->itemGroups->sum('labor_cost');
+        $laborTotal += $groupLabor;
+        $subtotal += $groupLabor;
+
+        $discType = $estimate->discount_type;
+        $discVal = (float) $estimate->discount_value;
+        $globalDiscount = 0;
+        if ($discType === 'percentage' && $discVal > 0) { $globalDiscount = $subtotal * (min($discVal, 100) / 100); }
+        elseif ($discType === 'fixed' && $discVal > 0) { $globalDiscount = min($discVal, $subtotal); }
+
+        $totalDiscount = $discountAmount + $globalDiscount;
+        $grandTotal = $subtotal - $globalDiscount + $taxTotal;
+
+        $estimate->update([
+            'subtotal' => $subtotal,
+            'parts_total' => $partsTotal,
+            'labor_total' => $laborTotal,
+            'discount_amount' => $totalDiscount,
+            'tax_total' => $taxTotal,
+            'total_amount' => $grandTotal,
+            'balance_remaining' => max(0, $grandTotal - (float) $estimate->deposit_required),
+        ]);
+    }
+
+    /**
+     * Create an item group (shared labour) on a Repair Quotation.
+     */
+    public function storeGroup(Request $request, Estimate $estimate)
+    {
+        $data = $request->validate([
+            'name' => 'nullable|string|max:120',
+            'labor_cost' => 'nullable|numeric|min:0',
+        ]);
+        $group = $estimate->itemGroups()->create([
+            'name' => $data['name'] ?? 'Group',
+            'labor_cost' => $data['labor_cost'] ?? 0,
+            'sort_order' => ((int) $estimate->itemGroups()->max('sort_order')) + 1,
+        ]);
+        $this->recomputeTotals($estimate->fresh());
+        return response()->json(['success' => true, 'group' => $group->fresh()]);
+    }
+
+    /**
+     * Update an item group's name and/or shared labour price.
+     */
+    public function updateGroup(Request $request, EstimateItemGroup $group)
+    {
+        $data = $request->validate([
+            'name' => 'nullable|string|max:120',
+            'labor_cost' => 'nullable|numeric|min:0',
+        ]);
+        $upd = [];
+        if ($request->has('name')) { $upd['name'] = $data['name'] ?? 'Group'; }
+        if ($request->has('labor_cost')) { $upd['labor_cost'] = $data['labor_cost'] ?? 0; }
+        if ($upd) { $group->update($upd); }
+        $this->recomputeTotals($group->estimate->fresh());
+        return response()->json(['success' => true, 'group' => $group->fresh()]);
+    }
+
+    /**
+     * Delete a group (its items are kept, just un-grouped).
+     */
+    public function destroyGroup(EstimateItemGroup $group)
+    {
+        $estimate = $group->estimate;
+        $group->items()->update(['group_id' => null]);
+        $group->delete();
+        $this->recomputeTotals($estimate->fresh());
+        return response()->json(['success' => true]);
+    }
+
+    /**
+     * Move an item into (or out of) a group.
+     */
+    public function assignItemGroup(Request $request, EstimateItem $item)
+    {
+        $data = $request->validate(['group_id' => 'nullable|exists:estimate_item_groups,id']);
+        $gid = $data['group_id'] ?? null;
+        if ($gid) {
+            // guard: group must belong to the same estimate
+            $ok = EstimateItemGroup::where('id', $gid)->where('estimate_id', $item->estimate_id)->exists();
+            if (!$ok) { return response()->json(['success' => false, 'message' => 'Group does not belong to this quotation.'], 422); }
+        }
+        $item->update(['group_id' => $gid]);
+        $this->recomputeTotals($item->estimate->fresh());
+        return response()->json(['success' => true, 'item' => $item->fresh()]);
+    }
+
+    /**
+     * Set a single line's customer decision (partial acceptance).
+     */
+    public function updateItemStatus(Request $request, EstimateItem $item)
+    {
+        $data = $request->validate(['item_status' => 'required|in:quoted,accepted,rejected,deferred']);
+        $item->update(['item_status' => $data['item_status']]);
+        return response()->json(['success' => true, 'item' => $item->fresh()]);
+    }
+
+    /**
+     * Re-send (new revision) — bumps the version and re-stamps sent_at.
+     */
+    public function resend(Estimate $estimate)
+    {
+        $estimate->update([
+            'status' => 'sent',
+            'sent_at' => now(),
+            'version' => ((int) $estimate->version) + 1,
+        ]);
+        return back()->with('success', 'Repair Quotation re-sent (v' . $estimate->version . ').');
     }
 
     /**

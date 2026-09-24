@@ -1456,7 +1456,7 @@ function startAppointment(appointmentId) {
                                                 </button>
                                             @endif
                                             
-                                            <!-- Convert to Estimate -->
+                                            <!-- Convert to Repair Quotation -->
                                             @php
                                                 $inspection = $appointment->vehicleInspection;
                                                 $estimateParams = $inspection 
@@ -1465,7 +1465,7 @@ function startAppointment(appointmentId) {
                                             @endphp
                                             <a href="{{ route('estimates.create', $estimateParams) }}" 
                                                class="btn btn-primary btn-sm">
-                                                <i class="fas fa-file-invoice-dollar me-1"></i> Create Estimate
+                                                <i class="fas fa-file-invoice-dollar me-1"></i> Create Repair Quotation
                                             </a>
                                             
                                             <!-- View Details -->

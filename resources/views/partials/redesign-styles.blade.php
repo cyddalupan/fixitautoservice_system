@@ -16,9 +16,9 @@
     --module-primary-light: #fee2e2;
 
     /* Inspections */
-    --module-inspections: #0891b2;
-    --module-inspections-dark: #0e7490;
-    --module-inspections-light: #cffafe;
+    --module-inspections: #dc2626;
+    --module-inspections-dark: #b91c1c;
+    --module-inspections-light: #fee2e2;
 
     /* Estimates */
     --module-estimates: #dc2626;

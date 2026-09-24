@@ -445,8 +445,16 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::post('/estimates/{estimate}/reject', [EstimateController::class, 'reject'])->name('estimates.reject');
     Route::patch('/estimates/{estimate}/update-status', [EstimateController::class, 'updateStatus'])->name('estimates.update-status');
     Route::post('/estimates/{estimate}/convert-to-job-order', [EstimateController::class, 'convertToJobOrder'])->name('estimates.convert-to-job-order');
+    Route::post('/estimates/{estimate}/convert-to-repair-order', [EstimateController::class, 'convertToRepairOrder'])->name('estimates.convert-to-repair-order');
     Route::post('/estimates/{estimate}/send', [EstimateController::class, 'send'])->name('estimates.send');
     Route::get('/estimates/{estimate}/print', [EstimateController::class, 'print'])->name('estimates.print');
+    // Repair Quotation: item groups (shared labour) + per-line status + re-send
+    Route::post('/estimates/{estimate}/item-groups', [EstimateController::class, 'storeGroup'])->name('estimates.item-groups.store');
+    Route::put('/estimates/item-groups/{group}', [EstimateController::class, 'updateGroup'])->name('estimates.item-groups.update');
+    Route::delete('/estimates/item-groups/{group}', [EstimateController::class, 'destroyGroup'])->name('estimates.item-groups.destroy');
+    Route::post('/estimates/items/{item}/group', [EstimateController::class, 'assignItemGroup'])->name('estimates.items.group');
+    Route::patch('/estimates/items/{item}/status', [EstimateController::class, 'updateItemStatus'])->name('estimates.items.status');
+    Route::post('/estimates/{estimate}/resend', [EstimateController::class, 'resend'])->name('estimates.resend');
 
     // Invoice Routes
     Route::get('/invoices/statistics', [InvoiceController::class, 'statistics'])->name('invoices.statistics');
@@ -490,7 +498,14 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     // Public URL prefix is /repair-orders, but route names stay inspections.* (compatibility).
     Route::resource('repair-orders', VehicleInspectionController::class)->parameters(['repair-orders' => 'inspection'])->names('inspections');
     Route::get('/repair-orders/statistics', [VehicleInspectionController::class, 'statistics'])->name('inspections.statistics');
+
+    // Repair Order — Payment Verification (upload down/full payment + proof, verify)
+    Route::post('/repair-orders/{inspection}/payments', [\App\Http\Controllers\RepairOrderPaymentController::class, 'store'])->name('inspections.payments.store');
+    Route::post('/repair-orders/payments/{payment}/verify', [\App\Http\Controllers\RepairOrderPaymentController::class, 'verify'])->name('inspections.payments.verify');
+    Route::post('/repair-orders/payments/{payment}/reject', [\App\Http\Controllers\RepairOrderPaymentController::class, 'reject'])->name('inspections.payments.reject');
+    Route::delete('/repair-orders/payments/{payment}', [\App\Http\Controllers\RepairOrderPaymentController::class, 'destroy'])->name('inspections.payments.destroy');
     Route::post('/repair-orders/{inspection}/start', [VehicleInspectionController::class, 'startInspection'])->name('inspections.start');
+    Route::patch('/repair-orders/{inspection}/repair-status', [VehicleInspectionController::class, 'updateRepairStatus'])->name('inspections.update-repair-status');
     Route::post('/repair-orders/{inspection}/complete', [VehicleInspectionController::class, 'completeInspection'])->name('inspections.complete');
     Route::post('/repair-orders/{inspection}/undo-complete', [VehicleInspectionController::class, 'undoCompleteInspection'])->name('inspections.undo-complete');
     Route::post('/repair-orders/{inspection}/approve', [VehicleInspectionController::class, 'approveInspection'])->name('inspections.approve');
@@ -501,8 +516,35 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::post('/repair-orders/{inspection}/items', [VehicleInspectionController::class, 'storeItem'])->name('inspections.store-item');
     Route::post('/repair-orders/{inspection}/items/{item}/update', [VehicleInspectionController::class, 'updateItem'])->name('inspections.update-item');
     Route::post('/repair-orders/{inspection}/upload-photo', [VehicleInspectionController::class, 'uploadPhoto'])->name('inspections.upload-photo');
+    Route::post('/repair-orders/{inspection}/upload-photos', [VehicleInspectionController::class, 'uploadPhotos'])->name('inspections.upload-photos');
+    Route::delete('/repair-orders/{inspection}/photos/{photoIndex}', [VehicleInspectionController::class, 'deletePhoto'])->name('inspections.delete-photo');
     Route::post('/repair-orders/{inspection}/update-mileage', [VehicleInspectionController::class, 'updateMileage'])->name('inspections.update-mileage');
     Route::put('/repair-orders/{inspection}/update-team', [VehicleInspectionController::class, 'updateTeam'])->name('inspections.update-team');
+
+    // Printable Repair Quotation (built from the Repair Order's findings)
+    Route::get('/repair-orders/{inspection}/quotation-slip', [VehicleInspectionController::class, 'showQuotationSlip'])->name('inspections.quotation-slip');
+    Route::get('/repair-orders/{inspection}/quotation-slip.pdf', [VehicleInspectionController::class, 'downloadQuotationSlipPdf'])->name('inspections.quotation-pdf');
+
+    // Printable Repair Order slip (walk-in ROs have no appointment)
+    Route::get('/repair-orders/{inspection}/repair-order-slip', [VehicleInspectionController::class, 'showRepairOrderSlip'])->name('inspections.repair-order-slip');
+    Route::get('/repair-orders/{inspection}/repair-order-slip.pdf', [VehicleInspectionController::class, 'downloadRepairOrderSlipPdf'])->name('inspections.repair-order-pdf');
+
+    // Findings (Repair Order) — the JS UI was calling these but they were never registered
+    Route::post('/repair-orders/{inspection}/findings', [VehicleInspectionController::class, 'storeFinding'])->name('inspections.findings.store');
+    Route::get('/repair-orders/by-customer/{customer}/findings', [VehicleInspectionController::class, 'findingsByCustomer'])->name('inspections.findings.by-customer');
+    Route::post('/repair-orders/{inspection}/findings/bulk', [VehicleInspectionController::class, 'bulkAddFindings'])->name('inspections.findings.bulk');
+    Route::post('/repair-orders/{inspection}/findings/reorder', [VehicleInspectionController::class, 'reorderFindings'])->name('inspections.findings.reorder');
+    Route::put('/repair-orders/findings/{finding}', [VehicleInspectionController::class, 'updateFinding'])->name('inspections.findings.update');
+    Route::patch('/repair-orders/findings/{finding}', [VehicleInspectionController::class, 'updateFinding']);
+    Route::delete('/repair-orders/findings/{finding}', [VehicleInspectionController::class, 'destroyFinding'])->name('inspections.findings.destroy');
+    Route::post('/repair-orders/findings/{finding}/move', [VehicleInspectionController::class, 'moveFindingToGroup'])->name('inspections.findings.move');
+    Route::post('/repair-orders/findings/{finding}/decline', [VehicleInspectionController::class, 'declineFinding'])->name('inspections.findings.decline');
+    Route::post('/repair-orders/findings/{finding}/cost', [VehicleInspectionController::class, 'updateFindingCost'])->name('inspections.findings.cost');
+
+    // Finding groups (drag & drop cards sharing one labor cost)
+    Route::post('/repair-orders/{inspection}/finding-groups', [VehicleInspectionController::class, 'storeGroup'])->name('inspections.finding-groups.store');
+    Route::put('/repair-orders/finding-groups/{group}', [VehicleInspectionController::class, 'updateGroup'])->name('inspections.finding-groups.update');
+    Route::delete('/repair-orders/finding-groups/{group}', [VehicleInspectionController::class, 'destroyGroup'])->name('inspections.finding-groups.destroy');
 
     // Legacy URL redirects: old /inspections* -> /repair-orders* (kept so bookmarks/links don't 404)
     Route::get('/inspections/{any?}', function (\Illuminate\Http\Request $request, $any = null) {

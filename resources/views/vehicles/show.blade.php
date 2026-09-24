@@ -579,7 +579,7 @@ body.dark-mode .service-status-badge {
                         </a>
                         <a href="{{ route('estimates.create') }}?vehicle_id={{ $vehicle->id }}" class="quick-action-btn" style="border-left-color: #0ea5e9;">
                             <i class="fas fa-file-invoice-dollar" style="color: #0ea5e9;"></i>
-                            <span>Estimate</span>
+                            <span>Repair Quotation</span>
                         </a>
                         <a href="{{ route('job-orders.create') }}?vehicle_id={{ $vehicle->id }}" class="quick-action-btn" style="border-left-color: #ef4444;">
                             <i class="fas fa-wrench" style="color: #ef4444;"></i>
@@ -781,7 +781,7 @@ body.dark-mode .service-status-badge {
                                                             @case('appointment') <i class="fas fa-calendar"></i> Appt @break
                                                             @case('inspection') <i class="fas fa-clipboard-check"></i> Inspection @break
                                                             @case('job_order') <i class="fas fa-wrench"></i> Work Order @break
-                                                            @case('estimate') <i class="fas fa-file-invoice-dollar"></i> Estimate @break
+                                                            @case('estimate') <i class="fas fa-file-invoice-dollar"></i> Repair Quotation @break
                                                             @case('invoice') <i class="fas fa-receipt"></i> Invoice @break
                                                             @case('archived_inspection') <i class="fas fa-archive"></i> Archived @break
                                                             @default {{ ucfirst(str_replace('_', ' ', $tx->type)) }}

@@ -45,7 +45,7 @@
                                         $sections = [
                                             'appointments' => ['icon' => 'calendar-check', 'color' => 'primary', 'title' => 'Appointment'],
                                             'inspections' => ['icon' => 'tools', 'color' => 'warning', 'title' => 'Repair Order'],
-                                            'estimates' => ['icon' => 'file-invoice-dollar', 'color' => 'success', 'title' => 'Estimate'],
+                                            'estimates' => ['icon' => 'file-invoice-dollar', 'color' => 'success', 'title' => 'Repair Quotation'],
                                             'job_orders' => ['icon' => 'clipboard-check', 'color' => 'danger', 'title' => 'Job Order'],
                                             'payments' => ['icon' => 'credit-card', 'color' => 'purple', 'title' => 'Payment'],
                                             'complete' => ['icon' => 'flag-checkered', 'color' => 'secondary', 'title' => 'Complete']

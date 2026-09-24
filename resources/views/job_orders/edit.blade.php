@@ -499,15 +499,19 @@
         </div>
 
         <!-- ========== STICKY SAVE BAR ========== -->
-        <div class="sticky-save-bar">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <span class="text-white-50"><i class="fas fa-save me-1"></i> Unsaved changes</span>
-                </div>
-                <div>
-                    <a href="{{ route('job-orders.index') }}" class="btn btn-outline-light btn-sm me-2"><i class="fas fa-times me-1"></i> Cancel</a>
-                    <button type="submit" class="btn btn-light btn-sm"><i class="fas fa-check me-1"></i> Save Work Order</button>
-                </div>
+        <div style="height: 70px;"></div>
+        <div class="sticky-save-bar visible">
+            <div class="save-info">
+                <i class="fas fa-save text-primary"></i>
+                <span>Unsaved changes</span>
+            </div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('job-orders.index') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="fas fa-times me-1"></i> Cancel
+                </a>
+                <button type="submit" class="btn btn-primary btn-sm px-4">
+                    <i class="fas fa-check me-1"></i> Save Work Order
+                </button>
             </div>
         </div>
     </form>

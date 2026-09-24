@@ -142,7 +142,7 @@
     <style>
         /* Sidebar active border colors by module */
         .sidebar .nav-link.active[href*="appointments"] { border-left-color: #3b82f6 !important; }
-        .sidebar .nav-link.active[href*="inspections"] { border-left-color: #0ea5e9 !important; }
+        .sidebar .nav-link.active[href*="inspections"] { border-left-color: #dc2626 !important; }
         .sidebar .nav-link.active[href*="estimates"] { border-left-color: #8b5cf6 !important; }
         .sidebar .nav-link.active[href*="job-orders"] { border-left-color: #f97316 !important; }
         .sidebar .nav-link.active[href*="service-records"] { border-left-color: #6366f1 !important; }
@@ -1113,6 +1113,9 @@
 
     {{-- Unread Record System JS (initUnreadSystem / markRecordAsRead / markAllAsRead) --}}
     @include('partials.unread.unread-scripts')
+
+    {{-- Auto-uppercase all fill-up / fill-in fields (app-wide) --}}
+    @include('partials.uppercase-inputs')
 
     @stack('scripts')
 </body>

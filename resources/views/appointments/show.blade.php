@@ -308,11 +308,11 @@
                     <div class="d-grid gap-2">
                         @if(!$appointment->estimate)
                             <a href="{{ route('estimates.create', ['appointment_id' => $appointment->id]) }}" class="btn btn-success">
-                                <i class="fas fa-file-invoice-dollar me-1"></i> Create Estimate
+                                <i class="fas fa-file-invoice-dollar me-1"></i> Create Repair Quotation
                             </a>
                         @else
                             <a href="{{ route('estimates.show', $appointment->estimate) }}" class="btn btn-outline-success">
-                                <i class="fas fa-eye me-1"></i> View Estimate
+                                <i class="fas fa-eye me-1"></i> View Repair Quotation
                             </a>
                         @endif
                         
@@ -363,7 +363,7 @@
                     @if($appointment->estimate)
                     <div class="related-item d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <div class="fw-bold small">Estimate</div>
+                            <div class="fw-bold small">Repair Quotation</div>
                             <div class="text-muted small">#{{ $appointment->estimate->estimate_number ?? 'E-'.$appointment->estimate->id }}</div>
                             <span class="badge bg-{{ $appointment->estimate->status_badge ?? 'secondary' }} status-badge-sm">
                                 {{ ucfirst($appointment->estimate->status ?? 'draft') }}

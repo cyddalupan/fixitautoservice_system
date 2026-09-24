@@ -33,6 +33,7 @@ BACKUP_MANIFEST.md
 *.backup
 *.bak
 *.bak.*
+*.pre-rename-*
 *.tmp
 *.tmp_bak
 *.broken

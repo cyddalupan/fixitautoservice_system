@@ -31,7 +31,7 @@
                     $stageConfig = [
                         'appointment' => ['name' => 'Appointment', 'icon' => 'fa-calendar-check'],
                         'inspection' => ['name' => 'Inspection', 'icon' => 'fa-search'],
-                        'estimate' => ['name' => 'Estimate', 'icon' => 'fa-file-alt'],
+                        'estimate' => ['name' => 'Repair Quotation', 'icon' => 'fa-file-alt'],
                         'job_order' => ['name' => 'Work Order', 'icon' => 'fa-tools'],
                         'invoice' => ['name' => 'Invoice', 'icon' => 'fa-file-invoice'],
                         'payment' => ['name' => 'Payment', 'icon' => 'fa-receipt'],

@@ -28,7 +28,7 @@
             <i class="fas fa-list"></i> Items
         </button>
         <button class="nav-pill" data-section="estimates" onclick="scrollToSection('estimatesSection')">
-            <i class="fas fa-calculator"></i> Estimates
+            <i class="fas fa-calculator"></i> Repair Quotations
         </button>
         <button class="nav-pill" data-section="warranty" onclick="scrollToSection('warrantySection')">
             <i class="fas fa-shield-alt"></i> Warranty

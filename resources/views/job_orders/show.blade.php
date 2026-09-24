@@ -580,7 +580,7 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="form-section">
                         <div class="form-section-header no-collapse">
-                            <h6><i class="fas fa-file-invoice-dollar"></i>Estimate</h6>
+                            <h6><i class="fas fa-file-invoice-dollar"></i>Repair Quotation</h6>
                         </div>
                         <div class="form-section-body">
                             <strong>{{ $jobOrder->estimate->estimate_number ?? 'Estimate #'.$jobOrder->estimate->id }}</strong>

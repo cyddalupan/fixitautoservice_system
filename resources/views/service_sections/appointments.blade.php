@@ -150,7 +150,7 @@
                                     <div class="col">
                                         <div class="p-3 border rounded {{ !empty($workflow['estimates']) ? 'bg-success text-white' : 'bg-light' }}">
                                             <i class="fas fa-file-invoice-dollar fa-2x mb-2"></i>
-                                            <h6>Estimate</h6>
+                                            <h6>Repair Quotation</h6>
                                             @if(!empty($workflow['estimates']))
                                                 <small>
                                                     @foreach($workflow['estimates'] as $estimate)

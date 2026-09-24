@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Carbon\Carbon;
 
@@ -14,15 +15,25 @@ class VehicleInspection extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
+        'reference_number',
         'service_id',
         'job_order_id',
         'appointment_id',
+        'source',
+        'date_received',
+        'service_types',
+        'job_description_items',
+        'parts_items',
+        'discount',
         'customer_id',
         'vehicle_id',
         'technician_id',
         'service_advisor_id',
         'inspection_type',
         'inspection_status',
+        'repair_status',
+        'repair_tags',
+        'workshop_released_at',
         'inspection_name',
         'inspection_notes',
         'service_type',
@@ -69,6 +80,13 @@ class VehicleInspection extends Model
 
     protected $casts = [
         'inspection_type' => 'json',
+        'service_types' => 'array',
+        'job_description_items' => 'array',
+        'parts_items' => 'array',
+        'discount' => 'decimal:2',
+        'repair_tags' => 'array',
+        'date_received' => 'date',
+        'workshop_released_at' => 'datetime',
         'photos' => 'array',
         'videos' => 'array',
         'documents' => 'array',
@@ -109,6 +127,15 @@ class VehicleInspection extends Model
     public function appointment()
     {
         return $this->belongsTo(Appointment::class);
+    }
+
+    /**
+     * Payment records (down / full payment + proof) uploaded against this
+     * repair order. See RepairOrderPaymentController.
+     */
+    public function repairOrderPayments(): HasMany
+    {
+        return $this->hasMany(RepairOrderPayment::class, 'vehicle_inspection_id');
     }
 
     public function customer()
@@ -154,6 +181,122 @@ class VehicleInspection extends Model
     public function inspectionFindings()
     {
         return $this->hasMany(InspectionFinding::class, 'inspection_id')->orderBy('sort_order');
+    }
+
+    public function estimate(): HasOne
+    {
+        return $this->hasOne(Estimate::class, 'inspection_id')->latestOfMany();
+    }
+
+    public function findingGroups()
+    {
+        return $this->hasMany(InspectionFindingGroup::class, 'inspection_id')->orderBy('sort_order');
+    }
+
+    /**
+     * Chronological activity history of this Repair Order — what has happened on
+     * it so far. Assembled read-only from the record itself plus its related
+     * records (findings, groups, quotation, work order, payments, appointment).
+     * No new tables required.
+     *
+     * @return array<int, array{time: \Carbon\CarbonInterface, title: string, detail: ?string, icon: string, color: string}>
+     */
+    public function activityHistory(): array
+    {
+        $this->loadMissing([
+            'inspectionFindings', 'findingGroups', 'estimate', 'estimate.approvedBy',
+            'jobOrder', 'jobOrder.qualityChecker', 'repairOrderPayments.uploadedBy',
+            'repairOrderPayments.verifiedBy', 'appointment', 'technician', 'createdBy',
+        ]);
+
+        $events = [];
+        $add = function ($time, string $title, $detail = null, string $icon = 'fa-circle', string $color = 'secondary') use (&$events) {
+            if (! $time) {
+                return;
+            }
+            $time = $time instanceof \Carbon\CarbonInterface ? $time : \Carbon\Carbon::parse($time);
+            $events[] = ['time' => $time, 'title' => $title, 'detail' => $detail, 'icon' => $icon, 'color' => $color];
+        };
+
+        $qtyStr = function ($q) {
+            return rtrim(rtrim(number_format((float) ($q ?? 1), 2, '.', ''), '0'), '.');
+        };
+
+        // --- The repair order itself ---
+        $add($this->created_at, 'Repair Order created', $this->createdBy?->name ? 'by '.$this->createdBy->name : null, 'fa-file-circle-plus', 'primary');
+
+        if ($this->appointment && $this->appointment->checked_in_at) {
+            $add($this->appointment->checked_in_at, 'Vehicle checked in', $this->appointment->appointment_number ? 'Appointment '.$this->appointment->appointment_number : null, 'fa-right-to-bracket', 'info');
+        }
+
+        // --- Findings ---
+        foreach ($this->inspectionFindings->sortBy('created_at') as $f) {
+            $label = trim((string) ($f->issue_title ?: $f->part_name ?: 'Finding'));
+            $detail = $f->category ? $f->category.' · ' : '';
+            $detail .= 'Qty '.$qtyStr($f->quantity);
+            if ($f->unit_price !== null) {
+                $detail .= ' @ ₱'.number_format((float) $f->unit_price, 2);
+            }
+            if ($f->is_declined) {
+                $label .= ' (Not Pursued)';
+            }
+            $add($f->created_at, 'Finding added: '.$label, $detail, 'fa-screwdriver-wrench', $f->is_declined ? 'secondary' : 'warning');
+        }
+        foreach ($this->findingGroups->sortBy('created_at') as $g) {
+            $add($g->created_at, 'Group created: '.($g->name ?: 'Group'), ((float) $g->labor_cost > 0) ? 'Shared labor ₱'.number_format((float) $g->labor_cost, 2) : null, 'fa-layer-group', 'info');
+        }
+
+        // --- Repair Quotation / Estimate ---
+        if ($this->estimate) {
+            $e = $this->estimate;
+            $add($e->created_at, 'Repair Quotation created', $e->estimate_number ? 'Quotation '.$e->estimate_number : null, 'fa-file-invoice-dollar', 'primary');
+            $add($e->sent_at, 'Quotation sent to customer', null, 'fa-paper-plane', 'info');
+            $add($e->viewed_at, 'Quotation viewed by customer', null, 'fa-eye', 'info');
+            $add($e->approved_at, 'Quotation approved', $e->approvedBy?->name ? 'by '.$e->approvedBy->name : null, 'fa-circle-check', 'success');
+            $add($e->rejected_at, 'Quotation rejected', $e->rejection_reason ?: null, 'fa-circle-xmark', 'danger');
+        }
+
+        // --- Customer approval of the repair ---
+        if ($this->customer_approved_at) {
+            $method = $this->customer_approval_method ? 'via '.str_replace('_', ' ', (string) $this->customer_approval_method) : null;
+            $add($this->customer_approved_at, 'Customer approved the repair', $method, 'fa-user-check', 'success');
+        }
+
+        // --- Work progress ---
+        $add($this->inspection_started_at, 'Work started', $this->technician?->name ? 'Technician: '.$this->technician->name : null, 'fa-play', 'info');
+        $add($this->inspection_completed_at, 'Work completed', null, 'fa-flag-checkered', 'success');
+        $add($this->report_generated_at, 'Report generated', null, 'fa-file-lines', 'primary');
+        $add($this->report_sent_at, 'Report sent to customer', null, 'fa-envelope', 'info');
+        $add($this->workshop_released_at, 'Released from workshop', null, 'fa-truck-pickup', 'success');
+
+        // --- Linked Work Order ---
+        if ($this->jobOrder) {
+            $jo = $this->jobOrder;
+            $add($jo->created_at, 'Work Order created', $jo->job_order_number ? 'Work Order '.$jo->job_order_number : null, 'fa-clipboard-list', 'primary');
+            $add($jo->estimate_approved_at, 'Work Order estimate approved', null, 'fa-thumbs-up', 'success');
+            $add($jo->work_start_time, 'Work Order started', null, 'fa-play', 'info');
+            $add($jo->work_complete_time, 'Work Order completed', null, 'fa-flag-checkered', 'success');
+            $add($jo->quality_check_at, 'Quality check passed', $jo->qualityChecker?->name ? 'by '.$jo->qualityChecker->name : null, 'fa-clipboard-check', 'success');
+            $add($jo->invoice_sent_time, 'Invoice sent', null, 'fa-file-invoice', 'info');
+            $add($jo->customer_pickup_time, 'Vehicle picked up', null, 'fa-car', 'success');
+        }
+
+        // --- Payments (down / full) ---
+        foreach ($this->repairOrderPayments->sortBy('created_at') as $p) {
+            $type = $p->type_label ?: 'Payment';
+            $amt = '₱'.number_format((float) $p->amount, 2);
+            $by = $p->uploadedBy?->name ? 'by '.$p->uploadedBy->name : null;
+            $add($p->created_at, $type.' uploaded — '.$amt, $p->reference_number ? 'Ref: '.$p->reference_number : $by, 'fa-receipt', 'info');
+            $add($p->verified_at, $type.' verified — '.$amt, $p->verifiedBy?->name ? 'by '.$p->verifiedBy->name : null, 'fa-circle-check', 'success');
+            if ($p->status === 'rejected') {
+                $add($p->updated_at, $type.' rejected — '.$amt, $p->notes ?: null, 'fa-circle-xmark', 'danger');
+            }
+        }
+
+        // Newest first
+        usort($events, fn ($a, $b) => $b['time']->getTimestamp() <=> $a['time']->getTimestamp());
+
+        return $events;
     }
 
     /**
@@ -222,6 +365,24 @@ class VehicleInspection extends Model
     /**
      * Accessors
      */
+    /**
+     * Repair status (production-style) workflow.
+     * Ordered stages a repair order moves through.
+     */
+    public const REPAIR_STATUSES = [
+        'received'          => ['label' => 'Received',          'bg' => '#f1f5f9', 'text' => '#475569', 'border' => '#e2e8f0'],
+        'diagnosing'        => ['label' => 'Diagnosing',        'bg' => '#e9edf2', 'text' => '#475569', 'border' => '#dde3ea'],
+        'awaiting_approval' => ['label' => 'Awaiting Approval', 'bg' => '#e2e8f0', 'text' => '#334155', 'border' => '#cbd5e1'],
+        'awaiting_parts'    => ['label' => 'Awaiting Parts',    'bg' => '#e2e8f0', 'text' => '#334155', 'border' => '#cbd5e1'],
+        'in_progress'       => ['label' => 'In Repair',         'bg' => '#334155', 'text' => '#ffffff', 'border' => '#334155'],
+        'quality_check'     => ['label' => 'Quality Check',     'bg' => '#475569', 'text' => '#ffffff', 'border' => '#475569'],
+        'ready_for_pickup'  => ['label' => 'Ready for Pickup',  'bg' => '#0f172a', 'text' => '#ffffff', 'border' => '#0f172a'],
+        'released'          => ['label' => 'Released',          'bg' => '#0f172a', 'text' => '#ffffff', 'border' => '#0f172a'],
+        'paid'              => ['label' => 'Paid',              'bg' => '#f1f5f9', 'text' => '#0f172a', 'border' => '#0f172a'],
+        'on_hold'           => ['label' => 'On Hold',           'bg' => '#fee2e2', 'text' => '#dc2626', 'border' => '#fecaca'],
+        'cancelled'         => ['label' => 'Cancelled',         'bg' => '#f8fafc', 'text' => '#94a3b8', 'border' => '#e2e8f0'],
+    ];
+
     public function getStatusColorAttribute(): string
     {
         return match($this->inspection_status) {
@@ -233,6 +394,188 @@ class VehicleInspection extends Model
             'cancelled' => 'danger',
             default => 'secondary',
         };
+    }
+
+    /**
+     * How the Repair Order entered the shop. `walk_in` = created directly on
+     * the Repair Order page (no schedule); `scheduled` = linked to an
+     * Appointment / Job Order.
+     */
+    public const SOURCES = [
+        'walk_in'   => ['label' => 'Walk-in',   'icon' => 'fa-person-walking'],
+        'scheduled' => ['label' => 'Scheduled', 'icon' => 'fa-calendar-check'],
+    ];
+
+    public function getSourceLabelAttribute(): string
+    {
+        return self::SOURCES[$this->source]['label']
+            ?? ($this->source ? ucfirst(str_replace('_', ' ', (string) $this->source)) : 'Walk-in');
+    }
+
+    public function getSourceIconAttribute(): string
+    {
+        return self::SOURCES[$this->source]['icon'] ?? 'fa-person-walking';
+    }
+
+    public function getIsWalkInAttribute(): bool
+    {
+        // Legacy rows (source = null) with no link to a schedule are walk-ins.
+        return ($this->source ?: (($this->appointment_id || $this->job_order_id) ? 'scheduled' : 'walk_in')) === 'walk_in';
+    }
+
+    public function getRepairStatusLabelAttribute(): string
+    {
+        return self::REPAIR_STATUSES[$this->repair_status]['label']
+            ?? ucfirst(str_replace('_', ' ', (string) $this->repair_status));
+    }
+
+    /**
+     * Human-readable Repair Order reference (e.g. RO-20260924-0001).
+     * Falls back to an id-based label for any legacy row without one.
+     */
+    public function getReferenceLabelAttribute(): string
+    {
+        return $this->reference_number
+            ?: 'RO-' . str_pad((string) $this->id, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Build the next free Repair Order reference for today.
+     */
+    public static function generateReferenceNumber(): string
+    {
+        $prefix = 'RO-' . now()->format('Ymd') . '-';
+        $last = static::where('reference_number', 'like', $prefix . '%')
+            ->orderBy('reference_number', 'desc')
+            ->value('reference_number');
+        $seq = $last ? ((int) substr($last, strlen($prefix))) + 1 : 1;
+
+        return $prefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
+    }
+
+    public function getRepairStatusHexAttribute(): string
+    {
+        return self::REPAIR_STATUSES[$this->repair_status]['bg'] ?? '#f1f5f9';
+    }
+
+    public function getRepairStatusBgAttribute(): string
+    {
+        return self::REPAIR_STATUSES[$this->repair_status]['bg'] ?? '#f1f5f9';
+    }
+
+    public function getRepairStatusTextAttribute(): string
+    {
+        return self::REPAIR_STATUSES[$this->repair_status]['text'] ?? '#475569';
+    }
+
+    public function getRepairStatusBorderAttribute(): string
+    {
+        return self::REPAIR_STATUSES[$this->repair_status]['border'] ?? '#e2e8f0';
+    }
+
+    public function scopeRepairStatus($query, string $status)
+    {
+        return $query->where('repair_status', $status);
+    }
+
+    /**
+     * Stop the workshop clock and record how long the car was in.
+     */
+    public function markReleased(): void
+    {
+        if (is_null($this->workshop_released_at)) {
+            $this->forceFill(['workshop_released_at' => now()])->save();
+        }
+    }
+
+    /**
+     * Days the vehicle has been (or was) in the workshop.
+     * Counts up live until the repair order is tagged Released (then frozen).
+     */
+    public function getDaysInWorkshopAttribute(): int
+    {
+        $start = $this->created_at ? $this->created_at->copy()->startOfDay() : now()->startOfDay();
+        $end = ($this->workshop_released_at ?? now())->copy()->startOfDay();
+
+        return max(0, (int) $start->diffInDays($end));
+    }
+
+    public function getDaysInWorkshopLabelAttribute(): string
+    {
+        $d = $this->days_in_workshop;
+
+        if ($d === 0) {
+            return 'Today';
+        }
+
+        return $d . ' ' . ($d === 1 ? 'day' : 'days');
+    }
+
+    public function getIsReleasedAttribute(): bool
+    {
+        return ! is_null($this->workshop_released_at)
+            || in_array($this->repair_status, ['released', 'paid'], true);
+    }
+
+    /**
+     * Repair order totals, taken from the repair order's own line items
+     * (Job Description labor + Parts/Supplies cost − discount) — same math as
+     * the printed Repair Order slip.
+     */
+    protected ?array $repairTotalsMemo = null;
+
+    protected function repairTotals(): array
+    {
+        if ($this->repairTotalsMemo !== null) {
+            return $this->repairTotalsMemo;
+        }
+
+        $appt = $this->relationLoaded('appointment') ? $this->appointment : $this->appointment()->first();
+
+        // The Repair Order's own intake items are the source of truth; fall back
+        // to the linked Appointment for older / appointment-driven orders.
+        $jd = $this->job_description_items ?: ($appt->job_description_items ?? []);
+        $parts = $this->parts_items ?: ($appt->parts_items ?? []);
+        $jd = is_array($jd) ? $jd : [];
+        $parts = is_array($parts) ? $parts : [];
+
+        $labor = 0.0;
+        foreach ($jd as $row) { $labor += (float) ($row['labor_cost'] ?? 0); }
+        $partsTotal = 0.0;
+        foreach ($parts as $row) { $partsTotal += (float) ($row['cost'] ?? 0); }
+        $discount = (float) ($this->discount ?: ($appt->discount ?? 0));
+
+        return $this->repairTotalsMemo = [
+            'labor' => $labor,
+            'parts' => $partsTotal,
+            'discount' => $discount,
+            'total' => max(0, $labor + $partsTotal - $discount),
+        ];
+    }
+
+    public function getRepairLaborTotalAttribute(): float
+    {
+        return $this->repairTotals()['labor'];
+    }
+
+    public function getRepairPartsTotalAttribute(): float
+    {
+        return $this->repairTotals()['parts'];
+    }
+
+    public function getRepairTotalAttribute(): float
+    {
+        return $this->repairTotals()['total'];
+    }
+
+    public function getRepairTotalFormattedAttribute(): string
+    {
+        return '₱' . number_format($this->repair_total, 2);
+    }
+
+    public function getRepairLaborTotalFormattedAttribute(): string
+    {
+        return '₱' . number_format($this->repair_labor_total, 2);
     }
 
     public function getTypeLabelAttribute(): string

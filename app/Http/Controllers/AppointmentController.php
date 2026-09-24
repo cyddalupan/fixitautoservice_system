@@ -844,7 +844,32 @@ class AppointmentController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.repair-order-slip', compact('appointment', 'services', 'selectedTypes'))
             ->setPaper('a4', 'portrait');
 
-        return $pdf->download('Repair-Order-' . $appointment->appointment_number . '.pdf');
+        $reference = $appointment->appointment_number;
+        $filename = $this->slipFilename([
+            $appointment->vehicle->make ?? null,
+            $appointment->vehicle->model ?? null,
+            $appointment->vehicle->year ?? null,
+            $appointment->customer->first_name ?? null,
+            $reference,
+        ], 'Repair-Order-' . $reference);
+
+        return $pdf->download($filename . '.pdf');
+    }
+
+    /**
+     * Build a safe PDF filename from parts (Vehicle Brand, Model, Year, First name,
+     * Reference number). Empty parts are skipped; illegal filesystem characters removed.
+     */
+    protected function slipFilename(array $parts, string $fallback): string
+    {
+        $name = trim(collect($parts)->filter(function ($p) {
+            return $p !== null && trim((string) $p) !== '';
+        })->implode(' '));
+
+        $name = preg_replace('/[\x00-\x1F\/\\:*?"<>|]+/', '', $name);
+        $name = trim(preg_replace('/\s+/', ' ', (string) $name));
+
+        return $name !== '' ? $name : $fallback;
     }
 
     /**

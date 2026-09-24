@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Estimate Statistics')
+@section('title', 'Repair Quotation Statistics')
 
 @section('content')
 <div class="container-fluid">
@@ -11,7 +11,7 @@
         </h1>
         <div class="btn-group">
             <a href="{{ route('estimates.index') }}" class="btn btn-secondary">
-                <i class="fas fa-arrow-left"></i> Back to Estimates
+                <i class="fas fa-arrow-left"></i> Back to Repair Quotations
             </a>
             <button onclick="window.location.reload()" class="btn btn-primary">
                 <i class="fas fa-sync-alt"></i> Refresh
@@ -21,14 +21,14 @@
 
     <!-- Overall Statistics Cards -->
     <div class="row">
-        <!-- Total Estimates Card -->
+        <!-- Total Repair Quotations Card -->
         <div class="col-xl-3 col-md-6 mb-4">
             <div class="card border-left-primary shadow h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Estimates
+                                Total Repair Quotations
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
                                 {{ number_format($totalEstimates) }}
@@ -221,7 +221,7 @@
                         <div class="text-center py-4">
                             <i class="fas fa-info-circle fa-2x text-gray-300 mb-3"></i>
                             <p class="text-muted">Technician performance data is not available.</p>
-                            <p class="small text-muted">Estimates are not currently assigned to technicians.</p>
+                            <p class="small text-muted">Repair Quotations are not currently assigned to technicians.</p>
                         </div>
                     @endif
                 </div>

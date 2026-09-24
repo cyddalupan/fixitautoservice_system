@@ -85,7 +85,7 @@
                                             <div class="card border-success">
                                                 <div class="card-body">
                                                     <h3 class="text-success">{{ $estimateCount }}</h3>
-                                                    <p class="mb-0">Estimates</p>
+                                                    <p class="mb-0">Repair Quotations</p>
                                                     <small class="text-muted">Pending</small>
                                                 </div>
                                             </div>

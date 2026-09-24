@@ -42,6 +42,7 @@ class Estimate extends Model
         'customer_notes',
         'terms',
         'status',
+        'version',
         'service_advisor_id',
         'approved_at',
         'rejected_at',
@@ -91,6 +92,11 @@ class Estimate extends Model
         return $this->hasMany(EstimateItem::class)->orderBy('sort_order');
     }
 
+    public function itemGroups(): HasMany
+    {
+        return $this->hasMany(EstimateItemGroup::class)->orderBy('sort_order');
+    }
+
     public function jobOrder(): HasOne
     {
         return $this->hasOne(JobOrder::class);
@@ -138,6 +144,7 @@ public function serviceAdvisor(): BelongsTo
         'sent'                => 'Sent',
         'viewed'              => 'Viewed',
         'waiting_approval'    => 'Waiting Approval',
+        'waiting_for_parts'   => 'Waiting for Parts',
         'approved'            => 'Approved',
         'rejected'            => 'Rejected',
         'expired'             => 'Expired',
@@ -150,6 +157,7 @@ public function serviceAdvisor(): BelongsTo
         'sent'                => 'badge-sent',
         'viewed'              => 'badge-viewed',
         'waiting_approval'    => 'badge-waiting',
+        'waiting_for_parts'   => 'badge-waiting',
         'approved'            => 'badge-approved',
         'rejected'            => 'badge-rejected',
         'expired'             => 'badge-expired',
@@ -187,6 +195,84 @@ public function serviceAdvisor(): BelongsTo
         return '₱' . number_format($this->total_amount, 2);
     }
 
+    /**
+     * The Repair Order linked to this quotation (with the findings + groups needed
+     * to price it). Returns null for quotations not created from a Repair Order.
+     */
+    private function linkedInspection(): ?VehicleInspection
+    {
+        if (! $this->inspection_id) {
+            return null;
+        }
+
+        $inspection = $this->relationLoaded('inspection')
+            ? $this->inspection
+            : $this->inspection()->first();
+
+        if ($inspection && (! $inspection->relationLoaded('inspectionFindings') || ! $inspection->relationLoaded('findingGroups'))) {
+            $inspection->load(['inspectionFindings', 'findingGroups']);
+        }
+
+        return $inspection;
+    }
+
+    /**
+     * Quotation amount — PARTS side.
+     *
+     * A Repair Quotation is priced from the linked Repair Order's findings, so the
+     * amount the list/Amount column shows must READ those findings: parts = qty x
+     * unit_price, EXCLUDING items in "Not Pursued" (is_declined). Quotations that are
+     * not linked to a Repair Order fall back to their stored parts_total.
+     */
+    public function getQuotationPartsTotalAttribute(): float
+    {
+        $inspection = $this->linkedInspection();
+        if ($inspection) {
+            return (float) collect($inspection->inspectionFindings)
+                ->filter(fn ($f) => ! (bool) $f->is_declined)
+                ->sum(fn ($f) => (float) $f->quantity * (float) ($f->unit_price ?? 0));
+        }
+
+        return (float) $this->parts_total;
+    }
+
+    /**
+     * Quotation amount — LABOR side.
+     *
+     * Labor = the shared labor of each finding group + the per-item labor of any
+     * ungrouped finding (estimated_cost). "Not Pursued" items are excluded, as are
+     * the groups' labor when there are no pursued items? No — group labor always
+     * counts (the group is part of the quotation). Falls back to labor_total when
+     * there is no linked Repair Order.
+     */
+    public function getQuotationLaborTotalAttribute(): float
+    {
+        $inspection = $this->linkedInspection();
+        if ($inspection) {
+            $ungroupedLabor = (float) collect($inspection->inspectionFindings)
+                ->filter(fn ($f) => ! (bool) $f->is_declined && $f->group_id === null)
+                ->sum(fn ($f) => (float) ($f->estimated_cost ?? 0));
+
+            $groupLabor = (float) collect($inspection->findingGroups)->sum('labor_cost');
+
+            return $ungroupedLabor + $groupLabor;
+        }
+
+        return (float) $this->labor_total;
+    }
+
+    /**
+     * Total quotation amount the Amount column should display.
+     */
+    public function getQuotationTotalAttribute(): float
+    {
+        if ($this->linkedInspection()) {
+            return $this->quotation_parts_total + $this->quotation_labor_total;
+        }
+
+        return (float) $this->total_amount;
+    }
+
     public function getFormattedSubtotalAttribute(): string
     {
         return '₱' . number_format($this->subtotal, 2);
@@ -217,6 +303,21 @@ public function serviceAdvisor(): BelongsTo
         return '₱' . number_format($this->labor_total, 2);
     }
 
+    public function getFormattedQuotationTotalAttribute(): string
+    {
+        return '₱' . number_format($this->quotation_total, 2);
+    }
+
+    public function getFormattedQuotationPartsTotalAttribute(): string
+    {
+        return '₱' . number_format($this->quotation_parts_total, 2);
+    }
+
+    public function getFormattedQuotationLaborTotalAttribute(): string
+    {
+        return '₱' . number_format($this->quotation_labor_total, 2);
+    }
+
     public function getFormattedDiscountAttribute(): string
     {
         return '₱' . number_format($this->discount_amount, 2);
@@ -239,6 +340,7 @@ public function serviceAdvisor(): BelongsTo
             'sent'                => 'bg-info',
             'viewed'              => 'bg-info',
             'waiting_approval'    => 'bg-warning text-dark',
+            'waiting_for_parts'   => 'bg-warning text-dark',
             'approved'            => 'bg-success',
             'rejected'            => 'bg-danger',
             'expired'             => 'bg-dark',

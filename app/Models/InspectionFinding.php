@@ -9,8 +9,13 @@ class InspectionFinding extends Model
 {
     protected $fillable = [
         'inspection_id',
+        'group_id',
         'category',
         'issue_title',
+        'part_name',
+        'remarks',
+        'quantity',
+        'unit_price',
         'detailed_notes',
         'severity',
         'recommended_action',
@@ -20,13 +25,35 @@ class InspectionFinding extends Model
         'photo_path',
         'sort_order',
         'is_linked_to_estimate',
+        'is_declined',
+        'is_quotation_added',
     ];
 
     protected $casts = [
         'estimated_cost' => 'decimal:2',
+        'quantity' => 'decimal:2',
+        'unit_price' => 'decimal:2',
         'is_linked_to_estimate' => 'boolean',
+        'is_declined' => 'boolean',
+        'is_quotation_added' => 'boolean',
         'sort_order' => 'integer',
     ];
+
+    /**
+     * The group this finding is dragged into (shared labor cost)
+     */
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(InspectionFindingGroup::class, 'group_id');
+    }
+
+    /**
+     * Line total for this finding (quantity * unit_price).
+     */
+    public function getLineTotalAttribute(): float
+    {
+        return (float) $this->quantity * (float) ($this->unit_price ?? 0);
+    }
 
     /**
      * The inspection this finding belongs to

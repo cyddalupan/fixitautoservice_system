@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Estimate #{{ $estimate->estimate_number }} - Fix-It Auto Services')
+@section('title', 'Repair Quotation #{{ $estimate->estimate_number }} - Fix-It Auto Services')
 
 @push('styles')
 <style>
@@ -134,7 +134,7 @@ body{background:var(--ebg)}
     <div class="est-header">
         <div class="row align-items-center">
             <div class="col-md-6">
-                <h1><i class="fas fa-file-invoice-dollar me-2"></i> Estimate #{{ $estimate->estimate_number }}</h1>
+                <h1><i class="fas fa-file-invoice-dollar me-2"></i> Repair Quotation #{{ $estimate->estimate_number }}</h1>
                 <p>Created {{ $estimate->created_at->format('F d, Y \a\t g:i A') }}</p>
             </div>
             <div class="col-md-6 text-md-end">
@@ -183,6 +183,12 @@ body{background:var(--ebg)}
                             <button type="submit" class="btn btn-outline-primary"><i class="fas fa-paper-plane"></i> Send</button>
                         </form>
                         @endif
+                        @if(in_array($estimate->status, ['sent','viewed','pending']))
+                        <form method="POST" action="{{ route('estimates.resend', $estimate) }}" style="display:inline" class="d-grid">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-primary"><i class="fas fa-redo"></i> Re-send (v{{ $estimate->version ?? 1 }})</button>
+                        </form>
+                        @endif
                         @if(in_array($estimate->status, ['sent','viewed']))
                         <form method="POST" action="{{ route('estimates.approve', $estimate) }}" style="display:inline" class="d-grid">
                             @csrf
@@ -200,6 +206,9 @@ body{background:var(--ebg)}
                             @csrf
                             <button type="submit" class="btn btn-success"><i class="fas fa-wrench"></i> Work Order</button>
                         </form>
+                        @endif
+                        @if(!in_array($estimate->status, ['converted_to_repair_order', 'converted_to_job_order', 'converted', 'rejected'], true))
+                        @include('estimates.partials.proceed-to-repair-order', ['estimate' => $estimate])
                         @endif
                         <form method="POST" action="{{ route('estimates.destroy', $estimate) }}" style="display:inline" class="d-grid"
                             onsubmit="return confirm('Archive this estimate?')">
@@ -234,6 +243,20 @@ body{background:var(--ebg)}
                         <div class="ig-item"><span class="ig-lbl">Year</span><span class="ig-val">{{ $estimate->vehicle->year ?? '--' }}</span></div>
                         <div class="ig-item"><span class="ig-lbl">Plate #</span><span class="ig-val">{{ $estimate->vehicle->license_plate ?? '--' }}</span></div>
                         <div class="ig-item"><span class="ig-lbl">VIN</span><span class="ig-val">{{ $estimate->vehicle->vin ?? '--' }}</span></div>
+                        @php
+                            $veh = $estimate->vehicle;
+                            $transRaw = strtolower((string) ($veh->transmission ?? ''));
+                            $transMap = ['automatic' => 'Automatic', 'auto' => 'Automatic', 'at' => 'Automatic', 'manual' => 'Manual', 'mt' => 'Manual', 'cvt' => 'CVT'];
+                            $transLabel = $transMap[$transRaw] ?? ($veh->transmission ?: '--');
+                            $fuelRaw = strtolower((string) ($veh->fuel_type ?? ''));
+                            $fuelMap = ['gas' => 'Gas', 'gasoline' => 'Gas', 'diesel' => 'Diesel', 'hybrid' => 'Hybrid', 'electric' => 'Electric', 'ev' => 'Electric'];
+                            $fuelLabel = $fuelMap[$fuelRaw] ?? ($veh->fuel_type ?: '--');
+                        @endphp
+                        <div class="ig-item"><span class="ig-lbl">Transmission</span><span class="ig-val">{{ $transLabel }}</span></div>
+                        <div class="ig-item"><span class="ig-lbl">Fuel Type</span><span class="ig-val">{{ $fuelLabel }}</span></div>
+                        @if($veh->engine_type)<div class="ig-item"><span class="ig-lbl">Engine</span><span class="ig-val">{{ $veh->engine_type }}</span></div>@endif
+                        @if($veh->engine_no)<div class="ig-item"><span class="ig-lbl">Engine No.</span><span class="ig-val">{{ $veh->engine_no }}</span></div>@endif
+                        @if($veh->color)<div class="ig-item"><span class="ig-lbl">Color</span><span class="ig-val">{{ $veh->color }}</span></div>@endif
                         @if($estimate->mileage)<div class="ig-item"><span class="ig-lbl">Mileage</span><span class="ig-val">{{ number_format($estimate->mileage) }} km</span></div>@endif
                     </div>
                 </div>
@@ -250,11 +273,13 @@ body{background:var(--ebg)}
                                 <th>#</th>
                                 <th>Description</th>
                                 <th>Category</th>
+                                <th>Group</th>
                                 <th style="text-align:center">Qty</th>
                                 <th style="text-align:right">Price</th>
                                 <th style="text-align:right">Discount</th>
                                 <th style="text-align:right">Tax</th>
                                 <th style="text-align:right">Total</th>
+                                <th class="no-print" style="text-align:center">Decision</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -263,15 +288,60 @@ body{background:var(--ebg)}
                                 <td style="color:var(--em);font-weight:600">{{ $i + 1 }}</td>
                                 <td style="font-weight:500">{{ $item->description ?? $item->item_name }}</td>
                                 <td><span class="cat-tag cat-{{ $item->category ?? 'other' }}">{{ ucfirst($item->category ?? 'Other') }}</span></td>
+                                <td class="no-print">
+                                    <select class="form-select form-select-sm qt-group" data-item="{{ $item->id }}" onchange="qtAssignGroup(this)" style="min-width:130px;font-size:.72rem">
+                                        <option value="">— Ungrouped —</option>
+                                        @foreach($estimate->itemGroups as $g)
+                                        <option value="{{ $g->id }}" {{ (int)$item->group_id === (int)$g->id ? 'selected' : '' }}>{{ $g->name }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
                                 <td style="text-align:center">{{ $item->quantity }}</td>
                                 <td style="text-align:right">&#8369;{{ number_format($item->unit_price, 2) }}</td>
                                 <td style="text-align:right">{{ $item->discount ? number_format($item->discount, 1).'%' : '--' }}</td>
                                 <td style="text-align:right">{{ $item->tax_rate ? number_format($item->tax_rate, 1).'%' : '--' }}</td>
                                 <td style="text-align:right;font-weight:700;color:var(--et)">&#8369;{{ number_format($item->subtotal ?? ($item->quantity * $item->unit_price), 2) }}</td>
+                                <td class="no-print" style="text-align:center">
+                                    @php $st = $item->item_status ?? 'quoted'; @endphp
+                                    <select class="form-select form-select-sm qt-status" data-item="{{ $item->id }}" onchange="qtSetStatus(this)"
+                                        style="min-width:110px;font-size:.72rem;font-weight:600;color:{{ $st==='accepted'?'#065f46':($st==='rejected'?'#991b1b':($st==='deferred'?'#92400e':'#475569')) }}">
+                                        @foreach(['quoted'=>'Quoted','accepted'=>'Accepted','rejected'=>'Rejected','deferred'=>'Deferred'] as $k=>$lbl)
+                                        <option value="{{ $k }}" {{ $st===$k?'selected':'' }}>{{ $lbl }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
                             </tr>
                             @endforeach
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            {{-- GROUPS & LABOUR --}}
+            <div class="card-premium no-print">
+                <div class="ch">
+                    <h6><i class="fas fa-layer-group"></i> Groups &amp; Labour</h6>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="qtNewGroup()"><i class="fas fa-plus"></i> New Group</button>
+                </div>
+                <div class="cb">
+                    <p class="text-muted" style="font-size:.78rem;margin-bottom:10px">Group items that share ONE labor price (e.g. “Underchassis Job”). Assign items to a group from the <strong>Group</strong> column in the table above.</p>
+                    <div id="qtGroups">
+                        @forelse($estimate->itemGroups as $g)
+                        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap qt-group-row" data-group="{{ $g->id }}">
+                            <input type="text" class="form-control form-control-sm qt-gname" value="{{ $g->name }}" onchange="qtSaveGroup({{ $g->id }})" style="max-width:220px">
+                            <div class="input-group input-group-sm" style="max-width:200px">
+                                <span class="input-group-text">&#8369;</span>
+                                <input type="number" step="0.01" min="0" class="form-control qt-glabor" value="{{ number_format($g->labor_cost, 2, '.', '') }}" onchange="qtSaveGroup({{ $g->id }})">
+                                <span class="input-group-text">labor</span>
+                            </div>
+                            <span class="badge bg-secondary-subtle text-secondary" style="font-size:.68rem">{{ $g->items->count() }} item(s) · parts &#8369;{{ number_format($g->parts_total, 2) }}</span>
+                            <span class="ms-auto fw-semibold" style="font-size:.8rem">&#8369;{{ number_format($g->total, 2) }}</span>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="qtDelGroup({{ $g->id }})" title="Delete group (keeps items)"><i class="fas fa-trash"></i></button>
+                        </div>
+                        @empty
+                        <div class="text-muted" style="font-size:.8rem" id="qtNoGroups">No groups yet — click “New Group”.</div>
+                        @endforelse
+                    </div>
                 </div>
             </div>
 
@@ -387,6 +457,7 @@ body{background:var(--ebg)}
                         <div class="ig-item"><span class="ig-lbl">Issue Date</span><span class="ig-val">{{ $estimate->issue_date ? date('M d, Y', strtotime($estimate->issue_date)) : '--' }}</span></div>
                         <div class="ig-item"><span class="ig-lbl">Valid Until</span><span class="ig-val">{{ $estimate->expiry_date ? date('M d, Y', strtotime($estimate->expiry_date)) : '--' }}</span></div>
                         <div class="ig-item"><span class="ig-lbl">Status</span><span class="ig-val"><span class="status-badge status-{{ $estimate->status }}" style="font-size:.7rem">{{ ucfirst($estimate->status) }}</span></span></div>
+                        <div class="ig-item"><span class="ig-lbl">Version</span><span class="ig-val">v{{ $estimate->version ?? 1 }}</span></div>
                         @if($estimate->serviceAdvisor)
                         <div class="ig-item"><span class="ig-lbl">Service Advisor</span><span class="ig-val">{{ $estimate->serviceAdvisor->name ?? '--' }}</span></div>
                                 <div class="ig-item"><span class="ig-lbl">Service Type</span><span class="ig-val">@php
@@ -426,4 +497,42 @@ body{background:var(--ebg)}
     </div>
 
 </div>
+
+@push('scripts')
+<script>
+function qtToken(){ return document.querySelector('meta[name="csrf-token"]').getAttribute('content'); }
+function qtReq(url, method, body){
+    return fetch(url, {
+        method: method,
+        headers: {'Content-Type':'application/json','X-CSRF-TOKEN':qtToken(),'Accept':'application/json'},
+        body: JSON.stringify(body || {})
+    }).then(function(r){ return r.json(); });
+}
+function qtAssignGroup(sel){
+    qtReq('/estimates/items/' + sel.dataset.item + '/group', 'POST', {group_id: sel.value || null})
+      .then(function(r){ if(r.success){ location.reload(); } else { alert(r.message || 'Failed to move item.'); } });
+}
+function qtSetStatus(sel){
+    qtReq('/estimates/items/' + sel.dataset.item + '/status', 'PATCH', {item_status: sel.value})
+      .then(function(r){ if(!r.success){ alert('Failed to update decision.'); } });
+}
+function qtSaveGroup(id){
+    var row = document.querySelector('.qt-group-row[data-group="' + id + '"]');
+    qtReq('/estimates/item-groups/' + id, 'PUT', {name: row.querySelector('.qt-gname').value, labor_cost: row.querySelector('.qt-glabor').value})
+      .then(function(r){ if(r.success){ location.reload(); } else { alert('Failed to save group.'); } });
+}
+function qtDelGroup(id){
+    if(!confirm('Delete this group? Items are kept (just un-grouped).')) return;
+    qtReq('/estimates/item-groups/' + id, 'DELETE', {}).then(function(r){ if(r.success){ location.reload(); } });
+}
+function qtNewGroup(){
+    var name = prompt('Group name (e.g. Underchassis Job 1):', 'Group');
+    if(name === null) return;
+    var labor = prompt('Labor price for this group (PHP):', '0');
+    if(labor === null) labor = '0';
+    qtReq('/estimates/{{ $estimate->id }}/item-groups', 'POST', {name:name, labor_cost:labor})
+      .then(function(r){ if(r.success){ location.reload(); } else { alert('Failed to create group.'); } });
+}
+</script>
+@endpush
 @endsection

@@ -7,6 +7,7 @@ use App\Models\InspectionItem;
 use App\Models\InspectionCategory;
 use App\Models\InspectionTemplate;
 use App\Models\InspectionFinding;
+use App\Models\InspectionFindingGroup;
 use App\Models\JobOrder;
 use App\Models\Appointment;
 use App\Models\Customer;
@@ -24,7 +25,7 @@ class VehicleInspectionController extends Controller
      */
     public function index(Request $request)
     {
-        $query = VehicleInspection::with(['customer', 'vehicle', 'technician', 'jobOrder', 'appointment'])
+        $query = VehicleInspection::with(['customer', 'vehicle', 'technician', 'jobOrder', 'appointment', 'repairOrderPayments'])
             ->latest();
         
         // By default, only show active inspections (not completed/converted)
@@ -103,18 +104,64 @@ class VehicleInspectionController extends Controller
         // Get technicians for filter dropdown
         $technicians = User::where('role', 'technician')->where('is_active', true)->get();
         
-        // Get statistics
+        // Get statistics — driven by the repair-status pipeline
+        // (Pending = not yet in repair, In Progress = being worked/in QC, Completed = released).
+        // Sales Amount = ₱ value of every order not yet Paid (Cancelled excluded), i.e. an order
+        // keeps counting until its repair status is set to "Paid".
         $stats = [
             'total' => VehicleInspection::count(),
-            'in_progress' => VehicleInspection::inProgress()->count(),
-            'completed' => VehicleInspection::completed()->count(),
+            'pending' => VehicleInspection::whereIn('repair_status', ['received', 'diagnosing', 'awaiting_approval', 'awaiting_parts'])->count(),
+            'in_progress' => VehicleInspection::whereIn('repair_status', ['in_progress', 'quality_check', 'ready_for_pickup'])->count(),
+            'completed' => VehicleInspection::whereIn('repair_status', ['released', 'paid'])->count(),
+            'sales_amount' => VehicleInspection::with('appointment')
+                ->whereNotIn('repair_status', ['paid', 'cancelled'])
+                ->get()
+                ->sum(fn ($i) => $i->repair_total),
             'approved' => VehicleInspection::approved()->count(),
-            'with_safety' => VehicleInspection::withSafetyConcerns()->count(),
             'with_urgent' => VehicleInspection::withUrgentIssues()->count(),
             'customer_approved' => VehicleInspection::customerApproved()->count(),
         ];
         
         return view('inspections.index', compact('inspections', 'technicians', 'stats'));
+    }
+
+    /**
+     * Update the production-style repair status of a repair order (inline tag).
+     */
+    public function updateRepairStatus(Request $request, VehicleInspection $inspection)
+    {
+        $validated = $request->validate([
+            'repair_status' => 'required|string|in:' . implode(',', array_keys(VehicleInspection::REPAIR_STATUSES)),
+        ]);
+
+        $inspection->repair_status = $validated['repair_status'];
+
+        // Stop/restart the workshop clock: tagging Released (or Cancelled) freezes the
+        // days-in-workshop count; moving back to an active stage resumes counting.
+        if (in_array($validated['repair_status'], ['released', 'cancelled', 'paid'], true)) {
+            if (is_null($inspection->workshop_released_at)) {
+                $inspection->workshop_released_at = now();
+            }
+        } else {
+            $inspection->workshop_released_at = null;
+        }
+
+        $inspection->save();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'repair_status' => $inspection->repair_status,
+                'label' => $inspection->repair_status_label,
+                'bg' => $inspection->repair_status_bg,
+                'text' => $inspection->repair_status_text,
+                'border' => $inspection->repair_status_border,
+                'is_released' => $inspection->is_released,
+                'days_label' => $inspection->days_in_workshop_label,
+            ]);
+        }
+
+        return back()->with('success', 'Repair status updated.');
     }
 
     /**
@@ -225,13 +272,48 @@ class VehicleInspectionController extends Controller
         $validated = $request->validate([
             'job_order_id' => 'nullable|exists:job_orders,id',
             'appointment_id' => 'nullable|exists:appointments,id',
-            'customer_id' => 'required|exists:customers,id',
-            'vehicle_id' => 'required|exists:vehicles,id',
+            'customer_id' => 'nullable|exists:customers,id',
+            'vehicle_id' => 'nullable|exists:vehicles,id',
+            'date_received' => 'nullable|date',
+            'service_types' => 'nullable|array',
+            'service_types.*' => 'string|max:100',
+            'job_description_items' => 'nullable|array',
+            'job_description_items.*.description' => 'nullable|string|max:255',
+            'job_description_items.*.mh' => 'nullable|numeric|min:0',
+            'job_description_items.*.unit_price' => 'nullable|numeric|min:0',
+            'job_description_items.*.labor_cost' => 'nullable|numeric|min:0',
+            'parts_items' => 'nullable|array',
+            'parts_items.*.description' => 'nullable|string|max:255',
+            'parts_items.*.qty' => 'nullable|numeric|min:0',
+            'parts_items.*.unit_price' => 'nullable|numeric|min:0',
+            'parts_items.*.cost' => 'nullable|numeric|min:0',
+            'discount' => 'nullable|numeric|min:0',
+            // Walk-in intake (optional): inline customer / vehicle details, mirroring
+            // the Appointment "Update Information" form. Used to create the customer
+            // and/or vehicle when none is selected, or to complete/correct the
+            // selected ones (only non-empty values are written).
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:50',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
+            'make' => 'nullable|string|max:255',
+            'model' => 'nullable|string|max:255',
+            'year' => 'nullable|string|max:4',
+            'license_plate' => 'nullable|string|max:50',
+            'vin' => 'nullable|string|max:50',
+            'engine_no' => 'nullable|string|max:50',
+            'transmission' => 'nullable|string|max:20',
+            'fuel_type' => 'nullable|string|max:20',
+            'odometer' => 'nullable|string|max:20',
+            'color' => 'nullable|string|max:50',
             'technician_id' => 'nullable|exists:users,id',
             'technicians' => 'nullable|array',
-            'technicians.*' => 'exists:users,id',
+            // The multi-select always posts a hidden empty technicians[] entry; allow it
+            'technicians.*' => 'nullable|exists:users,id',
             'service_advisor_id' => 'nullable|exists:users,id',
-            'inspection_type' => 'required|array',
+            'inspection_type' => 'nullable|array',
             'inspection_type.*' => 'in:pre_purchase,safety,emissions,routine,diagnostic,post_repair,comprehensive,custom',
             'inspection_name' => 'nullable|string|max:255',
             'inspection_notes' => 'nullable|string|max:2000',
@@ -245,6 +327,114 @@ class VehicleInspectionController extends Controller
             'categories' => 'nullable|array',
             'categories.*' => 'string',]);
         
+        // The create page mirrors the Appointment "Update Information" form and
+        // does not ask for an inspection type; default it so an RO can be created.
+        if (empty($validated['inspection_type'])) {
+            $validated['inspection_type'] = ['routine'];
+        }
+
+        // ---- Walk-in intake: resolve the customer (select existing or create) ----
+        $customerId = $validated['customer_id'] ?? null;
+        if (!$customerId) {
+            if (empty($validated['first_name']) && empty($validated['last_name'])) {
+                return back()->withErrors(['customer_id' => 'Select an existing customer, or enter the walk-in customer name.'])->withInput();
+            }
+            $customer = \App\Models\Customer::create([
+                'first_name' => $validated['first_name'] ?? '',
+                'last_name'  => $validated['last_name'] ?? '',
+                'email'      => $validated['email'] ?? null,
+                'phone'      => $validated['phone'] ?? null,
+                'address'    => $validated['address'] ?? null,
+                'city'       => $validated['city'] ?? null,
+                'is_active'  => true,
+            ]);
+            $customerId = $customer->id;
+        } else {
+            $customer = \App\Models\Customer::find($customerId);
+            if ($customer) {
+                $updates = [];
+                foreach (['first_name', 'last_name', 'phone', 'email', 'address', 'city'] as $f) {
+                    if (!empty($validated[$f])) { $updates[$f] = $validated[$f]; }
+                }
+                if ($updates) { $customer->update($updates); }
+            }
+        }
+        $validated['customer_id'] = $customerId;
+
+        // ---- Walk-in intake: resolve the vehicle (select existing or create) ----
+        $vehicleId = $validated['vehicle_id'] ?? null;
+        if (!$vehicleId) {
+            if (empty($validated['make']) && empty($validated['model'])) {
+                return back()->withErrors(['vehicle_id' => 'Select an existing vehicle, or enter the walk-in vehicle details.'])->withInput();
+            }
+            $vehicle = \App\Models\Vehicle::create([
+                'customer_id'   => $customerId,
+                'make'          => $validated['make'] ?? '',
+                'model'         => $validated['model'] ?? '',
+                'year'          => (int) ($validated['year'] ?? 0),
+                'license_plate' => $validated['license_plate'] ?? null,
+                'vin'           => $validated['vin'] ?? null,
+                'engine_no'     => $validated['engine_no'] ?? null,
+                'transmission'  => $validated['transmission'] ?? null,
+                'fuel_type'     => $validated['fuel_type'] ?? null,
+                'odometer'      => (int) ($validated['odometer'] ?? 0),
+                'color'         => $validated['color'] ?? null,
+                'is_active'     => true,
+            ]);
+            $vehicleId = $vehicle->id;
+        } else {
+            $vehicle = \App\Models\Vehicle::find($vehicleId);
+            if ($vehicle) {
+                $updates = [];
+                foreach (['make', 'model', 'license_plate', 'vin', 'engine_no', 'transmission', 'fuel_type', 'color'] as $f) {
+                    if (!empty($validated[$f])) { $updates[$f] = $validated[$f]; }
+                }
+                if (!empty($validated['year'])) { $updates['year'] = (int) $validated['year']; }
+                if (!empty($validated['odometer'])) { $updates['odometer'] = (int) $validated['odometer']; }
+                if ($updates) { $vehicle->update($updates); }
+            }
+        }
+        $validated['vehicle_id'] = $vehicleId;
+
+        // Origin: linked to a schedule (Appointment / Job Order) or a walk-in.
+        $validated['source'] = ($request->filled('appointment_id') || $request->filled('job_order_id'))
+            ? 'scheduled'
+            : 'walk_in';
+        $validated['date_received'] = !empty($validated['date_received'])
+            ? $validated['date_received']
+            : now()->toDateString();
+
+        // Intake-only fields are not columns on vehicle_inspections.
+        foreach (['first_name', 'last_name', 'phone', 'email', 'address', 'city',
+                  'make', 'model', 'year', 'license_plate', 'vin', 'engine_no',
+                  'transmission', 'fuel_type', 'odometer', 'color'] as $intakeKey) {
+            unset($validated[$intakeKey]);
+        }
+
+        // Intake line items (Services / Job Description / Parts / Discount).
+        if (array_key_exists('job_description_items', $validated)) {
+            $validated['job_description_items'] = $this->normalizeRepairRows(
+                $validated['job_description_items'] ?? [],
+                ['description', 'mh', 'unit_price', 'labor_cost']
+            );
+        }
+        if (array_key_exists('parts_items', $validated)) {
+            $validated['parts_items'] = $this->normalizeRepairRows(
+                $validated['parts_items'] ?? [],
+                ['description', 'qty', 'unit_price', 'cost']
+            );
+        }
+        // Keep the single service_type column in sync with the (multi) service types.
+        if (!empty($validated['service_types'])) {
+            $validated['service_type'] = (string) reset($validated['service_types']);
+        }
+
+        // The discount column on vehicle_inspections is NOT NULL (default 0); a blank
+        // field arrives as null, which MySQL rejects. Coerce it.
+        if (!isset($validated['discount']) || $validated['discount'] === '' || $validated['discount'] === null) {
+            $validated['discount'] = 0;
+        }
+
         // Set default inspection name if not provided
         if (empty($validated['inspection_name'])) {
             // Handle multiple inspection types
@@ -283,8 +473,8 @@ class VehicleInspectionController extends Controller
         
         // Check for duplicate active transaction (skip if override_duplicate is set)
         if (!$request->filled('override_duplicate') || $request->override_duplicate !== '1') {
-            if ($request->filled('vehicle_id')) {
-                $activeTransaction = \App\Services\ActiveTransactionService::checkActiveTransaction($request->vehicle_id);
+            if (!empty($vehicleId)) {
+                $activeTransaction = \App\Services\ActiveTransactionService::checkActiveTransaction($vehicleId);
                 if ($activeTransaction) {
                     return back()->withErrors(['duplicate' => 'This vehicle already has an active ' . $activeTransaction['stage'] . ' (' . $activeTransaction['reference_number'] . ').'])->withInput();
                 }
@@ -293,6 +483,36 @@ class VehicleInspectionController extends Controller
         
         // Create inspection
         $inspection = VehicleInspection::create($validated);
+
+        // Mirror the intake line items onto the linked appointment (the Repair
+        // Order slip reads from the appointment). Walk-ins have none — the
+        // values stay on the Repair Order itself.
+        if ($inspection->appointment) {
+            $apptData = [];
+            if (!empty($validated['service_types'])) {
+                $apptData['service_types'] = array_values($validated['service_types']);
+            }
+            if (array_key_exists('job_description_items', $validated)) {
+                $apptData['job_description_items'] = $validated['job_description_items'];
+            }
+            if (array_key_exists('parts_items', $validated)) {
+                $apptData['parts_items'] = $validated['parts_items'];
+            }
+            if (!empty($validated['date_received'])) {
+                $apptData['date_received'] = $validated['date_received'];
+            }
+            if (array_key_exists('discount', $validated)) {
+                $apptData['discount'] = $validated['discount'];
+            }
+            if (!empty($validated['customer_concerns'])) {
+                $apptData['service_request'] = $validated['customer_concerns'];
+            }
+            if (!empty($validated['phone'])) { $apptData['phone'] = $validated['phone']; }
+            if (!empty($validated['email'])) { $apptData['email'] = $validated['email']; }
+            if ($apptData) {
+                $inspection->appointment->update($apptData);
+            }
+        }
         
         // Sync multi-technician assignments
         if ($request->filled('technicians')) {
@@ -343,7 +563,9 @@ class VehicleInspectionController extends Controller
             'createdBy',
             'approvedBy',
             'serviceProgress',
-            'inspectionFindings.technician'
+            'inspectionFindings.technician',
+            'repairOrderPayments.uploadedBy',
+            'repairOrderPayments.verifiedBy'
         ]);
         
         // Group items by category
@@ -398,7 +620,7 @@ class VehicleInspectionController extends Controller
             $inspection->update(['viewed_at' => now()]);
         }
         
-        $inspection->load(['customer', 'vehicle', 'items', 'technicians']);
+        $inspection->load(['customer', 'vehicle', 'items', 'technicians', 'appointment', 'inspectionFindings', 'findingGroups.findings']);
         
         $customers = Customer::where('is_active', true)->orderBy('first_name')->get();
         $vehicles = Vehicle::with('customer')->get();
@@ -407,7 +629,15 @@ class VehicleInspectionController extends Controller
         $jobOrders = JobOrder::whereIn('job_order_status', ['draft', 'pending_approval', 'approved'])
             ->with(['customer', 'vehicle'])
             ->get();
-        $appointments = Appointment::whereIn('appointment_status', ['scheduled', 'confirmed', 'checked_in'])
+        $appointments = Appointment::where(function ($q) use ($inspection) {
+                $q->whereIn('appointment_status', ['scheduled', 'confirmed', 'checked_in']);
+                // Always keep the currently-linked appointment selectable. Otherwise the
+                // Appointment dropdown renders with no matching option and a save would
+                // silently clear the link (and wipe the Repair Order line items).
+                if ($inspection->appointment_id) {
+                    $q->orWhere('id', $inspection->appointment_id);
+                }
+            })
             ->with(['customer', 'vehicle'])
             ->get();
         
@@ -598,9 +828,50 @@ class VehicleInspectionController extends Controller
         $validated = $request->validate([
             'technician_id' => 'nullable|exists:users,id',
             'technicians' => 'nullable|array',
-            'technicians.*' => 'exists:users,id',
-            'inspection_type' => 'required|in:pre_purchase,routine_maintenance,pre_service,safety,comprehensive,diagnostic,emissions,custom',
-            'inspection_status' => 'required|in:draft,in_progress,completed,approved,rejected,cancelled',
+            // The multi-select always posts a hidden empty technicians[] entry; allow it
+            'technicians.*' => 'nullable|exists:users,id',
+            // Reassignable links
+            'customer_id' => 'nullable|exists:customers,id',
+            'vehicle_id' => 'nullable|exists:vehicles,id',
+            'service_advisor_id' => 'nullable|exists:users,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
+            'appointment_id' => 'nullable|exists:appointments,id',
+            // Customer detail (Arrived "Update Information" form)
+            'first_name' => 'nullable|string|max:255',
+            'last_name' => 'nullable|string|max:255',
+            'phone' => 'nullable|string|max:50',
+            'email' => 'nullable|email|max:255',
+            'address' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
+            // Vehicle detail
+            'make' => 'nullable|string|max:255',
+            'model' => 'nullable|string|max:255',
+            'year' => 'nullable|string|max:4',
+            'license_plate' => 'nullable|string|max:50',
+            'vin' => 'nullable|string|max:50',
+            'engine_no' => 'nullable|string|max:50',
+            'transmission' => 'nullable|string|max:20',
+            'fuel_type' => 'nullable|string|max:20',
+            'odometer' => 'nullable|string|max:20',
+            'color' => 'nullable|string|max:50',
+            // Services + repair order line items (mirrored onto the linked appointment)
+            'service_types' => 'nullable|array',
+            'service_types.*' => 'string|max:100',
+            'date_received' => 'nullable|date',
+            'service_request' => 'nullable|string|max:1000',
+            'discount' => 'nullable|numeric|min:0',
+            'job_description_items' => 'nullable|array',
+            'job_description_items.*.description' => 'nullable|string|max:255',
+            'job_description_items.*.mh' => 'nullable|numeric|min:0',
+            'job_description_items.*.unit_price' => 'nullable|numeric|min:0',
+            'job_description_items.*.labor_cost' => 'nullable|numeric|min:0',
+            'parts_items' => 'nullable|array',
+            'parts_items.*.description' => 'nullable|string|max:255',
+            'parts_items.*.qty' => 'nullable|numeric|min:0',
+            'parts_items.*.unit_price' => 'nullable|numeric|min:0',
+            'parts_items.*.cost' => 'nullable|numeric|min:0',
+            'inspection_type' => 'nullable|in:pre_purchase,routine_maintenance,pre_service,safety,comprehensive,diagnostic,emissions,custom',
+            'inspection_status' => 'nullable|in:draft,in_progress,completed,approved,rejected,cancelled',
             'inspection_name' => 'required|string|max:255',
             'inspection_notes' => 'nullable|string|max:2000',
             'technician_notes' => 'nullable|string|max:2000',
@@ -621,7 +892,7 @@ class VehicleInspectionController extends Controller
         ]);
         
         // Update status timestamps
-        if ($validated['inspection_status'] !== $inspection->inspection_status) {
+        if (!empty($validated['inspection_status']) && $validated['inspection_status'] !== $inspection->inspection_status) {
             $statusField = null;
             switch ($validated['inspection_status']) {
                 case 'in_progress':
@@ -642,25 +913,115 @@ class VehicleInspectionController extends Controller
         
         // Update updated by
         $validated['updated_by'] = auth()->id();
-        
-        $inspection->update($validated);
-        
-        // Sync multi-technician assignments
-        if ($request->has('technicians')) {
-            $technicianIds = array_filter($request->input('technicians', []));
-            if (!empty($technicianIds)) {
-                $syncData = [];
-                foreach ($technicianIds as $techId) {
-                    $syncData[$techId] = ['role' => 'technician'];
-                }
-                $inspection->technicians()->sync($syncData);
-            } else {
-                $inspection->technicians()->sync([]);
-            }
+
+        // Keep the single service_type column in sync with the (multi) service types
+        if (!empty($validated['service_types'])) {
+            $validated['service_type'] = (string) reset($validated['service_types']);
         }
-        
+
+        try {
+            DB::transaction(function () use ($validated, $request, $inspection) {
+                // Persist the inspection's own (fillable) columns. Detail fields that
+                // are not fillable here (first_name, make, service_types, ...) are
+                // ignored by mass assignment and handled below.
+                $inspection->update($validated);
+                $inspection->refresh();
+
+                // ---- Customer detail: only overwrite with non-empty values ----
+                if ($inspection->customer) {
+                    $customerData = [];
+                    foreach (['first_name', 'last_name', 'phone', 'email', 'address', 'city'] as $field) {
+                        if (!empty($validated[$field])) {
+                            $customerData[$field] = $validated[$field];
+                        }
+                    }
+                    if ($customerData) {
+                        $inspection->customer->update($customerData);
+                    }
+                }
+
+                // ---- Vehicle detail ----
+                if ($inspection->vehicle) {
+                    $vehicleData = [];
+                    foreach (['make', 'model', 'year', 'license_plate', 'vin', 'engine_no', 'transmission', 'fuel_type', 'color'] as $field) {
+                        if (!empty($validated[$field])) {
+                            $vehicleData[$field] = $validated[$field];
+                        }
+                    }
+                    if (!empty($validated['odometer'])) {
+                        $vehicleData['odometer'] = (int) $validated['odometer'];
+                    }
+                    if ($vehicleData) {
+                        $inspection->vehicle->update($vehicleData);
+                    }
+                }
+
+                // ---- Mirror onto the linked appointment (slip source of truth) ----
+                if ($inspection->appointment) {
+                    $appt = $inspection->appointment;
+                    $apptData = [];
+                    if (!empty($validated['service_types'])) {
+                        $apptData['service_types'] = array_values($validated['service_types']);
+                    }
+                    if (array_key_exists('job_description_items', $validated)) {
+                        $apptData['job_description_items'] = $this->normalizeRepairRows(
+                            $validated['job_description_items'] ?? [],
+                            ['description', 'mh', 'unit_price', 'labor_cost']
+                        );
+                    }
+                    if (array_key_exists('parts_items', $validated)) {
+                        $apptData['parts_items'] = $this->normalizeRepairRows(
+                            $validated['parts_items'] ?? [],
+                            ['description', 'qty', 'unit_price', 'cost']
+                        );
+                    }
+                    if (!empty($validated['date_received'])) {
+                        $apptData['date_received'] = $validated['date_received'];
+                    }
+                    if ($request->filled('service_request')) {
+                        $apptData['service_request'] = $validated['service_request'];
+                    }
+                    if (!empty($validated['phone'])) {
+                        $apptData['phone'] = $validated['phone'];
+                    }
+                    if (!empty($validated['email'])) {
+                        $apptData['email'] = $validated['email'];
+                    }
+                    if (array_key_exists('discount', $validated)) {
+                        $apptData['discount'] = $validated['discount'];
+                    }
+                    if (!empty($validated['first_name']) || !empty($validated['last_name'])) {
+                        $fullName = trim(($validated['first_name'] ?? '') . ' ' . ($validated['last_name'] ?? ''));
+                        if ($fullName !== '') {
+                            $apptData['name'] = $fullName;
+                        }
+                    }
+                    if ($apptData) {
+                        $appt->update($apptData);
+                    }
+                }
+
+                // ---- Sync multi-technician assignments ----
+                if ($request->has('technicians')) {
+                    $technicianIds = array_filter($request->input('technicians', []));
+                    if (!empty($technicianIds)) {
+                        $syncData = [];
+                        foreach ($technicianIds as $techId) {
+                            $syncData[$techId] = ['role' => 'technician'];
+                        }
+                        $inspection->technicians()->sync($syncData);
+                    } else {
+                        $inspection->technicians()->sync([]);
+                    }
+                }
+            });
+        } catch (\Throwable $e) {
+            \Log::error('Repair Order update failed: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Failed to update Repair Order: ' . $e->getMessage());
+        }
+
         return redirect()->route('inspections.show', $inspection)
-            ->with('success', 'Vehicle inspection updated successfully.');
+            ->with('success', 'Repair Order updated successfully.');
     }
 
     /**
@@ -1013,15 +1374,22 @@ class VehicleInspectionController extends Controller
         $validated = $request->validate([
             'category' => 'required|string|max:100',
             'issue_title' => 'required|string|max:255',
+            'part_name' => 'nullable|string|max:255',
+            'remarks' => 'nullable|string',
+            'quantity' => 'nullable|numeric|min:0',
+            'unit_price' => 'nullable|numeric|min:0',
+            'group_id' => 'nullable|exists:inspection_finding_groups,id',
             'detailed_notes' => 'nullable|string',
             'severity' => 'required|in:low,medium,high,critical',
             'recommended_action' => 'nullable|string',
             'estimated_urgency' => 'required|in:routine,soon,urgent,immediate',
             'estimated_cost' => 'nullable|numeric|min:0',
             'tech_id' => 'nullable|exists:users,id',
+            'is_quotation_added' => 'nullable|boolean',
         ]);
 
         $validated['tech_id'] = $validated['tech_id'] ?? auth()->id();
+        $validated['is_quotation_added'] = (bool) ($validated['is_quotation_added'] ?? false);
         $validated['sort_order'] = ($inspection->inspectionFindings()->max('sort_order') ?? -1) + 1;
 
         $finding = $inspection->inspectionFindings()->create($validated);
@@ -1039,6 +1407,11 @@ class VehicleInspectionController extends Controller
         $validated = $request->validate([
             'category' => 'required|string|max:100',
             'issue_title' => 'required|string|max:255',
+            'part_name' => 'nullable|string|max:255',
+            'remarks' => 'nullable|string',
+            'quantity' => 'nullable|numeric|min:0',
+            'unit_price' => 'nullable|numeric|min:0',
+            'group_id' => 'nullable|exists:inspection_finding_groups,id',
             'detailed_notes' => 'nullable|string',
             'severity' => 'required|in:low,medium,high,critical',
             'recommended_action' => 'nullable|string',
@@ -1111,6 +1484,130 @@ class VehicleInspectionController extends Controller
         }
 
         return response()->json(['success' => true, 'count' => count($created), 'findings' => $created]);
+    }
+
+    // ===================== FINDING GROUPS (drag & drop / shared labor) =====================
+
+    public function storeGroup(Request $request, VehicleInspection $inspection)
+    {
+        $validated = $request->validate([
+            'name' => 'nullable|string|max:150',
+            'auto_name' => 'nullable|boolean',
+            'labor_cost' => 'nullable|numeric|min:0',
+        ]);
+
+        $group = $inspection->findingGroups()->create([
+            'name' => $validated['name'] ?? 'New Group',
+            'auto_name' => $validated['auto_name'] ?? true,
+            'labor_cost' => $validated['labor_cost'] ?? 0,
+            'sort_order' => ($inspection->findingGroups()->max('sort_order') ?? -1) + 1,
+        ]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'group' => $group]);
+        }
+
+        return redirect()->route('inspections.show', $inspection)->with('success', 'Group added.');
+    }
+
+    public function updateGroup(Request $request, InspectionFindingGroup $group)
+    {
+        $validated = $request->validate([
+            'name' => 'nullable|string|max:150',
+            'auto_name' => 'nullable|boolean',
+            'labor_cost' => 'nullable|numeric|min:0',
+        ]);
+
+        $group->update($validated);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true, 'group' => $group->fresh()]);
+        }
+
+        return redirect()->route('inspections.show', $group->inspection_id)->with('success', 'Group updated.');
+    }
+
+    public function destroyGroup(Request $request, InspectionFindingGroup $group)
+    {
+        $inspectionId = $group->inspection_id;
+        // Detach findings (keep them, just ungroup)
+        InspectionFinding::where('group_id', $group->id)->update(['group_id' => null]);
+        $group->delete();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true]);
+        }
+
+        return redirect()->route('inspections.show', $inspectionId)->with('success', 'Group removed.');
+    }
+
+    /**
+     * Drop handler: move a finding into a group (or to ungrouped) and persist order.
+     */
+    public function moveFindingToGroup(Request $request, InspectionFinding $finding)
+    {
+        $validated = $request->validate([
+            'group_id' => 'nullable|exists:inspection_finding_groups,id',
+            'sort_order' => 'nullable|integer|min:0',
+        ]);
+
+        $finding->update([
+            'group_id' => $validated['group_id'] ?? null,
+            'sort_order' => $validated['sort_order'] ?? $finding->sort_order,
+            // Moving a card back onto the board (or into a group) means it is pursued again.
+            'is_declined' => false,
+        ]);
+
+        return response()->json(['success' => true, 'finding' => $finding->fresh()]);
+    }
+
+    /**
+     * Toggle a finding between "pursued" and "not pursued".
+     *
+     * Declining = the customer did NOT push through with this item, so it is separated
+     * out of the Repair Quotation (excluded from totals / the printed quotation).
+     * Toggled by dragging a card into (or out of) the "Not Pursued" zone on the
+     * Repair Quotation edit page.
+     */
+    public function declineFinding(Request $request, InspectionFinding $finding)
+    {
+        $validated = $request->validate([
+            'declined' => 'required|boolean',
+        ]);
+
+        $finding->update([
+            'is_declined' => (bool) $validated['declined'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'finding' => $finding->fresh(),
+            'is_declined' => (bool) $finding->fresh()->is_declined,
+        ]);
+    }
+
+    /**
+     * Save the per-finding Labor cost (for UNGROUPED findings).
+     *
+     * Grouped findings share a single labor cost at the group level, but an ungrouped
+     * finding carries its own labor in `estimated_cost` (the same column the Repair
+     * Quotation slip reads). This is a tiny dedicated endpoint so the inline board
+     * input can save just the labor amount without re-sending the whole finding.
+     */
+    public function updateFindingCost(Request $request, InspectionFinding $finding)
+    {
+        $validated = $request->validate([
+            'estimated_cost' => 'nullable|numeric|min:0',
+        ]);
+
+        $finding->update([
+            'estimated_cost' => $validated['estimated_cost'] ?? null,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'finding' => $finding->fresh(),
+        ]);
     }
 
     public function storeItem(Request $request, VehicleInspection $inspection)
@@ -1225,6 +1722,44 @@ class VehicleInspectionController extends Controller
         }
     }
     
+    /**
+     * Upload multiple photos for inspection in a single request.
+     */
+    public function uploadPhotos(Request $request, VehicleInspection $inspection)
+    {
+        $request->validate([
+            'photos' => 'required|array',
+            'photos.*' => 'image|mimes:jpeg,png,jpg,gif|max:5120', // 5MB each
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            $uploaded = [];
+            foreach ($request->file('photos', []) as $file) {
+                $path = $file->store('inspections/photos', 'public');
+                $inspection->addPhoto($path, $request->description);
+                $uploaded[] = [
+                    'path' => $path,
+                    'path_url' => asset('storage/' . $path),
+                    'description' => $request->description,
+                    'uploaded_at' => now()->toISOString(),
+                ];
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => count($uploaded) . ' photo(s) uploaded successfully',
+                'count' => count($uploaded),
+                'photos' => $uploaded,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to upload photos: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     /**
      * Delete a photo from an inspection (AJAX endpoint)
      */
@@ -1425,7 +1960,7 @@ class VehicleInspectionController extends Controller
     {
         $findings = \App\Models\InspectionFinding::whereHas('inspection', function ($q) use ($customer) {
             $q->where('customer_id', $customer->id);
-        })->with(['inspection', 'technician'])
+        })->with(['inspection', 'technician', 'group'])
           ->orderBy('created_at', 'desc')
           ->get();
 
@@ -1433,5 +1968,180 @@ class VehicleInspectionController extends Controller
             'success' => true,
             'findings' => $findings,
         ]);
+    }
+
+    /**
+     * Show a printable Repair Order slip for a Repair Order (inspection).
+     *
+     * Walk-in ROs have no appointment, so the slip is built from the RO's own
+     * intake items; scheduled ROs still fall back to the linked appointment.
+     * Additive — mirrors the appointment slip layout (shared partial).
+     */
+    public function showRepairOrderSlip(VehicleInspection $inspection)
+    {
+        $inspection->load(['customer', 'vehicle', 'appointment']);
+
+        return view('inspections.repair-order-slip', $this->repairSlipData($inspection));
+    }
+
+    /**
+     * Download the Repair Order slip as a PDF.
+     */
+    public function downloadRepairOrderSlipPdf(VehicleInspection $inspection)
+    {
+        $inspection->load(['customer', 'vehicle', 'appointment']);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.inspection-repair-order-slip', $this->repairSlipData($inspection))
+            ->setPaper('a4', 'portrait');
+
+        $reference = $inspection->appointment->appointment_number ?? ('RO-' . str_pad($inspection->id, 6, '0', STR_PAD_LEFT));
+        $filename = 'Repair-Order-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $reference) . '.pdf';
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Build the variables the shared Repair Order slip partial expects.
+     * RO's own intake items win; the linked appointment is the fallback for
+     * legacy appointment-driven orders.
+     */
+    protected function repairSlipData(VehicleInspection $inspection): array
+    {
+        $appointment = $inspection->appointment;
+
+        $services = config('service-types.list', []);
+        $selectedTypes = $inspection->service_types ?: ($appointment->service_types ?? []);
+        if (is_string($selectedTypes)) {
+            $decoded = json_decode($selectedTypes, true);
+            $selectedTypes = is_array($decoded) ? $decoded : ($selectedTypes !== '' ? [$selectedTypes] : []);
+        }
+        $selectedTypes = is_array($selectedTypes) ? array_values(array_filter($selectedTypes, 'is_string')) : [];
+
+        $jdItems = $inspection->job_description_items ?: ($appointment->job_description_items ?? []);
+        $partsItems = $inspection->parts_items ?: ($appointment->parts_items ?? []);
+
+        return [
+            'inspection'    => $inspection,
+            'services'      => $services,
+            'selectedTypes' => $selectedTypes,
+            'slipCustomer'  => $inspection->customer,
+            'slipVehicle'   => $inspection->vehicle,
+            'slipJdItems'   => is_array($jdItems) ? $jdItems : [],
+            'slipPartsItems' => is_array($partsItems) ? $partsItems : [],
+            'slipDiscount'  => $inspection->discount ?: ($appointment->discount ?? 0),
+            'slipConcern'   => $inspection->customer_concerns ?: ($appointment->service_request ?? null),
+            'slipReference' => $appointment->appointment_number ?? ('RO-' . str_pad($inspection->id, 6, '0', STR_PAD_LEFT)),
+            'slipDate'      => $inspection->date_received ?? ($appointment->appointment_date ?? $inspection->created_at),
+        ];
+    }
+
+    /**
+     * Show a printable Repair Quotation for a Repair Order, built from the
+     * Repair Order's findings (grouped or ungrouped). Additive — mirrors the
+     * appointment Repair Order slip, nothing existing is touched.
+     */
+    public function showQuotationSlip(VehicleInspection $inspection)
+    {
+        [$inspection, $estimate] = $this->loadQuotationData($inspection);
+
+        return view('inspections.quotation-slip', compact('inspection', 'estimate'));
+    }
+
+    /**
+     * Download the Repair Quotation as a PDF.
+     */
+    public function downloadQuotationSlipPdf(VehicleInspection $inspection)
+    {
+        [$inspection, $estimate] = $this->loadQuotationData($inspection);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.repair-quotation', compact('inspection', 'estimate'))
+            ->setPaper('a4', 'portrait');
+
+        $no = ($estimate->estimate_number ?? null)
+            ?: ($inspection->appointment->appointment_number ?? $inspection->id);
+
+        $filename = $this->quotationFilename([
+            $inspection->vehicle->make ?? null,
+            $inspection->vehicle->model ?? null,
+            $inspection->vehicle->year ?? null,
+            $inspection->customer->first_name ?? null,
+            $no,
+        ], 'Repair-Quotation-' . $no);
+
+        return $pdf->download($filename . '.pdf');
+    }
+
+    /**
+     * Build a safe PDF filename from parts (Vehicle Brand, Model, Year, First name,
+     * Reference number). Empty parts are skipped; illegal filesystem characters removed.
+     */
+    protected function quotationFilename(array $parts, string $fallback): string
+    {
+        $name = trim(collect($parts)->filter(function ($p) {
+            return $p !== null && trim((string) $p) !== '';
+        })->implode(' '));
+
+        $name = preg_replace('/[\x00-\x1F\/\\:*?"<>|]+/', '', $name);
+        $name = trim(preg_replace('/\s+/', ' ', (string) $name));
+
+        return $name !== '' ? $name : $fallback;
+    }
+
+    /**
+     * Load the inspection with everything the Repair Quotation sheet needs.
+     */
+    protected function loadQuotationData(VehicleInspection $inspection): array
+    {
+        $inspection->load([
+            'customer',
+            'vehicle',
+            'appointment',
+            'inspectionFindings.group',
+            'findingGroups',
+        ]);
+
+        $estimate = \App\Models\Estimate::where('inspection_id', $inspection->id)
+            ->latest('id')
+            ->first();
+
+        return [$inspection, $estimate];
+    }
+
+    /**
+     * Normalise Repair Order slip line items coming from the Edit form:
+     * trim text, cast numbers, and drop fully-empty rows.
+     */
+    protected function normalizeRepairRows($rows, array $fields): array
+    {
+        if (!is_array($rows)) {
+            return [];
+        }
+        $out = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $clean = [];
+            foreach ($fields as $f) {
+                $val = $row[$f] ?? null;
+                if ($f === 'description') {
+                    $clean[$f] = is_string($val) ? trim($val) : '';
+                } else {
+                    $clean[$f] = ($val === '' || $val === null) ? null : (float) $val;
+                }
+            }
+            $hasText = ($clean['description'] ?? '') !== '';
+            $hasNum = false;
+            foreach ($fields as $f) {
+                if ($f !== 'description' && $clean[$f] !== null) {
+                    $hasNum = true;
+                    break;
+                }
+            }
+            if ($hasText || $hasNum) {
+                $out[] = $clean;
+            }
+        }
+        return $out;
     }
 }

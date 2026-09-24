@@ -12,9 +12,11 @@ class EstimateItem extends Model
 
     protected $fillable = [
         'estimate_id',
+        'group_id',
         'inventory_id',
         'item_name',
         'category',
+        'item_status',
         'quantity',
         'unit_price',
         'discount',
@@ -29,6 +31,7 @@ class EstimateItem extends Model
 
     protected $casts = [
         'quantity'    => 'decimal:2',
+        'item_status' => 'string',
         'unit_price'  => 'decimal:2',
         'discount'    => 'decimal:2',
         'tax'         => 'decimal:2',
@@ -46,6 +49,11 @@ class EstimateItem extends Model
     public function inventory(): BelongsTo
     {
         return $this->belongsTo(Inventory::class);
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(EstimateItemGroup::class, 'group_id');
     }
 
     public function getFormattedUnitPriceAttribute(): string

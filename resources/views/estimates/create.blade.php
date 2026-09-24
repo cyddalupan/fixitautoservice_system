@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Create Premium Estimate - Fix-It Auto Services')
+@section('title', 'Create Repair Quotation - Fix-It Auto Services')
 
 @push('styles')
 <style>
@@ -122,11 +122,14 @@ body{background:var(--ebg)}
 <form method="POST" action="{{ route('estimates.store') }}" id="creationForm" onsubmit="return serializeItems()">
     @csrf
     <input type="hidden" name="items_json" id="items_json">
+    @if(isset($prefillInspection) && $prefillInspection)
+    <input type="hidden" name="inspection_id" value="{{ $prefillInspection->id }}">
+    @endif
 
     <div class="estimate-header">
         <div class="row align-items-center">
             <div class="col-md-6">
-                <h1><i class="fas fa-file-invoice-dollar me-2"></i> New Estimate</h1>
+                <h1><i class="fas fa-file-invoice-dollar me-2"></i> New Repair Quotation</h1>
                 <p>Create a professional quotation for your customer</p>
             </div>
             <div class="col-md-6 text-md-end">
@@ -149,8 +152,13 @@ body{background:var(--ebg)}
     <div class="row">
         <div class="col-lg-8">
 
+            {{-- REPAIR ORDER OVERVIEW (read-only) — shown when launched from a Repair Order --}}
+            @if(isset($prefillInspection) && $prefillInspection)
+                @include('estimates.partials.ro-overview', ['inspection' => $prefillInspection])
+            @endif
+
             {{-- CUSTOMER --}}
-            <div class="fs" id="section-customer">
+            <div class="fs" id="section-customer" @if(isset($prefillInspection) && $prefillInspection) style="display:none;" @endif>
                 <div class="fh" onclick="this.parentElement.classList.toggle('collapsed')">
                     <h6><i class="fas fa-user"></i> Customer &amp; Vehicle</h6>
                     <i class="fas fa-chevron-down" style="color:var(--em);font-size:.75rem"></i>
@@ -173,7 +181,7 @@ body{background:var(--ebg)}
                         </div>
                         <div class="col-md-6">
                             <label style="font-size:.8rem;font-weight:600;margin-bottom:4px">Vehicle <span class="text-danger">*</span></label>
-                            <select name="vehicle_id" id="vehicle_id" class="form-select form-select-sm" required onchange="updateVeh()">
+                            <select name="vehicle_id" id="vehicle_id" class="form-select form-select-sm" required onchange="updateVeh()" data-selected="{{ $selectedVehicle->id ?? '' }}">
                                 <option value="">-- Select Vehicle --</option>
                                 @foreach($customerVehicles as $vehicle)
                                 <option value="{{ $vehicle->id }}" {{ ($selectedVehicle && $selectedVehicle->id === $vehicle->id) ? 'selected' : '' }}
@@ -221,13 +229,12 @@ body{background:var(--ebg)}
             {{-- ITEMS --}}
             <div class="fs" id="section-items">
                 <div class="fh" onclick="this.parentElement.classList.toggle('collapsed')">
-                    <h6><i class="fas fa-list"></i> Estimate Items</h6>
+                    <h6><i class="fas fa-list"></i> Quotation Items</h6>
                     <span class="badge bg-primary rounded-pill" id="icnt" style="font-size:.65rem">0 items</span>
                 </div>
                 <div class="fb">
                     <div class="igh"><span></span><span>Description</span><span>Category</span><span>Qty</span><span>Price</span><span>Disc%</span><span>Tax%</span><span>Subtotal</span><span></span></div>
                     <div id="itemsC"></div>
-                    <button type="button" class="ab" onclick="addItem();recalc()"><i class="fas fa-plus"></i> Add Item</button>
                 </div>
             </div>
 
@@ -286,9 +293,7 @@ Parts Warranty: As per manufacturer</textarea>
             <div class="sb">
                 <div class="si"><i class="far fa-clock me-1"></i> <span id="saveStatus">Ready to save</span></div>
                 <div class="bg">
-                    <button type="button" class="btn btn-outline-secondary" onclick="addItem();recalc()"><i class="fas fa-plus"></i> Add Item</button>
-                    <button type="button" class="btn btn-outline-primary" onclick="save('draft')"><i class="far fa-save"></i> Save Draft</button>
-                    <button type="button" class="btn btn-primary" onclick="save('pending')"><i class="fas fa-paper-plane"></i> Send</button>
+                    <button type="button" class="btn btn-primary" onclick="save('draft')"><i class="far fa-save"></i> Save Draft</button>
                 </div>
             </div>
         </div>
@@ -385,8 +390,15 @@ function loadQuotationNotes(customerId){
 // ====================== INSPECTION FINDINGS ======================
 var inspectionFindings = [];
 var selectedFindings = {};
+@if(isset($prefillInspection) && $prefillInspection)
+// Launched from a Repair Order: preload that inspection's findings for review.
+window.__prefillFindings = @json($inspectionFindings);
+@endif
 
 function loadInspectionFindings(customerId) {
+    // If we arrived from a Repair Order, the findings for THAT inspection are
+    // already preloaded — don't overwrite them with the customer-wide fetch.
+    if (window.__prefillFindings && window.__prefillFindings.length) return;
     var section = document.getElementById('section-findings');
     var container = document.getElementById('findingsC');
     container.innerHTML = '<div class="text-center py-2"><span class="spinner-border spinner-border-sm me-2"></span>Loading findings...</div>';
@@ -420,7 +432,11 @@ function renderFindings() {
     inspectionFindings.forEach(function(f) {
         var severityBadge = f.severity === 'low' ? 'bg-info' : f.severity === 'medium' ? 'bg-warning text-dark' : f.severity === 'high' ? 'bg-danger' : 'bg-dark';
         var urgencyBadge = f.estimated_urgency === 'routine' ? 'bg-secondary' : f.estimated_urgency === 'soon' ? 'bg-info' : f.estimated_urgency === 'urgent' ? 'bg-warning text-dark' : 'bg-danger';
-        var costStr = f.estimated_cost !== null && f.estimated_cost !== undefined ? '₱' + parseFloat(f.estimated_cost).toFixed(2) : '-';
+        var costVal = (f.unit_price !== null && f.unit_price !== undefined && f.unit_price !== '')
+            ? (parseFloat(f.unit_price) * (parseFloat(f.quantity || 1) || 1))
+            : (f.estimated_cost !== null && f.estimated_cost !== undefined ? parseFloat(f.estimated_cost) : null);
+        var costStr = costVal !== null ? '₱' + costVal.toFixed(2) : '-';
+        var groupLabel = f.group ? '<span class="badge" style="font-size:9px;background:#1a237e;color:#fff;"><i class="fas fa-layer-group me-1"></i>' + f.group.name + (parseFloat(f.group.labor_cost) > 0 ? ' · labor ₱' + parseFloat(f.group.labor_cost).toFixed(2) : '') + '</span>' : '';
         var fid = 'f_' + f.id;
 
         var row = document.createElement('div');
@@ -431,11 +447,13 @@ function renderFindings() {
             + '<input class="form-check-input finding-checkbox" type="checkbox" id="' + fid + '" value="' + f.id + '">'
             + '</div>'
             + '<div class="flex-grow-1">'
-            + '<div class="small fw-semibold">' + f.issue_title + '</div>'
+            + '<div class="small fw-semibold">' + f.issue_title + (f.part_name ? ' <span class="text-muted">· ' + f.part_name + '</span>' : '') + '</div>'
+            + (f.remarks ? '<div class="text-muted" style="font-size:10px;">' + f.remarks + '</div>' : '')
             + '<div class="d-flex flex-wrap gap-1 mt-1">'
             + '<span class="badge bg-secondary-subtle text-secondary" style="font-size:9px;">' + (f.category || 'Other') + '</span>'
             + '<span class="badge ' + severityBadge + '" style="font-size:9px;">' + ucfirst(f.severity) + '</span>'
             + '<span class="badge ' + urgencyBadge + '" style="font-size:9px;">' + ucfirst(f.estimated_urgency) + '</span>'
+            + groupLabel
             + '<span class="fw-semibold" style="font-size:11px;color:#1a237e;">' + costStr + '</span>'
             + '</div>'
             + '</div>';
@@ -461,22 +479,46 @@ function importSelectedFindings() {
     }
 
     var count = 0;
+    var laborGroups = {};
     checkboxes.forEach(function(cb) {
         var finding = inspectionFindings.find(function(f) { return f.id == cb.value; });
         if (!finding) return;
+        var qty = parseFloat(finding.quantity || 1) || 1;
+        var price = (finding.unit_price !== null && finding.unit_price !== undefined && finding.unit_price !== '')
+            ? parseFloat(finding.unit_price)
+            : (parseFloat(finding.estimated_cost) || 0);
+        var label = finding.part_name ? finding.part_name : finding.issue_title;
+        if (finding.remarks) label += ' (' + finding.remarks + ')';
         addItem({
-            desc: finding.issue_title,
-            unit_price: finding.estimated_cost || 0,
-            category: 'service',
-            quantity: 1
+            desc: label,
+            unit_price: price,
+            category: 'parts',
+            quantity: qty
         });
         count++;
+        if (finding.group_id && finding.group) {
+            laborGroups[finding.group_id] = finding.group;
+        }
         // Mark as imported
         cb.checked = false;
         cb.closest('.finding-row').style.background = '#e8f5e9';
         cb.closest('.finding-row').style.borderColor = '#4caf50';
         cb.closest('.finding-row').style.opacity = '0.6';
         cb.closest('.finding-row').querySelector('.form-check').innerHTML = '<i class="fas fa-check text-success"></i>';
+    });
+
+    // One labor line per group (shared labor)
+    Object.keys(laborGroups).forEach(function(gid) {
+        var g = laborGroups[gid];
+        var labor = parseFloat(g.labor_cost) || 0;
+        if (labor > 0) {
+            addItem({
+                desc: 'Labor - ' + (g.name || 'Group'),
+                unit_price: labor,
+                category: 'labor',
+                quantity: 1
+            });
+        }
     });
 
     // Scroll to items section
@@ -680,16 +722,38 @@ function serializeItems(){
     return true;
 }
 function save(s){
-    document.getElementById('statusDD').value=s;
+    // form.submit() bypasses the form's onsubmit, so serialize items explicitly
+    // (otherwise items_json stays empty and the quotation saves with no line items).
+    try { serializeItems(); } catch(e) {}
+    var st = document.getElementById('statusDD');
+    if (st) st.value = s;
     document.getElementById('creationForm').submit();
 }
 document.addEventListener('DOMContentLoaded',function(){
     var cid=document.getElementById('customer_id');
     if(cid.value)loadCustomer(cid.value);
+    // Refresh the vehicle summary (Make/Model/Year/Plate/Mileage) for the
+    // pre-selected vehicle right away; the shared vehicle-selector may rebuild
+    // the list afterwards and will re-trigger this via a change event.
+    if(document.getElementById('vehicle_id') && document.getElementById('vehicle_id').value) updateVeh();
     setTimeout(function(){
         if(document.querySelectorAll('.ir').length===0)addItem();
         recalc();
     },100);
+
+    // ---- Repair Order prefill: show findings + pre-populate items for review ----
+    if (window.__prefillFindings && window.__prefillFindings.length) {
+        inspectionFindings = window.__prefillFindings;
+        // Repair Order mode: the read-only RO overview replaces the findings
+        // import bar; items are imported automatically just below.
+        @if(!(isset($prefillInspection) && $prefillInspection))
+        document.getElementById('section-findings').style.display = 'block';
+        @endif
+        renderFindings();
+        // Pre-select every finding so the technician just reviews & saves.
+        document.querySelectorAll('.finding-checkbox').forEach(function(cb){ cb.checked = true; });
+        importSelectedFindings();
+    }
 });
 </script>
 @include('partials.duplicate-transaction-modal')
