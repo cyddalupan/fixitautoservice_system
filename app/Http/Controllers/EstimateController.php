@@ -881,12 +881,36 @@ class EstimateController extends Controller
         ]);
         $repairStatus = $validated['repair_status'] ?? 'received';
 
+        // Prices must be complete before the job becomes a Repair Order: once
+        // promoted, these amounts are the fixed figures for the RO. Block when a
+        // pursued line is still missing its parts price and/or labor.
+        $inspection = $estimate->inspection_id
+            ? VehicleInspection::with(['inspectionFindings.group'])->find($estimate->inspection_id)
+            : null;
+
+        if ($inspection) {
+            $gaps = $inspection->pricingGaps();
+            if (! empty($gaps)) {
+                $lines = collect($gaps)
+                    ->map(fn ($g) => $g['label'] . ' — missing: ' . implode(' + ', $g['missing']) . ' price')
+                    ->implode('; ');
+                return back()->withErrors([
+                    'pricing' => 'Hindi pa ma-proceed sa Repair Order — kulang ang mga presyo ng parts/labor: ' . $lines . '.',
+                ])->withInput();
+            }
+        } else {
+            $estimate->loadMissing('items');
+            $itemGaps = $estimate->items->filter(fn ($i) => (float) $i->unit_price <= 0);
+            if ($itemGaps->isNotEmpty()) {
+                $lines = $itemGaps->map(fn ($i) => ($i->item_name ?: ('Item #' . $i->id)))->implode('; ');
+                return back()->withErrors([
+                    'pricing' => 'Hindi pa ma-proceed sa Repair Order — kulang ang parts price ng: ' . $lines . '.',
+                ])->withInput();
+            }
+        }
+
         DB::beginTransaction();
         try {
-            $inspection = $estimate->inspection_id
-                ? VehicleInspection::find($estimate->inspection_id)
-                : null;
-
             $createdNew = false;
 
             if ($inspection) {

@@ -20,6 +20,18 @@
     $statuses = \App\Models\VehicleInspection::REPAIR_STATUSES;
     $alreadyConverted = in_array($estimate->status, ['converted_to_repair_order', 'converted_to_job_order', 'converted'], true);
     $canConvert = ! $alreadyConverted && $estimate->status !== 'rejected';
+
+    // Pricing completeness — block promotion until parts + labor are all priced.
+    if ($inspection) {
+        $pricingGaps = $inspection->pricingGaps();
+    } else {
+        $estimate->loadMissing('items');
+        $pricingGaps = $estimate->items->filter(fn ($i) => (float) $i->unit_price <= 0)->map(fn ($i) => [
+            'label' => $i->item_name ?: ('Item #' . $i->id),
+            'missing' => ['parts'],
+        ])->values()->all();
+    }
+    $pricingOk = empty($pricingGaps);
 @endphp
 
 @if($canConvert)
@@ -39,6 +51,18 @@
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div class="modal-body">
+                        @if(!$pricingOk)
+                            <div class="alert alert-danger border-0 shadow-sm" role="alert">
+                                <div class="fw-bold mb-1"><i class="fas fa-circle-exclamation me-1"></i>Hindi pa pwedeng i-proceed — kulang ang presyo</div>
+                                <div style="font-size:.83rem;">Kumpletuhin muna ang <strong>parts</strong> at <strong>labor</strong> na presyo ng mga sumusunod bago ilipat sa Repair Order:</div>
+                                <ul class="mb-0 mt-1" style="font-size:.83rem;">
+                                    @foreach($pricingGaps as $g)
+                                        <li>{{ $g['label'] }} — <em>kulang: {{ implode(' + ', $g['missing']) }}</em></li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+
                         <p class="text-muted mb-3" style="font-size:.875rem;">
                             Review the details below. Once confirmed, the job moves into the workshop as a
                             <strong>Repair Order</strong>. Payments already recorded stay on the same ledger.
@@ -125,9 +149,15 @@
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-success">
-                            <i class="fas fa-check me-1"></i>Confirm — Move to Repair Order
-                        </button>
+                        @if($pricingOk)
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check me-1"></i>Confirm — Move to Repair Order
+                            </button>
+                        @else
+                            <button type="button" class="btn btn-secondary" disabled title="Kulang ang presyo ng parts/labor">
+                                <i class="fas fa-lock me-1"></i>Kumpletuhin ang presyo muna
+                            </button>
+                        @endif
                     </div>
                 </form>
             </div>

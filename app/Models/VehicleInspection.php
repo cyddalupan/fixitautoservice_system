@@ -453,6 +453,44 @@ class VehicleInspection extends Model
         return $prefix . str_pad((string) $seq, 4, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Findings on this Repair Order that are NOT fully priced (parts and/or labor
+     * still missing). Used to block promotion to a Repair Order until the
+     * quotation amounts are final. "Not Pursued" (declined) items are ignored.
+     *
+     * @return array<int,array{id:int,label:string,missing:array<int,string>}>
+     */
+    public function pricingGaps(): array
+    {
+        $this->loadMissing(['inspectionFindings.group', 'findingGroups']);
+
+        $gaps = [];
+        foreach ($this->inspectionFindings as $f) {
+            if ((bool) $f->is_declined) {
+                continue;
+            }
+
+            $parts = (float) ($f->unit_price ?? 0);
+            $labor = $f->group_id
+                ? (float) optional($f->group)->labor_cost
+                : (float) ($f->estimated_cost ?? 0);
+
+            $missing = [];
+            if ($parts <= 0) { $missing[] = 'parts'; }
+            if ($labor <= 0) { $missing[] = 'labor'; }
+
+            if ($missing) {
+                $gaps[] = [
+                    'id' => (int) $f->id,
+                    'label' => $f->issue_title ?: ($f->part_name ?: ('Finding #' . $f->id)),
+                    'missing' => $missing,
+                ];
+            }
+        }
+
+        return $gaps;
+    }
+
     public function getRepairStatusHexAttribute(): string
     {
         return self::REPAIR_STATUSES[$this->repair_status]['bg'] ?? '#f1f5f9';
