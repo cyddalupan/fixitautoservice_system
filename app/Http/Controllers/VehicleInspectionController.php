@@ -1369,8 +1369,48 @@ class VehicleInspectionController extends Controller
     // FINDINGS CRUD METHODS
     // ========================
 
+    /**
+     * Refuse findings/group mutations on a locked Repair Order (one promoted from
+     * a Repair Quotation, where the amounts are fixed). Returns a response to send
+     * back, or null when the edit is allowed.
+     */
+    private function denyIfFindingsLocked($inspection, Request $request)
+    {
+        if ($inspection && $inspection->isFindingsLocked()) {
+            $msg = 'Naka-lock ang findings — fixed na mula sa Repair Quotation. I-unlock muna para maka-edit.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 423);
+            }
+            return back()->with('error', $msg);
+        }
+        return null;
+    }
+
+    /**
+     * Unlock a Repair Order whose findings were fixed from a Repair Quotation.
+     * Restricted to admins so the approved amounts are not changed by accident.
+     */
+    public function unlockFindings(Request $request, VehicleInspection $inspection)
+    {
+        $role = auth()->user()->role ?? null;
+        if (! in_array($role, ['admin', 'super_admin', 'owner'], true)) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Admin lang ang pwedeng mag-unlock.'], 403);
+            }
+            return back()->with('error', 'Admin lang ang pwedeng mag-unlock ng findings.');
+        }
+
+        $inspection->unlockFindings();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(['success' => true]);
+        }
+        return back()->with('success', 'Na-unlock na ang findings — pwede nang i-edit.');
+    }
+
     public function storeFinding(Request $request, VehicleInspection $inspection)
     {
+        if ($resp = $this->denyIfFindingsLocked($inspection, $request)) { return $resp; }
         $validated = $request->validate([
             'category' => 'required|string|max:100',
             'issue_title' => 'required|string|max:255',
@@ -1404,6 +1444,7 @@ class VehicleInspectionController extends Controller
 
     public function updateFinding(Request $request, InspectionFinding $finding)
     {
+        if ($resp = $this->denyIfFindingsLocked($finding->inspection, $request)) { return $resp; }
         $validated = $request->validate([
             'category' => 'required|string|max:100',
             'issue_title' => 'required|string|max:255',
@@ -1430,6 +1471,7 @@ class VehicleInspectionController extends Controller
 
     public function destroyFinding(Request $request, InspectionFinding $finding)
     {
+        if ($resp = $this->denyIfFindingsLocked($finding->inspection, $request)) { return $resp; }
         $inspectionId = $finding->inspection_id;
         $finding->delete();
 
@@ -1442,6 +1484,7 @@ class VehicleInspectionController extends Controller
 
     public function reorderFindings(Request $request, VehicleInspection $inspection)
     {
+        if ($resp = $this->denyIfFindingsLocked($inspection, $request)) { return $resp; }
         $request->validate([
             'order' => 'required|array',
             'order.*' => 'exists:inspection_findings,id',
@@ -1458,6 +1501,7 @@ class VehicleInspectionController extends Controller
 
     public function bulkAddFindings(Request $request, VehicleInspection $inspection)
     {
+        if ($resp = $this->denyIfFindingsLocked($inspection, $request)) { return $resp; }
         $request->validate([
             'findings' => 'required|array',
             'findings.*.category' => 'required|string|max:100',
@@ -1490,6 +1534,7 @@ class VehicleInspectionController extends Controller
 
     public function storeGroup(Request $request, VehicleInspection $inspection)
     {
+        if ($resp = $this->denyIfFindingsLocked($inspection, $request)) { return $resp; }
         $validated = $request->validate([
             'name' => 'nullable|string|max:150',
             'auto_name' => 'nullable|boolean',
@@ -1512,6 +1557,7 @@ class VehicleInspectionController extends Controller
 
     public function updateGroup(Request $request, InspectionFindingGroup $group)
     {
+        if ($resp = $this->denyIfFindingsLocked($group->inspection, $request)) { return $resp; }
         $validated = $request->validate([
             'name' => 'nullable|string|max:150',
             'auto_name' => 'nullable|boolean',
@@ -1529,6 +1575,7 @@ class VehicleInspectionController extends Controller
 
     public function destroyGroup(Request $request, InspectionFindingGroup $group)
     {
+        if ($resp = $this->denyIfFindingsLocked($group->inspection, $request)) { return $resp; }
         $inspectionId = $group->inspection_id;
         // Detach findings (keep them, just ungroup)
         InspectionFinding::where('group_id', $group->id)->update(['group_id' => null]);
@@ -1546,6 +1593,7 @@ class VehicleInspectionController extends Controller
      */
     public function moveFindingToGroup(Request $request, InspectionFinding $finding)
     {
+        if ($resp = $this->denyIfFindingsLocked($finding->inspection, $request)) { return $resp; }
         $validated = $request->validate([
             'group_id' => 'nullable|exists:inspection_finding_groups,id',
             'sort_order' => 'nullable|integer|min:0',
@@ -1571,6 +1619,7 @@ class VehicleInspectionController extends Controller
      */
     public function declineFinding(Request $request, InspectionFinding $finding)
     {
+        if ($resp = $this->denyIfFindingsLocked($finding->inspection, $request)) { return $resp; }
         $validated = $request->validate([
             'declined' => 'required|boolean',
         ]);
@@ -1596,6 +1645,7 @@ class VehicleInspectionController extends Controller
      */
     public function updateFindingCost(Request $request, InspectionFinding $finding)
     {
+        if ($resp = $this->denyIfFindingsLocked($finding->inspection, $request)) { return $resp; }
         $validated = $request->validate([
             'estimated_cost' => 'nullable|numeric|min:0',
         ]);

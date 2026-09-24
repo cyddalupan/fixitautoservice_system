@@ -545,6 +545,7 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::post('/repair-orders/{inspection}/finding-groups', [VehicleInspectionController::class, 'storeGroup'])->name('inspections.finding-groups.store');
     Route::put('/repair-orders/finding-groups/{group}', [VehicleInspectionController::class, 'updateGroup'])->name('inspections.finding-groups.update');
     Route::delete('/repair-orders/finding-groups/{group}', [VehicleInspectionController::class, 'destroyGroup'])->name('inspections.finding-groups.destroy');
+    Route::post('/repair-orders/{inspection}/unlock-findings', [VehicleInspectionController::class, 'unlockFindings'])->name('inspections.unlock-findings');
 
     // Legacy URL redirects: old /inspections* -> /repair-orders* (kept so bookmarks/links don't 404)
     Route::get('/inspections/{any?}', function (\Illuminate\Http\Request $request, $any = null) {

@@ -34,6 +34,7 @@ class VehicleInspection extends Model
         'repair_status',
         'repair_tags',
         'workshop_released_at',
+        'findings_locked_at',
         'inspection_name',
         'inspection_notes',
         'service_type',
@@ -87,6 +88,7 @@ class VehicleInspection extends Model
         'repair_tags' => 'array',
         'date_received' => 'date',
         'workshop_released_at' => 'datetime',
+        'findings_locked_at' => 'datetime',
         'photos' => 'array',
         'videos' => 'array',
         'documents' => 'array',
@@ -437,6 +439,29 @@ class VehicleInspection extends Model
     {
         return $this->reference_number
             ?: 'RO-' . str_pad((string) $this->id, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * True when this Repair Order's findings/prices are fixed (promoted from a
+     * Repair Quotation) and must not be edited.
+     */
+    public function isFindingsLocked(): bool
+    {
+        return $this->findings_locked_at !== null;
+    }
+
+    public function lockFindings(): void
+    {
+        if ($this->findings_locked_at === null) {
+            $this->forceFill(['findings_locked_at' => now()])->save();
+        }
+    }
+
+    public function unlockFindings(): void
+    {
+        if ($this->findings_locked_at !== null) {
+            $this->forceFill(['findings_locked_at' => null])->save();
+        }
     }
 
     /**

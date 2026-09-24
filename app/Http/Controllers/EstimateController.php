@@ -922,6 +922,8 @@ class EstimateController extends Controller
                     'customer_approved' => 1,
                     'customer_approved_at' => $inspection->customer_approved_at ?: now(),
                     'workshop_released_at' => null,
+                    // Fixed from the quotation — lock the findings board.
+                    'findings_locked_at' => now(),
                 ], fn ($v) => $v !== null));
             } else {
                 // Case B — build a Repair Order from the quotation itself.
@@ -936,6 +938,8 @@ class EstimateController extends Controller
                     'inspection_status' => 'in_progress',
                     'repair_status' => $repairStatus,
                     'source' => 'quotation',
+                    // Fixed from the quotation — lock the findings board.
+                    'findings_locked_at' => now(),
                     'inspection_name' => 'Repair Order for ' . ($estimate->customer->full_name ?? 'Customer'),
                     'customer_concerns' => $estimate->getRawOriginal('customer_notes') ?: $estimate->notes,
                     'inspection_started_at' => now(),
