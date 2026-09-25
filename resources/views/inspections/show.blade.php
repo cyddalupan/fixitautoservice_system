@@ -33,9 +33,21 @@
                 <i class="fas fa-print me-1"></i>Print Repair Quotation
             </a>
             @if(isset($inspection->estimate) && $inspection->estimate)
-                <a href="{{ route('estimates.edit', $inspection->estimate) }}" class="btn btn-success" title="Open the linked Repair Quotation">
+                <a href="{{ route('estimates.edit', $inspection->estimate) }}" class="btn btn-outline-success" title="Open the linked Repair Quotation">
                     <i class="fas fa-file-invoice-dollar me-1"></i>View Repair Quotation
                 </a>
+                @php
+                    // Findings discovered during the repair (added AFTER the quotation was
+                    // locked). These are the only ones a fresh Repair Quotation should carry.
+                    $newFindingsCount = $inspection->inspectionFindings
+                        ->filter(fn ($f) => ! $f->is_declined && ! $inspection->findingIsLocked($f))
+                        ->count();
+                @endphp
+                @if($newFindingsCount > 0)
+                <a href="{{ route('estimates.create', ['customer_id' => $inspection->customer_id, 'vehicle_id' => $inspection->vehicle_id, 'inspection_id' => $inspection->id, 'new_only' => 1]) }}" class="btn btn-success" title="Create a NEW Repair Quotation for the findings discovered during the repair">
+                    <i class="fas fa-plus me-1"></i>New Repair Quotation ({{ $newFindingsCount }})
+                </a>
+                @endif
             @else
                 <a href="{{ route('estimates.create', ['customer_id' => $inspection->customer_id, 'vehicle_id' => $inspection->vehicle_id, 'inspection_id' => $inspection->id]) }}" class="btn btn-success" title="Create a Repair Quotation from this Repair Order's findings">
                     <i class="fas fa-file-invoice-dollar me-1"></i>Create Repair Quotation

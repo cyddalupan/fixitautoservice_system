@@ -141,6 +141,16 @@ class EstimateController extends Controller
                     $selectedVehicle = Vehicle::find($prefillInspection->vehicle_id);
                 }
                 $inspectionFindings = $prefillInspection->inspectionFindings;
+
+                // Re-quoting an RO that was promoted from an APPROVED quotation: only
+                // the during-repair findings are new. `new_only=1` (the "New Repair
+                // Quotation" button) keeps just those — the already-approved lines stay
+                // on the original quotation and must not be re-quoted.
+                if ($request->boolean('new_only')) {
+                    $inspectionFindings = $inspectionFindings
+                        ->filter(fn ($f) => ! $f->is_declined && ! $prefillInspection->findingIsLocked($f))
+                        ->values();
+                }
             }
         }
 
