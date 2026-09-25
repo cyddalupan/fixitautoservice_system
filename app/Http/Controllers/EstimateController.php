@@ -915,6 +915,11 @@ class EstimateController extends Controller
             }
         }
 
+        // The RO's own intake lines (Job Description + Parts/Supplies) — this is
+        // what `repair_total` and the printed slip read, so the promoted RO must
+        // carry them or it would show ₱0 (and a bogus ₱0 balance).
+        [$jdItems, $partsItems] = $this->repairLinesFromQuotation($estimate, $linkedInspection);
+
         DB::beginTransaction();
         try {
             // Always a NEW Repair Order — never re-activate the old one.
@@ -935,6 +940,10 @@ class EstimateController extends Controller
                 'customer_concerns' => $estimate->getRawOriginal('customer_notes') ?: $estimate->notes,
                 'inspection_started_at' => now(),
                 'date_received' => now()->toDateString(),
+                // The RO's own intake lines (Job Description labor + Parts) so the
+                // Repair Order price/balance/slip match the approved quotation.
+                'job_description_items' => $jdItems,
+                'parts_items' => $partsItems,
                 // Fresh intake: the odometer is re-read on arrival (the client is
                 // coming back with a higher reading), so start it at zero.
                 'vehicle_mileage' => 0,
@@ -1081,6 +1090,83 @@ class EstimateController extends Controller
             'total_amount' => $grandTotal,
             'balance_remaining' => max(0, $grandTotal - (float) $estimate->deposit_required),
         ]);
+    }
+
+    /**
+     * Build the Job Description + Parts/Supplies rows for the Repair Order that
+     * a quotation is promoted into. A linked quotation is priced from its RO's
+     * findings + shared labor groups; a standalone quotation from its own items.
+     *
+     * @return array{0: array<int, array<string, mixed>>, 1: array<int, array<string, mixed>>}
+     */
+    protected function repairLinesFromQuotation(Estimate $estimate, ?VehicleInspection $linked): array
+    {
+        $jd = [];
+        $parts = [];
+
+        if ($linked) {
+            foreach ($linked->findingGroups as $g) {
+                $jd[] = [
+                    'description' => $g->name ?: 'Labor',
+                    'mh' => null,
+                    'unit_price' => null,
+                    'labor_cost' => (float) $g->labor_cost,
+                ];
+            }
+
+            foreach ($linked->inspectionFindings as $f) {
+                if ((bool) $f->is_declined) {
+                    continue;
+                }
+
+                $qty = (float) ($f->quantity ?: 0);
+                $unit = (float) ($f->unit_price ?? 0);
+
+                // Per-item labor of an ungrouped finding.
+                if (! $f->group_id && (float) $f->estimated_cost > 0) {
+                    $jd[] = [
+                        'description' => $f->issue_title ?: ($f->part_name ?: 'Labor'),
+                        'mh' => null,
+                        'unit_price' => null,
+                        'labor_cost' => (float) $f->estimated_cost,
+                    ];
+                }
+
+                if ($qty > 0 && $unit > 0) {
+                    $parts[] = [
+                        'description' => $f->part_name ?: ($f->issue_title ?: 'Part'),
+                        'qty' => $qty,
+                        'unit_price' => $unit,
+                        'cost' => $qty * $unit,
+                    ];
+                }
+            }
+
+            return [$jd, $parts];
+        }
+
+        $estimate->loadMissing('items');
+        foreach ($estimate->items as $it) {
+            $qty = (float) ($it->quantity ?: 1);
+            $unit = (float) ($it->unit_price ?? 0);
+            if (in_array($it->category, ['parts', 'materials'], true)) {
+                $parts[] = [
+                    'description' => $it->item_name ?: 'Part',
+                    'qty' => $qty,
+                    'unit_price' => $unit,
+                    'cost' => $qty * $unit,
+                ];
+            } else {
+                $jd[] = [
+                    'description' => $it->item_name ?: ($it->description ?: 'Labor'),
+                    'mh' => null,
+                    'unit_price' => $unit,
+                    'labor_cost' => $qty * $unit,
+                ];
+            }
+        }
+
+        return [$jd, $parts];
     }
 
     /**
