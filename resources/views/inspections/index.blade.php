@@ -493,9 +493,11 @@
                                     </span>
                                 </td>
                                 <td>
-                                    @php $labor = $inspection->repair_labor_total; $total = $inspection->repair_total; @endphp
-                                    @if($total > 0 || $labor > 0)
+                                    @php $labor = $inspection->repair_labor_total; $parts = $inspection->repair_parts_total; $total = $inspection->repair_total; @endphp
+                                    @if($total > 0 || $labor > 0 || $parts > 0)
                                         <span class="ro-price">{{ $inspection->repair_total_formatted }}</span>
+                                        <br>
+                                        <small style="color:#64748b;font-size:0.75rem;"><i class="fas fa-cog me-1"></i>Parts: {{ $inspection->repair_parts_total_formatted }}</small>
                                         <br>
                                         <small style="color:#64748b;font-size:0.75rem;"><i class="fas fa-wrench me-1"></i>Labor: {{ $inspection->repair_labor_total_formatted }}</small>
                                     @else

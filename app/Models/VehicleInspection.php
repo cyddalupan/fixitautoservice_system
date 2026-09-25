@@ -650,6 +650,11 @@ class VehicleInspection extends Model
         return '₱' . number_format($this->repair_labor_total, 2);
     }
 
+    public function getRepairPartsTotalFormattedAttribute(): string
+    {
+        return '₱' . number_format($this->repair_parts_total, 2);
+    }
+
     public function getTypeLabelAttribute(): string
     {
         // Handle array of inspection types
