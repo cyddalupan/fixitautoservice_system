@@ -98,12 +98,18 @@
                     <div class="form-section-header no-collapse">
                         <h6>
                             <i class="fas fa-file-invoice-dollar"></i>Quotation Items
-                            <span class="badge bg-secondary ms-2">{{ $inspection->inspectionFindings->count() }} item(s)</span>
+                            <span class="badge bg-secondary ms-2">{{ $estimate->quotedFindings()->count() }} item(s)</span>
                         </h6>
                     </div>
                     <div class="form-section-body">
-                        {{-- quotationMode=true: no "add" bar, no finding details edit, no delete. Only pricing + labor. --}}
-                        @include('inspections.partials.findings-board', ['quotationMode' => true])
+                        {{-- quotationMode=true: no "add" bar, no finding details edit, no delete. Only pricing + labor.
+                             findingScope: show only the findings THIS quotation prices — a re-quote created after
+                             the RO was locked (during repair) shows the new findings, not the original quotation's. --}}
+                        @include('inspections.partials.findings-board', [
+                            'quotationMode' => true,
+                            'findingsLocked' => $inspection->isFindingsLocked(),
+                            'findingScope' => $estimate->quotationFindingScope(),
+                        ])
                     </div>
                 </div>
             </div>

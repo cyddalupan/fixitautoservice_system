@@ -217,6 +217,59 @@ public function serviceAdvisor(): BelongsTo
     }
 
     /**
+     * Which slice of the linked Repair Order's findings THIS quotation is pricing:
+     * 'locked' | 'unlocked' | 'all'.
+     *
+     * A Repair Order can carry two sets of findings:
+     *   - the approved items that came from the ORIGINAL Repair Quotation (frozen
+     *     when the RO got promoted — this is the RO's "From Quotation" tab), and
+     *   - items discovered DURING the repair (added after the lock).
+     *
+     * A quotation created before/at the lock prices the approved set. A quotation
+     * created afterwards (e.g. the "New Repair Quotation" re-quote button) prices
+     * only the during-repair set — otherwise it would wrongly repeat the old
+     * quotation's items/amount.
+     */
+    public function quotationFindingScope(): string
+    {
+        $inspection = $this->linkedInspection();
+        if (! $inspection || $inspection->findings_locked_at === null) {
+            return 'all';
+        }
+
+        $createdAfterLock = $this->created_at && $this->created_at->gt($inspection->findings_locked_at);
+
+        return $createdAfterLock ? 'unlocked' : 'locked';
+    }
+
+    /**
+     * The findings this quotation actually quotes (see quotationFindingScope()).
+     * Empty when there is no linked Repair Order.
+     *
+     * @return \Illuminate\Support\Collection<int, \App\Models\InspectionFinding>
+     */
+    public function quotedFindings(): \Illuminate\Support\Collection
+    {
+        $inspection = $this->linkedInspection();
+        if (! $inspection) {
+            return collect();
+        }
+
+        $scope = $this->quotationFindingScope();
+        if ($scope === 'all') {
+            return collect($inspection->inspectionFindings)->values();
+        }
+
+        return collect($inspection->inspectionFindings)
+            ->filter(function ($f) use ($inspection, $scope) {
+                $locked = $inspection->findingIsLocked($f);
+
+                return $scope === 'locked' ? $locked : ! $locked;
+            })
+            ->values();
+    }
+
+    /**
      * Quotation amount — PARTS side.
      *
      * A Repair Quotation is priced from the linked Repair Order's findings, so the
@@ -228,7 +281,7 @@ public function serviceAdvisor(): BelongsTo
     {
         $inspection = $this->linkedInspection();
         if ($inspection) {
-            return (float) collect($inspection->inspectionFindings)
+            return (float) $this->quotedFindings()
                 ->filter(fn ($f) => ! (bool) $f->is_declined)
                 ->sum(fn ($f) => (float) $f->quantity * (float) ($f->unit_price ?? 0));
         }
@@ -240,20 +293,25 @@ public function serviceAdvisor(): BelongsTo
      * Quotation amount — LABOR side.
      *
      * Labor = the shared labor of each finding group + the per-item labor of any
-     * ungrouped finding (estimated_cost). "Not Pursued" items are excluded, as are
-     * the groups' labor when there are no pursued items? No — group labor always
-     * counts (the group is part of the quotation). Falls back to labor_total when
-     * there is no linked Repair Order.
+     * ungrouped finding (estimated_cost). "Not Pursued" items are excluded. Group
+     * labor counts only for the groups that actually hold a quoted finding, so a
+     * during-repair re-quote never inherits the old quotation's labor. Falls back to
+     * labor_total when there is no linked Repair Order.
      */
     public function getQuotationLaborTotalAttribute(): float
     {
         $inspection = $this->linkedInspection();
         if ($inspection) {
-            $ungroupedLabor = (float) collect($inspection->inspectionFindings)
+            $quoted = $this->quotedFindings();
+
+            $ungroupedLabor = (float) $quoted
                 ->filter(fn ($f) => ! (bool) $f->is_declined && $f->group_id === null)
                 ->sum(fn ($f) => (float) ($f->estimated_cost ?? 0));
 
-            $groupLabor = (float) collect($inspection->findingGroups)->sum('labor_cost');
+            $quotedGroupIds = $quoted->pluck('group_id')->filter()->unique()->values();
+            $groupLabor = (float) collect($inspection->findingGroups)
+                ->whereIn('id', $quotedGroupIds)
+                ->sum('labor_cost');
 
             return $ungroupedLabor + $groupLabor;
         }

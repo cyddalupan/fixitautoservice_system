@@ -7,6 +7,19 @@
     // Locked RO (promoted from an approved Repair Quotation): the approved findings are frozen,
     // but the shop may still ADD a new finding discovered during the repair.
     $findingsLocked = $findingsLocked ?? false;
+    // Which findings this board shows: 'all' | 'locked' | 'unlocked'.
+    // Default follows the lock behaviour (on a locked RO, the Findings tab shows only
+    // the during-repair items). The Repair Quotation page passes an explicit scope so a
+    // during-repair re-quote shows only ITS findings, not the original quotation's.
+    $findingScope = $findingScope ?? ($findingsLocked ? 'unlocked' : 'all');
+    $findingInScope = function ($f) use ($findingScope, $inspection) {
+        if ($findingScope === 'all') {
+            return true;
+        }
+        $locked = $inspection->findingIsLocked($f);
+
+        return $findingScope === 'locked' ? $locked : ! $locked;
+    };
 @endphp
 @if($findingsLocked)
 <div class="alert d-flex flex-wrap align-items-center gap-2 mb-3" style="background:#eff6ff;border:1px solid #93c5fd;color:#1e40af;">
@@ -90,7 +103,7 @@
                 {{-- "Not Pursued" zone: items the customer did NOT push through with.
                      Placed at the TOP of the board. Dragging a card here separates it from the
                      quotation (excluded from totals). --}}
-                @php $declinedFindings = $inspection->inspectionFindings->where('is_declined', true); @endphp
+                @php $declinedFindings = $inspection->inspectionFindings->where('is_declined', true)->filter($findingInScope); @endphp
                 <div class="finding-group mb-3 declined-zone" data-declined="1">
                     <div class="finding-group-head d-flex flex-wrap align-items-center gap-2 px-3 py-2"
                          style="background:#fef2f2;border:1px dashed #fca5a5;border-bottom:none;border-radius:10px 10px 0 0;color:#991b1b;">
@@ -123,15 +136,9 @@
                          style="border:1px dashed #cbd5e1;border-top:none;border-radius:0 0 10px 10px;min-height:56px;background:#fff;">
                         <div class="finding-headrow"><span></span><span>Category</span><span>Parts</span><span>Remarks</span><span class="text-center">Urgency</span><span class="text-center">Qty</span><span class="text-end">Price</span><span class="text-end">Total</span><span></span></div>
                         @php
-                            $allFindings = $inspection->inspectionFindings;
-                            if ($findingsLocked) {
-                                // Locked RO: this tab holds ONLY findings added after the lock
-                                // (discovered during the repair). Approved ones live in the
-                                // "From Quotation" tab.
-                                $allFindings = $allFindings->filter(function ($f) use ($inspection) {
-                                    return ! $inspection->findingIsLocked($f);
-                                });
-                            }
+                            // On a locked RO the approved items live in the "From Quotation" tab,
+                            // so the board holds only the findings within this page's scope.
+                            $allFindings = $inspection->inspectionFindings->filter($findingInScope);
                             $ungrouped = $allFindings->whereNull('group_id')->where('is_declined', false);
                         @endphp
                         @forelse($ungrouped as $finding)
@@ -147,12 +154,14 @@
                 @php
                     // An "approved" group holds findings fixed from the Repair Quotation;
                     // those belong in the From Quotation tab, not on the Findings board.
-                    // On a locked RO we show only groups of NEW findings (during repair).
-                    $groupLocked = $findingsLocked && $group->findings->contains(function ($f) use ($inspection) {
+                    // Skip it there — unless this page explicitly scopes to the locked
+                    // findings (the Repair Quotation edit page), where they ARE the items.
+                    $groupLocked = $findingsLocked && $findingScope !== 'locked' && $group->findings->contains(function ($f) use ($inspection) {
                         return $inspection->findingIsLocked($f);
                     });
+                    $groupFindings = $group->findings->where('is_declined', false)->filter($findingInScope);
                 @endphp
-                @continue($groupLocked)
+                @continue($groupLocked || $groupFindings->isEmpty())
                 <div class="finding-group mb-3" data-group-id="{{ $group->id }}" data-auto-name="{{ $group->auto_name ? '1' : '0' }}" data-labor-cost="{{ (float) $group->labor_cost }}">
                     <div class="finding-group-head d-flex flex-wrap align-items-center gap-2 px-3 py-2"
                          style="background:linear-gradient(135deg,#1a237e,#283593);color:#fff;border-radius:10px 10px 0 0;">
@@ -183,7 +192,6 @@
                     <div class="finding-dropzone p-2" data-group-id="{{ $group->id }}"
                          style="border:1px solid #dbe3f0;border-top:none;border-radius:0 0 10px 10px;min-height:56px;background:#fff;">
                         <div class="finding-headrow"><span></span><span>Category</span><span>Parts</span><span>Remarks</span><span class="text-center">Urgency</span><span class="text-center">Qty</span><span class="text-end">Price</span><span class="text-end">Total</span><span></span></div>
-                        @php $groupFindings = $group->findings->where('is_declined', false); @endphp
                         @forelse($groupFindings as $finding)
                             @php $cardLocked = $findingsLocked && $inspection->findingIsLocked($finding); @endphp
                             @include('inspections.partials.finding-card', ['finding' => $finding, 'quotationMode' => $quotationMode, 'locked' => $cardLocked])
