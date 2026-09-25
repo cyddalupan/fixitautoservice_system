@@ -19,6 +19,12 @@
         $vehicleDesc = trim($vehicleDesc . ' ' . $vehicle->year);
     }
 
+    // Odometer: the Repair Order's own reading (like the RO overview / RO slip). Falls back to
+    // "N/A" when the RO never captured a mileage — do NOT show the vehicle master's possibly
+    // stale odometer.
+    $mileage = $inspection->vehicle_mileage ?? null;
+    $odometer = ($mileage !== null && (float) $mileage > 0) ? number_format((float) $mileage) : 'N/A';
+
     $estimate = $estimate ?? null;
 
     $findings = ($inspection->inspectionFindings ?? collect())->where('is_declined', false); // ordered by sort_order; "Not Pursued" items are separated out
@@ -192,7 +198,7 @@
             <td class="lbl">Address</td>
             <td colspan="3">{{ $customer->address ?? '' }}</td>
             <td class="lbl">Odometer</td>
-            <td>{{ $vehicle->odometer ?? '' }}</td>
+            <td>{{ $odometer }}</td>
         </tr>
         <tr>
             <td class="lbl">Vehicle</td>
