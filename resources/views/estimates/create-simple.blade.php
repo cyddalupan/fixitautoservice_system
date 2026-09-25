@@ -147,7 +147,7 @@
                             </label>
                             <select class="form-select @error('status') is-invalid @enderror" 
                                     id="status" name="status">
-                                <option value="draft" @if(old('status') == 'draft') selected @endif>Draft</option>
+                                <option value="draft" @if(old('status') == 'draft') selected @endif>Supplier Quotation</option>
                                 <option value="pending" @if(old('status') == 'sent') selected @endif>Sent to Customer</option>
                                 <option value="accepted" @if(old('status') == 'accepted') selected @endif>Accepted</option>
                                 <option value="rejected" @if(old('status') == 'rejected') selected @endif>Rejected</option>

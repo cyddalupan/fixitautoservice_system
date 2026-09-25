@@ -318,7 +318,7 @@ Parts Warranty: As per manufacturer</textarea>
                         <div class="tr td"></div>
                         <div class="tr gt"><span class="tl">Grand Total</span><span class="tv" id="tGrand">&#8369;0.00</span></div>
                         <hr>
-                        <div class="tr"><span class="tl">Status</span><select name="status" id="statusDD" class="form-select form-select-sm" style="width:auto;display:inline-block;font-size:.75rem"><option value="draft">Draft</option><option value="pending">Pending</option><option value="approved">Approved</option></select></div>
+                        <div class="tr"><span class="tl">Status</span><select name="status" id="statusDD" class="form-select form-select-sm" style="width:auto;display:inline-block;font-size:.75rem"><option value="draft">Supplier Quotation</option><option value="pending">Pending</option><option value="approved">Approved</option></select></div>
                         <hr>
                         <div class="tr"><span class="tl">Deposit</span><span class="tv text-warning" id="tDep">&#8369;0.00</span></div>
                         <input type="number" name="deposit_required" id="dep_req" class="form-control form-control-sm mb-2" min="0" step="0.01" value="0" placeholder="Deposit amount" oninput="recalc()">

@@ -187,7 +187,7 @@
                 <label class="form-label">Status</label>
                 <select name="status" class="form-select">
                     <option value="">All Status</option>
-                    <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Draft</option>
+                    <option value="draft" {{ request('status') == 'draft' ? 'selected' : '' }}>Supplier Quotation</option>
                     <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending</option>
                     <option value="sent" {{ request('status') == 'sent' ? 'selected' : '' }}>Sent</option>
                     <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>

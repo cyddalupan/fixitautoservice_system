@@ -140,7 +140,7 @@ body{background:var(--ebg)}
             <div class="col-md-6 text-md-end">
                 <span class="status-badge status-{{ $estimate->status }} no-print">
                     @switch($estimate->status)
-                        @case('draft') <i class="fas fa-pen"></i> Draft @break
+                        @case('draft') <i class="fas fa-pen"></i> Supplier Quotation @break
                         @case('pending') <i class="fas fa-clock"></i> Pending @break
                         @case('sent') <i class="fas fa-paper-plane"></i> Sent @break
                         @case('viewed') <i class="fas fa-eye"></i> Viewed @break

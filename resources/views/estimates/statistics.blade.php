@@ -121,7 +121,7 @@
                     <div class="mt-4 text-center small">
                         @foreach($statusBreakdown as $status => $count)
                             <span class="mr-2">
-                                <i class="fas fa-circle" style="color: {{ getStatusColor($status) }}"></i> {{ ucfirst($status) }} ({{ $count }})
+                                <i class="fas fa-circle" style="color: {{ getStatusColor($status) }}"></i> {{ \App\Models\Estimate::STATUSES[$status] ?? ucfirst($status) }} ({{ $count }})
                             </span>
                         @endforeach
                     </div>

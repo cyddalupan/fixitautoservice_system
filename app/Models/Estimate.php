@@ -140,7 +140,7 @@ public function serviceAdvisor(): BelongsTo
     // ── Status Helpers ──
 
     public const STATUSES = [
-        'draft'               => 'Draft',
+        'draft'               => 'Supplier Quotation',
         'sent'                => 'Sent',
         'viewed'              => 'Viewed',
         'waiting_approval'    => 'Waiting Approval',
