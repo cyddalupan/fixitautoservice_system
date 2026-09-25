@@ -49,9 +49,25 @@
                 </a>
                 @endif
             @else
-                <a href="{{ route('estimates.create', ['customer_id' => $inspection->customer_id, 'vehicle_id' => $inspection->vehicle_id, 'inspection_id' => $inspection->id]) }}" class="btn btn-success" title="Create a Repair Quotation from this Repair Order's findings">
-                    <i class="fas fa-file-invoice-dollar me-1"></i>Create Repair Quotation
-                </a>
+                @php
+                    // Findings shown on the Findings tab (declined items excluded).
+                    // A fresh Repair Quotation only makes sense once something was
+                    // actually found, so the button stays disabled while it is empty.
+                    $roFindingsCount = $inspection->inspectionFindings
+                        ->where('is_declined', false)
+                        ->count();
+                @endphp
+                @if($roFindingsCount > 0)
+                    <a href="{{ route('estimates.create', ['customer_id' => $inspection->customer_id, 'vehicle_id' => $inspection->vehicle_id, 'inspection_id' => $inspection->id]) }}" class="btn btn-success" title="Create a Repair Quotation from this Repair Order's findings">
+                        <i class="fas fa-file-invoice-dollar me-1"></i>Create Repair Quotation
+                    </a>
+                @else
+                    <button type="button" class="btn btn-success" disabled
+                            title="Wala pang findings. Magdagdag muna sa Findings tab bago gumawa ng Repair Quotation."
+                            style="cursor:not-allowed;opacity:.55;">
+                        <i class="fas fa-file-invoice-dollar me-1"></i>Create Repair Quotation
+                    </button>
+                @endif
             @endif
             <a href="{{ route('inspections.edit', $inspection) }}" class="btn btn-primary">
                 <i class="fas fa-edit me-1"></i>Edit
