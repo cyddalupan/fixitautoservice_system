@@ -45,32 +45,41 @@ class TransactionHistoryService
         }
 
         // --- Inspections ---
+        // Match the RO by its OWN customer_id OR by a vehicle the customer owns,
+        // so every Repair Order attached to the customer shows in their record —
+        // including quotation-derived ROs, whose vehicle may belong to another
+        // customer record (the RO still carries this customer_id).
         $vehicles = DB::table('vehicles')->where('customer_id', $customerId)->pluck('id');
+        $inspections = DB::table('vehicle_inspections')
+            ->where(function ($q) use ($customerId, $vehicles) {
+                $q->where('customer_id', $customerId);
+                if ($vehicles->isNotEmpty()) {
+                    $q->orWhereIn('vehicle_id', $vehicles);
+                }
+            })
+            ->select(
+                DB::raw("'inspection' as type"),
+                'id',
+                'service_type',
+                'inspection_status as status',
+                'customer_concerns as description',
+                'vehicle_id',
+                'created_at',
+                'updated_at',
+                DB::raw("NULL as total_amount"),
+                DB::raw("NULL as archived_at")
+            )
+            ->get();
+
+        foreach ($inspections as $i) {
+            $vehicle = DB::table('vehicles')->find($i->vehicle_id);
+            $i->vehicle_label = $vehicle ? "{$vehicle->make} {$vehicle->model}" : "Vehicle #{$i->vehicle_id}";
+            $i->url = route('inspections.show', $i->id, false);
+            $i->ref_number = 'INS-' . str_pad($i->id, 5, '0', STR_PAD_LEFT);
+            $transactions[] = $i;
+        }
+
         if ($vehicles->isNotEmpty()) {
-            $inspections = DB::table('vehicle_inspections')
-                ->whereIn('vehicle_id', $vehicles)
-                ->select(
-                    DB::raw("'inspection' as type"),
-                    'id',
-                    'service_type',
-                    'inspection_status as status',
-                    'customer_concerns as description',
-                    'vehicle_id',
-                    'created_at',
-                    'updated_at',
-                    DB::raw("NULL as total_amount"),
-                    DB::raw("NULL as archived_at")
-                )
-                ->get();
-
-            foreach ($inspections as $i) {
-                $vehicle = DB::table('vehicles')->find($i->vehicle_id);
-                $i->vehicle_label = $vehicle ? "{$vehicle->make} {$vehicle->model}" : "Vehicle #{$i->vehicle_id}";
-                $i->url = route('inspections.show', $i->id, false);
-                $i->ref_number = 'INS-' . str_pad($i->id, 5, '0', STR_PAD_LEFT);
-                $transactions[] = $i;
-            }
-
             // --- Archived Inspections ---
             // Try direct customer_id match first
             $archives = DB::table('archives')
