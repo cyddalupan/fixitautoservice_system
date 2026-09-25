@@ -1270,43 +1270,46 @@ class EstimateController extends Controller
     {
         $estimate->load(['customer', 'vehicle', 'items', 'inspection.inspectionFindings']);
 
-        $findings = optional($estimate->inspection)->inspectionFindings ?? collect();
+        $ordered = []; // CATEGORY => ['label' => CATEGORY, 'items' => [part, part, ...]]
 
-        // Index the RO findings by their issue_title so we can recover the repair
-        // category (AIRCON, SUSPENSION, ...) for each quotation item. Items are
-        // built from findings as "<issue_title> (<remarks>)", so strip the trailing
-        // parenthetical before matching.
-        $byTitle = [];
-        foreach ($findings as $f) {
-            $byTitle[strtoupper(trim((string) $f->issue_title))] = $f;
-        }
+        // The Repair Quotation is priced live off the linked Repair Order's
+        // findings, so the supplier list must read those same findings — NOT the
+        // stored `estimate_items` snapshot (which is frozen at creation time and
+        // would miss parts added to the RO afterwards).
+        $findings = $estimate->quotedFindings()
+            ->filter(fn ($f) => ! $f->is_declined)
+            ->values();
 
-        $ordered = []; // category (original case) => ['label' => CATEGORY, 'items' => [...]]
-        foreach ($estimate->items->sortBy('sort_order') as $item) {
-            $name = $item->item_name ?: $item->description;
-            if ($name === null || $name === '') {
-                continue;
+        if ($findings->isNotEmpty()) {
+            foreach ($findings as $f) {
+                $name = trim((string) ($f->issue_title ?: $f->part_name));
+                if ($name === '') {
+                    continue;
+                }
+                $category = trim((string) $f->category) ?: 'OTHERS';
+                $key = strtoupper($category);
+                if (!isset($ordered[$key])) {
+                    $ordered[$key] = ['label' => $key, 'items' => []];
+                }
+                // Parts only — findings carry the remark (LEAK/DAMAGE) in a
+                // separate column, so `issue_title` is already clean.
+                $ordered[$key]['items'][] = $name;
             }
-
-            $base = trim(preg_replace('/\s*\(.*\)\s*$/', '', $name));
-            if ($base === '') {
-                $base = trim($name);
+        } else {
+            // Quotation not linked to a Repair Order — fall back to the stored
+            // line items, grouped by their own category enum.
+            foreach ($estimate->items->sortBy('sort_order') as $item) {
+                $name = trim((string) ($item->item_name ?: $item->description));
+                if ($name === '') {
+                    continue;
+                }
+                $name = trim(preg_replace('/\s*\(.*\)\s*$/', '', $name)) ?: $name;
+                $key = strtoupper(ucfirst($item->category ?: 'Others'));
+                if (!isset($ordered[$key])) {
+                    $ordered[$key] = ['label' => $key, 'items' => []];
+                }
+                $ordered[$key]['items'][] = $name;
             }
-            $finding = $byTitle[strtoupper(trim((string) $base))] ?? null;
-
-            // Prefer the repair category from the finding; fall back to the item's
-            // own category enum (Parts / Labor / ...).
-            $category = $finding->category ?? null;
-            if (!$category) {
-                $category = ucfirst($item->category ?: 'Others');
-            }
-
-            $key = strtoupper(trim($category));
-            if (!isset($ordered[$key])) {
-                $ordered[$key] = ['label' => $key, 'items' => []];
-            }
-            // Parts only — drop the trailing remark (LEAK, DAMAGE, TENTATIVE, ...).
-            $ordered[$key]['items'][] = $base;
         }
 
         return view('estimates.supplier-quotation', compact('estimate', 'ordered'));

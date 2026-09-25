@@ -67,9 +67,9 @@
             ? strtoupper(trim(implode(' ', array_filter([$vehicle->make, $vehicle->model, $vehicle->year, $vehicle->fuel_type]))))
             : '';
         $lines = [];
-        $lines[] = ($estimate->customer->name ?? '') . ' - Name';
-        $lines[] = $vehicleInfo . ' - Vehicle Information';
-        $lines[] = ($vehicle->vin ?? '') . ' - Vin number';
+        $lines[] = ($estimate->customer->name ?? '');
+        $lines[] = $vehicleInfo;
+        $lines[] = ($vehicle->vin ?? '');
         $lines[] = '';
         foreach ($ordered as $group) {
             $lines[] = $group['label'];
