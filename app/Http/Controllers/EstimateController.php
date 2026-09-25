@@ -921,6 +921,9 @@ class EstimateController extends Controller
                 'customer_concerns' => $estimate->getRawOriginal('customer_notes') ?: $estimate->notes,
                 'inspection_started_at' => now(),
                 'date_received' => now()->toDateString(),
+                // Fresh intake: the odometer is re-read on arrival (the client is
+                // coming back with a higher reading), so start it at zero.
+                'vehicle_mileage' => 0,
                 'created_by' => auth()->id(),
                 'requires_customer_approval' => 1,
                 'customer_approved' => 1,

@@ -259,7 +259,18 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Odometer</label>
-                                <input type="text" class="form-control" name="odometer" value="{{ old('odometer', $inspection->vehicle->odometer ?? '') }}">
+                                {{-- ROs promoted from a quotation are a fresh intake: the client is
+                                     coming back with a higher reading, so start the odometer at zero
+                                     (blank) and let the user enter the current reading. --}}
+                                @if($inspection->is_from_quotation)
+                                    <input type="text" class="form-control" name="odometer"
+                                           value="{{ old('odometer', '') }}" placeholder="0" inputmode="numeric">
+                                    <small style="color:#dc2626;font-size:.72rem;">
+                                        <i class="fas fa-rotate-left me-1"></i>Na-reset sa zero — i-type ang bagong odometer reading.
+                                    </small>
+                                @else
+                                    <input type="text" class="form-control" name="odometer" value="{{ old('odometer', $inspection->vehicle->odometer ?? '') }}">
+                                @endif
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Color</label>
