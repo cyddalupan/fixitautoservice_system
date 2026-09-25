@@ -1324,6 +1324,13 @@ function initVehicleSelector() {
     
     // If customer is already selected, load vehicles
     var initialCustomer = $customerSelect.val() || $customerSelect.data('selected');
+    // Remember the customer the server prefilled alongside a specific vehicle.
+    // A page opened from a Repair Order may prefill a vehicle that belongs to a
+    // *different* customer, so the AJAX list for this customer won't contain it;
+    // loadVehicles re-injects it for this customer only so the selection sticks.
+    if (initialCustomer && $vehicleSelect.data('selected')) {
+        $vehicleSelect.data('keepForCustomer', String(initialCustomer));
+    }
     if (initialCustomer) {
         loadVehicles(initialCustomer, $vehicleSelect);
     }
@@ -1476,18 +1483,28 @@ function loadVehicles(customerId, $select) {
     }
     
     var selectedVehicle = $select.data('selected');
-    var prevVal = selectedVehicle || $select.data('initial');
+    var prevVal = selectedVehicle || $select.data('initial') || $select.val();
+    // Snapshot the currently-selected option so a prefilled vehicle survives the
+    // rebuild below even when the AJAX list (customer's own vehicles) omits it.
+    var keepHtml = null;
+    if (prevVal) {
+        var $keep = $select.find('option').filter(function() { return String(this.value) === String(prevVal); }).first();
+        if ($keep.length) keepHtml = $keep[0].outerHTML;
+    }
+    var keepForCustomer = String($select.data('keepForCustomer') || '');
     
     $select.html('<option value="">Loading...</option>').prop('disabled', true);
     
     $.get('/api/customer-vehicles', { customer_id: customerId })
         .done(function(vehicles) {
             var html = '<option value="">Select Vehicle</option>';
+            var found = false;
             vehicles.forEach(function(v) {
                 var label = v.year + ' ' + v.make + ' ' + v.model;
                 if (v.license_plate) label += ' - ' + v.license_plate;
                 if (v.color) label += ' [' + v.color + ']';
                 var selected = (prevVal && prevVal == v.id) ? ' selected' : '';
+                if (prevVal && prevVal == v.id) found = true;
                 // Keep the same data-* attributes the server-rendered options carry so
                 // page-specific summaries (e.g. Repair Quotation Make/Model/Year/Plate)
                 // still resolve after the list is rebuilt.
@@ -1499,6 +1516,13 @@ function loadVehicles(customerId, $select) {
                      + ' data-miles="' + (v.odometer || '') + '">'
                      + label + '</option>';
             });
+            // Re-inject the prefilled vehicle when this customer's list lacks it and
+            // we're still loading the customer it was prefilled for.
+            if (prevVal && !found && keepHtml && keepForCustomer === String(customerId)) {
+                html += keepHtml
+                    .replace(/\s*selected(="[^"]*")?/i, '')
+                    .replace(/^<option/i, '<option selected');
+            }
             $select.html(html).prop('disabled', false);
             // Let page-specific handlers refresh derived fields after the rebuild.
             $select.trigger('change');
