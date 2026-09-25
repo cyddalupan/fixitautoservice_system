@@ -31,11 +31,12 @@
 
     $money = function ($n) { return '&#8369; ' . number_format((float) $n, 2); };
 
-    // Present the quotation from the Repair Order's OWN FINDINGS — never from a stale
-    // Repair Quotation/estimate. All non-declined findings of this RO go in, in one list
-    // (the approved ones keep their locked prices; anything added during the repair sits
-    // alongside them).
-    $quotedFindings = $findings->values();
+    // Present the quotation from the RO's "Findings" tab ONLY — the new things found
+    // during the repair. The approved/locked items (the old quotation, shown under the
+    // "From Quotation" tab) must NOT appear here.
+    $quotedFindings = $findings->filter(function ($f) use ($inspection) {
+        return ! $inspection->findingIsLocked($f);
+    })->values();
 
     // Build the category sections (and totals) for a given set of findings.
     // Returns [sections, partsTotal, laborTotal].
