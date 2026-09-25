@@ -901,7 +901,23 @@ class VehicleInspectionController extends Controller
             'actual_upsell_value' => 'nullable|numeric|min:0',
             'vehicle_mileage' => 'nullable|integer|min:0',
         ]);
-        
+
+        // NOT NULL columns the form can post blank. ConvertEmptyStringsToNull turns
+        // a blank field into null, which aborts the whole UPDATE with
+        // "NOT NULL constraint failed" — that is why the Repair Order edit page
+        // refused to save (e.g. inspection_type renders blank when stored as a JSON
+        // array like ["routine"], and a blank discount arrives as null).
+        // Blank inspection_type / inspection_status must keep the stored value;
+        // a blank discount falls back to 0.
+        foreach (['inspection_type', 'inspection_status'] as $notNullable) {
+            if (array_key_exists($notNullable, $validated) && is_null($validated[$notNullable])) {
+                unset($validated[$notNullable]);
+            }
+        }
+        if (array_key_exists('discount', $validated) && is_null($validated['discount'])) {
+            $validated['discount'] = 0;
+        }
+
         // Update status timestamps
         if (!empty($validated['inspection_status']) && $validated['inspection_status'] !== $inspection->inspection_status) {
             $statusField = null;
@@ -944,6 +960,14 @@ class VehicleInspectionController extends Controller
                 // ignored by mass assignment and handled below.
                 $inspection->update($validated);
                 $inspection->refresh();
+
+                // Persist the Concern / Request on the Repair Order itself. For a
+                // walk-in RO (no linked appointment) this is the ONLY place the
+                // typed concern can live, and the edit page reloads the field from
+                // the appointment's service_request OR this customer_concerns value.
+                if ($request->filled('service_request')) {
+                    $inspection->update(['customer_concerns' => $validated['service_request']]);
+                }
 
                 // ---- Customer detail: only overwrite with non-empty values ----
                 if ($inspection->customer) {

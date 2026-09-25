@@ -109,7 +109,13 @@
                      inspection_name / inspection_type / inspection_status are kept as hidden
                      fields so the existing form submit still carries them through unchanged. --}}
                 <input type="hidden" name="inspection_name" value="Repair Order #{{ $inspection->id }}">
-                <input type="hidden" name="inspection_type" value="{{ is_array($inspection->inspection_type) ? '' : $inspection->inspection_type }}">
+                {{-- Only submit inspection_type when it is a plain string. When the RO
+                     stores it as a JSON array (e.g. a walk-in with ["routine"]), a
+                     blank field would be coerced to null and abort the save, so the
+                     field is omitted and the controller keeps the stored value. --}}
+                @unless(is_array($inspection->inspection_type))
+                    <input type="hidden" name="inspection_type" value="{{ $inspection->inspection_type }}">
+                @endunless
                 <input type="hidden" name="inspection_status" value="{{ $inspection->inspection_status }}">
 
                 <!-- Receipt -->
