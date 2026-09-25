@@ -2,7 +2,21 @@
 {{-- $quotationMode = true (Repair Quotation page): the "add" bar stays available so users can
      add new quotation items. Per-finding delete is limited to items added on the quotation itself
      ($finding->is_quotation_added); Repair-Order findings are locked. --}}
-@php $quotationMode = $quotationMode ?? false; @endphp
+@php
+    $quotationMode = $quotationMode ?? false;
+    // Locked RO (promoted from an approved Repair Quotation): the approved findings are frozen,
+    // but the shop may still ADD a new finding discovered during the repair.
+    $findingsLocked = $findingsLocked ?? false;
+@endphp
+@if($findingsLocked)
+<div class="alert d-flex flex-wrap align-items-center gap-2 mb-3" style="background:#eff6ff;border:1px solid #93c5fd;color:#1e40af;">
+    <i class="fas fa-lock"></i>
+    <div class="flex-grow-1">
+        <strong>Naka-lock ang approved findings.</strong>
+        Fixed na ang parts at labor price mula sa Repair Quotation. Pero pwede ka pa ring <strong>magdagdag ng bagong finding</strong> kung may bagong makita sa sasakyan — yung bago lang ang maa-edit/ma-de-delete.
+    </div>
+</div>
+@endif
             <!-- Quick Add Bar -->
             <div class="findings-quick-add py-3 px-3 mb-3 rounded-3" style="background: linear-gradient(135deg, rgba(26,35,126,0.05) 0%, rgba(13,71,161,0.1) 100%); border: 1px solid rgba(26,35,126,0.15); position: sticky; top: 0; z-index: 10;">
                 <div class="row g-2 align-items-end">
@@ -60,11 +74,17 @@
             <!-- Findings Groups Board (drag a card into a group to share one labor cost) -->
             <div class="d-flex flex-wrap align-items-center justify-content-between mb-2">
                 <div class="small text-muted">
-                    <i class="fas fa-hand-pointer me-1"></i>Drag a card into a group to share one labor cost.
+                    @if($findingsLocked)
+                        <i class="fas fa-lock me-1"></i>Naka-lock ang mga naunang finding. Idagdag sa ibaba ang mga bago.
+                    @else
+                        <i class="fas fa-hand-pointer me-1"></i>Drag a card into a group to share one labor cost.
+                    @endif
                 </div>
+                @unless($findingsLocked)
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="createFindingGroup()">
                     <i class="fas fa-layer-group me-1"></i>New Group
                 </button>
+                @endunless
             </div>
 
             <div id="findings-board">
@@ -106,7 +126,8 @@
                         <div class="finding-headrow"><span></span><span>Category</span><span>Parts</span><span>Remarks</span><span class="text-center">Urgency</span><span class="text-center">Qty</span><span class="text-end">Price</span><span class="text-end">Total</span><span></span></div>
                         @php $ungrouped = $inspection->inspectionFindings->whereNull('group_id')->where('is_declined', false); @endphp
                         @forelse($ungrouped as $finding)
-                            @include('inspections.partials.finding-card', ['finding' => $finding, 'quotationMode' => $quotationMode, 'showLabor' => true])
+                            @php $cardLocked = $findingsLocked && $inspection->findingIsLocked($finding); @endphp
+                            @include('inspections.partials.finding-card', ['finding' => $finding, 'quotationMode' => $quotationMode, 'showLabor' => true, 'locked' => $cardLocked])
                         @empty
                             <p class="text-muted small mb-0 py-2 text-center finding-empty-hint">{{ $quotationMode ? 'No ungrouped quotation items.' : 'No ungrouped findings. Drag cards here or add with the bar above.' }}</p>
                         @endforelse
@@ -114,10 +135,18 @@
                 </div>
 
                 @foreach($inspection->findingGroups as $group)
-                <div class="finding-group mb-3" data-group-id="{{ $group->id }}" data-auto-name="{{ $group->auto_name ? '1' : '0' }}">
+                <div class="finding-group mb-3" data-group-id="{{ $group->id }}" data-auto-name="{{ $group->auto_name ? '1' : '0' }}" data-labor-cost="{{ (float) $group->labor_cost }}">
                     <div class="finding-group-head d-flex flex-wrap align-items-center gap-2 px-3 py-2"
                          style="background:linear-gradient(135deg,#1a237e,#283593);color:#fff;border-radius:10px 10px 0 0;">
                         <i class="fas fa-layer-group"></i>
+                        @if($findingsLocked)
+                        <span class="fw-semibold">{{ $group->name }}</span>
+                        <div class="ms-auto d-flex align-items-center gap-2">
+                            <span class="small"><i class="fas fa-tools me-1"></i>Labor ₱{{ number_format((float) $group->labor_cost, 2) }}</span>
+                            <span class="badge bg-light text-dark group-total-badge">₱0.00</span>
+                            <span class="badge" style="background:rgba(255,255,255,.2);color:#fff;"><i class="fas fa-lock me-1"></i>Locked</span>
+                        </div>
+                        @else
                         <input type="text" class="form-control form-control-sm group-name-input" value="{{ $group->name }}"
                                style="max-width:170px;background:rgba(255,255,255,.15);border:none;color:#fff;"
                                onchange="manualGroupName({{ $group->id }}, this.value)" oninput="this.closest('.finding-group').dataset.autoName='0'">
@@ -131,13 +160,15 @@
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
+                        @endif
                     </div>
                     <div class="finding-dropzone p-2" data-group-id="{{ $group->id }}"
                          style="border:1px solid #dbe3f0;border-top:none;border-radius:0 0 10px 10px;min-height:56px;background:#fff;">
                         <div class="finding-headrow"><span></span><span>Category</span><span>Parts</span><span>Remarks</span><span class="text-center">Urgency</span><span class="text-center">Qty</span><span class="text-end">Price</span><span class="text-end">Total</span><span></span></div>
                         @php $groupFindings = $group->findings->where('is_declined', false); @endphp
                         @forelse($groupFindings as $finding)
-                            @include('inspections.partials.finding-card', ['finding' => $finding, 'quotationMode' => $quotationMode])
+                            @php $cardLocked = $findingsLocked && $inspection->findingIsLocked($finding); @endphp
+                            @include('inspections.partials.finding-card', ['finding' => $finding, 'quotationMode' => $quotationMode, 'locked' => $cardLocked])
                         @empty
                             <p class="text-muted small mb-0 py-2 text-center finding-empty-hint">Drop cards here to share this labor cost.</p>
                         @endforelse

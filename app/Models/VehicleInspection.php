@@ -459,6 +459,27 @@ class VehicleInspection extends Model
         return $this->findings_locked_at !== null;
     }
 
+    /**
+     * True when a single finding is locked.
+     *
+     * Findings that existed when the RO was locked (promoted from an approved
+     * Repair Quotation) are frozen; new findings added afterwards stay editable
+     * so the shop can record a problem discovered during the repair.
+     */
+    public function findingIsLocked($finding): bool
+    {
+        if ($this->findings_locked_at === null || ! $finding) {
+            return false;
+        }
+
+        // No timestamp on the row → treat it as part of the approved quotation.
+        if (! $finding->created_at) {
+            return true;
+        }
+
+        return $finding->created_at->lessThanOrEqualTo($this->findings_locked_at);
+    }
+
     public function lockFindings(): void
     {
         if ($this->findings_locked_at === null) {

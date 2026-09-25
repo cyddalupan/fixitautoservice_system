@@ -1394,6 +1394,24 @@ class VehicleInspectionController extends Controller
     }
 
     /**
+     * Refuse mutations on a single LOCKED finding (one that already existed when the
+     * Repair Order was locked from its approved Repair Quotation). Findings added
+     * afterwards — e.g. a problem discovered during the repair — stay editable.
+     */
+    private function denyIfFindingLocked($finding, Request $request)
+    {
+        $inspection = $finding ? $finding->inspection : null;
+        if ($inspection && $inspection->findingIsLocked($finding)) {
+            $msg = 'Naka-lock ang finding na ito — kasama na sa approved Repair Quotation. Hindi na mababago; magdagdag ka na lang ng bagong finding kung may bago.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 423);
+            }
+            return back()->with('error', $msg);
+        }
+        return null;
+    }
+
+    /**
      * Unlock a Repair Order whose findings were fixed from a Repair Quotation.
      * Restricted to admins so the approved amounts are not changed by accident.
      */
@@ -1417,7 +1435,9 @@ class VehicleInspectionController extends Controller
 
     public function storeFinding(Request $request, VehicleInspection $inspection)
     {
-        if ($resp = $this->denyIfFindingsLocked($inspection, $request)) { return $resp; }
+        // NOTE: adding a NEW finding is allowed even on a locked RO — the shop may
+        // discover a fresh problem during the repair. Only the pre-approved findings
+        // (and their prices) are frozen.
         $validated = $request->validate([
             'category' => 'required|string|max:100',
             'issue_title' => 'required|string|max:255',
@@ -1451,7 +1471,7 @@ class VehicleInspectionController extends Controller
 
     public function updateFinding(Request $request, InspectionFinding $finding)
     {
-        if ($resp = $this->denyIfFindingsLocked($finding->inspection, $request)) { return $resp; }
+        if ($resp = $this->denyIfFindingLocked($finding, $request)) { return $resp; }
         $validated = $request->validate([
             'category' => 'required|string|max:100',
             'issue_title' => 'required|string|max:255',
@@ -1478,7 +1498,7 @@ class VehicleInspectionController extends Controller
 
     public function destroyFinding(Request $request, InspectionFinding $finding)
     {
-        if ($resp = $this->denyIfFindingsLocked($finding->inspection, $request)) { return $resp; }
+        if ($resp = $this->denyIfFindingLocked($finding, $request)) { return $resp; }
         $inspectionId = $finding->inspection_id;
         $finding->delete();
 
@@ -1600,7 +1620,7 @@ class VehicleInspectionController extends Controller
      */
     public function moveFindingToGroup(Request $request, InspectionFinding $finding)
     {
-        if ($resp = $this->denyIfFindingsLocked($finding->inspection, $request)) { return $resp; }
+        if ($resp = $this->denyIfFindingLocked($finding, $request)) { return $resp; }
         $validated = $request->validate([
             'group_id' => 'nullable|exists:inspection_finding_groups,id',
             'sort_order' => 'nullable|integer|min:0',
@@ -1626,7 +1646,7 @@ class VehicleInspectionController extends Controller
      */
     public function declineFinding(Request $request, InspectionFinding $finding)
     {
-        if ($resp = $this->denyIfFindingsLocked($finding->inspection, $request)) { return $resp; }
+        if ($resp = $this->denyIfFindingLocked($finding, $request)) { return $resp; }
         $validated = $request->validate([
             'declined' => 'required|boolean',
         ]);
@@ -1652,7 +1672,7 @@ class VehicleInspectionController extends Controller
      */
     public function updateFindingCost(Request $request, InspectionFinding $finding)
     {
-        if ($resp = $this->denyIfFindingsLocked($finding->inspection, $request)) { return $resp; }
+        if ($resp = $this->denyIfFindingLocked($finding, $request)) { return $resp; }
         $validated = $request->validate([
             'estimated_cost' => 'nullable|numeric|min:0',
         ]);

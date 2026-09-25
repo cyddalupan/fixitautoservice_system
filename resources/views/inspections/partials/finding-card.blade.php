@@ -18,13 +18,15 @@
     $urgColor = in_array($finding->estimated_urgency, ['routine', 'soon']) ? '#fff' : '#000';
     $lineTotal = (float) $finding->quantity * (float) ($finding->unit_price ?? 0);
     $showLabor = $showLabor ?? false;
+    $locked = $locked ?? false;
     // Ungrouped findings carry their own labor (estimated_cost); grouped ones share the group's labor.
     if ($showLabor) { $lineTotal += (float) ($finding->estimated_cost ?? 0); }
     $laborStr = ($finding->estimated_cost !== null && (float) $finding->estimated_cost > 0)
         ? number_format((float) $finding->estimated_cost, 2, '.', '') : '';
     $qtyStr = rtrim(rtrim(number_format((float) $finding->quantity, 2, '.', ''), '0'), '.');
 @endphp
-<div class="finding-card mb-1" data-id="{{ $finding->id }}"
+<div class="finding-card mb-1{{ $locked ? ' finding-locked' : '' }}" data-id="{{ $finding->id }}"
+     data-locked="{{ $locked ? '1' : '0' }}"
      data-quotation-added="{{ $finding->is_quotation_added ? '1' : '0' }}"
      data-category="{{ $finding->category }}"
      data-issue-title="{{ $finding->issue_title }}"
@@ -47,10 +49,13 @@
             </span>
             <span class="fcell"><span class="finding-remarks" title="{{ $finding->remarks }}{{ $finding->detailed_notes ? ' — '.$finding->detailed_notes : '' }}">{{ $finding->remarks ?: ($finding->part_name ?: '—') }}@if($finding->detailed_notes)<span class="finding-notes"> · {{ $finding->detailed_notes }}</span>@endif</span></span>
             <span class="fcell justify-content-center"><span class="badge urgency-badge" style="background:{{ $urgBg }};color:{{ $urgColor }};">{{ ucfirst($finding->estimated_urgency) }}</span></span>
-            <span class="fcell justify-content-center finding-qty-wrap" onclick="inlineEditFinding({{ $finding->id }})" title="Tap to edit Qty / Price" style="cursor:pointer;">Qty <span class="finding-qty">{{ $qtyStr }}</span></span>
-            <span class="fcell justify-content-end finding-price" onclick="inlineEditFinding({{ $finding->id }})" title="Tap to edit Qty / Price" style="cursor:pointer;">@if($finding->unit_price !== null)&#8369;{{ number_format((float) $finding->unit_price, 2) }}@else<span class="text-muted">—</span>@endif</span>
+            <span class="fcell justify-content-center finding-qty-wrap" @unless($locked)onclick="inlineEditFinding({{ $finding->id }})" title="Tap to edit Qty / Price" style="cursor:pointer;"@endunless>Qty <span class="finding-qty">{{ $qtyStr }}</span></span>
+            <span class="fcell justify-content-end finding-price" @unless($locked)onclick="inlineEditFinding({{ $finding->id }})" title="Tap to edit Qty / Price" style="cursor:pointer;"@endunless>@if($finding->unit_price !== null)&#8369;{{ number_format((float) $finding->unit_price, 2) }}@else<span class="text-muted">—</span>@endif</span>
             <span class="fcell justify-content-end fw-bold finding-line-total">&#8369;{{ number_format($lineTotal, 2) }}</span>
             <span class="fcell justify-content-center gap-1 finding-actions">
+                @if($locked)
+                <span class="badge" style="background:#e2e8f0;color:#475569;font-size:9px;" title="Kasama sa approved Repair Quotation — hindi na mababago."><i class="fas fa-lock"></i></span>
+                @else
                 <span class="finding-action-btns d-inline-flex gap-1">
                     <button class="btn btn-sm btn-light border py-0 px-1" onclick="inlineEditFinding({{ $finding->id }})" title="Quick edit Qty / Price"><i class="fas fa-edit text-primary"></i></button>
                     @if(!($quotationMode ?? false) || $finding->is_quotation_added)
@@ -58,9 +63,16 @@
                     @endif
                 </span>
                 <span class="badge finding-linked-badge" style="@if($finding->is_linked_to_estimate) background:#059669;color:#fff; @else display:none; @endif font-size:9px;"><i class="fas fa-link"></i></span>
+                @endif
             </span>
         </div>
         @if($showLabor)
+        @if($locked)
+        <div class="finding-labor-row d-flex align-items-center justify-content-end gap-2 px-3 pb-2 pt-1" style="border-top:1px dashed #e6ebf3;">
+            <label class="text-muted mb-0" style="font-size:11px;"><i class="fas fa-tools me-1"></i>Labor &#8369;</label>
+            <span class="fw-semibold" style="font-size:12.5px;">{{ $laborStr !== '' ? '&#8369;'.number_format((float) $finding->estimated_cost, 2) : '&#8369;0.00' }}</span>
+        </div>
+        @else
         {{-- Ungrouped finding: each has its own labor price. --}}
         <div class="finding-labor-row d-flex align-items-center justify-content-end gap-2 px-3 pb-2 pt-1" style="border-top:1px dashed #e6ebf3;">
             <label class="text-muted mb-0" style="font-size:11px;"><i class="fas fa-tools me-1"></i>Labor &#8369;</label>
@@ -69,6 +81,7 @@
                    value="{{ $laborStr }}" placeholder="0.00"
                    onchange="saveFindingCost({{ $finding->id }}, this.value)">
         </div>
+        @endif
         @endif
     </div>
 </div>

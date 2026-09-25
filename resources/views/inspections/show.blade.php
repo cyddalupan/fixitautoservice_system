@@ -418,20 +418,15 @@
             </div>
 
             @if($inspection->isFindingsLocked())
-                <div class="alert d-flex flex-wrap align-items-center gap-2" style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;">
-                    <i class="fas fa-lock"></i>
-                    <div class="flex-grow-1">
-                        <strong>Naka-lock ang findings.</strong>
-                        Fixed na ito mula sa Repair Quotation — hindi na mababago ang parts at labor presyo.
-                    </div>
-                    @if(in_array(auth()->user()->role ?? null, ['admin','super_admin','owner']))
-                    <form method="POST" action="{{ route('inspections.unlock-findings', $inspection) }}" onsubmit="return confirm('I-unlock ang findings? Mababago na ulit ang presyo.');">
+                @if(in_array(auth()->user()->role ?? null, ['admin','super_admin','owner']))
+                <div class="d-flex justify-content-end mb-2">
+                    <form method="POST" action="{{ route('inspections.unlock-findings', $inspection) }}" onsubmit="return confirm('I-unlock ang findings? Mababago na ulit ang presyo ng lahat ng findings.');">
                         @csrf
                         <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-unlock me-1"></i>Unlock findings</button>
                     </form>
-                    @endif
                 </div>
-                @include('inspections.partials.findings-readonly')
+                @endif
+                @include('inspections.partials.findings-board', ['findingsLocked' => true])
             @else
                 @include('inspections.partials.findings-board')
             @endif
@@ -565,8 +560,6 @@
 @endpush
 
 @push('scripts')
-  @unless($inspection->isFindingsLocked())
   @include('inspections.partials.inspection-findings-scripts')
-  @endunless
 @endpush
 

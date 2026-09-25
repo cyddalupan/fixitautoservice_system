@@ -130,6 +130,9 @@ const severityMap = {low:'info',medium:'warning',high:'danger',critical:'dark'};
 const urgencyMap = {routine:'secondary',soon:'info',urgent:'warning',immediate:'danger'};
 const inspectionId = {{ $inspection->id }};
 const csrfToken = '{{ csrf_token() }}';
+// Locked RO (promoted from an approved Repair Quotation): the existing findings are frozen.
+// Newly added findings stay editable/deletable, so the shop can log a fresh discovery.
+window.FINDINGS_LOCKED = {{ $inspection->isFindingsLocked() ? 'true' : 'false' }};
 
 // ====================== INIT ======================
 document.addEventListener('DOMContentLoaded', function() {
@@ -728,6 +731,7 @@ function findingCardHtml(f, showLabor){
             + '</div>')
         : '';
     return '<div class="finding-card mb-1 finding-new" data-id="'+f.id+'"'
+        + ' data-locked="'+(f.__locked?'1':'0')+'"'
         + ' data-quotation-added="'+(f.is_quotation_added?1:0)+'"'
         + ' data-category="'+escapeHtml(f.category||'')+'" data-issue-title="'+escapeHtml(f.issue_title||'')+'"'
         + ' data-part-name="'+escapeHtml(f.part_name||'')+'" data-remarks="'+escapeHtml(f.remarks||'')+'"'
@@ -776,7 +780,7 @@ function refreshGroupTotals(){
             parts += q*p;
         });
         var laborEl = g.querySelector('.group-labor-input');
-        var labor = laborEl ? fnum(laborEl.value) : 0;
+        var labor = laborEl ? fnum(laborEl.value) : fnum(g.dataset.laborCost || 0);
         var badge = g.querySelector('.group-total-badge');
         if(badge) badge.textContent = fmoney(parts + labor);
         var count = g.querySelector('.group-count');
@@ -874,6 +878,11 @@ function deleteFinding(id){
 
 function actionButtonsHtml(id, editing){
     var qm = (window.FINDINGS_QUOTATION_MODE === true);
+    var _card = document.querySelector('.finding-card[data-id="'+id+'"]');
+    var locked = !!window.FINDINGS_LOCKED && _card && _card.dataset.locked === '1';
+    if(locked){
+        return '<span class="badge" style="background:#e2e8f0;color:#475569;font-size:9px;" title="Kasama sa approved Repair Quotation — hindi na mababago."><i class="fas fa-lock"></i></span>';
+    }
     if(editing){
         var html = '<button class="btn btn-sm btn-light border py-0 px-1" onclick="inlineSaveFinding('+id+')" title="Save"><i class="fas fa-check text-success"></i></button>'
             + '<button class="btn btn-sm btn-light border py-0 px-1" onclick="inlineCancelFinding('+id+')" title="Cancel"><i class="fas fa-xmark text-secondary"></i></button>';
@@ -934,6 +943,10 @@ function saveFindingCost(id, value){
 function inlineEditFinding(id){
     var card = document.querySelector('.finding-card[data-id="'+id+'"]');
     if(!card || card.classList.contains('finding-inline-editing')) return;
+    if(window.FINDINGS_LOCKED && card.dataset.locked === '1'){
+        showFixitToast('Naka-lock ang finding na ito — kasama na sa approved quotation.', 'warn', 'Locked');
+        return;
+    }
     var qtyWrap = card.querySelector('.finding-qty-wrap');
     var priceCell = card.querySelector('.finding-price');
     if(!qtyWrap || !priceCell) return;
@@ -1197,6 +1210,8 @@ function emptyHintText(dz){
 }
 
 function initDropzones(){
+    // Locked RO: the approved cards can't be moved/re-grouped. No drag-drop.
+    if(window.FINDINGS_LOCKED) return;
     if(typeof Sortable === 'undefined') return;
     document.querySelectorAll('.finding-dropzone').forEach(function(dz){
         if(dz._sortable) return;
