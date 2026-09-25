@@ -63,7 +63,18 @@
     @endif
     @if($errors->any())
         <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm rounded-3" role="alert">
-            <i class="fas fa-exclamation-circle me-2"></i>Please correct the errors below.
+            <div class="fw-semibold"><i class="fas fa-exclamation-circle me-2"></i>Please correct the errors below.</div>
+            <ul class="mb-0 mt-2 ps-4">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger alert-dismissible fade show border-0 shadow-sm rounded-3" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>{{ session('error') }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
     @endif
@@ -109,13 +120,10 @@
                      inspection_name / inspection_type / inspection_status are kept as hidden
                      fields so the existing form submit still carries them through unchanged. --}}
                 <input type="hidden" name="inspection_name" value="Repair Order #{{ $inspection->id }}">
-                {{-- Only submit inspection_type when it is a plain string. When the RO
-                     stores it as a JSON array (e.g. a walk-in with ["routine"]), a
-                     blank field would be coerced to null and abort the save, so the
-                     field is omitted and the controller keeps the stored value. --}}
-                @unless(is_array($inspection->inspection_type))
-                    <input type="hidden" name="inspection_type" value="{{ $inspection->inspection_type }}">
-                @endunless
+                {{-- inspection_type is NOT editable here. The create page stores it as a
+                     JSON array (["routine"]) whose values differ from the edit-form
+                     rule list, so posting it back caused a generic validation error.
+                     It is simply omitted; the controller keeps the stored value. --}}
                 <input type="hidden" name="inspection_status" value="{{ $inspection->inspection_status }}">
 
                 <!-- Receipt -->

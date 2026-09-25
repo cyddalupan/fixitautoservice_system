@@ -678,7 +678,9 @@ class VehicleInspectionController extends Controller
                 'technician_notes' => 'nullable|string|max:2000',
                 'customer_concerns' => 'nullable|string|max:2000',
                 'vehicle_mileage' => 'nullable|integer|min:0',
-                'inspection_type' => 'nullable|in:pre_purchase,routine_maintenance,pre_service,safety,comprehensive,diagnostic,emissions,custom',
+                // Accept both the create-page values and the legacy edit values so a
+                // partial update never rejects an existing inspection_type.
+                'inspection_type' => 'nullable|string|in:pre_purchase,routine,routine_maintenance,pre_service,safety,post_repair,comprehensive,diagnostic,emissions,custom',
             ]);
             
             // Update only the provided fields
@@ -881,7 +883,10 @@ class VehicleInspectionController extends Controller
             'parts_items.*.qty' => 'nullable|numeric|min:0',
             'parts_items.*.unit_price' => 'nullable|numeric|min:0',
             'parts_items.*.cost' => 'nullable|numeric|min:0',
-            'inspection_type' => 'nullable|in:pre_purchase,routine_maintenance,pre_service,safety,comprehensive,diagnostic,emissions,custom',
+            // inspection_type is not editable on this page and is ignored on save
+            // (see below), so it is intentionally NOT validated here — a stored
+            // value the edit rule list did not recognise (e.g. "routine") used to
+            // surface as a generic "Please correct the errors below."
             'inspection_status' => 'nullable|in:draft,in_progress,completed,approved,rejected,cancelled',
             'inspection_name' => 'required|string|max:255',
             'inspection_notes' => 'nullable|string|max:2000',
@@ -902,17 +907,16 @@ class VehicleInspectionController extends Controller
             'vehicle_mileage' => 'nullable|integer|min:0',
         ]);
 
-        // NOT NULL columns the form can post blank. ConvertEmptyStringsToNull turns
-        // a blank field into null, which aborts the whole UPDATE with
-        // "NOT NULL constraint failed" — that is why the Repair Order edit page
-        // refused to save (e.g. inspection_type renders blank when stored as a JSON
-        // array like ["routine"], and a blank discount arrives as null).
-        // Blank inspection_type / inspection_status must keep the stored value;
-        // a blank discount falls back to 0.
-        foreach (['inspection_type', 'inspection_status'] as $notNullable) {
-            if (array_key_exists($notNullable, $validated) && is_null($validated[$notNullable])) {
-                unset($validated[$notNullable]);
-            }
+        // inspection_type is NOT editable on the Repair Order page (its hidden field
+        // was removed). Ignore whatever the form sends and keep the stored value:
+        // the create page stores a JSON array (["routine"]) whose value set differs
+        // from the edit-form rule list, which previously surfaced as a generic
+        // "Please correct the errors below." with no visible detail.
+        // inspection_status stays on the form (it drives the workflow) but a blank
+        // value must not null a NOT NULL column; a blank discount falls back to 0.
+        unset($validated['inspection_type']);
+        if (array_key_exists('inspection_status', $validated) && is_null($validated['inspection_status'])) {
+            unset($validated['inspection_status']);
         }
         if (array_key_exists('discount', $validated) && is_null($validated['discount'])) {
             $validated['discount'] = 0;
