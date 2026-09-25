@@ -25,11 +25,10 @@
 
     $money = function ($n) { return '&#8369; ' . number_format((float) $n, 2); };
 
-    // Locked RO (promoted from an approved Repair Quotation): split the APPROVED items from
-    // anything ADDED during the repair, so the printed quotation keeps them in separate tables.
-    $isLocked = $inspection->isFindingsLocked();
-    $approvedFindings   = $isLocked ? $findings->filter(function ($f) use ($inspection) { return $inspection->findingIsLocked($f); })->values() : $findings->values();
-    $additionalFindings = $isLocked ? $findings->filter(function ($f) use ($inspection) { return ! $inspection->findingIsLocked($f); })->values() : collect();
+    // Present the quotation from the Repair Order's CURRENT findings (the fresh
+    // information) as ONE unified list. Items found during the repair now sit
+    // alongside the rest — we no longer split "approved quotation" vs "additional".
+    $quotedFindings = $findings->values();
 
     // Build the category sections (and totals) for a given set of findings.
     // Returns [sections, partsTotal, laborTotal].
@@ -114,12 +113,9 @@
         return [$sections, $partsTotal, $laborTotal];
     };
 
-    [$sections, $partsTotal, $laborTotal] = $buildSections($approvedFindings);
-    [$addSections, $addPartsTotal, $addLaborTotal] = $buildSections($additionalFindings);
-    $addSubtotal = $addPartsTotal + $addLaborTotal;
-    $hasAdditional = $addSections ? true : false;
+    [$sections, $partsTotal, $laborTotal] = $buildSections($quotedFindings);
 
-    $subtotal = $partsTotal + $laborTotal + $addSubtotal;
+    $subtotal = $partsTotal + $laborTotal;
     $discount = 0.0;
     $grandTotal = max(0, $subtotal - $discount);
 
@@ -128,7 +124,9 @@
         return $s === '' ? '0' : $s;
     };
 
-    $docNo = ($estimate->estimate_number ?? null)
+    // Reference the Repair Order's own number (fresh info) — not the old quotation's
+    // estimate number.
+    $docNo = ($inspection->reference_label ?? null)
         ?: ($inspection->appointment->appointment_number ?? null)
         ?: ('#'.($inspection->id ?? ''));
 
@@ -241,62 +239,13 @@
         @endforelse
     </table>
 
-    @if($hasAdditional)
-    {{-- ADDITIONAL findings added during the repair — kept SEPARATE from the approved quotation. --}}
-    <p class="rq-sec rq-sec-add">Additional Findings (during repair) &mdash; not yet part of the approved quotation</p>
-    <table class="rq-items rq-add">
-        <tr>
-            <th style="text-align:left">Job / Parts Description</th>
-            <th style="width:9%">Qty/HM</th>
-            <th style="width:14%">Parts Price</th>
-            <th style="width:14%">Labor Cost</th>
-            <th style="width:24%">Remarks</th>
-        </tr>
-        @foreach($addSections as $section)
-            <tr class="catrow"><td colspan="5">{{ $section['label'] }}</td></tr>
-            @foreach($section['items'] as $row)
-                <tr>
-                    <td>{{ $row['desc'] }}</td>
-                    <td class="rq-right">{{ $qtyFmt($row['qty']) }}</td>
-                    <td class="rq-right">{{ $row['parts'] > 0 ? number_format($row['parts'], 2) : '' }}</td>
-                    @if($row['merge'] === 'start')
-                        <td class="rq-right merge-cell" rowspan="{{ $row['rowspan'] }}">{!! $row['laborTxt'] ?: '' !!}</td>
-                    @elseif($row['merge'] === 'none')
-                        <td class="rq-right">{!! $row['laborTxt'] ?: '' !!}</td>
-                    @endif
-                    <td>{{ $row['remarks'] }}</td>
-                </tr>
-            @endforeach
-        @endforeach
-        <tr>
-            <td colspan="4" class="rq-right" style="font-weight:bold; background:#fde9cf; color:#92400e;">Additional subtotal</td>
-            <td class="rq-right" style="font-weight:bold; background:#fde9cf; color:#92400e;">{!! $money($addSubtotal) !!}</td>
-        </tr>
-    </table>
-    @endif
-
-    {{-- Totals --}}
-    <table style="width:100%; border-collapse:collapse; margin:6px 0 10px;">
-        <tr>
-            <td style="width:56%; vertical-align:top; border:0; padding:0;">
-                @if($hasAdditional)
-                <table class="rq-totals">
-                    <tr><td class="lbl">Approved Quotation Subtotal</td><td class="rq-right">{!! $money($partsTotal + $laborTotal) !!}</td></tr>
-                    <tr><td class="lbl" style="color:#92400e;">Additional Findings Subtotal</td><td class="rq-right" style="color:#92400e;">{!! $money($addSubtotal) !!}</td></tr>
-                </table>
-                <p style="font-size:8.5px; color:#92400e; margin:4px 0 0;">Ang Additional Findings ay hindi pa kasama sa naaprubahang quotation &mdash; ipapaalam sa customer para sa bagong approval.</p>
-                @endif
-            </td>
-            <td style="width:44%; vertical-align:top; border:0; padding:0;">
-                <table class="rq-totals">
-                    <tr><td class="lbl">Total Parts Price</td><td class="rq-right">{!! $money($partsTotal) !!}</td></tr>
-                    <tr><td class="lbl">Total Labor Cost</td><td class="rq-right">{!! $money($laborTotal) !!}</td></tr>
-                    <tr><td class="lbl">Subtotal</td><td class="rq-right">{!! $money($subtotal) !!}</td></tr>
-                    <tr><td class="lbl">Discount</td><td class="rq-right">{!! $money($discount) !!}</td></tr>
-                    <tr class="grand"><td>GRAND TOTAL</td><td class="rq-right">{!! $money($grandTotal) !!}</td></tr>
-                </table>
-            </td>
-        </tr>
+    {{-- Totals (built from the findings) --}}
+    <table class="rq-totals" style="width:44%; margin:6px 0 10px auto;">
+        <tr><td class="lbl">Total Parts Price</td><td class="rq-right">{!! $money($partsTotal) !!}</td></tr>
+        <tr><td class="lbl">Total Labor Cost</td><td class="rq-right">{!! $money($laborTotal) !!}</td></tr>
+        <tr><td class="lbl">Subtotal</td><td class="rq-right">{!! $money($subtotal) !!}</td></tr>
+        <tr><td class="lbl">Discount</td><td class="rq-right">{!! $money($discount) !!}</td></tr>
+        <tr class="grand"><td>GRAND TOTAL</td><td class="rq-right">{!! $money($grandTotal) !!}</td></tr>
     </table>
 
     <div class="rq-terms">
