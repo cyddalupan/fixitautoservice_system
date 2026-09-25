@@ -627,11 +627,11 @@
             <a href="{{ route('customers.create') }}" class="btn btn-primary" aria-disabled="true" tabindex="-1" title="Coming soon" style="opacity:.5;filter:grayscale(1);pointer-events:none;cursor:not-allowed;">
                 <i class="fas fa-plus me-1"></i> Add New Customer <span class="badge bg-light text-dark ms-1">Soon</span>
             </a>
-            <button type="button" class="btn btn-success" onclick="generateCustomerForm()">
-                <i class="fas fa-link me-1"></i> Generate Form
+            <button type="button" class="btn btn-success" disabled aria-disabled="true" tabindex="-1" title="Coming soon" style="opacity:.5;filter:grayscale(1);pointer-events:none;cursor:not-allowed;">
+                <i class="fas fa-link me-1"></i> Generate Form <span class="badge bg-light text-dark ms-1">Soon</span>
             </button>
-            <a href="{{ route('customers.generated-forms') }}" class="btn btn-info">
-                <i class="fas fa-list me-1"></i> Generated Forms
+            <a href="{{ route('customers.generated-forms') }}" class="btn btn-info" aria-disabled="true" tabindex="-1" title="Coming soon" style="opacity:.5;filter:grayscale(1);pointer-events:none;cursor:not-allowed;">
+                <i class="fas fa-list me-1"></i> Generated Forms <span class="badge bg-light text-dark ms-1">Soon</span>
             </a>
             @if(in_array(Auth::user()->role, ['super_admin', 'admin']))
             <button type="button" class="btn btn-outline-danger" onclick="showArchiveModal()">
