@@ -888,6 +888,14 @@ class EstimateController extends Controller
             ? VehicleInspection::with(['inspectionFindings.group'])->find($estimate->inspection_id)
             : null;
 
+        // Never silently re-open a finished Repair Order. If the linked RO is
+        // already closed (released / paid / cancelled / job completed), the
+        // approved quotation is *new* work, so fall through to Case B and issue
+        // a fresh Repair Order instead of re-activating the old one.
+        if ($inspection && $inspection->is_closed) {
+            $inspection = null;
+        }
+
         if ($inspection) {
             $gaps = $inspection->pricingGaps();
             if (! empty($gaps)) {

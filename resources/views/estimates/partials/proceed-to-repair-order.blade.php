@@ -12,7 +12,13 @@
     $inspection = $inspection ?? ($estimate->inspection_id
         ? \App\Models\VehicleInspection::with('repairOrderPayments')->find($estimate->inspection_id)
         : null);
-    $payments = $inspection ? $inspection->repairOrderPayments : collect();
+
+    // A linked RO that is already finished (released / paid / cancelled / job
+    // completed) must NOT be re-activated — this quotation becomes a brand-new
+    // Repair Order instead, so treat it as a standalone for the review modal.
+    $linkedClosed = $inspection && $inspection->is_closed;
+    $effectiveInspection = $linkedClosed ? null : $inspection;
+    $payments = $effectiveInspection ? $effectiveInspection->repairOrderPayments : collect();
     $verifiedPaid = $payments->where('status', 'verified')->sum('amount');
     $pendingCount = $payments->where('status', 'pending')->count();
     $quotationTotal = (float) ($estimate->quotation_total ?? 0);
@@ -22,8 +28,8 @@
     $canConvert = ! $alreadyConverted && $estimate->status !== 'rejected';
 
     // Pricing completeness — block promotion until parts + labor are all priced.
-    if ($inspection) {
-        $pricingGaps = $inspection->pricingGaps();
+    if ($effectiveInspection) {
+        $pricingGaps = $effectiveInspection->pricingGaps();
     } else {
         $estimate->loadMissing('items');
         $pricingGaps = $estimate->items->filter(fn ($i) => (float) $i->unit_price <= 0)->map(fn ($i) => [
@@ -113,15 +119,28 @@
                             <div class="col-12">
                                 <div class="border rounded-3 p-3">
                                     <div class="text-uppercase text-muted fw-bold mb-2" style="font-size:.7rem;letter-spacing:.5px;">Repair Order</div>
-                                    @if($inspection)
+                                    @if($effectiveInspection)
                                         <div class="d-flex align-items-center gap-2">
                                             <i class="fas fa-link text-success"></i>
-                                            <span>Linked to existing Repair Order <strong>#{{ $inspection->id }}</strong>
-                                                @if($inspection->reference_number) ({{ $inspection->reference_label }})@endif
+                                            <span>Linked to existing Repair Order <strong>#{{ $effectiveInspection->id }}</strong>
+                                                @if($effectiveInspection->reference_number) ({{ $effectiveInspection->reference_label }})@endif
                                             </span>
                                         </div>
                                         <div class="text-muted mt-1" style="font-size:.78rem;">
                                             This quotation was created from that Repair Order, so it will simply be re-activated.
+                                        </div>
+                                    @elseif($linkedClosed)
+                                        <div class="d-flex align-items-center gap-2">
+                                            <i class="fas fa-circle-check text-secondary"></i>
+                                            <span>Previous Repair Order
+                                                @if($inspection->reference_number)<strong>{{ $inspection->reference_label }}</strong>@else<strong>#{{ $inspection->id }}</strong>@endif
+                                                is already completed.
+                                            </span>
+                                        </div>
+                                        <div class="text-muted mt-1" style="font-size:.78rem;">
+                                            A <strong>new Repair Order</strong> will be created for this quotation — the finished
+                                            Repair Order will not be re-opened. Payments already settled on the previous order
+                                            do not carry over to the new one.
                                         </div>
                                     @else
                                         <div class="d-flex align-items-center gap-2">
