@@ -169,7 +169,18 @@
                                     </div>
                                     <div class="col-md-4">
                                         <label class="text-muted small text-uppercase">Odometer</label>
-                                        <p class="fw-semibold mb-0">{{ $inspection->vehicle->odometer ? number_format((float) $inspection->vehicle->odometer) : ($inspection->vehicle_mileage ? number_format((float) $inspection->vehicle_mileage) : 'N/A') }}</p>
+                                        @php
+                                            // Show this Repair Order's *own* intake reading (vehicle_mileage)
+                                            // when it has one; a fresh (quotation-promoted) RO is reset to 0,
+                                            // so don't fall through to the vehicle master's older reading.
+                                            $ovm = $inspection->vehicle_mileage;
+                                            if ($ovm !== null) {
+                                                $odoText = ((float) $ovm) > 0 ? number_format((float) $ovm) : 'N/A';
+                                            } else {
+                                                $odoText = optional($inspection->vehicle)->odometer ? number_format((float) $inspection->vehicle->odometer) : 'N/A';
+                                            }
+                                        @endphp
+                                        <p class="fw-semibold mb-0">{{ $odoText }}</p>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="text-muted small text-uppercase">Color</label>

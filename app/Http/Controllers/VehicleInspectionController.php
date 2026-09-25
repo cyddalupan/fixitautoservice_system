@@ -914,6 +914,13 @@ class VehicleInspectionController extends Controller
         // Update updated by
         $validated['updated_by'] = auth()->id();
 
+        // The RO's own intake odometer: mirror the posted odometer so the Repair
+        // Order's Overview shows *this* order's reading, not the vehicle master's
+        // stale value (a quotation-promoted RO starts at 0 until re-read).
+        if (filled($validated['odometer'] ?? null)) {
+            $validated['vehicle_mileage'] = (int) $validated['odometer'];
+        }
+
         // Keep the single service_type column in sync with the (multi) service types
         if (!empty($validated['service_types'])) {
             $validated['service_type'] = (string) reset($validated['service_types']);
