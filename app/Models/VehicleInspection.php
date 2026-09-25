@@ -404,8 +404,9 @@ class VehicleInspection extends Model
      * Appointment / Job Order.
      */
     public const SOURCES = [
-        'walk_in'   => ['label' => 'Walk-in',   'icon' => 'fa-person-walking'],
-        'scheduled' => ['label' => 'Scheduled', 'icon' => 'fa-calendar-check'],
+        'walk_in'   => ['label' => 'Walk-in',       'icon' => 'fa-person-walking'],
+        'scheduled' => ['label' => 'Scheduled',     'icon' => 'fa-calendar-check'],
+        'quotation' => ['label' => 'From Quotation', 'icon' => 'fa-file-invoice-dollar'],
     ];
 
     public function getSourceLabelAttribute(): string
@@ -423,6 +424,14 @@ class VehicleInspection extends Model
     {
         // Legacy rows (source = null) with no link to a schedule are walk-ins.
         return ($this->source ?: (($this->appointment_id || $this->job_order_id) ? 'scheduled' : 'walk_in')) === 'walk_in';
+    }
+
+    /**
+     * True when this Repair Order was promoted from a Repair Quotation.
+     */
+    public function getIsFromQuotationAttribute(): bool
+    {
+        return $this->source === 'quotation';
     }
 
     public function getRepairStatusLabelAttribute(): string

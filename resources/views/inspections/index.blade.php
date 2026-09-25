@@ -424,7 +424,9 @@
                                 <td>
                                     @if($inspection->customer)
                                         <strong>{{ $inspection->customer->full_name }}</strong>
-                                        @if($inspection->is_walk_in)
+                                        @if($inspection->is_from_quotation)
+                                            <span class="badge" style="background:#dcfce7;color:#166534;font-weight:600;font-size:.68rem;vertical-align:middle;margin-left:4px;" title="Galing sa Repair Quotation"><i class="fas fa-file-invoice-dollar me-1"></i>From Quotation</span>
+                                        @elseif($inspection->is_walk_in)
                                             <span class="badge" style="background:#fef3c7;color:#92400e;font-weight:600;font-size:.68rem;vertical-align:middle;margin-left:4px;" title="Walk-in (walang schedule)"><i class="fas fa-person-walking me-1"></i>Walk-in</span>
                                         @else
                                             <span class="badge" style="background:#dbeafe;color:#1e40af;font-weight:600;font-size:.68rem;vertical-align:middle;margin-left:4px;" title="Dumaan sa schedule (appointment / job order)"><i class="fas fa-calendar-check me-1"></i>Scheduled</span>

@@ -13,8 +13,12 @@
                 <i class="fas fa-calendar me-1"></i>
                 {{ $inspection->created_at ? $inspection->created_at->format('F j, Y g:i A') : 'N/A' }}
                 &middot; {{ is_string($inspection->inspection_type) ? ucfirst(str_replace('_', ' ', $inspection->inspection_type)) : 'Multi-Type' }}
-                @if($inspection->is_walk_in)
+                @if($inspection->is_from_quotation)
+                    &middot; <span class="badge" style="background:#dcfce7;color:#166534;font-weight:600;" title="Galing sa Repair Quotation"><i class="fas fa-file-invoice-dollar me-1"></i>From Quotation</span>
+                @elseif($inspection->is_walk_in)
                     &middot; <span class="badge" style="background:#fef3c7;color:#92400e;font-weight:600;" title="Walk-in (walang schedule)"><i class="fas fa-person-walking me-1"></i>Walk-in</span>
+                @elseif($inspection->appointment_id || $inspection->job_order_id)
+                    &middot; <span class="badge" style="background:#dbeafe;color:#1e40af;font-weight:600;" title="Dumaan sa schedule (appointment / job order)"><i class="fas fa-calendar-check me-1"></i>Scheduled</span>
                 @endif
                 @if($inspection->date_received)
                     &middot; <i class="fas fa-inbox me-1"></i>Received {{ $inspection->date_received->format('M d, Y') }}
