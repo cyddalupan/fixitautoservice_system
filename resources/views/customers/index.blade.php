@@ -278,6 +278,37 @@
     color: #b91c1c;
 }
 
+/* Extra info chips on customer cards */
+.meta-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    white-space: nowrap;
+    margin-right: 4px;
+    margin-bottom: 4px;
+}
+.meta-chip i {
+    opacity: 0.65;
+}
+.meta-chip-danger {
+    background: #fef2f2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+.dark-mode .meta-chip,
+[data-theme="dark"] .meta-chip {
+    background: #334155;
+    color: #e2e8f0;
+    border-color: #475569;
+}
+
 /* Plate number highlight */
 .plate-highlight {
     font-family: 'Courier New', monospace;
@@ -973,6 +1004,28 @@
             plateHtml = `<span class="plate-highlight">${highlightMatch(plate, term)}</span>`;
         }
 
+        // Extra info chips (more context on the card)
+        let metaHtml = '';
+        const vCount = c.vehicles_count || 0;
+        if (vCount > 0) {
+            metaHtml += `<span class="meta-chip"><i class="fas fa-car"></i> ${vCount} ${vCount === 1 ? 'vehicle' : 'vehicles'}</span>`;
+        }
+        if (c.last_service_label) {
+            metaHtml += `<span class="meta-chip"><i class="fas fa-wrench"></i> ${escapeHtml(c.last_service_label)}</span>`;
+        }
+        if (c.customer_since) {
+            metaHtml += `<span class="meta-chip"><i class="fas fa-calendar-plus"></i> Since ${formatDate(c.customer_since)}</span>`;
+        }
+        if (c.pms_due_date) {
+            metaHtml += `<span class="meta-chip"><i class="fas fa-clock"></i> Next PMS ${escapeHtml(c.pms_due_date)}</span>`;
+        }
+        if (c.has_unpaid && c.outstanding_balance > 0) {
+            metaHtml += `<span class="meta-chip meta-chip-danger"><i class="fas fa-file-invoice-dollar"></i> Owes ₱${c.outstanding_balance.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>`;
+        }
+        if (c.address) {
+            metaHtml += `<span class="meta-chip"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(c.address)}</span>`;
+        }
+
         // Archive button (admin/super_admin only, prevent card click)
         let archiveBtnHtml = '';
         if (userCanArchive) {
@@ -1005,6 +1058,7 @@
                             ${vehicleBadges}
                             ${plateHtml}
                         </div>
+                        ${metaHtml ? `<div class="d-flex flex-wrap align-items-center mt-2">${metaHtml}</div>` : ''}
                     </div>
 
                     <!-- Right side stats -->

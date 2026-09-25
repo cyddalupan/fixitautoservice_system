@@ -1262,10 +1262,19 @@ class CustomerController extends Controller
                 $lastServiceDate = $inspectionDate->copy();
             }
 
-            $hasUnpaid = $customer->invoices()
+            $outstandingBalance = (float) $customer->invoices()
                 ->whereIn('status', ['sent', 'partial', 'overdue'])
                 ->where('balance_due', '>', 0)
-                ->exists();
+                ->sum('balance_due');
+            $hasUnpaid = $outstandingBalance > 0;
+
+            // Human-friendly label for the last service type (PMS / Repair / ...).
+            $lastServiceType = $lastService?->service_type
+                ?? optional($customer->latestInspection)->service_type;
+            $lastServiceLabel = $lastServiceType
+                ? (['preventive_maintenance' => 'PMS', 'pms' => 'PMS'][$lastServiceType]
+                    ?? ucwords(str_replace('_', ' ', $lastServiceType)))
+                : null;
 
             return [
                 'id' => $customer->id,
@@ -1281,6 +1290,8 @@ class CustomerController extends Controller
                 'is_active' => (bool) $customer->is_active,
                 'balance' => (float) $customer->balance,
                 'has_unpaid' => $hasUnpaid,
+                'outstanding_balance' => $outstandingBalance,
+                'last_service_label' => $lastServiceLabel,
                 'pms_status' => optional($customer->pms_status)['state'] ?? null,
                 'pms_label' => optional($customer->pms_status)['label'] ?? null,
                 'pms_icon' => optional($customer->pms_status)['icon'] ?? null,
