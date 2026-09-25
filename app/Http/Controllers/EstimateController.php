@@ -181,6 +181,15 @@ class EstimateController extends Controller
             }
         }
 
+        // Prefill safety: the chosen vehicle MUST exist as an <option> in the
+        // dropdown, otherwise the <select> posts an empty vehicle_id and the form
+        // bounces back (302, "nothing saved"). This happens when the RO's vehicle
+        // is not listed under the RO's customer (mismatched customer/vehicle) — the
+        // customer's vehicle list comes back empty. Always append the selected one.
+        if ($selectedVehicle && ! $customerVehicles->contains('id', $selectedVehicle->id)) {
+            $customerVehicles = $customerVehicles->push($selectedVehicle);
+        }
+
         return view('estimates.create', compact(
             'customers', 'advisors', 'lastNum', 'inventoryItems', 'inventoryItemsJson',
             'selectedCustomer', 'selectedVehicle', 'customerVehicles', 'customerHistory',
