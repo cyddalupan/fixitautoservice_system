@@ -448,6 +448,7 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::post('/estimates/{estimate}/convert-to-repair-order', [EstimateController::class, 'convertToRepairOrder'])->name('estimates.convert-to-repair-order');
     Route::post('/estimates/{estimate}/send', [EstimateController::class, 'send'])->name('estimates.send');
     Route::get('/estimates/{estimate}/print', [EstimateController::class, 'print'])->name('estimates.print');
+    Route::get('/estimates/{estimate}/supplier-quotation', [EstimateController::class, 'supplierQuotation'])->name('estimates.supplier-quotation');
     // Repair Quotation: item groups (shared labour) + per-line status + re-send
     Route::post('/estimates/{estimate}/item-groups', [EstimateController::class, 'storeGroup'])->name('estimates.item-groups.store');
     Route::put('/estimates/item-groups/{group}', [EstimateController::class, 'updateGroup'])->name('estimates.item-groups.update');

@@ -1261,6 +1261,54 @@ class EstimateController extends Controller
     }
 
     /**
+     * Supplier Quotation — a plain, copy-paste friendly list of the quotation's
+     * parts grouped by their repair category (from the linked Repair Order's
+     * findings), numbered inside each category. Meant to be copied straight into
+     * a chat/Messenger message to a parts supplier.
+     */
+    public function supplierQuotation(Estimate $estimate)
+    {
+        $estimate->load(['customer', 'vehicle', 'items', 'inspection.inspectionFindings']);
+
+        $findings = optional($estimate->inspection)->inspectionFindings ?? collect();
+
+        // Index the RO findings by their issue_title so we can recover the repair
+        // category (AIRCON, SUSPENSION, ...) for each quotation item. Items are
+        // built from findings as "<issue_title> (<remarks>)", so strip the trailing
+        // parenthetical before matching.
+        $byTitle = [];
+        foreach ($findings as $f) {
+            $byTitle[strtoupper(trim((string) $f->issue_title))] = $f;
+        }
+
+        $ordered = []; // category (original case) => ['label' => CATEGORY, 'items' => [...]]
+        foreach ($estimate->items->sortBy('sort_order') as $item) {
+            $name = $item->item_name ?: $item->description;
+            if ($name === null || $name === '') {
+                continue;
+            }
+
+            $base = preg_replace('/\s*\(.*\)\s*$/', '', $name);
+            $finding = $byTitle[strtoupper(trim((string) $base))] ?? null;
+
+            // Prefer the repair category from the finding; fall back to the item's
+            // own category enum (Parts / Labor / ...).
+            $category = $finding->category ?? null;
+            if (!$category) {
+                $category = ucfirst($item->category ?: 'Others');
+            }
+
+            $key = strtoupper(trim($category));
+            if (!isset($ordered[$key])) {
+                $ordered[$key] = ['label' => $key, 'items' => []];
+            }
+            $ordered[$key]['items'][] = $name;
+        }
+
+        return view('estimates.supplier-quotation', compact('estimate', 'ordered'));
+    }
+
+    /**
      * Get vehicles for a customer (AJAX).
      */
     public function customerVehicles(Request $request)

@@ -435,8 +435,8 @@
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </form>
-                                        <a href="{{ route('estimates.print', $estimate) }}" class="btn-action" title="Print Estimate" style="color:#dc2626;border-color:#fecaca;" target="_blank">
-                                            <i class="fas fa-print"></i>
+                                        <a href="{{ route('estimates.supplier-quotation', $estimate) }}" class="btn-action" title="Supplier Quotation" style="color:#2563eb;border-color:#bfdbfe;" target="_blank">
+                                            <i class="fas fa-file-invoice"></i>
                                         </a>
                                     </div>
                                 </td>
