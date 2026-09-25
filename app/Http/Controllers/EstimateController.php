@@ -1288,7 +1288,10 @@ class EstimateController extends Controller
                 continue;
             }
 
-            $base = preg_replace('/\s*\(.*\)\s*$/', '', $name);
+            $base = trim(preg_replace('/\s*\(.*\)\s*$/', '', $name));
+            if ($base === '') {
+                $base = trim($name);
+            }
             $finding = $byTitle[strtoupper(trim((string) $base))] ?? null;
 
             // Prefer the repair category from the finding; fall back to the item's
@@ -1302,7 +1305,8 @@ class EstimateController extends Controller
             if (!isset($ordered[$key])) {
                 $ordered[$key] = ['label' => $key, 'items' => []];
             }
-            $ordered[$key]['items'][] = $name;
+            // Parts only — drop the trailing remark (LEAK, DAMAGE, TENTATIVE, ...).
+            $ordered[$key]['items'][] = $base;
         }
 
         return view('estimates.supplier-quotation', compact('estimate', 'ordered'));
