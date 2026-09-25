@@ -265,6 +265,18 @@
     background: #fef2f2;
     color: #dc2626;
 }
+.status-pms {
+    background: #e0f2fe;
+    color: #0369a1;
+}
+.status-pms-due {
+    background: #fef3c7;
+    color: #b45309;
+}
+.status-pms-overdue {
+    background: #fee2e2;
+    color: #b91c1c;
+}
 
 /* Plate number highlight */
 .plate-highlight {
@@ -665,6 +677,7 @@
             <span class="filter-tab" data-filter="active">Active</span>
             <span class="filter-tab" data-filter="inactive">Inactive</span>
             <span class="filter-tab" data-filter="unpaid">Unpaid Balance</span>
+            <span class="filter-tab" data-filter="pms-due">PMS Due</span>
             <span class="filter-tab" data-filter="frequent">Frequent</span>
             <span class="filter-tab" data-filter="new">New (30d)</span>
             <span class="filter-tab" data-filter="recent-service">Recent Service</span>
@@ -735,6 +748,10 @@
     <div class="stat-item">
         <div class="stat-value" id="stat-unpaid">—</div>
         <div class="stat-label">Unpaid</div>
+    </div>
+    <div class="stat-item">
+        <div class="stat-value" id="stat-pms-due">—</div>
+        <div class="stat-label">PMS Due</div>
     </div>
 </div>
 
@@ -820,6 +837,7 @@
     const statActive = document.getElementById('stat-active');
     const statServices = document.getElementById('stat-services');
     const statUnpaid = document.getElementById('stat-unpaid');
+    const statPmsDue = document.getElementById('stat-pms-due');
 
     // Filters
     const advancedFilterToggle = document.getElementById('advanced-filter-toggle');
@@ -928,6 +946,17 @@
             statusHtml = '<span class="status-badge status-inactive"><i class="fas fa-minus-circle"></i> Inactive</span>';
         }
 
+        // PMS (Preventive Maintenance Service) badge — 6-month countdown
+        // starting from the workshop release date of the latest repair order.
+        let pmsHtml = '';
+        if (c.pms_status) {
+            const pmsCls = c.pms_status === 'overdue'
+                ? 'status-pms-overdue'
+                : (c.pms_status === 'due' ? 'status-pms-due' : 'status-pms');
+            const pmsTitle = c.pms_due_date ? `Next PMS: ${c.pms_due_date}` : 'PMS';
+            pmsHtml = `<span class="status-badge ${pmsCls}" title="${escapeHtml(pmsTitle)}"><i class="fas ${c.pms_icon || 'fa-wrench'}"></i> ${escapeHtml(c.pms_label)}</span>`;
+        }
+
         // Vehicle badges
         let vehicleBadges = '';
         if (c.vehicles && c.vehicles.length > 0) {
@@ -965,6 +994,7 @@
                                 ${highlightMatch(c.full_name, term)}
                             </a>
                             ${statusHtml}
+                            ${pmsHtml}
                         </div>
                         <div class="customer-info-grid" style="display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px;">
                             <span><i class="fas fa-phone text-muted me-1" style="width:14px;"></i> ${c.phone ? escapeHtml(c.phone) : '—'}</span>
@@ -1033,6 +1063,9 @@
         statActive.textContent = activeCount;
         statServices.textContent = totalServices;
         statUnpaid.textContent = unpaidCount;
+
+        const pmsDueCount = allCustomers.filter(c => c.pms_status === 'due' || c.pms_status === 'overdue').length;
+        if (statPmsDue) statPmsDue.textContent = pmsDueCount;
     }
 
     // ─── Empty State ────────────────────────────────────────────
@@ -1222,6 +1255,9 @@
                     break;
                 case 'unpaid':
                     currentFilters.unpaid_balance = true;
+                    break;
+                case 'pms-due':
+                    currentFilters.pms_due = true;
                     break;
                 case 'frequent':
                     currentFilters.frequent = true;

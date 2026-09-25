@@ -1227,7 +1227,7 @@ class CustomerController extends Controller
         // === LOAD RELATIONSHIPS ===
         $query->withCount(['serviceRecords', 'vehicles'])
             ->withSum('serviceRecords', 'final_amount')
-            ->with(['vehicles', 'serviceRecords' => function ($sr) {
+            ->with(['vehicles', 'latestReleasedInspection', 'serviceRecords' => function ($sr) {
                 $sr->latest('service_date')->limit(1);
             }]);
 
@@ -1267,6 +1267,10 @@ class CustomerController extends Controller
                 'is_active' => (bool) $customer->is_active,
                 'balance' => (float) $customer->balance,
                 'has_unpaid' => $hasUnpaid,
+                'pms_status' => optional($customer->pms_status)['state'] ?? null,
+                'pms_label' => optional($customer->pms_status)['label'] ?? null,
+                'pms_icon' => optional($customer->pms_status)['icon'] ?? null,
+                'pms_due_date' => $customer->pms_due_date_label,
                 'vehicles_count' => (int) ($customer->vehicles_count ?? $customer->vehicles->count()),
                 'service_records_count' => (int) ($customer->service_records_count ?? 0),
                 'total_spent' => (float) ($customer->service_records_sum_final_amount ?? 0),
@@ -1458,6 +1462,21 @@ class CustomerController extends Controller
                 $inv->whereIn('status', ['sent', 'partial', 'overdue'])
                     ->where('balance_due', '>', 0);
             });
+        }
+        // PMS due / overdue: the customer's most recent released repair order
+        // (max workshop_released_at) is far enough back that the 6-month PMS
+        // cycle lands within the "due soon" window (or is already past).
+        if (!empty($filters['pms_due'])) {
+            $threshold = now()->subMonths(Customer::PMS_INTERVAL_MONTHS)
+                ->addDays(Customer::PMS_DUE_SOON_DAYS);
+
+            $query->whereRaw(
+                '(SELECT MAX(vi.workshop_released_at) FROM vehicle_inspections vi
+                  WHERE vi.customer_id = customers.id
+                    AND vi.repair_status IN (?, ?)
+                    AND vi.deleted_at IS NULL) <= ?',
+                ['released', 'paid', $threshold]
+            );
         }
         if (!empty($filters['frequent'])) {
             $query->has('serviceRecords', '>=', 5);

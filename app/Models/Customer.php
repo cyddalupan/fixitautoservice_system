@@ -10,6 +10,12 @@ class Customer extends Model
 {
     use HasFactory;
 
+    /** Months between Preventive Maintenance Service (PMS) intervals. */
+    public const PMS_INTERVAL_MONTHS = 6;
+
+    /** A PMS due within this many days is shown as "due soon". */
+    public const PMS_DUE_SOON_DAYS = 30;
+
     protected $fillable = [
         'first_name', 'last_name', 'email', 'phone', 'address',
         'city', 'state', 'zip_code', 'customer_type', 'segment',
@@ -148,6 +154,92 @@ class Customer extends Model
     public function latestQuotation()
     {
         return $this->hasOne(Quotation::class)->latestOfMany();
+    }
+
+    public function inspections()
+    {
+        return $this->hasMany(VehicleInspection::class);
+    }
+
+    /**
+     * Most recent repair order that has been released from the workshop.
+     * The 6-month PMS countdown starts on its workshop_released_at date.
+     */
+    public function latestReleasedInspection()
+    {
+        return $this->hasOne(VehicleInspection::class, 'customer_id')
+            ->whereIn('repair_status', ['released', 'paid'])
+            ->latestOfMany('workshop_released_at');
+    }
+
+    /**
+     * Date the next PMS (Preventive Maintenance Service) is due —
+     * 6 months after the last released repair order. Null when the customer
+     * has no released repair order yet.
+     */
+    public function getPmsDueDateAttribute(): ?\Carbon\Carbon
+    {
+        $released = $this->relationLoaded('latestReleasedInspection')
+            ? $this->latestReleasedInspection
+            : $this->latestReleasedInspection()->first();
+
+        $releasedAt = $released?->workshop_released_at;
+
+        return $releasedAt ? $releasedAt->copy()->addMonths(self::PMS_INTERVAL_MONTHS) : null;
+    }
+
+    /** Signed days until the next PMS is due (negative = overdue). Null if never released. */
+    public function getPmsDaysUntilAttribute(): ?int
+    {
+        $due = $this->pms_due_date;
+
+        return $due ? (int) now()->startOfDay()->diffInDays($due->copy()->startOfDay(), false) : null;
+    }
+
+    /**
+     * PMS badge state for the customer list.
+     * Returns null when there is no released repair order to count from.
+     */
+    public function getPmsStatusAttribute(): ?array
+    {
+        $days = $this->pms_days_until;
+
+        if (is_null($days)) {
+            return null;
+        }
+
+        if ($days < 0) {
+            $months = intdiv(abs($days), 30);
+
+            return [
+                'state' => 'overdue',
+                'label' => $months > 0 ? "PMS {$months}mo overdue" : 'PMS overdue',
+                'icon' => 'fa-triangle-exclamation',
+            ];
+        }
+
+        if ($days <= self::PMS_DUE_SOON_DAYS) {
+            return [
+                'state' => 'due',
+                'label' => $days === 0 ? 'PMS due today' : "PMS due in {$days}d",
+                'icon' => 'fa-bell',
+            ];
+        }
+
+        $months = (int) ceil($days / 30);
+
+        return [
+            'state' => 'ok',
+            'label' => "PMS in {$months}mo",
+            'icon' => 'fa-wrench',
+        ];
+    }
+
+    public function getPmsDueDateLabelAttribute(): ?string
+    {
+        $due = $this->pms_due_date;
+
+        return $due ? $due->format('M j, Y') : null;
     }
 
     /**
