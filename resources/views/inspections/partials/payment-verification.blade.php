@@ -9,9 +9,10 @@
     Expects: $inspection (VehicleInspection) with ->repairOrderPayments loaded.
 --}}
 @php
-    $payments = $inspection->repairOrderPayments
-        ? $inspection->repairOrderPayments->sortByDesc('created_at')
-        : collect();
+    // $payments may be passed explicitly (e.g. a Repair Quotation page passes only the
+    // payments that belong to THAT quotation). Defaults to all of the RO's payments.
+    $payments = $payments ?? ($inspection->repairOrderPayments ?? collect());
+    $payments = collect($payments)->sortByDesc('created_at');
 
     $verified = $payments->where('status', 'verified');
     $verifiedTotal = (float) $verified->sum('amount');

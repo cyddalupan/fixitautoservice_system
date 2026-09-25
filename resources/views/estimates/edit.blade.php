@@ -85,6 +85,7 @@
                 <div class="mt-3">
                     @include('inspections.partials.payment-verification', [
                         'inspection' => $inspection,
+                        'payments' => $estimate->quotationPayments(),
                         'paymentTotal' => $estimate->quotation_total,
                         'paymentTotalFormatted' => $estimate->formatted_quotation_total,
                         'totalLabel' => 'Quotation total',

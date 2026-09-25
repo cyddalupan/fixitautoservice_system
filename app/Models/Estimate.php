@@ -270,6 +270,46 @@ public function serviceAdvisor(): BelongsTo
     }
 
     /**
+     * Payments that belong to THIS quotation.
+     *
+     * Payments are recorded against the Repair Order, not a specific quotation. A
+     * quotation owns the payments made while it was the active one: those recorded
+     * at/after this quotation was created, and before the next quotation for the same
+     * Repair Order was created. This stops a during-repair re-quote from showing the
+     * old quotation's verified payment as if it were already paid.
+     *
+     * @return \Illuminate\Support\Collection<int, \App\Models\RepairOrderPayment>
+     */
+    public function quotationPayments(): \Illuminate\Support\Collection
+    {
+        $inspection = $this->linkedInspection();
+        if (! $inspection || ! $this->created_at || ! $this->inspection_id) {
+            return collect();
+        }
+
+        $payments = $inspection->relationLoaded('repairOrderPayments')
+            ? $inspection->repairOrderPayments
+            : $inspection->repairOrderPayments()->get();
+
+        $from = $this->created_at;
+        $until = Estimate::where('inspection_id', $this->inspection_id)
+            ->where('id', '!=', $this->id)
+            ->where('created_at', '>', $this->created_at)
+            ->min('created_at');
+
+        return collect($payments)
+            ->filter(function ($p) use ($from, $until) {
+                if (! $p->created_at || $p->created_at->lt($from)) {
+                    return false;
+                }
+
+                return $until === null || $p->created_at->lt($until);
+            })
+            ->sortByDesc('created_at')
+            ->values();
+    }
+
+    /**
      * Quotation amount — PARTS side.
      *
      * A Repair Quotation is priced from the linked Repair Order's findings, so the
