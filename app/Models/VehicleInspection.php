@@ -676,6 +676,79 @@ class VehicleInspection extends Model
         return '₱' . number_format($this->repair_parts_total, 2);
     }
 
+    /**
+     * Build a Repair Order's intake lines (Job Description labor + Parts/Supplies)
+     * from a set of findings and their shared labor groups. Shared labor is keyed by
+     * the group name; an ungrouped finding's own labor (estimated_cost) folds into
+     * its category. Declined ("Not Pursued") findings are skipped.
+     *
+     * Used when a Repair Quotation is promoted into a Repair Order (priced only
+     * from that quotation's own findings) and when rebuilding an existing RO's lines.
+     *
+     * @param  iterable<int, \App\Models\InspectionFinding>  $findings
+     * @param  iterable<int, \App\Models\InspectionFindingGroup>  $groups
+     * @return array{0: array<int, array<string, mixed>>, 1: array<int, array<string, mixed>>}
+     */
+    public static function buildRepairLinesFromFindings($findings, $groups): array
+    {
+        $jd = [];
+        $parts = [];
+
+        $findings = collect($findings);
+        $groups = collect($groups);
+        $groupIds = $findings->pluck('group_id')->filter()->unique()->values();
+
+        $laborByCat = [];
+        $catOrder = [];
+        $addLabor = function (string $name, float $amount) use (&$laborByCat, &$catOrder) {
+            $name = trim($name) !== '' ? trim($name) : 'Labor';
+            $key = mb_strtolower($name);
+            if (! isset($laborByCat[$key])) {
+                $laborByCat[$key] = ['description' => $name, 'mh' => null, 'unit_price' => null, 'labor_cost' => 0.0];
+                $catOrder[] = $key;
+            }
+            $laborByCat[$key]['labor_cost'] += $amount;
+        };
+
+        // Shared labor — only from the groups that actually hold a quoted finding.
+        foreach ($groups as $g) {
+            if (! $groupIds->contains($g->id)) {
+                continue;
+            }
+            $addLabor((string) ($g->name ?: 'Labor'), (float) $g->labor_cost);
+        }
+
+        foreach ($findings as $f) {
+            if ((bool) $f->is_declined) {
+                continue;
+            }
+
+            $qty = (float) ($f->quantity ?: 0);
+            $unit = (float) ($f->unit_price ?? 0);
+
+            // Per-item labor of an *ungrouped* finding — attributed to its
+            // category (folds into the matching group's labor when one exists).
+            if (! $f->group_id && (float) $f->estimated_cost > 0) {
+                $addLabor((string) ($f->category ?: 'Labor'), (float) $f->estimated_cost);
+            }
+
+            if ($qty > 0 && $unit > 0) {
+                $parts[] = [
+                    'description' => $f->part_name ?: ($f->issue_title ?: 'Part'),
+                    'qty' => $qty,
+                    'unit_price' => $unit,
+                    'cost' => $qty * $unit,
+                ];
+            }
+        }
+
+        foreach ($catOrder as $key) {
+            $jd[] = $laborByCat[$key];
+        }
+
+        return [$jd, $parts];
+    }
+
     public function getTypeLabelAttribute(): string
     {
         // Handle array of inspection types

@@ -910,6 +910,12 @@ class EstimateController extends Controller
             ? VehicleInspection::with(['inspectionFindings.group', 'findingGroups'])->find($estimate->inspection_id)
             : null;
 
+        // Only THIS quotation's own findings travel to the new RO. A quotation
+        // created during a repair (after the source RO was locked) owns just the
+        // findings discovered then — the original approved ones stay on the
+        // existing Repair Order.
+        $quotedFindings = $estimate->quotedFindings();
+
         // Prices must be complete before the job becomes a Repair Order: once
         // promoted, these amounts are the fixed figures for the RO. Block when a
         // pursued line is still missing its parts price and/or labor.
@@ -937,7 +943,7 @@ class EstimateController extends Controller
         // The RO's own intake lines (Job Description + Parts/Supplies) — this is
         // what `repair_total` and the printed slip read, so the promoted RO must
         // carry them or it would show ₱0 (and a bogus ₱0 balance).
-        [$jdItems, $partsItems] = $this->repairLinesFromQuotation($estimate, $linkedInspection);
+        [$jdItems, $partsItems] = $this->repairLinesFromQuotation($estimate, $linkedInspection, $quotedFindings);
 
         DB::beginTransaction();
         try {
@@ -975,11 +981,14 @@ class EstimateController extends Controller
             // Carry the quotation's lines across as findings so the new Repair
             // Order shows the same parts/labour the customer approved.
             if ($linkedInspection) {
-                // Linked quotation — the lines (and their shared labor groups)
-                // live on the old RO's findings board. Copy them verbatim,
-                // remapping group ids onto the new RO.
+                // Linked quotation — copy only the findings this quotation owns
+                // (its scoped set) and their groups, remapping group ids onto
+                // the new RO.
                 $groupMap = [];
                 foreach ($linkedInspection->findingGroups as $g) {
+                    if (! $quotedFindings->contains('group_id', $g->id)) {
+                        continue;
+                    }
                     $newGroup = \App\Models\InspectionFindingGroup::create([
                         'inspection_id' => $inspection->id,
                         'name' => $g->name,
@@ -991,7 +1000,7 @@ class EstimateController extends Controller
                 }
 
                 $sort = 0;
-                foreach ($linkedInspection->inspectionFindings as $f) {
+                foreach ($quotedFindings as $f) {
                     \App\Models\InspectionFinding::create([
                         'inspection_id' => $inspection->id,
                         'group_id' => $f->group_id ? ($groupMap[$f->group_id] ?? null) : null,
@@ -1118,62 +1127,17 @@ class EstimateController extends Controller
      *
      * @return array{0: array<int, array<string, mixed>>, 1: array<int, array<string, mixed>>}
      */
-    protected function repairLinesFromQuotation(Estimate $estimate, ?VehicleInspection $linked): array
+    protected function repairLinesFromQuotation(Estimate $estimate, ?VehicleInspection $linked, ?\Illuminate\Support\Collection $scopedFindings = null): array
     {
         $jd = [];
         $parts = [];
 
         if ($linked) {
-            // Job Description labor is grouped by category/group name so an
-            // ungrouped item folds into the matching group's labor instead of
-            // showing as its own line (e.g. STABILIZER LINK FRONT (Suspension)
-            // adds to the Suspension group's ₱1,000 → ₱1,200).
-            $laborByCat = [];
-            $catOrder = [];
-
-            $addLabor = function (string $name, float $amount) use (&$laborByCat, &$catOrder) {
-                $name = trim($name) !== '' ? trim($name) : 'Labor';
-                $key = mb_strtolower($name);
-                if (! isset($laborByCat[$key])) {
-                    $laborByCat[$key] = ['description' => $name, 'mh' => null, 'unit_price' => null, 'labor_cost' => 0.0];
-                    $catOrder[] = $key;
-                }
-                $laborByCat[$key]['labor_cost'] += $amount;
-            };
-
-            foreach ($linked->findingGroups as $g) {
-                $addLabor((string) ($g->name ?: 'Labor'), (float) $g->labor_cost);
-            }
-
-            foreach ($linked->inspectionFindings as $f) {
-                if ((bool) $f->is_declined) {
-                    continue;
-                }
-
-                $qty = (float) ($f->quantity ?: 0);
-                $unit = (float) ($f->unit_price ?? 0);
-
-                // Per-item labor of an *ungrouped* finding — attributed to its
-                // category (folded into the matching group when one exists).
-                if (! $f->group_id && (float) $f->estimated_cost > 0) {
-                    $addLabor((string) ($f->category ?: 'Labor'), (float) $f->estimated_cost);
-                }
-
-                if ($qty > 0 && $unit > 0) {
-                    $parts[] = [
-                        'description' => $f->part_name ?: ($f->issue_title ?: 'Part'),
-                        'qty' => $qty,
-                        'unit_price' => $unit,
-                        'cost' => $qty * $unit,
-                    ];
-                }
-            }
-
-            foreach ($catOrder as $key) {
-                $jd[] = $laborByCat[$key];
-            }
-
-            return [$jd, $parts];
+            // Only the findings this quotation owns are priced onto the new RO.
+            return VehicleInspection::buildRepairLinesFromFindings(
+                $scopedFindings ?? $linked->inspectionFindings,
+                $linked->findingGroups
+            );
         }
 
         $estimate->loadMissing('items');
