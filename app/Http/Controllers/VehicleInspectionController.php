@@ -2188,10 +2188,15 @@ class VehicleInspectionController extends Controller
             ? $inspection->repairOrderPayments->sortBy('created_at')->values()
             : collect();
 
-        // Odometer: use the Repair Order's own reading. Do NOT fall back to the
-        // vehicle profile (it may hold a stale/wrong value the RO never captured).
+        // Odometer: the Repair Order's own reading, formatted like the RO
+        // overview (number when captured, "N/A" when the RO has none). Do NOT
+        // fall back to the vehicle profile — it may hold a stale/wrong value
+        // the RO never captured (which is why the slip showed a number while
+        // the overview showed N/A).
         $mileage = $inspection->vehicle_mileage;
-        $slipOdometer = ($mileage !== null && (float) $mileage > 0) ? $mileage : '';
+        $slipOdometer = ($mileage !== null && (float) $mileage > 0)
+            ? number_format((float) $mileage)
+            : 'N/A';
 
         return [
             'inspection'    => $inspection,

@@ -38,9 +38,9 @@
 
     $money = function ($n) { return '&#8369; ' . number_format((float) $n, 2); };
 
-    // Odometer shown on the slip: the caller may pass an explicit value
-    // ($slipOdometer, e.g. the Repair Order's own reading — '' hides the row).
-    // Falls back to the vehicle profile for the appointment slip.
+    // Odometer shown on the slip. Caller may pass an explicit value
+    // ($slipOdometer, e.g. the Repair Order reading / "N/A"); falls back to
+    // the vehicle profile for the appointment slip.
     $odometer = $slipOdometer ?? ($vehicle->odometer ?? null);
 
     // Repair Orders promoted from a Repair Quotation get a grouped listing
@@ -127,11 +127,9 @@
         </tr>
         <tr>
             <td class="lbl">Address</td>
-            <td colspan="{{ ($odometer ?? '') !== null && ($odometer ?? '') !== '' ? 3 : 5 }}">{{ $customer->address ?? '' }}</td>
-            @if(($odometer ?? '') !== null && ($odometer ?? '') !== '')
+            <td colspan="3">{{ $customer->address ?? '' }}</td>
             <td class="lbl">Odometer</td>
-            <td>{{ $odometer }}</td>
-            @endif
+            <td>{{ $odometer ?? '' }}</td>
         </tr>
         <tr>
             <td class="lbl">Vehicle</td>
@@ -252,8 +250,7 @@
                             <th style="text-align:left">Date</th>
                             <th style="text-align:left">Type</th>
                             <th style="text-align:left">Payment</th>
-                            <th style="width:18%">Amount</th>
-                            <th style="width:20%">Status</th>
+                            <th style="width:22%">Amount</th>
                         </tr>
                         @foreach($slipPayments as $p)
                             <tr>
@@ -261,7 +258,6 @@
                                 <td>{{ $p->type_label }}</td>
                                 <td>{{ ucfirst(str_replace('_', ' ', (string) ($p->payment_method ?: '&mdash;'))) }}@if($p->reference_number) &middot; Ref {{ $p->reference_number }}@endif</td>
                                 <td class="ros-right">{{ number_format((float) $p->amount, 2) }}</td>
-                                <td>{{ $p->status_label }}</td>
                             </tr>
                         @endforeach
                     </table>
