@@ -31,9 +31,10 @@
 
     $money = function ($n) { return '&#8369; ' . number_format((float) $n, 2); };
 
-    // Present the quotation from the Repair Order's CURRENT findings (the fresh
-    // information) as ONE unified list. Items found during the repair now sit
-    // alongside the rest — we no longer split "approved quotation" vs "additional".
+    // Present the quotation from the Repair Order's OWN FINDINGS — never from a stale
+    // Repair Quotation/estimate. All non-declined findings of this RO go in, in one list
+    // (the approved ones keep their locked prices; anything added during the repair sits
+    // alongside them).
     $quotedFindings = $findings->values();
 
     // Build the category sections (and totals) for a given set of findings.
