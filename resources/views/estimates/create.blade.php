@@ -727,6 +727,11 @@ function save(s){
     try { serializeItems(); } catch(e) {}
     var st = document.getElementById('statusDD');
     if (st) st.value = s;
+    // Deliberate save: suppress the shared draft module's "unsaved changes"
+    // beforeunload prompt. Native form.submit() skips the jQuery submit handler
+    // that would otherwise clear it, so the user got a stay/leave dialog on every
+    // Save Draft (and clicking "Stay" silently discarded the save).
+    try { sessionStorage.setItem('form_submitted', '1'); } catch(e) {}
     document.getElementById('creationForm').submit();
 }
 document.addEventListener('DOMContentLoaded',function(){
