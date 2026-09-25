@@ -624,8 +624,8 @@
             <p class="text-muted mb-0">Smart search, filter, and manage your customer database</p>
         </div>
         <div class="d-flex gap-2">
-            <a href="{{ route('customers.create') }}" class="btn btn-primary">
-                <i class="fas fa-plus me-1"></i> Add New Customer
+            <a href="{{ route('customers.create') }}" class="btn btn-primary" aria-disabled="true" tabindex="-1" title="Coming soon" style="opacity:.5;filter:grayscale(1);pointer-events:none;cursor:not-allowed;">
+                <i class="fas fa-plus me-1"></i> Add New Customer <span class="badge bg-light text-dark ms-1">Soon</span>
             </a>
             <button type="button" class="btn btn-success" onclick="generateCustomerForm()">
                 <i class="fas fa-link me-1"></i> Generate Form

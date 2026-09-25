@@ -332,8 +332,8 @@
             </div>
             <div class="card-body">
                 <div class="d-grid gap-2">
-                    <a href="{{ route('customers.create') }}" class="btn btn-outline-primary">
-                        <i class="fas fa-user-plus me-2"></i> Add New Customer
+                    <a href="{{ route('customers.create') }}" class="btn btn-outline-primary" aria-disabled="true" tabindex="-1" title="Coming soon" style="opacity:.5;filter:grayscale(1);pointer-events:none;cursor:not-allowed;">
+                        <i class="fas fa-user-plus me-2"></i> Add New Customer <span class="badge bg-light text-dark ms-1">Soon</span>
                     </a>
                     <a href="{{ route('vehicles.create') }}" class="btn btn-outline-primary">
                         <i class="fas fa-car me-2"></i> Add New Vehicle
