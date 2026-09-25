@@ -75,16 +75,14 @@
             <div class="d-flex flex-wrap align-items-center justify-content-between mb-2">
                 <div class="small text-muted">
                     @if($findingsLocked)
-                        <i class="fas fa-lock me-1"></i>Ang approved na items ay nasa <strong>From Quotation</strong> tab. Mga bagong finding dito.
+                        <i class="fas fa-lock me-1"></i>Ang approved na items ay nasa <strong>From Quotation</strong> tab. Mga bagong finding dito — pwede mo pa ring i-group kung magkapareho ng labor.
                     @else
                         <i class="fas fa-hand-pointer me-1"></i>Drag a card into a group to share one labor cost.
                     @endif
                 </div>
-                @unless($findingsLocked)
                 <button type="button" class="btn btn-sm btn-outline-primary" onclick="createFindingGroup()">
                     <i class="fas fa-layer-group me-1"></i>New Group
                 </button>
-                @endunless
             </div>
 
             <div id="findings-board">
@@ -145,13 +143,21 @@
                     </div>
                 </div>
 
-                @unless($findingsLocked)
                 @foreach($inspection->findingGroups as $group)
+                @php
+                    // An "approved" group holds findings fixed from the Repair Quotation;
+                    // those belong in the From Quotation tab, not on the Findings board.
+                    // On a locked RO we show only groups of NEW findings (during repair).
+                    $groupLocked = $findingsLocked && $group->findings->contains(function ($f) use ($inspection) {
+                        return $inspection->findingIsLocked($f);
+                    });
+                @endphp
+                @continue($groupLocked)
                 <div class="finding-group mb-3" data-group-id="{{ $group->id }}" data-auto-name="{{ $group->auto_name ? '1' : '0' }}" data-labor-cost="{{ (float) $group->labor_cost }}">
                     <div class="finding-group-head d-flex flex-wrap align-items-center gap-2 px-3 py-2"
                          style="background:linear-gradient(135deg,#1a237e,#283593);color:#fff;border-radius:10px 10px 0 0;">
                         <i class="fas fa-layer-group"></i>
-                        @if($findingsLocked)
+                        @if($groupLocked)
                         <span class="fw-semibold">{{ $group->name }}</span>
                         <div class="ms-auto d-flex align-items-center gap-2">
                             <span class="small"><i class="fas fa-tools me-1"></i>Labor ₱{{ number_format((float) $group->labor_cost, 2) }}</span>
@@ -187,5 +193,4 @@
                     </div>
                 </div>
                 @endforeach
-                @endunless
             </div>

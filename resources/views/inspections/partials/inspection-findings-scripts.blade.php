@@ -1210,15 +1210,15 @@ function emptyHintText(dz){
 }
 
 function initDropzones(){
-    // Locked RO: the approved cards can't be moved/re-grouped. No drag-drop.
-    if(window.FINDINGS_LOCKED) return;
     if(typeof Sortable === 'undefined') return;
     document.querySelectorAll('.finding-dropzone').forEach(function(dz){
         if(dz._sortable) return;
         Sortable.create(dz, {
             group:'findings',
             animation:180,
-            draggable:'.finding-card',
+            // Never drag locked (approved) cards — but on a locked RO the NEW findings
+            // can still be re-ordered / grouped under a shared labor cost.
+            draggable:'.finding-card:not([data-locked="1"])',
             filter:'.btn, button, a, input, select, textarea, .no-drag, .finding-linked-badge',
             preventOnFilter:false,
             ghostClass:'finding-ghost',

@@ -1412,6 +1412,32 @@ class VehicleInspectionController extends Controller
     }
 
     /**
+     * Refuse editing/deleting a group that holds findings fixed from the approved
+     * Repair Quotation. Groups created DURING the repair (holding only new findings)
+     * stay editable even while the RO is locked, so fresh problems can still be
+     * grouped under a shared labor cost.
+     */
+    private function denyIfGroupLocked($group, Request $request)
+    {
+        if (! $group) { return null; }
+        $inspection = $group->inspection;
+        if (! $inspection || ! $inspection->isFindingsLocked()) { return null; }
+
+        $hasLocked = $group->findings->contains(function ($f) use ($inspection) {
+            return $inspection->findingIsLocked($f);
+        });
+
+        if ($hasLocked) {
+            $msg = 'Naka-lock ang group na ito — may approved findings mula sa Repair Quotation. I-unlock muna para maka-edit.';
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 423);
+            }
+            return back()->with('error', $msg);
+        }
+        return null;
+    }
+
+    /**
      * Unlock a Repair Order whose findings were fixed from a Repair Quotation.
      * Restricted to admins so the approved amounts are not changed by accident.
      */
@@ -1561,7 +1587,9 @@ class VehicleInspectionController extends Controller
 
     public function storeGroup(Request $request, VehicleInspection $inspection)
     {
-        if ($resp = $this->denyIfFindingsLocked($inspection, $request)) { return $resp; }
+        // NOTE: creating a NEW group is allowed even on a locked RO — findings
+        // discovered during the repair may share one labor cost. The approved
+        // groups/findings themselves stay frozen (see denyIfGroupLocked).
         $validated = $request->validate([
             'name' => 'nullable|string|max:150',
             'auto_name' => 'nullable|boolean',
@@ -1584,7 +1612,7 @@ class VehicleInspectionController extends Controller
 
     public function updateGroup(Request $request, InspectionFindingGroup $group)
     {
-        if ($resp = $this->denyIfFindingsLocked($group->inspection, $request)) { return $resp; }
+        if ($resp = $this->denyIfGroupLocked($group, $request)) { return $resp; }
         $validated = $request->validate([
             'name' => 'nullable|string|max:150',
             'auto_name' => 'nullable|boolean',
@@ -1602,7 +1630,7 @@ class VehicleInspectionController extends Controller
 
     public function destroyGroup(Request $request, InspectionFindingGroup $group)
     {
-        if ($resp = $this->denyIfFindingsLocked($group->inspection, $request)) { return $resp; }
+        if ($resp = $this->denyIfGroupLocked($group, $request)) { return $resp; }
         $inspectionId = $group->inspection_id;
         // Detach findings (keep them, just ungroup)
         InspectionFinding::where('group_id', $group->id)->update(['group_id' => null]);
@@ -1625,6 +1653,13 @@ class VehicleInspectionController extends Controller
             'group_id' => 'nullable|exists:inspection_finding_groups,id',
             'sort_order' => 'nullable|integer|min:0',
         ]);
+
+        // A new (unlocked) finding may be grouped — but never INTO an approved group
+        // whose labor was fixed from the Repair Quotation.
+        if (! empty($validated['group_id'])) {
+            $target = InspectionFindingGroup::find($validated['group_id']);
+            if ($resp = $this->denyIfGroupLocked($target, $request)) { return $resp; }
+        }
 
         $finding->update([
             'group_id' => $validated['group_id'] ?? null,
