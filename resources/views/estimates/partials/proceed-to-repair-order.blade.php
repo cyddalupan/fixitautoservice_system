@@ -18,7 +18,10 @@
     // modal therefore always shows the "new Repair Order" case; the old RO is
     // only referenced, and payments recorded on it carry over to the new one.
     $linkedInspection = $inspection;
-    $payments = $inspection ? $inspection->repairOrderPayments : collect();
+    // Only the payments that belong to THIS quotation count here — otherwise a
+    // during-repair re-quote would show the old quotation's verified payments
+    // (recorded earlier) as if they were already paid on this one.
+    $payments = $estimate->quotationPayments();
     $verifiedPaid = $payments->where('status', 'verified')->sum('amount');
     $pendingCount = $payments->where('status', 'pending')->count();
     $quotationTotal = (float) ($estimate->quotation_total ?? 0);
