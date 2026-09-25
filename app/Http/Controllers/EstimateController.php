@@ -1105,13 +1105,25 @@ class EstimateController extends Controller
         $parts = [];
 
         if ($linked) {
+            // Job Description labor is grouped by category/group name so an
+            // ungrouped item folds into the matching group's labor instead of
+            // showing as its own line (e.g. STABILIZER LINK FRONT (Suspension)
+            // adds to the Suspension group's ₱1,000 → ₱1,200).
+            $laborByCat = [];
+            $catOrder = [];
+
+            $addLabor = function (string $name, float $amount) use (&$laborByCat, &$catOrder) {
+                $name = trim($name) !== '' ? trim($name) : 'Labor';
+                $key = mb_strtolower($name);
+                if (! isset($laborByCat[$key])) {
+                    $laborByCat[$key] = ['description' => $name, 'mh' => null, 'unit_price' => null, 'labor_cost' => 0.0];
+                    $catOrder[] = $key;
+                }
+                $laborByCat[$key]['labor_cost'] += $amount;
+            };
+
             foreach ($linked->findingGroups as $g) {
-                $jd[] = [
-                    'description' => $g->name ?: 'Labor',
-                    'mh' => null,
-                    'unit_price' => null,
-                    'labor_cost' => (float) $g->labor_cost,
-                ];
+                $addLabor((string) ($g->name ?: 'Labor'), (float) $g->labor_cost);
             }
 
             foreach ($linked->inspectionFindings as $f) {
@@ -1122,14 +1134,10 @@ class EstimateController extends Controller
                 $qty = (float) ($f->quantity ?: 0);
                 $unit = (float) ($f->unit_price ?? 0);
 
-                // Per-item labor of an ungrouped finding.
+                // Per-item labor of an *ungrouped* finding — attributed to its
+                // category (folded into the matching group when one exists).
                 if (! $f->group_id && (float) $f->estimated_cost > 0) {
-                    $jd[] = [
-                        'description' => $f->issue_title ?: ($f->part_name ?: 'Labor'),
-                        'mh' => null,
-                        'unit_price' => null,
-                        'labor_cost' => (float) $f->estimated_cost,
-                    ];
+                    $addLabor((string) ($f->category ?: 'Labor'), (float) $f->estimated_cost);
                 }
 
                 if ($qty > 0 && $unit > 0) {
@@ -1140,6 +1148,10 @@ class EstimateController extends Controller
                         'cost' => $qty * $unit,
                     ];
                 }
+            }
+
+            foreach ($catOrder as $key) {
+                $jd[] = $laborByCat[$key];
             }
 
             return [$jd, $parts];
