@@ -314,6 +314,17 @@
                 </div>
             </div>
         </div>
+        <div class="stat-card" style="border-left-color:#f59e0b;">
+            <div class="stat-card-body">
+                <div class="stat-card-icon" style="background:#fef3c7;color:#d97706;">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                </div>
+                <div class="stat-card-info">
+                    <h3 style="font-size:1.15rem;">&#8369;{{ number_format($stats['pending_balance'] ?? 0, 2) }}</h3>
+                    <p>Pending Balance Total</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Filters -->
