@@ -12,8 +12,8 @@
 <div class="alert d-flex flex-wrap align-items-center gap-2 mb-3" style="background:#eff6ff;border:1px solid #93c5fd;color:#1e40af;">
     <i class="fas fa-lock"></i>
     <div class="flex-grow-1">
-        <strong>Naka-lock ang approved findings.</strong>
-        Fixed na ang parts at labor price mula sa Repair Quotation. Pero pwede ka pa ring <strong>magdagdag ng bagong finding</strong> kung may bagong makita sa sasakyan — yung bago lang ang maa-edit/ma-de-delete.
+        <strong>Bagong findings ito (during repair).</strong>
+        Nasa <strong>From Quotation</strong> tab ang approved na items mula sa quotation — doon naka-lock ang presyo. Dito mo ilalagay ang mga <strong>bagong makita</strong> sa sasakyan habang ginagawa.
     </div>
 </div>
 @endif
@@ -75,7 +75,7 @@
             <div class="d-flex flex-wrap align-items-center justify-content-between mb-2">
                 <div class="small text-muted">
                     @if($findingsLocked)
-                        <i class="fas fa-lock me-1"></i>Naka-lock ang mga naunang finding. Idagdag sa ibaba ang mga bago.
+                        <i class="fas fa-lock me-1"></i>Ang approved na items ay nasa <strong>From Quotation</strong> tab. Mga bagong finding dito.
                     @else
                         <i class="fas fa-hand-pointer me-1"></i>Drag a card into a group to share one labor cost.
                     @endif
@@ -118,22 +118,34 @@
                 <div class="finding-group mb-3" data-group-id="">
                     <div class="finding-group-head d-flex flex-wrap align-items-center gap-2 px-3 py-2"
                          style="background:#f1f5f9;border:1px dashed #cbd5e1;border-radius:10px 10px 0 0;">
-                        <span class="fw-semibold"><i class="fas fa-inbox me-1"></i>Ungrouped {{ $quotationMode ? 'Quotation Items' : 'Findings' }}</span>
+                        <span class="fw-semibold"><i class="fas fa-inbox me-1"></i>{{ $quotationMode ? 'Ungrouped Quotation Items' : ($findingsLocked ? 'New Findings' : 'Ungrouped Findings') }}</span>
                         <span class="badge bg-secondary group-count">0</span>
                     </div>
                     <div class="finding-dropzone p-2" data-group-id=""
                          style="border:1px dashed #cbd5e1;border-top:none;border-radius:0 0 10px 10px;min-height:56px;background:#fff;">
                         <div class="finding-headrow"><span></span><span>Category</span><span>Parts</span><span>Remarks</span><span class="text-center">Urgency</span><span class="text-center">Qty</span><span class="text-end">Price</span><span class="text-end">Total</span><span></span></div>
-                        @php $ungrouped = $inspection->inspectionFindings->whereNull('group_id')->where('is_declined', false); @endphp
+                        @php
+                            $allFindings = $inspection->inspectionFindings;
+                            if ($findingsLocked) {
+                                // Locked RO: this tab holds ONLY findings added after the lock
+                                // (discovered during the repair). Approved ones live in the
+                                // "From Quotation" tab.
+                                $allFindings = $allFindings->filter(function ($f) use ($inspection) {
+                                    return ! $inspection->findingIsLocked($f);
+                                });
+                            }
+                            $ungrouped = $allFindings->whereNull('group_id')->where('is_declined', false);
+                        @endphp
                         @forelse($ungrouped as $finding)
                             @php $cardLocked = $findingsLocked && $inspection->findingIsLocked($finding); @endphp
                             @include('inspections.partials.finding-card', ['finding' => $finding, 'quotationMode' => $quotationMode, 'showLabor' => true, 'locked' => $cardLocked])
                         @empty
-                            <p class="text-muted small mb-0 py-2 text-center finding-empty-hint">{{ $quotationMode ? 'No ungrouped quotation items.' : 'No ungrouped findings. Drag cards here or add with the bar above.' }}</p>
+                            <p class="text-muted small mb-0 py-2 text-center finding-empty-hint">{{ $quotationMode ? 'No ungrouped quotation items.' : ($findingsLocked ? 'Wala pang bagong finding. Gamitin ang bar sa itaas kung may makita kang bago habang ginagawa.' : 'No ungrouped findings. Drag cards here or add with the bar above.') }}</p>
                         @endforelse
                     </div>
                 </div>
 
+                @unless($findingsLocked)
                 @foreach($inspection->findingGroups as $group)
                 <div class="finding-group mb-3" data-group-id="{{ $group->id }}" data-auto-name="{{ $group->auto_name ? '1' : '0' }}" data-labor-cost="{{ (float) $group->labor_cost }}">
                     <div class="finding-group-head d-flex flex-wrap align-items-center gap-2 px-3 py-2"
@@ -175,4 +187,5 @@
                     </div>
                 </div>
                 @endforeach
+                @endunless
             </div>

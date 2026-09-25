@@ -2,7 +2,12 @@
      Used on the Repair Quotation Edit page: findings are created/edited on the
      Repair Order, so here we only DISPLAY what was saved there (no add/edit/delete). --}}
 @php
-    $allFindings = $inspection->inspectionFindings;
+    // "From Quotation" tab: only the findings that were approved on the Repair Quotation
+    // (i.e. the locked ones). Findings added during the repair live on the Findings tab.
+    $allFindings = $inspection->inspectionFindings
+        ->filter(function ($f) use ($inspection) {
+            return $inspection->findingIsLocked($f) && ! $f->is_declined;
+        });
     $ungrouped = $allFindings->whereNull('group_id');
     $catColors = [
         'Engine' => 'linear-gradient(135deg,#1a237e,#283593)',
@@ -93,7 +98,7 @@
                 <span class="text-center">Urgency</span><span class="text-center">Qty</span>
                 <span class="text-end">Price</span><span class="text-end">Total</span>
             </div>
-            @forelse($group->findings as $finding)
+            @forelse($group->findings->where('is_declined', false)->filter(function ($f) use ($inspection) { return $inspection->findingIsLocked($f); }) as $finding)
                 @php
                     $catBg = $catColors[$finding->category] ?? 'linear-gradient(135deg,#546e7a,#607d8b)';
                     $urgBg = ['routine' => '#6c757d', 'soon' => '#0dcaf0', 'urgent' => '#ffc107', 'immediate' => '#dc3545'][$finding->estimated_urgency] ?? '#6c757d';
@@ -123,8 +128,8 @@
         </div>
     @endif
 
-    <div class="d-flex justify-content-end align-items-center gap-2 mt-2">
-        <span class="text-muted small">Grand total (parts + labor)</span>
+        <div class="d-flex justify-content-end align-items-center gap-2 mt-2">
+        <span class="text-muted small">Approved total (parts + labor)</span>
         <span class="fw-bold" style="font-size:1.05rem;color:#1a237e;">&#8369;{{ number_format($grand, 2) }}</span>
     </div>
 </div>

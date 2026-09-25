@@ -64,6 +64,13 @@
                 <i class="fas fa-info-circle me-1"></i>Overview
             </button>
         </li>
+        @if($inspection->isFindingsLocked())
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="from-quotation-tab" data-bs-toggle="pill" data-bs-target="#from-quotation" type="button" role="tab">
+                <i class="fas fa-file-invoice me-1"></i>From Quotation
+            </button>
+        </li>
+        @endif
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="findings-tab" data-bs-toggle="pill" data-bs-target="#findings" type="button" role="tab">
                 <i class="fas fa-clipboard-check me-1"></i>Findings
@@ -390,6 +397,26 @@
             </div>
         </div>
 
+        @if($inspection->isFindingsLocked())
+        <!-- === FROM QUOTATION TAB (read-only approved items) === -->
+        <div class="tab-pane fade" id="from-quotation" role="tabpanel">
+            <div class="alert d-flex flex-wrap align-items-center gap-2 mb-3" style="background:#fff7ed;border:1px solid #fdba74;color:#9a3412;">
+                <i class="fas fa-lock"></i>
+                <div class="flex-grow-1">
+                    <strong>Approved na ito mula sa Repair Quotation.</strong>
+                    Naka-lock ang parts at labor presyo. Kung may bagong makita habang ginagawa, ilagay sa <strong>Findings</strong> tab.
+                </div>
+                @if(in_array(auth()->user()->role ?? null, ['admin','super_admin','owner']))
+                <form method="POST" action="{{ route('inspections.unlock-findings', $inspection) }}" onsubmit="return confirm('I-unlock ang findings? Mababago na ulit ang presyo ng lahat ng findings.');">
+                    @csrf
+                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-unlock me-1"></i>Unlock findings</button>
+                </form>
+                @endif
+            </div>
+            @include('inspections.partials.findings-readonly')
+        </div>
+        @endif
+
         <!-- === FINDINGS TAB === -->
         <div class="tab-pane fade" id="findings" role="tabpanel">
             <div class="row g-3">
@@ -417,19 +444,7 @@
                 </div>
             </div>
 
-            @if($inspection->isFindingsLocked())
-                @if(in_array(auth()->user()->role ?? null, ['admin','super_admin','owner']))
-                <div class="d-flex justify-content-end mb-2">
-                    <form method="POST" action="{{ route('inspections.unlock-findings', $inspection) }}" onsubmit="return confirm('I-unlock ang findings? Mababago na ulit ang presyo ng lahat ng findings.');">
-                        @csrf
-                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-unlock me-1"></i>Unlock findings</button>
-                    </form>
-                </div>
-                @endif
-                @include('inspections.partials.findings-board', ['findingsLocked' => true])
-            @else
-                @include('inspections.partials.findings-board')
-            @endif
+            @include('inspections.partials.findings-board', ['findingsLocked' => $inspection->isFindingsLocked()])
         </div>
 
         @include('inspections.partials.findings-modal')
