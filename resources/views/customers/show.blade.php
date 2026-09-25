@@ -198,14 +198,6 @@
                             </button>
                         </li>
                         <li class="tab-item" role="presentation">
-                            <button class="tab-link" id="quotations-tab" data-bs-toggle="tab" data-bs-target="#quotations" type="button" role="tab" aria-selected="false">
-                                <i class="fas fa-file-invoice-dollar me-1"></i> Quotations
-                                @if($customer->quotations && $customer->quotations->count() > 0)
-                                    <span class="badge-tab">{{ $customer->quotations->count() }}</span>
-                                @endif
-                            </button>
-                        </li>
-                        <li class="tab-item" role="presentation">
                             <button class="tab-link" id="notes-tab" data-bs-toggle="tab" data-bs-target="#notes" type="button" role="tab" aria-selected="false">
                                 <i class="fas fa-sticky-note me-1"></i> Notes
                                 @if($customer->customerNotes && $customer->customerNotes->count() > 0)
@@ -425,98 +417,6 @@
                                 </div>
                                 <h5>No Archived Records</h5>
                                 <p>No archived transactions for this customer.</p>
-                            </div>
-                        @endif
-                    </div>
-
-                    <!-- Quotations Tab -->
-                    <div class="tab-pane fade" id="quotations" role="tabpanel">
-                        @php
-                            $statusLabels = [
-                                'new_lead' => 'New Lead',
-                                'contacted' => 'Contacted',
-                                'converted_to_customer' => 'Converted to Customer',
-                                'appointment_booked' => 'Appointment Booked',
-                                'won' => 'Won',
-                                'lost' => 'Lost',
-                                'archived' => 'Archived',
-                            ];
-                            $statusBadges = [
-                                'new_lead' => 'badge-warning',
-                                'contacted' => 'badge-info',
-                                'converted_to_customer' => 'badge-success',
-                                'appointment_booked' => 'badge-primary',
-                                'won' => 'badge-success',
-                                'lost' => 'badge-danger',
-                                'archived' => 'badge-secondary',
-                            ];
-                        @endphp
-                        @if($customer->quotations && $customer->quotations->count() > 0)
-                            <div class="table-responsive">
-                                <table class="table-fixit">
-                                    <thead>
-                                        <tr>
-                                            <th>Date</th>
-                                            <th>Concern</th>
-                                            <th>Budget</th>
-                                            <th>Status</th>
-                                            <th class="text-end" style="width: 60px;"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($customer->quotations as $quotation)
-                                            <tr>
-                                                <td><span style="font-size: 0.85rem;">{{ $quotation->created_at->format('M j, Y') }}</span></td>
-                                                <td>
-                                                    <div style="max-width: 220px; font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ $quotation->service_description }}">
-                                                        {{ Str::limit($quotation->service_description, 50) }}
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    @if($quotation->budget_min || $quotation->budget_max)
-                                                        <span style="font-size: 0.85rem; font-weight: 500;">
-                                                            @if($quotation->budget_min && $quotation->budget_max)
-                                                                ₱{{ number_format($quotation->budget_min) }} – ₱{{ number_format($quotation->budget_max) }}
-                                                            @elseif($quotation->budget_min)
-                                                                ₱{{ number_format($quotation->budget_min) }}+
-                                                            @else
-                                                                up to ₱{{ number_format($quotation->budget_max) }}
-                                                            @endif
-                                                        </span>
-                                                    @else
-                                                        <span class="text-muted" style="font-size: 0.82rem;">—</span>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    <span class="status-badge {{ $statusBadges[$quotation->status] ?? 'badge-secondary' }}">
-                                                        {{ $statusLabels[$quotation->status] ?? ucfirst($quotation->status) }}
-                                                    </span>
-                                                </td>
-                                                <td class="text-end">
-                                                    <a href="{{ route('quotations.show', $quotation->id) }}" class="btn btn-sm btn-outline-secondary" style="border-radius: 6px; padding: 0.25rem 0.5rem;" title="View Quotation #{{ $quotation->id }}">
-                                                        <i class="fas fa-eye"></i>
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                            @if($customer->quotations->count() > 5)
-                                <div class="text-center py-3 border-top">
-                                    <a href="{{ route('quotations.index', ['customer_id' => $customer->id]) }}" class="btn-filter-outline btn-sm">
-                                        View All {{ $customer->quotations->count() }} Quotations
-                                        <i class="fas fa-arrow-right ms-1"></i>
-                                    </a>
-                                </div>
-                            @endif
-                        @else
-                            <div class="empty-state-module py-4">
-                                <div class="empty-state-icon">
-                                    <i class="fas fa-file-invoice"></i>
-                                </div>
-                                <h5>No Quotations</h5>
-                                <p>No quotation history for this customer.</p>
                             </div>
                         @endif
                     </div>

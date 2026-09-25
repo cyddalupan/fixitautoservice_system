@@ -175,8 +175,7 @@
                             window.location.pathname.includes('/service-records') ||
                             window.location.pathname.includes('/archives') ||
                             window.location.pathname.includes('/service-items') ||
-                            window.location.pathname.includes('/services') ||
-                            window.location.pathname.includes('/quotations');
+                            window.location.pathname.includes('/services');
 
         // Determine initial state: saved 'expanded' OR first visit on a Service Management page
         var shouldExpand = savedSub === 'expanded' || (savedSub === null && isServicePage);

@@ -60,18 +60,6 @@
             </a>
         </li>
 
-        {{-- Quotations --}}
-        <li class="nav-item">
-            <a class="nav-link {{ request()->routeIs('quotations.*') ? 'active' : '' }}" href="{{ route('quotations.index') }}" style="border-left-color:#f59e0b !important;" data-tooltip="Quotations">
-                <i class="fas fa-file-invoice fa-fw"></i>
-                <span>Quotations</span>
-                <span class="sidebar-badge" id="s-quotations">{{ $sidebarCounts['quotations_total'] }}</span>
-                @if($sidebarCounts['quotations_new'] > 0)
-                    <span class="sidebar-badge-danger" id="s-quotations-new">{{ $sidebarCounts['quotations_new'] }}</span>
-                @endif
-            </a>
-        </li>
-
         {{-- Customers --}}
         <li class="nav-item">
             <a class="nav-link {{ request()->routeIs('customers.*') ? 'active' : '' }}" href="{{ route('customers.index') }}" data-tooltip="Customers">
@@ -277,7 +265,6 @@
                     's-customers': 'customers',
                     's-vehicles': 'vehicles',
                     's-appointments': 'appointments_total',
-                    's-quotations': 'quotations_total',
                     's-inspections': 'inspections_total',
                     's-estimates': 'estimates_total',
                     's-job-orders': 'job_orders_total',
@@ -293,7 +280,6 @@
                 // Danger/notification badges
                 var dangerMapping = {
                     's-appointments-new': { key: 'appointments_new', parent: 's-appointments' },
-                    's-quotations-new': { key: 'quotations_new', parent: 's-quotations' },
                     's-inspections-new': { key: 'inspections_new', parent: 's-inspections' },
                     's-estimates-new': { key: 'estimates_new', parent: 's-estimates' },
                     's-job-orders-active': { key: 'job_orders_active', parent: 's-job-orders' },

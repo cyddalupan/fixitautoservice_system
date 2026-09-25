@@ -437,10 +437,8 @@ Route::middleware([\App\Http\Middleware\EnsureUserIsAuthenticated::class])->grou
     Route::get('/estimates/statistics', [EstimateController::class, 'statistics'])->name('estimates.statistics');
     Route::resource('estimates', EstimateController::class);
     // Quotation Routes - SPECIFIC ROUTES FIRST!
-    Route::get('/quotations/pending-count', [\App\Http\Controllers\QuotationController::class, 'pendingCount'])->name('quotations.pending-count');
-    Route::patch("/quotations/{quotation}/update-status", [\App\Http\Controllers\QuotationController::class, "updateStatus"])->name("quotations.update-status");
-    Route::post('/quotations/{quotation}/convert-to-customer', [\App\Http\Controllers\QuotationController::class, 'convertToCustomer'])->name('quotations.convert-to-customer');
-    Route::resource('quotations', \App\Http\Controllers\QuotationController::class);
+    // (Legacy "Quotations" leads module removed from the UI — the Repair Quotation
+    // (/estimates) supersedes it. Public lead form routes kept above.)
     Route::post('/estimates/{estimate}/approve', [EstimateController::class, 'approve'])->name('estimates.approve');
     Route::post('/estimates/{estimate}/reject', [EstimateController::class, 'reject'])->name('estimates.reject');
     Route::patch('/estimates/{estimate}/update-status', [EstimateController::class, 'updateStatus'])->name('estimates.update-status');

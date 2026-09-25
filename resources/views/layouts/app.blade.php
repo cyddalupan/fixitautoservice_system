@@ -576,43 +576,10 @@
             overflow: visible !important;
         }
         
-        /* QUOTATION COUNTER STYLES - Professional, non-expanding */
-        .quotation-counter {
-            position: absolute !important;
-            top: 8px !important;
-            right: 8px !important;
-            font-size: 0.6rem !important;
-            padding: 0.15rem 0.35rem !important;
-            min-width: 18px !important;
-            height: 18px !important;
-            line-height: 1 !important;
-            border-radius: 9px !important;
-            border: 1px solid white !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
-            transform: scale(0.9) !important;
-            transform-origin: top right !important;
-            z-index: 100 !important;
-            background-color: #dc3545 !important; /* Bootstrap danger color */
-            color: white !important;
-            font-weight: bold !important;
-        }
-        
-        /* Ensure parent has relative positioning for absolute counter */
+        /* Ensure parent has relative positioning */
         .sidebar .nav-link {
             position: relative !important;
-            padding-right: 30px !important; /* Make space for counter */
-        }
-        
-        /* Active state adjustments */
-        .sidebar .nav-link.active .quotation-counter {
-            border-color: rgba(255,255,255,0.3) !important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
-        }
-        
-        /* Hover effect */
-        .sidebar .nav-link:hover .quotation-counter {
-            transform: scale(1) !important;
-            transition: transform 0.2s ease !important;
+            padding-right: 30px !important;
         }
 
     </style>
@@ -916,51 +883,6 @@
             }
         });
         
-        // Quotation Counter Update Function
-        function updateQuotationCounter() {
-            fetch('{{ route("quotations.pending-count") }}', {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                const counterElement = document.getElementById('quotation-counter');
-                if (data.count > 0) {
-                    if (counterElement) {
-                        counterElement.textContent = data.count;
-                    } else {
-                        // Create counter if it doesn't exist
-                        const quotationsLink = document.querySelector('a[href*="quotations"]');
-                        if (quotationsLink) {
-                            const badge = document.createElement('sup');
-                            badge.className = 'quotation-counter';
-                            badge.id = 'quotation-counter';
-                            badge.textContent = data.count;
-                            quotationsLink.appendChild(badge);
-                        }
-                    }
-                } else {
-                    // Remove counter if count is 0
-                    if (counterElement) {
-                        counterElement.remove();
-                    }
-                }
-            })
-            .catch(error => console.error('Error updating quotation counter:', error));
-        }
-        
-        // Update counter every 30 seconds
-        setInterval(updateQuotationCounter, 30000);
-        
-        // Also update when the page becomes visible again
-        document.addEventListener('visibilitychange', function() {
-            if (!document.hidden) {
-                updateQuotationCounter();
-            }
-        });
     </script>
 
     <!-- Dark Mode Toggle Script -->
