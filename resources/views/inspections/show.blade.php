@@ -44,8 +44,8 @@
                         ->count();
                 @endphp
                 @if($newFindingsCount > 0)
-                <a href="{{ route('estimates.create', ['customer_id' => $inspection->customer_id, 'vehicle_id' => $inspection->vehicle_id, 'inspection_id' => $inspection->id, 'new_only' => 1]) }}" class="btn btn-success" title="Create a NEW Repair Quotation for the findings discovered during the repair">
-                    <i class="fas fa-plus me-1"></i>New Repair Quotation ({{ $newFindingsCount }})
+                <a href="{{ route('estimates.create', ['customer_id' => $inspection->customer_id, 'vehicle_id' => $inspection->vehicle_id, 'inspection_id' => $inspection->id, 'new_only' => 1]) }}" class="btn btn-success" title="Create a Repair Quotation for the findings discovered during the repair">
+                    <i class="fas fa-plus me-1"></i>Create Repair Quotation ({{ $newFindingsCount }})
                 </a>
                 @endif
             @else
