@@ -859,13 +859,15 @@ class EstimateController extends Controller
      * Promote a Repair Quotation into a Repair Order.
      *
      * The quotation is the pre-approval stage; once the customer proceeds the
-     * job moves back into the workshop as a Repair Order. Two cases:
-     *   A) The quotation already has a linked Repair Order (created from it) —
-     *      we re-activate that RO and issue a reference number if missing.
-     *   B) The quotation is standalone (no RO yet) — we create one from the
-     *      quotation's customer/vehicle + items (findings), then link it back.
-     * Payments already live on the shared ledger (repair_order_payments keyed by
-     * the RO), so nothing is duplicated.
+     * job moves back into the workshop as a Repair Order.
+     *
+     * Since 2026-09-25 (per Andrew) *every* promotion from a quotation issues a
+     * BRAND-NEW Repair Order — the RO the quotation was originally created from
+     * is never re-activated/re-opened, whether it is finished or still open.
+     * The quotation's customer/vehicle + items are copied across as findings and
+     * the quotation is re-linked to the new RO. Any payments already recorded on
+     * the old RO's ledger (keyed by the RO) are moved to the new RO so the
+     * customer's balance follows the job.
      */
     public function convertToRepairOrder(Request $request, Estimate $estimate)
     {
@@ -881,105 +883,76 @@ class EstimateController extends Controller
         ]);
         $repairStatus = $validated['repair_status'] ?? 'received';
 
-        // Prices must be complete before the job becomes a Repair Order: once
-        // promoted, these amounts are the fixed figures for the RO. Block when a
-        // pursued line is still missing its parts price and/or labor.
-        $inspection = $estimate->inspection_id
-            ? VehicleInspection::with(['inspectionFindings.group'])->find($estimate->inspection_id)
+        // The old RO the quotation was created from (if any). It is never
+        // re-opened — kept only to hand off its payment ledger.
+        $linkedInspection = $estimate->inspection_id
+            ? VehicleInspection::find($estimate->inspection_id)
             : null;
 
-        // Never silently re-open a finished Repair Order. If the linked RO is
-        // already closed (released / paid / cancelled / job completed), the
-        // approved quotation is *new* work, so fall through to Case B and issue
-        // a fresh Repair Order instead of re-activating the old one.
-        if ($inspection && $inspection->is_closed) {
-            $inspection = null;
-        }
-
-        if ($inspection) {
-            $gaps = $inspection->pricingGaps();
-            if (! empty($gaps)) {
-                $lines = collect($gaps)
-                    ->map(fn ($g) => $g['label'] . ' — missing: ' . implode(' + ', $g['missing']) . ' price')
-                    ->implode('; ');
-                return back()->withErrors([
-                    'pricing' => 'Hindi pa ma-proceed sa Repair Order — kulang ang mga presyo ng parts/labor: ' . $lines . '.',
-                ])->withInput();
-            }
-        } else {
-            $estimate->loadMissing('items');
-            $itemGaps = $estimate->items->filter(fn ($i) => (float) $i->unit_price <= 0);
-            if ($itemGaps->isNotEmpty()) {
-                $lines = $itemGaps->map(fn ($i) => ($i->item_name ?: ('Item #' . $i->id)))->implode('; ');
-                return back()->withErrors([
-                    'pricing' => 'Hindi pa ma-proceed sa Repair Order — kulang ang parts price ng: ' . $lines . '.',
-                ])->withInput();
-            }
+        // Prices must be complete before the job becomes a Repair Order: once
+        // promoted, these amounts are the fixed figures for the RO. Block when a
+        // quotation line is still missing its parts price and/or labor.
+        $estimate->loadMissing(['items.group']);
+        $itemGaps = $estimate->items->filter(fn ($i) => (float) $i->unit_price <= 0);
+        if ($itemGaps->isNotEmpty()) {
+            $lines = $itemGaps->map(fn ($i) => ($i->item_name ?: ('Item #' . $i->id)))->implode('; ');
+            return back()->withErrors([
+                'pricing' => 'Hindi pa ma-proceed sa Repair Order — kulang ang parts price ng: ' . $lines . '.',
+            ])->withInput();
         }
 
         DB::beginTransaction();
         try {
-            $createdNew = false;
+            // Always a NEW Repair Order — never re-activate the old one.
+            $inspection = VehicleInspection::create([
+                'reference_number' => VehicleInspection::generateReferenceNumber(),
+                'appointment_id' => $estimate->appointment_id,
+                'customer_id' => $estimate->customer_id,
+                'vehicle_id' => $estimate->vehicle_id,
+                'service_advisor_id' => $estimate->service_advisor_id,
+                'service_type' => $estimate->service_type,
+                'inspection_type' => 'pre_service',
+                'inspection_status' => 'in_progress',
+                'repair_status' => $repairStatus,
+                'source' => 'quotation',
+                // Fixed from the quotation — lock the findings board.
+                'findings_locked_at' => now(),
+                'inspection_name' => 'Repair Order for ' . ($estimate->customer->full_name ?? 'Customer'),
+                'customer_concerns' => $estimate->getRawOriginal('customer_notes') ?: $estimate->notes,
+                'inspection_started_at' => now(),
+                'date_received' => now()->toDateString(),
+                'created_by' => auth()->id(),
+                'requires_customer_approval' => 1,
+                'customer_approved' => 1,
+                'customer_approved_at' => now(),
+            ]);
 
-            if ($inspection) {
-                // Case A — reuse the existing Repair Order and re-activate it.
-                $inspection->update(array_filter([
-                    'repair_status' => $repairStatus,
-                    'reference_number' => $inspection->reference_number ?: VehicleInspection::generateReferenceNumber(),
-                    'inspection_status' => $inspection->inspection_status ?: 'in_progress',
-                    'customer_approved' => 1,
-                    'customer_approved_at' => $inspection->customer_approved_at ?: now(),
-                    'workshop_released_at' => null,
-                    // Fixed from the quotation — lock the findings board.
-                    'findings_locked_at' => now(),
-                ], fn ($v) => $v !== null));
-            } else {
-                // Case B — build a Repair Order from the quotation itself.
-                $inspection = VehicleInspection::create([
-                    'reference_number' => VehicleInspection::generateReferenceNumber(),
-                    'appointment_id' => $estimate->appointment_id,
-                    'customer_id' => $estimate->customer_id,
-                    'vehicle_id' => $estimate->vehicle_id,
-                    'service_advisor_id' => $estimate->service_advisor_id,
-                    'service_type' => $estimate->service_type,
-                    'inspection_type' => 'pre_service',
-                    'inspection_status' => 'in_progress',
-                    'repair_status' => $repairStatus,
-                    'source' => 'quotation',
-                    // Fixed from the quotation — lock the findings board.
-                    'findings_locked_at' => now(),
-                    'inspection_name' => 'Repair Order for ' . ($estimate->customer->full_name ?? 'Customer'),
-                    'customer_concerns' => $estimate->getRawOriginal('customer_notes') ?: $estimate->notes,
-                    'inspection_started_at' => now(),
-                    'date_received' => now()->toDateString(),
-                    'created_by' => auth()->id(),
-                    'requires_customer_approval' => 1,
-                    'customer_approved' => 1,
-                    'customer_approved_at' => now(),
+            // Carry the quotation lines across as findings so the Repair Order
+            // shows the same parts/labour the customer approved.
+            $sort = 0;
+            foreach ($estimate->items as $item) {
+                \App\Models\InspectionFinding::create([
+                    'inspection_id' => $inspection->id,
+                    'category' => in_array($item->category, ['parts', 'materials']) ? 'Parts' : 'Labor',
+                    'issue_title' => $item->item_name ?: ($item->description ?: 'Quotation item'),
+                    'part_name' => $item->item_name,
+                    'detailed_notes' => $item->description,
+                    'quantity' => $item->quantity ?: 1,
+                    'unit_price' => $item->unit_price ?: 0,
+                    'sort_order' => $sort++,
+                    'is_quotation_added' => 1,
+                    'is_linked_to_estimate' => 1,
                 ]);
-                $createdNew = true;
-
-                // Carry the quotation lines across as findings so the Repair Order
-                // shows the same parts/labour the customer approved.
-                $estimate->loadMissing(['items.group']);
-                $sort = 0;
-                foreach ($estimate->items as $item) {
-                    \App\Models\InspectionFinding::create([
-                        'inspection_id' => $inspection->id,
-                        'category' => in_array($item->category, ['parts', 'materials']) ? 'Parts' : 'Labor',
-                        'issue_title' => $item->item_name ?: ($item->description ?: 'Quotation item'),
-                        'part_name' => $item->item_name,
-                        'detailed_notes' => $item->description,
-                        'quantity' => $item->quantity ?: 1,
-                        'unit_price' => $item->unit_price ?: 0,
-                        'sort_order' => $sort++,
-                        'is_quotation_added' => 1,
-                        'is_linked_to_estimate' => 1,
-                    ]);
-                }
-
-                $estimate->inspection_id = $inspection->id;
             }
+
+            // Hand the payment ledger over to the new RO so the customer's
+            // balance follows the job. The old RO itself is left otherwise intact.
+            if ($linkedInspection && $linkedInspection->id !== $inspection->id) {
+                \App\Models\RepairOrderPayment::where('vehicle_inspection_id', $linkedInspection->id)
+                    ->update(['vehicle_inspection_id' => $inspection->id]);
+            }
+
+            $estimate->inspection_id = $inspection->id;
 
             $estimate->status = 'converted_to_repair_order';
             $estimate->approved_at = $estimate->approved_at ?: now();

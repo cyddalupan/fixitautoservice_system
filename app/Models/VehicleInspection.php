@@ -581,21 +581,6 @@ class VehicleInspection extends Model
     }
 
     /**
-     * A Repair Order is "closed" once the car has left the workshop, the order
-     * was settled (paid), cancelled, or the job itself was marked completed.
-     *
-     * A closed Repair Order must never be silently re-opened: if new work comes
-     * in (e.g. an approved Repair Quotation that happens to be linked to an old
-     * RO), a brand-new Repair Order is issued instead.
-     */
-    public function getIsClosedAttribute(): bool
-    {
-        return $this->is_released
-            || $this->repair_status === 'cancelled'
-            || in_array($this->inspection_status, ['completed', 'approved'], true);
-    }
-
-    /**
      * Repair order totals, taken from the repair order's own line items
      * (Job Description labor + Parts/Supplies cost − discount) — same math as
      * the printed Repair Order slip.

@@ -13,12 +13,12 @@
         ? \App\Models\VehicleInspection::with('repairOrderPayments')->find($estimate->inspection_id)
         : null);
 
-    // A linked RO that is already finished (released / paid / cancelled / job
-    // completed) must NOT be re-activated — this quotation becomes a brand-new
-    // Repair Order instead, so treat it as a standalone for the review modal.
-    $linkedClosed = $inspection && $inspection->is_closed;
-    $effectiveInspection = $linkedClosed ? null : $inspection;
-    $payments = $effectiveInspection ? $effectiveInspection->repairOrderPayments : collect();
+    // Every promotion from a quotation issues a BRAND-NEW Repair Order — the RO
+    // the quotation was created from is never re-opened (finished or not). The
+    // modal therefore always shows the "new Repair Order" case; the old RO is
+    // only referenced, and payments recorded on it carry over to the new one.
+    $linkedInspection = $inspection;
+    $payments = $inspection ? $inspection->repairOrderPayments : collect();
     $verifiedPaid = $payments->where('status', 'verified')->sum('amount');
     $pendingCount = $payments->where('status', 'pending')->count();
     $quotationTotal = (float) ($estimate->quotation_total ?? 0);
@@ -27,16 +27,12 @@
     $alreadyConverted = in_array($estimate->status, ['converted_to_repair_order', 'converted_to_job_order', 'converted'], true);
     $canConvert = ! $alreadyConverted && $estimate->status !== 'rejected';
 
-    // Pricing completeness — block promotion until parts + labor are all priced.
-    if ($effectiveInspection) {
-        $pricingGaps = $effectiveInspection->pricingGaps();
-    } else {
-        $estimate->loadMissing('items');
-        $pricingGaps = $estimate->items->filter(fn ($i) => (float) $i->unit_price <= 0)->map(fn ($i) => [
-            'label' => $i->item_name ?: ('Item #' . $i->id),
-            'missing' => ['parts'],
-        ])->values()->all();
-    }
+    // Pricing completeness — block promotion until every quotation line is priced.
+    $estimate->loadMissing('items');
+    $pricingGaps = $estimate->items->filter(fn ($i) => (float) $i->unit_price <= 0)->map(fn ($i) => [
+        'label' => $i->item_name ?: ('Item #' . $i->id),
+        'missing' => ['parts'],
+    ])->values()->all();
     $pricingOk = empty($pricingGaps);
 @endphp
 
@@ -119,28 +115,16 @@
                             <div class="col-12">
                                 <div class="border rounded-3 p-3">
                                     <div class="text-uppercase text-muted fw-bold mb-2" style="font-size:.7rem;letter-spacing:.5px;">Repair Order</div>
-                                    @if($effectiveInspection)
+                                    @if($linkedInspection)
                                         <div class="d-flex align-items-center gap-2">
-                                            <i class="fas fa-link text-success"></i>
-                                            <span>Linked to existing Repair Order <strong>#{{ $effectiveInspection->id }}</strong>
-                                                @if($effectiveInspection->reference_number) ({{ $effectiveInspection->reference_label }})@endif
-                                            </span>
+                                            <i class="fas fa-plus-circle text-success"></i>
+                                            <span>A <strong>new Repair Order</strong> will be created and a reference number issued.</span>
                                         </div>
                                         <div class="text-muted mt-1" style="font-size:.78rem;">
-                                            This quotation was created from that Repair Order, so it will simply be re-activated.
-                                        </div>
-                                    @elseif($linkedClosed)
-                                        <div class="d-flex align-items-center gap-2">
-                                            <i class="fas fa-circle-check text-secondary"></i>
-                                            <span>Previous Repair Order
-                                                @if($inspection->reference_number)<strong>{{ $inspection->reference_label }}</strong>@else<strong>#{{ $inspection->id }}</strong>@endif
-                                                is already completed.
-                                            </span>
-                                        </div>
-                                        <div class="text-muted mt-1" style="font-size:.78rem;">
-                                            A <strong>new Repair Order</strong> will be created for this quotation — the finished
-                                            Repair Order will not be re-opened. Payments already settled on the previous order
-                                            do not carry over to the new one.
+                                            This quotation came from Repair Order
+                                            @if($linkedInspection->reference_number)<strong>{{ $linkedInspection->reference_label }}</strong>@else<strong>#{{ $linkedInspection->id }}</strong>@endif
+                                            &mdash; that order will <strong>not</strong> be re-opened. Payments already recorded
+                                            against this quotation carry over to the new Repair Order.
                                         </div>
                                     @else
                                         <div class="d-flex align-items-center gap-2">
