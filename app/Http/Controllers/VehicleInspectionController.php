@@ -2132,6 +2132,62 @@ class VehicleInspectionController extends Controller
         $jdItems = $inspection->job_description_items ?: ($appointment->job_description_items ?? []);
         $partsItems = $inspection->parts_items ?: ($appointment->parts_items ?? []);
 
+        // ---- Grouped view (only for Repair Orders promoted from a Repair
+        // Quotation). The flat "Job Description" list lumps a category's labor
+        // (e.g. Suspension = its group's labor + any ungrouped finding), which is
+        // confusing on the customer's slip. Instead list each group's labor with
+        // ITS parts, mirroring the quotation. Non-quotation ROs keep the flat
+        // tables (nothing changes for them).
+        $inspection->loadMissing(['findingGroups.findings', 'inspectionFindings', 'repairOrderPayments']);
+        $slipGroups = [];
+        if ($inspection->is_from_quotation) {
+            $cost = function ($f) { return (float) $f->quantity * (float) ($f->unit_price ?? 0); };
+
+            foreach ($inspection->findingGroups as $group) {
+                $items = $group->findings->where('is_declined', false)->values();
+                if ($items->isEmpty() && (float) $group->labor_cost <= 0) { continue; }
+                $slipGroups[] = [
+                    'name'  => $group->name,
+                    'labor' => (float) $group->labor_cost,
+                    'items' => $items->map(function ($f) use ($cost) {
+                        return [
+                            'desc'       => $f->part_name ?: $f->issue_title,
+                            'qty'        => $f->quantity,
+                            'unit_price' => $f->unit_price,
+                            'cost'       => $cost($f),
+                            'labor'      => null,
+                        ];
+                    })->all(),
+                ];
+            }
+
+            // Ungrouped approved items — each carries its own labor.
+            $ungrouped = $inspection->inspectionFindings
+                ->whereNull('group_id')
+                ->where('is_declined', false)
+                ->values();
+            if ($ungrouped->isNotEmpty()) {
+                $slipGroups[] = [
+                    'name'  => 'Ungrouped Items',
+                    'labor' => null,
+                    'items' => $ungrouped->map(function ($f) use ($cost) {
+                        return [
+                            'desc'       => $f->part_name ?: $f->issue_title,
+                            'qty'        => $f->quantity,
+                            'unit_price' => $f->unit_price,
+                            'cost'       => $cost($f),
+                            'labor'      => (float) ($f->estimated_cost ?? 0),
+                        ];
+                    })->all(),
+                ];
+            }
+        }
+
+        // Payment history (down payments / full payments) for the customer's slip.
+        $slipPayments = $inspection->exists
+            ? $inspection->repairOrderPayments->sortBy('created_at')->values()
+            : collect();
+
         return [
             'inspection'    => $inspection,
             'services'      => $services,
@@ -2144,6 +2200,8 @@ class VehicleInspectionController extends Controller
             'slipConcern'   => $inspection->customer_concerns ?: ($appointment->service_request ?? null),
             'slipReference' => $appointment->appointment_number ?? ('RO-' . str_pad($inspection->id, 6, '0', STR_PAD_LEFT)),
             'slipDate'      => $inspection->date_received ?? ($appointment->appointment_date ?? $inspection->created_at),
+            'slipGroups'    => $slipGroups,
+            'slipPayments'  => $slipPayments,
         ];
     }
 

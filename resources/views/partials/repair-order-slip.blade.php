@@ -38,6 +38,30 @@
 
     $money = function ($n) { return '&#8369; ' . number_format((float) $n, 2); };
 
+    // Repair Orders promoted from a Repair Quotation get a grouped listing
+    // (each group's labor shown together with its own parts) instead of the flat
+    // "Job Description" + "Parts" tables, which lump a category's labor and are
+    // confusing on the customer's copy.
+    $slipGroups = $slipGroups ?? [];
+    if (!empty($slipGroups)) {
+        $laborTotal = 0.0;
+        $partsTotal = 0.0;
+        foreach ($slipGroups as $g) {
+            if ($g['labor'] !== null) { $laborTotal += (float) $g['labor']; }
+            foreach ($g['items'] as $it) {
+                $partsTotal += (float) $it['cost'];
+                if ($it['labor'] !== null) { $laborTotal += (float) $it['labor']; }
+            }
+        }
+        $subtotal = $laborTotal + $partsTotal;
+        $grandTotal = max(0, $subtotal - $discount);
+    }
+
+    // Payment history (down payments / full payments) shown under Concern/Request.
+    $slipPayments = $slipPayments ?? collect();
+    $slipPaidTotal = $slipPayments->where('status', '!=', 'rejected')->sum(function ($p) { return (float) $p->amount; });
+    $slipBalance = max(0, $grandTotal - $slipPaidTotal);
+
     $jdPad = max(0, 6 - count($jdItems));
     $partsPad = max(0, 6 - count($partsItems));
 @endphp
@@ -129,6 +153,35 @@
         @endforeach
     </table>
 
+    @if(!empty($slipGroups))
+    <p class="ros-sec">Job Description &amp; Parts / Supplies</p>
+    <table class="ros-items">
+        <tr>
+            <th style="text-align:left">Description</th>
+            <th style="width:8%">Qty</th>
+            <th style="width:15%">Unit Price</th>
+            <th style="width:15%">Parts Cost</th>
+            <th style="width:15%">Labor</th>
+        </tr>
+        @foreach($slipGroups as $g)
+            <tr>
+                <td colspan="4" style="background:#fff5f7;font-weight:bold;">{{ $g['name'] }}</td>
+                <td class="ros-right" style="background:#fff5f7;font-weight:bold;">{!! $g['labor'] !== null ? number_format((float) $g['labor'], 2) : '&mdash;' !!}</td>
+            </tr>
+            @forelse($g['items'] as $it)
+                <tr>
+                    <td>{{ $it['desc'] }}</td>
+                    <td class="ros-right">{{ $it['qty'] !== null && $it['qty'] !== '' ? rtrim(rtrim(number_format((float) $it['qty'], 2), '0'), '.') : '' }}</td>
+                    <td class="ros-right">{{ $it['unit_price'] !== null && $it['unit_price'] !== '' ? number_format((float) $it['unit_price'], 2) : '' }}</td>
+                    <td class="ros-right">{{ $it['cost'] ? number_format((float) $it['cost'], 2) : '' }}</td>
+                    <td class="ros-right">{!! $it['labor'] !== null ? number_format((float) $it['labor'], 2) : '' !!}</td>
+                </tr>
+            @empty
+                <tr><td colspan="5" style="color:#888;">&mdash;</td></tr>
+            @endforelse
+        @endforeach
+    </table>
+    @else
     <p class="ros-sec">Job Description</p>
     <table class="ros-items">
         <tr>
@@ -178,6 +231,7 @@
             <td class="ros-right"><strong>{!! $money($partsTotal) !!}</strong></td>
         </tr>
     </table>
+    @endif
 
     {{-- Concern/Request + Totals --}}
     <table style="width:100%; border-collapse:collapse; margin:6px 0 10px;">
@@ -187,6 +241,33 @@
                     <p class="ros-sec">Concern / Request</p>
                     <div class="ros-concern-body">{{ $slipConcern ?? '' }}</div>
                 </div>
+                @if($slipPayments->count())
+                <div class="ros-concern" style="margin-top:6px;">
+                    <p class="ros-sec">Payments / Bayad</p>
+                    <table class="ros-items" style="margin-bottom:2px;">
+                        <tr>
+                            <th style="text-align:left">Date</th>
+                            <th style="text-align:left">Type</th>
+                            <th style="text-align:left">Payment</th>
+                            <th style="width:18%">Amount</th>
+                            <th style="width:20%">Status</th>
+                        </tr>
+                        @foreach($slipPayments as $p)
+                            <tr>
+                                <td>{{ optional($p->created_at)->format('M d, Y') }}</td>
+                                <td>{{ $p->type_label }}</td>
+                                <td>{{ ucfirst(str_replace('_', ' ', (string) ($p->payment_method ?: '&mdash;'))) }}@if($p->reference_number) &middot; Ref {{ $p->reference_number }}@endif</td>
+                                <td class="ros-right">{{ number_format((float) $p->amount, 2) }}</td>
+                                <td>{{ $p->status_label }}</td>
+                            </tr>
+                        @endforeach
+                    </table>
+                    <div style="font-size:10.5px;">
+                        <strong>Total Paid:</strong> {!! $money($slipPaidTotal) !!}
+                        &nbsp;&nbsp;<strong>Balance:</strong> {!! $money($slipBalance) !!}
+                    </div>
+                </div>
+                @endif
             </td>
             <td style="width:44%; vertical-align:top; border:0; padding:0;">
                 <table class="ros-totals">
