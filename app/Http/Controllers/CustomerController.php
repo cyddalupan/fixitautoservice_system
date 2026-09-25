@@ -1227,7 +1227,7 @@ class CustomerController extends Controller
         // === LOAD RELATIONSHIPS ===
         $query->withCount(['serviceRecords', 'vehicles'])
             ->withSum('serviceRecords', 'final_amount')
-            ->with(['vehicles', 'latestReleasedInspection', 'serviceRecords' => function ($sr) {
+            ->with(['vehicles', 'latestReleasedInspection', 'latestInspection', 'serviceRecords' => function ($sr) {
                 $sr->latest('service_date')->limit(1);
             }]);
 
@@ -1247,6 +1247,20 @@ class CustomerController extends Controller
         $results = $customers->map(function ($customer) {
             $lastService = $customer->serviceRecords->first();
             $primaryVehicle = $customer->vehicles->first();
+
+            // Last visit = newest of (ServiceRecord date, Repair Order intake date).
+            // A customer with a Repair Order has obviously visited, even if no
+            // ServiceRecord has been logged yet (avoids a false "No visits").
+            $lastServiceDate = $lastService
+                ? ($lastService->service_date instanceof \Carbon\Carbon
+                    ? $lastService->service_date->copy()
+                    : \Carbon\Carbon::parse($lastService->service_date))
+                : null;
+
+            $inspectionDate = optional($customer->latestInspection)->created_at;
+            if ($inspectionDate && (! $lastServiceDate || $inspectionDate->greaterThan($lastServiceDate))) {
+                $lastServiceDate = $inspectionDate->copy();
+            }
 
             $hasUnpaid = $customer->invoices()
                 ->whereIn('status', ['sent', 'partial', 'overdue'])
@@ -1274,7 +1288,7 @@ class CustomerController extends Controller
                 'vehicles_count' => (int) ($customer->vehicles_count ?? $customer->vehicles->count()),
                 'service_records_count' => (int) ($customer->service_records_count ?? 0),
                 'total_spent' => (float) ($customer->service_records_sum_final_amount ?? 0),
-                'last_service_date' => $lastService ? (is_string($lastService->service_date) ? $lastService->service_date : $lastService->service_date->format('Y-m-d')) : null,
+                'last_service_date' => $lastServiceDate?->format('Y-m-d'),
                 'last_service_type' => $lastService ? $lastService->service_type : null,
                 'customer_since' => $customer->customer_since ? (is_string($customer->customer_since) ? $customer->customer_since : $customer->customer_since->format('Y-m-d')) : null,
                 'vehicles' => $customer->vehicles->map(function ($v) {

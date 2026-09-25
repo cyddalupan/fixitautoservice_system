@@ -156,6 +156,16 @@ class Customer extends Model
         return $this->hasOne(Quotation::class)->latestOfMany();
     }
 
+    /**
+     * Most recent repair order of any status — used as a visit indicator
+     * when no ServiceRecord exists yet (a customer with a Repair Order has
+     * obviously visited the shop).
+     */
+    public function latestInspection()
+    {
+        return $this->hasOne(VehicleInspection::class, 'customer_id')->latestOfMany('created_at');
+    }
+
     public function inspections()
     {
         return $this->hasMany(VehicleInspection::class);
