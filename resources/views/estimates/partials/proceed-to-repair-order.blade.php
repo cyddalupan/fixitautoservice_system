@@ -27,12 +27,17 @@
     $alreadyConverted = in_array($estimate->status, ['converted_to_repair_order', 'converted_to_job_order', 'converted'], true);
     $canConvert = ! $alreadyConverted && $estimate->status !== 'rejected';
 
-    // Pricing completeness — block promotion until every quotation line is priced.
-    $estimate->loadMissing('items');
-    $pricingGaps = $estimate->items->filter(fn ($i) => (float) $i->unit_price <= 0)->map(fn ($i) => [
-        'label' => $i->item_name ?: ('Item #' . $i->id),
-        'missing' => ['parts'],
-    ])->values()->all();
+    // Pricing completeness — block promotion until every pursued line is priced.
+    // A linked quotation is priced from the old RO's findings (not estimate_items).
+    if ($linkedInspection) {
+        $pricingGaps = $linkedInspection->pricingGaps();
+    } else {
+        $estimate->loadMissing('items');
+        $pricingGaps = $estimate->items->filter(fn ($i) => (float) $i->unit_price <= 0)->map(fn ($i) => [
+            'label' => $i->item_name ?: ('Item #' . $i->id),
+            'missing' => ['parts'],
+        ])->values()->all();
+    }
     $pricingOk = empty($pricingGaps);
 @endphp
 

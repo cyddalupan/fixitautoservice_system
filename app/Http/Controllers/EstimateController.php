@@ -884,21 +884,35 @@ class EstimateController extends Controller
         $repairStatus = $validated['repair_status'] ?? 'received';
 
         // The old RO the quotation was created from (if any). It is never
-        // re-opened — kept only to hand off its payment ledger.
+        // re-opened — kept only as the source of the quotation's lines + ledger.
+        // A linked quotation is priced from that RO's findings, not from
+        // estimate_items, so that is what we guard and copy.
         $linkedInspection = $estimate->inspection_id
-            ? VehicleInspection::find($estimate->inspection_id)
+            ? VehicleInspection::with(['inspectionFindings.group', 'findingGroups'])->find($estimate->inspection_id)
             : null;
 
         // Prices must be complete before the job becomes a Repair Order: once
         // promoted, these amounts are the fixed figures for the RO. Block when a
-        // quotation line is still missing its parts price and/or labor.
-        $estimate->loadMissing(['items.group']);
-        $itemGaps = $estimate->items->filter(fn ($i) => (float) $i->unit_price <= 0);
-        if ($itemGaps->isNotEmpty()) {
-            $lines = $itemGaps->map(fn ($i) => ($i->item_name ?: ('Item #' . $i->id)))->implode('; ');
-            return back()->withErrors([
-                'pricing' => 'Hindi pa ma-proceed sa Repair Order — kulang ang parts price ng: ' . $lines . '.',
-            ])->withInput();
+        // pursued line is still missing its parts price and/or labor.
+        if ($linkedInspection) {
+            $gaps = $linkedInspection->pricingGaps();
+            if (! empty($gaps)) {
+                $lines = collect($gaps)
+                    ->map(fn ($g) => $g['label'] . ' — missing: ' . implode(' + ', $g['missing']) . ' price')
+                    ->implode('; ');
+                return back()->withErrors([
+                    'pricing' => 'Hindi pa ma-proceed sa Repair Order — kulang ang mga presyo ng parts/labor: ' . $lines . '.',
+                ])->withInput();
+            }
+        } else {
+            $estimate->loadMissing(['items.group']);
+            $itemGaps = $estimate->items->filter(fn ($i) => (float) $i->unit_price <= 0);
+            if ($itemGaps->isNotEmpty()) {
+                $lines = $itemGaps->map(fn ($i) => ($i->item_name ?: ('Item #' . $i->id)))->implode('; ');
+                return back()->withErrors([
+                    'pricing' => 'Hindi pa ma-proceed sa Repair Order — kulang ang parts price ng: ' . $lines . '.',
+                ])->withInput();
+            }
         }
 
         DB::beginTransaction();
@@ -930,22 +944,65 @@ class EstimateController extends Controller
                 'customer_approved_at' => now(),
             ]);
 
-            // Carry the quotation lines across as findings so the Repair Order
-            // shows the same parts/labour the customer approved.
-            $sort = 0;
-            foreach ($estimate->items as $item) {
-                \App\Models\InspectionFinding::create([
-                    'inspection_id' => $inspection->id,
-                    'category' => in_array($item->category, ['parts', 'materials']) ? 'Parts' : 'Labor',
-                    'issue_title' => $item->item_name ?: ($item->description ?: 'Quotation item'),
-                    'part_name' => $item->item_name,
-                    'detailed_notes' => $item->description,
-                    'quantity' => $item->quantity ?: 1,
-                    'unit_price' => $item->unit_price ?: 0,
-                    'sort_order' => $sort++,
-                    'is_quotation_added' => 1,
-                    'is_linked_to_estimate' => 1,
-                ]);
+            // Carry the quotation's lines across as findings so the new Repair
+            // Order shows the same parts/labour the customer approved.
+            if ($linkedInspection) {
+                // Linked quotation — the lines (and their shared labor groups)
+                // live on the old RO's findings board. Copy them verbatim,
+                // remapping group ids onto the new RO.
+                $groupMap = [];
+                foreach ($linkedInspection->findingGroups as $g) {
+                    $newGroup = \App\Models\InspectionFindingGroup::create([
+                        'inspection_id' => $inspection->id,
+                        'name' => $g->name,
+                        'auto_name' => $g->auto_name,
+                        'labor_cost' => $g->labor_cost,
+                        'sort_order' => $g->sort_order,
+                    ]);
+                    $groupMap[$g->id] = $newGroup->id;
+                }
+
+                $sort = 0;
+                foreach ($linkedInspection->inspectionFindings as $f) {
+                    \App\Models\InspectionFinding::create([
+                        'inspection_id' => $inspection->id,
+                        'group_id' => $f->group_id ? ($groupMap[$f->group_id] ?? null) : null,
+                        'category' => $f->category,
+                        'issue_title' => $f->issue_title ?: ($f->part_name ?: 'Quotation item'),
+                        'part_name' => $f->part_name,
+                        'detailed_notes' => $f->detailed_notes,
+                        'remarks' => $f->remarks,
+                        'severity' => $f->severity,
+                        'quantity' => $f->quantity ?: 1,
+                        'unit_price' => $f->unit_price ?: 0,
+                        'recommended_action' => $f->recommended_action,
+                        'estimated_urgency' => $f->estimated_urgency,
+                        'estimated_cost' => $f->estimated_cost,
+                        'photo_path' => $f->photo_path,
+                        'sort_order' => $f->sort_order ?? $sort,
+                        'is_quotation_added' => 1,
+                        'is_linked_to_estimate' => 1,
+                        'is_declined' => (bool) $f->is_declined,
+                    ]);
+                    $sort++;
+                }
+            } else {
+                // Standalone quotation — build the lines from its own items.
+                $sort = 0;
+                foreach ($estimate->items as $item) {
+                    \App\Models\InspectionFinding::create([
+                        'inspection_id' => $inspection->id,
+                        'category' => in_array($item->category, ['parts', 'materials']) ? 'Parts' : 'Labor',
+                        'issue_title' => $item->item_name ?: ($item->description ?: 'Quotation item'),
+                        'part_name' => $item->item_name,
+                        'detailed_notes' => $item->description,
+                        'quantity' => $item->quantity ?: 1,
+                        'unit_price' => $item->unit_price ?: 0,
+                        'sort_order' => $sort++,
+                        'is_quotation_added' => 1,
+                        'is_linked_to_estimate' => 1,
+                    ]);
+                }
             }
 
             // Hand the payment ledger over to the new RO so the customer's
