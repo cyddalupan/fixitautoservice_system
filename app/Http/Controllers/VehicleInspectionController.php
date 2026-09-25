@@ -2188,6 +2188,11 @@ class VehicleInspectionController extends Controller
             ? $inspection->repairOrderPayments->sortBy('created_at')->values()
             : collect();
 
+        // Odometer: use the Repair Order's own reading. Do NOT fall back to the
+        // vehicle profile (it may hold a stale/wrong value the RO never captured).
+        $mileage = $inspection->vehicle_mileage;
+        $slipOdometer = ($mileage !== null && (float) $mileage > 0) ? $mileage : '';
+
         return [
             'inspection'    => $inspection,
             'services'      => $services,
@@ -2202,6 +2207,7 @@ class VehicleInspectionController extends Controller
             'slipDate'      => $inspection->date_received ?? ($appointment->appointment_date ?? $inspection->created_at),
             'slipGroups'    => $slipGroups,
             'slipPayments'  => $slipPayments,
+            'slipOdometer'  => $slipOdometer,
         ];
     }
 

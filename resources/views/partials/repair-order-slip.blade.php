@@ -38,6 +38,11 @@
 
     $money = function ($n) { return '&#8369; ' . number_format((float) $n, 2); };
 
+    // Odometer shown on the slip: the caller may pass an explicit value
+    // ($slipOdometer, e.g. the Repair Order's own reading — '' hides the row).
+    // Falls back to the vehicle profile for the appointment slip.
+    $odometer = $slipOdometer ?? ($vehicle->odometer ?? null);
+
     // Repair Orders promoted from a Repair Quotation get a grouped listing
     // (each group's labor shown together with its own parts) instead of the flat
     // "Job Description" + "Parts" tables, which lump a category's labor and are
@@ -122,9 +127,11 @@
         </tr>
         <tr>
             <td class="lbl">Address</td>
-            <td colspan="3">{{ $customer->address ?? '' }}</td>
+            <td colspan="{{ ($odometer ?? '') !== null && ($odometer ?? '') !== '' ? 3 : 5 }}">{{ $customer->address ?? '' }}</td>
+            @if(($odometer ?? '') !== null && ($odometer ?? '') !== '')
             <td class="lbl">Odometer</td>
-            <td>{{ $vehicle->odometer ?? '' }}</td>
+            <td>{{ $odometer }}</td>
+            @endif
         </tr>
         <tr>
             <td class="lbl">Vehicle</td>
@@ -237,14 +244,10 @@
     <table style="width:100%; border-collapse:collapse; margin:6px 0 10px;">
         <tr>
             <td style="width:56%; vertical-align:top; border:0; padding:0 10px 0 0;">
-                <div class="ros-concern">
-                    <p class="ros-sec">Concern / Request</p>
-                    <div class="ros-concern-body">{{ $slipConcern ?? '' }}</div>
-                </div>
                 @if($slipPayments->count())
-                <div class="ros-concern" style="margin-top:6px;">
+                <div class="ros-concern">
                     <p class="ros-sec">Payments / Bayad</p>
-                    <table class="ros-items" style="margin-bottom:2px;">
+                    <table class="ros-items" style="margin-bottom:0;">
                         <tr>
                             <th style="text-align:left">Date</th>
                             <th style="text-align:left">Type</th>
@@ -262,12 +265,12 @@
                             </tr>
                         @endforeach
                     </table>
-                    <div style="font-size:10.5px;">
-                        <strong>Total Paid:</strong> {!! $money($slipPaidTotal) !!}
-                        &nbsp;&nbsp;<strong>Balance:</strong> {!! $money($slipBalance) !!}
-                    </div>
                 </div>
                 @endif
+                <div class="ros-concern" style="margin-top:6px;">
+                    <p class="ros-sec">Concern / Request</p>
+                    <div class="ros-concern-body">{{ $slipConcern ?? '' }}</div>
+                </div>
             </td>
             <td style="width:44%; vertical-align:top; border:0; padding:0;">
                 <table class="ros-totals">
@@ -276,6 +279,17 @@
                     <tr><td class="lbl">Subtotal</td><td class="ros-right">{!! $money($subtotal) !!}</td></tr>
                     <tr><td class="lbl">Discount</td><td class="ros-right">{!! $money($discount) !!}</td></tr>
                     <tr class="grand"><td>GRAND TOTAL</td><td class="ros-right">{!! $money($grandTotal) !!}</td></tr>
+                    @php $slipPaidList = $slipPayments->where('status', '!=', 'rejected'); @endphp
+                    @if($slipPaidList->count())
+                        <tr><td class="lbl" style="font-weight:normal;" colspan="2">&mdash; Down Payments &mdash;</td></tr>
+                        @foreach($slipPaidList as $p)
+                        <tr>
+                            <td class="lbl" style="font-weight:normal;">{{ $p->type_label }} &middot; {{ ucfirst(str_replace('_', ' ', (string) ($p->payment_method ?: '&mdash;'))) }}{{ $p->created_at ? ' (' . $p->created_at->format('M d') . ')' : '' }}</td>
+                            <td class="ros-right">-&#8369; {{ number_format((float) $p->amount, 2) }}</td>
+                        </tr>
+                        @endforeach
+                        <tr class="grand" style="background:#0f766e;"><td>BALANCE</td><td class="ros-right">{!! $money($slipBalance) !!}</td></tr>
+                    @endif
                 </table>
             </td>
         </tr>
