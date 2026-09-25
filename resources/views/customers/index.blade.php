@@ -278,35 +278,45 @@
     color: #b91c1c;
 }
 
-/* Extra info chips on customer cards */
-.meta-chip {
+/* Info grid on customer cards — auto-fills the card width so there's no
+   big empty gap between the details and the right-side stats */
+.customer-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 3px 18px;
+    font-size: 13px;
+    color: #334155;
+    margin-top: 2px;
+}
+.info-item {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    font-size: 11px;
-    font-weight: 600;
-    padding: 3px 9px;
-    border-radius: 6px;
-    background: #f8fafc;
-    color: #475569;
-    border: 1px solid #e2e8f0;
+    gap: 6px;
     white-space: nowrap;
-    margin-right: 4px;
-    margin-bottom: 4px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
-.meta-chip i {
-    opacity: 0.65;
+.info-item i {
+    color: #94a3b8;
+    width: 14px;
+    text-align: center;
+    flex-shrink: 0;
 }
-.meta-chip-danger {
-    background: #fef2f2;
+.info-item-danger {
     color: #dc2626;
-    border-color: #fecaca;
+    font-weight: 600;
 }
-.dark-mode .meta-chip,
-[data-theme="dark"] .meta-chip {
-    background: #334155;
+.info-item-danger i {
+    color: #dc2626;
+}
+.dark-mode .customer-info-grid,
+[data-theme="dark"] .customer-info-grid {
     color: #e2e8f0;
-    border-color: #475569;
+}
+.dark-mode .info-item i,
+[data-theme="dark"] .info-item i {
+    color: #94a3b8;
 }
 
 /* Plate number highlight */
@@ -541,7 +551,7 @@
         grid-template-columns: repeat(2, 1fr);
     }
     .customer-info-grid {
-        flex-direction: column;
+        grid-template-columns: 1fr;
     }
 }
 
@@ -1004,27 +1014,34 @@
             plateHtml = `<span class="plate-highlight">${highlightMatch(plate, term)}</span>`;
         }
 
-        // Extra info chips (more context on the card)
-        let metaHtml = '';
+        // Info items — rendered in an auto-filling grid so the card never
+        // leaves a long empty gap between the details and the right-side stats.
         const vCount = c.vehicles_count || 0;
+        const infoItems = [];
+        const pushInfo = (icon, text, extraClass = '') => {
+            infoItems.push(`<span class="info-item ${extraClass}"><i class="fas ${icon}"></i> ${text}</span>`);
+        };
+        pushInfo('fa-phone', c.phone ? escapeHtml(c.phone) : '—');
+        pushInfo('fa-envelope', c.email ? escapeHtml(c.email) : '—');
+        if (c.address || c.city) {
+            pushInfo('fa-map-marker-alt', escapeHtml([c.address, c.city].filter(Boolean).join(', ')));
+        }
         if (vCount > 0) {
-            metaHtml += `<span class="meta-chip"><i class="fas fa-car"></i> ${vCount} ${vCount === 1 ? 'vehicle' : 'vehicles'}</span>`;
+            pushInfo('fa-car', `${vCount} ${vCount === 1 ? 'vehicle' : 'vehicles'}`);
         }
         if (c.last_service_label) {
-            metaHtml += `<span class="meta-chip"><i class="fas fa-wrench"></i> ${escapeHtml(c.last_service_label)}</span>`;
+            pushInfo('fa-wrench', escapeHtml(c.last_service_label));
         }
         if (c.customer_since) {
-            metaHtml += `<span class="meta-chip"><i class="fas fa-calendar-plus"></i> Since ${formatDate(c.customer_since)}</span>`;
+            pushInfo('fa-calendar-plus', `Since ${formatDate(c.customer_since)}`);
         }
         if (c.pms_due_date) {
-            metaHtml += `<span class="meta-chip"><i class="fas fa-clock"></i> Next PMS ${escapeHtml(c.pms_due_date)}</span>`;
+            pushInfo('fa-clock', `Next PMS ${escapeHtml(c.pms_due_date)}`);
         }
         if (c.has_unpaid && c.outstanding_balance > 0) {
-            metaHtml += `<span class="meta-chip meta-chip-danger"><i class="fas fa-file-invoice-dollar"></i> Owes ₱${c.outstanding_balance.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>`;
+            pushInfo('fa-file-invoice-dollar', `Owes ₱${c.outstanding_balance.toLocaleString('en-PH', {minimumFractionDigits: 2})}`, 'info-item-danger');
         }
-        if (c.address) {
-            metaHtml += `<span class="meta-chip"><i class="fas fa-map-marker-alt"></i> ${escapeHtml(c.address)}</span>`;
-        }
+        const infoItemsHtml = infoItems.join('');
 
         // Archive button (admin/super_admin only, prevent card click)
         let archiveBtnHtml = '';
@@ -1049,16 +1066,13 @@
                             ${statusHtml}
                             ${pmsHtml}
                         </div>
-                        <div class="customer-info-grid" style="display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13px;">
-                            <span><i class="fas fa-phone text-muted me-1" style="width:14px;"></i> ${c.phone ? escapeHtml(c.phone) : '—'}</span>
-                            <span><i class="fas fa-envelope text-muted me-1" style="width:14px;"></i> ${c.email ? escapeHtml(c.email) : '—'}</span>
-                            ${c.city ? `<span><i class="fas fa-map-marker-alt text-muted me-1" style="width:14px;"></i> ${escapeHtml(c.city)}</span>` : ''}
+                        <div class="customer-info-grid">
+                            ${infoItemsHtml}
                         </div>
-                        <div class="d-flex flex-wrap align-items-center gap-2 mt-1">
+                        <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
                             ${vehicleBadges}
                             ${plateHtml}
                         </div>
-                        ${metaHtml ? `<div class="d-flex flex-wrap align-items-center mt-2">${metaHtml}</div>` : ''}
                     </div>
 
                     <!-- Right side stats -->
