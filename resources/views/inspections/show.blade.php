@@ -39,9 +39,15 @@
                 @php
                     // Findings discovered during the repair (added AFTER the quotation was
                     // locked). These are the only ones a fresh Repair Quotation should carry.
-                    $newFindingsCount = $inspection->inspectionFindings
-                        ->filter(fn ($f) => ! $f->is_declined && ! $inspection->findingIsLocked($f))
-                        ->count();
+                    // The count is only meaningful once the original quotation is approved and
+                    // its findings are frozen — before that, nothing is locked so every finding
+                    // would count as "new" and the button would just duplicate the pending
+                    // quotation. Hence the isFindingsLocked() gate.
+                    $newFindingsCount = $inspection->isFindingsLocked()
+                        ? $inspection->inspectionFindings
+                            ->filter(fn ($f) => ! $f->is_declined && ! $inspection->findingIsLocked($f))
+                            ->count()
+                        : 0;
                 @endphp
                 @if($newFindingsCount > 0)
                 <a href="{{ route('estimates.create', ['customer_id' => $inspection->customer_id, 'vehicle_id' => $inspection->vehicle_id, 'inspection_id' => $inspection->id, 'new_only' => 1]) }}" class="btn btn-success" title="Create a Repair Quotation for the findings discovered during the repair">
