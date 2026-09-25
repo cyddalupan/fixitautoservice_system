@@ -198,7 +198,7 @@
         </tr>
         <tr>
             <td class="lbl">Address</td>
-            <td colspan="3">{{ $customer->address ?? '' }}</td>
+            <td colspan="3">{{ trim(implode(', ', array_filter([$customer->address ?? null, $customer->city ?? null]))) }}</td>
             <td class="lbl">Odometer</td>
             <td>{{ $odometer }}</td>
         </tr>
