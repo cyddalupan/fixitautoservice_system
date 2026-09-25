@@ -25,84 +25,101 @@
 
     $money = function ($n) { return '&#8369; ' . number_format((float) $n, 2); };
 
-    $partsTotal = 0.0;
-    $laborTotal = 0.0;
-    $groupLaborShown = []; // group_id => true (shared labor printed once)
+    // Locked RO (promoted from an approved Repair Quotation): split the APPROVED items from
+    // anything ADDED during the repair, so the printed quotation keeps them in separate tables.
+    $isLocked = $inspection->isFindingsLocked();
+    $approvedFindings   = $isLocked ? $findings->filter(function ($f) use ($inspection) { return $inspection->findingIsLocked($f); })->values() : $findings->values();
+    $additionalFindings = $isLocked ? $findings->filter(function ($f) use ($inspection) { return ! $inspection->findingIsLocked($f); })->values() : collect();
 
-    // Bucket by category (first-seen order preserved).
-    $byCat = [];
-    foreach ($findings as $f) {
-        $cat = trim((string) ($f->category ?? ''));
-        if ($cat === '') { $cat = 'GENERAL'; }
-        $byCat[$cat][] = $f;
-    }
+    // Build the category sections (and totals) for a given set of findings.
+    // Returns [sections, partsTotal, laborTotal].
+    $buildSections = function ($findings) use ($money) {
+        $partsTotal = 0.0;
+        $laborTotal = 0.0;
+        $groupLaborShown = []; // group_id => true (shared labor printed once)
 
-    $sections = [];
-    foreach ($byCat as $cat => $rows) {
-        // Order: ungrouped first, then grouped — grouped rows kept contiguous per group
-        // so their shared labor can be shown as one merged cell.
-        $ordered = collect($rows)->sortBy(function ($f) {
-            if (is_null($f->group_id)) { return [-1, (int) $f->sort_order]; }
-            return [(int) ($f->group->sort_order ?? 0), (int) $f->sort_order];
-        })->values();
-
-        $items = [];
-        $i = 0; $n = $ordered->count();
-        while ($i < $n) {
-            $f = $ordered[$i];
-
-            if (is_null($f->group_id)) {
-                $qty = (float) $f->quantity;
-                $parts = $qty * (float) ($f->unit_price ?? 0);
-                $labor = (float) ($f->estimated_cost ?? 0);
-                $partsTotal += $parts; $laborTotal += $labor;
-                $items[] = [
-                    'desc' => $f->issue_title ?: ($f->part_name ?: ''),
-                    'qty' => $qty,
-                    'parts' => $parts,
-                    'laborTxt' => $labor > 0 ? $money($labor) : null,
-                    'merge' => 'none',
-                    'rowspan' => 1,
-                    'remarks' => trim((string) ($f->remarks ?? '')) ?: trim((string) ($f->detailed_notes ?? '')),
-                ];
-                $i++;
-                continue;
-            }
-
-            // Contiguous run belonging to the same group.
-            $j = $i;
-            while ($j < $n && !is_null($ordered[$j]->group_id) && $ordered[$j]->group_id == $f->group_id) { $j++; }
-            $runLen = $j - $i;
-
-            $gLabor = (float) ($f->group->labor_cost ?? 0);
-            $showLabor = empty($groupLaborShown[$f->group_id]); // print once per group
-            $groupLaborShown[$f->group_id] = true;
-
-            for ($k = $i; $k < $j; $k++) {
-                $ff = $ordered[$k];
-                $qty = (float) $ff->quantity;
-                $parts = $qty * (float) ($ff->unit_price ?? 0);
-                $partsTotal += $parts;
-                $isFirst = ($k === $i);
-                $laborHere = ($isFirst && $showLabor) ? $gLabor : 0.0;
-                $laborTotal += $laborHere;
-                $items[] = [
-                    'desc' => $ff->issue_title ?: ($ff->part_name ?: ''),
-                    'qty' => $qty,
-                    'parts' => $parts,
-                    'laborTxt' => $laborHere > 0 ? $money($laborHere) : null,
-                    'merge' => $isFirst ? 'start' : 'cont',
-                    'rowspan' => $isFirst ? $runLen : 0,
-                    'remarks' => trim((string) ($ff->remarks ?? '')) ?: trim((string) ($ff->detailed_notes ?? '')),
-                ];
-            }
-            $i = $j;
+        // Bucket by category (first-seen order preserved).
+        $byCat = [];
+        foreach ($findings as $f) {
+            $cat = trim((string) ($f->category ?? ''));
+            if ($cat === '') { $cat = 'GENERAL'; }
+            $byCat[$cat][] = $f;
         }
 
-        if (!empty($items)) { $sections[] = ['label' => $cat, 'items' => $items]; }
-    }
+        $sections = [];
+        foreach ($byCat as $cat => $rows) {
+            // Order: ungrouped first, then grouped — grouped rows kept contiguous per group
+            // so their shared labor can be shown as one merged cell.
+            $ordered = collect($rows)->sortBy(function ($f) {
+                if (is_null($f->group_id)) { return [-1, (int) $f->sort_order]; }
+                return [(int) ($f->group->sort_order ?? 0), (int) $f->sort_order];
+            })->values();
 
-    $subtotal = $partsTotal + $laborTotal;
+            $items = [];
+            $i = 0; $n = $ordered->count();
+            while ($i < $n) {
+                $f = $ordered[$i];
+
+                if (is_null($f->group_id)) {
+                    $qty = (float) $f->quantity;
+                    $parts = $qty * (float) ($f->unit_price ?? 0);
+                    $labor = (float) ($f->estimated_cost ?? 0);
+                    $partsTotal += $parts; $laborTotal += $labor;
+                    $items[] = [
+                        'desc' => $f->issue_title ?: ($f->part_name ?: ''),
+                        'qty' => $qty,
+                        'parts' => $parts,
+                        'laborTxt' => $labor > 0 ? $money($labor) : null,
+                        'merge' => 'none',
+                        'rowspan' => 1,
+                        'remarks' => trim((string) ($f->remarks ?? '')) ?: trim((string) ($f->detailed_notes ?? '')),
+                    ];
+                    $i++;
+                    continue;
+                }
+
+                // Contiguous run belonging to the same group.
+                $j = $i;
+                while ($j < $n && !is_null($ordered[$j]->group_id) && $ordered[$j]->group_id == $f->group_id) { $j++; }
+                $runLen = $j - $i;
+
+                $gLabor = (float) ($f->group->labor_cost ?? 0);
+                $showLabor = empty($groupLaborShown[$f->group_id]); // print once per group
+                $groupLaborShown[$f->group_id] = true;
+
+                for ($k = $i; $k < $j; $k++) {
+                    $ff = $ordered[$k];
+                    $qty = (float) $ff->quantity;
+                    $parts = $qty * (float) ($ff->unit_price ?? 0);
+                    $partsTotal += $parts;
+                    $isFirst = ($k === $i);
+                    $laborHere = ($isFirst && $showLabor) ? $gLabor : 0.0;
+                    $laborTotal += $laborHere;
+                    $items[] = [
+                        'desc' => $ff->issue_title ?: ($ff->part_name ?: ''),
+                        'qty' => $qty,
+                        'parts' => $parts,
+                        'laborTxt' => $laborHere > 0 ? $money($laborHere) : null,
+                        'merge' => $isFirst ? 'start' : 'cont',
+                        'rowspan' => $isFirst ? $runLen : 0,
+                        'remarks' => trim((string) ($ff->remarks ?? '')) ?: trim((string) ($ff->detailed_notes ?? '')),
+                    ];
+                }
+                $i = $j;
+            }
+
+            if (!empty($items)) { $sections[] = ['label' => $cat, 'items' => $items]; }
+        }
+
+        return [$sections, $partsTotal, $laborTotal];
+    };
+
+    [$sections, $partsTotal, $laborTotal] = $buildSections($approvedFindings);
+    [$addSections, $addPartsTotal, $addLaborTotal] = $buildSections($additionalFindings);
+    $addSubtotal = $addPartsTotal + $addLaborTotal;
+    $hasAdditional = $addSections ? true : false;
+
+    $subtotal = $partsTotal + $laborTotal + $addSubtotal;
     $discount = 0.0;
     $grandTotal = max(0, $subtotal - $discount);
 
@@ -134,6 +151,10 @@
     table.rq-items td.blank { height: 16px; }
     table.rq-items tr.catrow td { background: #f7d9e0; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; font-size: 10px; color: #9a1238; }
     table.rq-items td.merge-cell { vertical-align: middle; background: #fffdf7; }
+    /* Additional findings (added during repair) — amber, visually separated from the approved quotation */
+    table.rq-items.rq-add th { background: #b45309; border-color: #b45309; }
+    table.rq-items.rq-add tr.catrow td { background: #fde9cf; color: #92400e; }
+    .rq-sec.rq-sec-add { color: #b45309; }
     .rq-right { text-align: right; }
     table.rq-totals { width: 100%; border-collapse: collapse; margin: 0; }
     table.rq-totals td { border: 1px solid #bbb; padding: 3px 7px; font-size: 10.5px; }
@@ -220,10 +241,52 @@
         @endforelse
     </table>
 
+    @if($hasAdditional)
+    {{-- ADDITIONAL findings added during the repair — kept SEPARATE from the approved quotation. --}}
+    <p class="rq-sec rq-sec-add">Additional Findings (during repair) &mdash; not yet part of the approved quotation</p>
+    <table class="rq-items rq-add">
+        <tr>
+            <th style="text-align:left">Job / Parts Description</th>
+            <th style="width:9%">Qty/HM</th>
+            <th style="width:14%">Parts Price</th>
+            <th style="width:14%">Labor Cost</th>
+            <th style="width:24%">Remarks</th>
+        </tr>
+        @foreach($addSections as $section)
+            <tr class="catrow"><td colspan="5">{{ $section['label'] }}</td></tr>
+            @foreach($section['items'] as $row)
+                <tr>
+                    <td>{{ $row['desc'] }}</td>
+                    <td class="rq-right">{{ $qtyFmt($row['qty']) }}</td>
+                    <td class="rq-right">{{ $row['parts'] > 0 ? number_format($row['parts'], 2) : '' }}</td>
+                    @if($row['merge'] === 'start')
+                        <td class="rq-right merge-cell" rowspan="{{ $row['rowspan'] }}">{!! $row['laborTxt'] ?: '' !!}</td>
+                    @elseif($row['merge'] === 'none')
+                        <td class="rq-right">{!! $row['laborTxt'] ?: '' !!}</td>
+                    @endif
+                    <td>{{ $row['remarks'] }}</td>
+                </tr>
+            @endforeach
+        @endforeach
+        <tr>
+            <td colspan="4" class="rq-right" style="font-weight:bold; background:#fde9cf; color:#92400e;">Additional subtotal</td>
+            <td class="rq-right" style="font-weight:bold; background:#fde9cf; color:#92400e;">{!! $money($addSubtotal) !!}</td>
+        </tr>
+    </table>
+    @endif
+
     {{-- Totals --}}
     <table style="width:100%; border-collapse:collapse; margin:6px 0 10px;">
         <tr>
-            <td style="width:56%; vertical-align:top; border:0; padding:0;"></td>
+            <td style="width:56%; vertical-align:top; border:0; padding:0;">
+                @if($hasAdditional)
+                <table class="rq-totals">
+                    <tr><td class="lbl">Approved Quotation Subtotal</td><td class="rq-right">{!! $money($partsTotal + $laborTotal) !!}</td></tr>
+                    <tr><td class="lbl" style="color:#92400e;">Additional Findings Subtotal</td><td class="rq-right" style="color:#92400e;">{!! $money($addSubtotal) !!}</td></tr>
+                </table>
+                <p style="font-size:8.5px; color:#92400e; margin:4px 0 0;">Ang Additional Findings ay hindi pa kasama sa naaprubahang quotation &mdash; ipapaalam sa customer para sa bagong approval.</p>
+                @endif
+            </td>
             <td style="width:44%; vertical-align:top; border:0; padding:0;">
                 <table class="rq-totals">
                     <tr><td class="lbl">Total Parts Price</td><td class="rq-right">{!! $money($partsTotal) !!}</td></tr>
