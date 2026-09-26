@@ -117,10 +117,12 @@ class VehicleInspectionController extends Controller
                 ->whereNotIn('repair_status', ['paid', 'cancelled'])
                 ->get()
                 ->sum(fn ($i) => $i->repair_total),
-            // Pending Balance = total still owed across every non-cancelled order:
-            // repair_total − verified payments (fully paid orders contribute ₱0).
+            // Pending Balance = total still owed across every OPEN order
+            // (cancelled AND paid orders excluded — a fully paid order owes ₱0).
+            // Within open orders: repair_total − verified payments, so a partial
+            // payment reduces the balance even before the order is marked Paid.
             'pending_balance' => VehicleInspection::with('repairOrderPayments')
-                ->whereNotIn('repair_status', ['cancelled'])
+                ->whereNotIn('repair_status', ['paid', 'cancelled'])
                 ->get()
                 ->sum(function ($i) {
                     $verified = (float) $i->repairOrderPayments
