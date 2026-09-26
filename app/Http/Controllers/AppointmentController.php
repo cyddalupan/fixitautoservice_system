@@ -850,6 +850,7 @@ class AppointmentController extends Controller
             $appointment->vehicle->model ?? null,
             $appointment->vehicle->year ?? null,
             $appointment->customer->first_name ?? null,
+            $appointment->vehicle->license_plate ?? null,
             $reference,
         ], 'Repair-Order-' . $reference);
 

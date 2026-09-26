@@ -2145,10 +2145,20 @@ class VehicleInspectionController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdfs.inspection-repair-order-slip', $this->repairSlipData($inspection))
             ->setPaper('a4', 'portrait');
 
-        $reference = $inspection->appointment->appointment_number ?? ('RO-' . str_pad($inspection->id, 6, '0', STR_PAD_LEFT));
-        $filename = 'Repair-Order-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $reference) . '.pdf';
+        $reference = $inspection->appointment->appointment_number
+            ?? ('RO-' . str_pad($inspection->id, 6, '0', STR_PAD_LEFT));
 
-        return $pdf->download($filename);
+        // Descriptive filename: Brand Model First name Plate RO-series
+        // e.g. "SUZUKI SPRESSO NEIL NKQ3569 RO-000010.pdf"
+        $filename = $this->slipFilename([
+            $inspection->vehicle->make ?? null,
+            $inspection->vehicle->model ?? null,
+            $inspection->customer->first_name ?? null,
+            $inspection->vehicle->license_plate ?? null,
+            $reference,
+        ], 'Repair-Order-' . $reference);
+
+        return $pdf->download($filename . '.pdf');
     }
 
     /**
@@ -2280,11 +2290,12 @@ class VehicleInspectionController extends Controller
         $no = ($estimate->estimate_number ?? null)
             ?: ($inspection->appointment->appointment_number ?? $inspection->id);
 
-        $filename = $this->quotationFilename([
+        $filename = $this->slipFilename([
             $inspection->vehicle->make ?? null,
             $inspection->vehicle->model ?? null,
             $inspection->vehicle->year ?? null,
             $inspection->customer->first_name ?? null,
+            $inspection->vehicle->license_plate ?? null,
             $no,
         ], 'Repair-Quotation-' . $no);
 
@@ -2293,9 +2304,9 @@ class VehicleInspectionController extends Controller
 
     /**
      * Build a safe PDF filename from parts (Vehicle Brand, Model, Year, First name,
-     * Reference number). Empty parts are skipped; illegal filesystem characters removed.
+     * Plate, Reference number). Empty parts are skipped; illegal filesystem characters removed.
      */
-    protected function quotationFilename(array $parts, string $fallback): string
+    protected function slipFilename(array $parts, string $fallback): string
     {
         $name = trim(collect($parts)->filter(function ($p) {
             return $p !== null && trim((string) $p) !== '';
