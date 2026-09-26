@@ -106,17 +106,27 @@ class VehicleInspectionController extends Controller
         
         // Get statistics — driven by the repair-status pipeline
         // (Pending = not yet in repair, In Progress = being worked/in QC, Completed = released).
-        // Sales Amount = ₱ value of every order not yet Paid (Cancelled excluded), i.e. an order
-        // keeps counting until its repair status is set to "Paid".
+        // Sales Amount = money COLLECTED: an order that is marked Paid counts its
+        // full total, and verified (partial) payments on open orders count too.
+        // Cancelled orders are excluded.
         $stats = [
             'total' => VehicleInspection::count(),
             'pending' => VehicleInspection::whereIn('repair_status', ['received', 'diagnosing', 'awaiting_approval', 'awaiting_parts'])->count(),
             'in_progress' => VehicleInspection::whereIn('repair_status', ['in_progress', 'quality_check', 'ready_for_pickup'])->count(),
             'completed' => VehicleInspection::whereIn('repair_status', ['released', 'paid'])->count(),
-            'sales_amount' => VehicleInspection::with('appointment')
-                ->whereNotIn('repair_status', ['paid', 'cancelled'])
+            'sales_amount' => VehicleInspection::with('repairOrderPayments')
+                ->whereNotIn('repair_status', ['cancelled'])
                 ->get()
-                ->sum(fn ($i) => $i->repair_total),
+                ->sum(function ($i) {
+                    $verified = (float) $i->repairOrderPayments
+                        ->where('status', 'verified')
+                        ->sum('amount');
+                    // A Paid order is settled in full; otherwise count only the
+                    // verified payments actually collected so far.
+                    return $i->repair_status === 'paid'
+                        ? (float) $i->repair_total
+                        : $verified;
+                }),
             // Pending Balance = total still owed across every OPEN order
             // (cancelled AND paid orders excluded — a fully paid order owes ₱0).
             // Within open orders: repair_total − verified payments, so a partial
