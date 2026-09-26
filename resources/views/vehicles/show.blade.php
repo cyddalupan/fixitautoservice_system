@@ -569,22 +569,19 @@ body.dark-mode .service-status-badge {
                 </div>
                 <div class="main-card-body px-3 pb-3">
                     <div class="quick-actions-grid">
-                        <a href="{{ route('vehicles.edit', $vehicle) }}" class="quick-action-btn" style="border-left-color: #f59e0b;">
-                            <i class="fas fa-edit" style="color: #f59e0b;"></i>
-                            <span>Edit</span>
-                        </a>
-                        <a href="{{ route('appointments.create') }}?vehicle_id={{ $vehicle->id }}" class="quick-action-btn" style="border-left-color: var(--module-active);">
-                            <i class="fas fa-calendar-plus" style="color: var(--module-active);"></i>
+                        <a href="{{ route('appointments.create') }}?vehicle_id={{ $vehicle->id }}" class="quick-action-btn" style="border-left-color: #f59e0b;">
+                            <i class="fas fa-calendar-plus" style="color: #f59e0b;"></i>
                             <span>Appointment</span>
                         </a>
-                        <a href="{{ route('estimates.create') }}?vehicle_id={{ $vehicle->id }}" class="quick-action-btn" style="border-left-color: #0ea5e9;">
-                            <i class="fas fa-file-invoice-dollar" style="color: #0ea5e9;"></i>
+                        <a href="{{ route('inspections.create') }}?vehicle_id={{ $vehicle->id }}" class="quick-action-btn" style="border-left-color: var(--module-active);">
+                            <i class="fas fa-tools" style="color: var(--module-active);"></i>
+                            <span>Repair Order</span>
+                        </a>
+                        <div class="quick-action-btn is-disabled" style="border-left-color: #94a3b8;" title="Coming soon" aria-disabled="true">
+                            <i class="fas fa-file-invoice-dollar" style="color: #94a3b8;"></i>
                             <span>Repair Quotation</span>
-                        </a>
-                        <a href="{{ route('job-orders.create') }}?vehicle_id={{ $vehicle->id }}" class="quick-action-btn" style="border-left-color: #ef4444;">
-                            <i class="fas fa-wrench" style="color: #ef4444;"></i>
-                            <span>Work Order</span>
-                        </a>
+                            <span class="soon-badge">Soon</span>
+                        </div>
                     </div>
                 </div>
             </div>
