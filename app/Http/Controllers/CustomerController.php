@@ -1495,9 +1495,11 @@ class CustomerController extends Controller
                     ->where('balance_due', '>', 0);
             });
         }
-        // PMS due / overdue: the customer's most recent released repair order
-        // (max workshop_released_at) is far enough back that the 6-month PMS
-        // cycle lands within the "due soon" window (or is already past).
+        // PMS due / overdue: the customer's most recent released PMS repair
+        // order (max workshop_released_at, preventive maintenance only) is far
+        // enough back that the 6-month PMS cycle lands within the "due soon"
+        // window (or is already past). Non-PMS jobs (e.g. aircon service) must
+        // not count — a customer who never availed PMS is never "PMS due".
         if (!empty($filters['pms_due'])) {
             $threshold = now()->subMonths(Customer::PMS_INTERVAL_MONTHS)
                 ->addDays(Customer::PMS_DUE_SOON_DAYS);
@@ -1506,8 +1508,9 @@ class CustomerController extends Controller
                 '(SELECT MAX(vi.workshop_released_at) FROM vehicle_inspections vi
                   WHERE vi.customer_id = customers.id
                     AND vi.repair_status IN (?, ?)
+                    AND vi.service_type LIKE ?
                     AND vi.deleted_at IS NULL) <= ?',
-                ['released', 'paid', $threshold]
+                ['released', 'paid', '%preventive_maintenance%', $threshold]
             );
         }
         if (!empty($filters['frequent'])) {
