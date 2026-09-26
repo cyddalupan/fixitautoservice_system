@@ -1225,7 +1225,7 @@ class CustomerController extends Controller
         $query->orderBy('customers.updated_at', 'desc');
 
         // === LOAD RELATIONSHIPS ===
-        $query->withCount(['serviceRecords', 'vehicles'])
+        $query->withCount(['serviceRecords', 'vehicles', 'inspections'])
             ->withSum('serviceRecords', 'final_amount')
             ->withSum(['estimates as unconverted_estimates_sum' => function ($q) {
                 $q->whereNull('inspection_id');
@@ -1304,6 +1304,11 @@ class CustomerController extends Controller
                 'pms_due_date' => $customer->pms_due_date_label,
                 'vehicles_count' => (int) ($customer->vehicles_count ?? $customer->vehicles->count()),
                 'service_records_count' => (int) ($customer->service_records_count ?? 0),
+                // Visits = ServiceRecords + Repair Orders. A walk-in customer whose
+                // only activity is a Repair Order has obviously visited the shop,
+                // so they must not show "0 visits".
+                'visits_count' => (int) ($customer->service_records_count ?? 0)
+                    + (int) ($customer->inspections_count ?? 0),
                 'total_spent' => (float) ($customer->service_records_sum_final_amount ?? 0),
                 'total_value' => $customer->connected_total,
                 'last_service_date' => $lastServiceDate?->format('Y-m-d'),

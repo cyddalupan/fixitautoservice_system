@@ -1047,7 +1047,7 @@
             pushInfo('fa-wrench', escapeHtml(c.last_service_label));
         }
         pushInfo('fa-clock', lastVisit ? escapeHtml(lastVisit) : 'No visits', lastVisit ? '' : 'info-muted');
-        pushInfo('fa-shoe-prints', `${c.service_records_count} visit${c.service_records_count === 1 ? '' : 's'}`);
+        pushInfo('fa-shoe-prints', `${c.visits_count} visit${c.visits_count === 1 ? '' : 's'}`);
         pushInfo('fa-peso-sign', `₱${c.total_value.toLocaleString('en-PH', {minimumFractionDigits: 2})}`, 'info-item-money');
         if (c.customer_since) {
             pushInfo('fa-calendar-plus', `Since ${formatDate(c.customer_since)}`);
@@ -1131,7 +1131,7 @@
 
         const activeCount = allCustomers.filter(c => c.is_active).length;
         const unpaidCount = allCustomers.filter(c => c.has_unpaid).length;
-        const totalServices = allCustomers.reduce((sum, c) => sum + (c.service_records_count || 0), 0);
+        const totalServices = allCustomers.reduce((sum, c) => sum + (c.visits_count || 0), 0);
 
         statActive.textContent = activeCount;
         statServices.textContent = totalServices;
