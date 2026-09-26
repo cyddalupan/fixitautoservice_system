@@ -102,6 +102,14 @@ class Vehicle extends Model
     }
 
     /**
+     * Repair Orders (vehicle inspections) for this vehicle.
+     */
+    public function inspections()
+    {
+        return $this->hasMany(VehicleInspection::class);
+    }
+
+    /**
      * Get the quotations for this vehicle.
      */
     public function quotations()
@@ -163,6 +171,42 @@ class Vehicle extends Model
         return $this->serviceRecords()
             ->orderBy('service_date', 'desc')
             ->first();
+    }
+
+    /**
+     * Real "last service" date for the vehicle = newest of:
+     *   - the stored `last_service_date` column,
+     *   - the latest ServiceRecord date,
+     *   - the latest Repair Order (vehicle inspection) date.
+     *
+     * The stored column is only written by ServiceRecords, so a vehicle that
+     * only ever had a Repair Order (walk-in) wrongly showed "Never".
+     */
+    public function getLastServiceActivityDateAttribute(): ?\Carbon\Carbon
+    {
+        $dates = [];
+
+        if ($this->last_service_date) {
+            $dates[] = \Carbon\Carbon::parse($this->last_service_date);
+        }
+
+        $srMax = $this->serviceRecords()->max('service_date');
+        if ($srMax) {
+            $dates[] = \Carbon\Carbon::parse($srMax);
+        }
+
+        $roMax = $this->inspections()->max('date_received');
+        if ($roMax) {
+            $dates[] = \Carbon\Carbon::parse($roMax);
+        }
+
+        if (empty($dates)) {
+            return null;
+        }
+
+        usort($dates, fn ($a, $b) => $b->timestamp <=> $a->timestamp);
+
+        return $dates[0];
     }
 
     public function getNextServiceDueAttribute()

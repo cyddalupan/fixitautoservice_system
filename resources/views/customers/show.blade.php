@@ -258,8 +258,9 @@
                                                     </div>
                                                 </td>
                                                 <td>
-                                                    @if($vehicle->last_service_date)
-                                                        <span style="font-size: 0.8rem;">{{ $vehicle->last_service_date->format('M j, Y') }}</span>
+                                                    @php $lastSvc = $vehicle->last_service_activity_date; @endphp
+                                                    @if($lastSvc)
+                                                        <span style="font-size: 0.8rem;">{{ $lastSvc->format('M j, Y') }}</span>
                                                     @else
                                                         <span class="text-muted" style="font-size: 0.8rem;">Never</span>
                                                     @endif
