@@ -162,10 +162,11 @@
                             <i class="fas fa-tools" style="color: var(--module-active);"></i>
                             <span>Repair Order</span>
                         </a>
-                        <a href="{{ route('estimates.create') }}?customer_id={{ $customer->id }}" class="quick-action-btn" style="border-left-color: #0ea5e9;">
-                            <i class="fas fa-file-invoice-dollar" style="color: #0ea5e9;"></i>
+                        <div class="quick-action-btn is-disabled" style="border-left-color: #94a3b8;" title="Coming soon" aria-disabled="true">
+                            <i class="fas fa-file-invoice-dollar" style="color: #94a3b8;"></i>
                             <span>Repair Quotation</span>
-                        </a>
+                            <span class="soon-badge">Soon</span>
+                        </div>
                         <a href="{{ route('job-orders.create') }}?customer_id={{ $customer->id }}" class="quick-action-btn" style="border-left-color: #ef4444;">
                             <i class="fas fa-wrench" style="color: #ef4444;"></i>
                             <span>Work Order</span>

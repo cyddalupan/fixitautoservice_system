@@ -725,6 +725,37 @@ body.page-customers {
     box-shadow: 0 2px 4px rgba(0,0,0,0.04);
 }
 
+/* Disabled / "coming soon" quick action (e.g. Repair Quotation) */
+.quick-action-btn.is-disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    filter: grayscale(1);
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #94a3b8;
+    pointer-events: none;
+}
+
+.quick-action-btn.is-disabled:hover {
+    transform: none;
+    box-shadow: none;
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #94a3b8;
+}
+
+.quick-action-btn .soon-badge {
+    font-size: 0.55rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: #e2e8f0;
+    color: #64748b;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    line-height: 1.4;
+}
+
 /* ============================================================
    TABS
    ============================================================ */
@@ -1972,6 +2003,18 @@ html *::after {
 [data-theme="dark"] .quick-action-btn:hover {
     background: var(--dark-hover);
     color: var(--dark-text);
+}
+
+[data-theme="dark"] .quick-action-btn.is-disabled,
+[data-theme="dark"] .quick-action-btn.is-disabled:hover {
+    background: #1e293b;
+    border-color: #334155;
+    color: #64748b;
+}
+
+[data-theme="dark"] .quick-action-btn .soon-badge {
+    background: #334155;
+    color: #94a3b8;
 }
 
 [data-theme="dark"] .note-card {
