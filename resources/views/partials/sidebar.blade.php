@@ -150,17 +150,7 @@
                         </a>
                     </li>
 
-                    {{-- Job Orders / Work Orders --}}
-                    <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('job-orders.*') ? 'active' : '' }}" href="{{ route('job-orders.index') }}" style="border-left-color:#f97316 !important;" data-tooltip="Job Orders">
-                            <i class="fas fa-clipboard-check fa-fw"></i>
-                            <span>Job Orders</span>
-                            <span class="sidebar-badge" id="s-job-orders">{{ $sidebarCounts['job_orders_total'] }}</span>
-                            @if($sidebarCounts['job_orders_active'] > 0)
-                                <span class="sidebar-badge-danger" id="s-job-orders-active">{{ $sidebarCounts['job_orders_active'] }}</span>
-                            @endif
-                        </a>
-                    </li>
+                    {{-- Job Orders / Work Orders — removed from sidebar (Work Order ≡ Job Order, redundant) --}}
 
                     {{-- Service Records --}}
                     <li class="nav-item">

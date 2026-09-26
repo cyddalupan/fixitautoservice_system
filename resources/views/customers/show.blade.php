@@ -167,10 +167,6 @@
                             <span>Repair Quotation</span>
                             <span class="soon-badge">Soon</span>
                         </div>
-                        <a href="{{ route('job-orders.create') }}?customer_id={{ $customer->id }}" class="quick-action-btn" style="border-left-color: #ef4444;">
-                            <i class="fas fa-wrench" style="color: #ef4444;"></i>
-                            <span>Work Order</span>
-                        </a>
                     </div>
                 </div>
             </div>
