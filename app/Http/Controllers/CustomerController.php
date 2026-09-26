@@ -1304,11 +1304,10 @@ class CustomerController extends Controller
                 'pms_due_date' => $customer->pms_due_date_label,
                 'vehicles_count' => (int) ($customer->vehicles_count ?? $customer->vehicles->count()),
                 'service_records_count' => (int) ($customer->service_records_count ?? 0),
-                // Visits = ServiceRecords + Repair Orders. A walk-in customer whose
-                // only activity is a Repair Order has obviously visited the shop,
-                // so they must not show "0 visits".
-                'visits_count' => (int) ($customer->service_records_count ?? 0)
-                    + (int) ($customer->inspections_count ?? 0),
+                // Visits = Repair Orders. The Repair Order is the single source of
+                // truth for "the customer came in and we serviced them", so walk-in
+                // customers (RO only, no ServiceRecord) must not show "0 visits".
+                'visits_count' => (int) ($customer->inspections_count ?? 0),
                 'total_spent' => (float) ($customer->service_records_sum_final_amount ?? 0),
                 'total_value' => $customer->connected_total,
                 'last_service_date' => $lastServiceDate?->format('Y-m-d'),
