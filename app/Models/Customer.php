@@ -215,19 +215,16 @@ class Customer extends Model
      * released from the workshop. The 6-month PMS countdown starts on its
      * workshop_released_at date.
      *
-     * Only PMS jobs count — a released aircon/repair RO must NOT start the
-     * next-PMS clock (the customer did not avail PMS).
+     * PMS-ness is detected by keyword (see VehicleInspection::PMS_KEYWORDS:
+     * pms / preventive / change oil / oil change / tune up ...) across the
+     * service type + job description text — so a released aircon/repair RO
+     * must NOT start the next-PMS clock.
      */
     public function latestReleasedInspection()
     {
         return $this->hasOne(VehicleInspection::class, 'customer_id')
             ->whereIn('repair_status', ['released', 'paid'])
-            ->where(function ($q) {
-                // service_type is stored either as the plain key or as a
-                // JSON-encoded array (first element kept in the column).
-                $q->where('service_type', 'preventive_maintenance')
-                    ->orWhere('service_type', 'like', '%preventive_maintenance%');
-            })
+            ->pmsJobs()
             ->latestOfMany('workshop_released_at');
     }
 

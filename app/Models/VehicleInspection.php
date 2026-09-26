@@ -14,6 +14,85 @@ class VehicleInspection extends Model
 {
     use HasFactory, SoftDeletes;
 
+    /**
+     * Text keywords that mark a Repair Order / service as Preventive
+     * Maintenance (PMS). Detection is text-based (not just the exact checklist
+     * key) so free-typed job descriptions also count:
+     * "Change Oil", "PMS Package", "Preventive Maintenance", "Tune Up", ...
+     *
+     * NOTE: bare "maintenance" is intentionally NOT a keyword — aircon/
+     * underchassis jobs often say "maintenance" too. "preventive" covers the
+     * PREVENTIVE MAINTENANCE service type.
+     */
+    public const PMS_KEYWORDS = [
+        'pms',
+        'preventive',
+        'preventative',
+        'change oil',
+        'oil change',
+        'tune up',
+        'tune-up',
+        'tune_up',
+    ];
+
+    /** Columns on this table that carry the availed-service text. */
+    public const PMS_TEXT_COLUMNS = [
+        'service_type',
+        'service_types',
+        'job_description_items',
+        'recommended_services',
+    ];
+
+    /**
+     * Build the raw SQL fragment + bindings for "this Repair Order is a PMS
+     * job", usable with any table alias (e.g. 'vehicle_inspections' or 'vi').
+     *
+     * @return array{0: string, 1: array<int, string>}
+     */
+    public static function pmsConditionSql(string $alias = 'vehicle_inspections'): array
+    {
+        $parts = [];
+        $bindings = [];
+        foreach (self::PMS_TEXT_COLUMNS as $col) {
+            foreach (self::PMS_KEYWORDS as $kw) {
+                $parts[] = "{$alias}.{$col} LIKE ?";
+                $bindings[] = '%'.$kw.'%';
+            }
+        }
+
+        return ['('.implode(' OR ', $parts).')', $bindings];
+    }
+
+    /**
+     * Constrain a vehicle_inspections query to Preventive Maintenance (PMS)
+     * jobs only, using the keyword detection above.
+     */
+    public function scopePmsJobs($query)
+    {
+        [$sql, $bindings] = self::pmsConditionSql();
+
+        return $query->whereRaw($sql, $bindings);
+    }
+
+    /** True when this Repair Order looks like a Preventive Maintenance (PMS) job. */
+    public function getIsPmsJobAttribute(): bool
+    {
+        $haystack = strtolower(implode(' ', [
+            (string) $this->service_type,
+            (string) json_encode($this->service_types),
+            (string) json_encode($this->job_description_items),
+            (string) json_encode($this->recommended_services),
+        ]));
+
+        foreach (self::PMS_KEYWORDS as $kw) {
+            if (str_contains($haystack, $kw)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     protected $fillable = [
         'reference_number',
         'service_id',
