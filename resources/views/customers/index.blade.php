@@ -180,7 +180,7 @@
     background: #fff;
     border: 1px solid #e2e8f0;
     border-radius: 12px;
-    padding: 18px;
+    padding: 14px 16px;
     margin-bottom: 8px;
     transition: all 0.2s ease;
     cursor: pointer;
@@ -282,11 +282,11 @@
    big empty gap between the details and the right-side stats */
 .customer-info-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-    gap: 3px 18px;
-    font-size: 13px;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 4px 20px;
+    font-size: 12.5px;
     color: #334155;
-    margin-top: 2px;
+    margin-top: 4px;
 }
 .info-item {
     display: inline-flex;
@@ -296,6 +296,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+    line-height: 1.45;
 }
 .info-item i {
     color: #94a3b8;
@@ -309,6 +310,32 @@
 }
 .info-item-danger i {
     color: #dc2626;
+}
+.info-item-money {
+    font-weight: 700;
+    color: #059669;
+}
+.info-item-money i {
+    color: #059669;
+}
+.info-muted {
+    color: #94a3b8;
+}
+.plate-inline {
+    font-family: 'Courier New', monospace;
+    font-weight: 700;
+    color: #a16207;
+    background: #fef9c3;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid #fde68a;
+}
+.card-archive-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    margin-bottom: 0;
 }
 .dark-mode .customer-info-grid,
 [data-theme="dark"] .customer-info-grid {
@@ -998,24 +1025,8 @@
             pmsHtml = `<span class="status-badge ${pmsCls}" title="${escapeHtml(pmsTitle)}"><i class="fas ${c.pms_icon || 'fa-wrench'}"></i> ${escapeHtml(c.pms_label)}</span>`;
         }
 
-        // Vehicle badges
-        let vehicleBadges = '';
-        if (c.vehicles && c.vehicles.length > 0) {
-            c.vehicles.forEach(v => {
-                if (v.make) {
-                    vehicleBadges += `<span class="vehicle-badge"><i class="fas fa-car"></i> ${escapeHtml(v.make)} ${escapeHtml(v.model || '')}</span>`;
-                }
-            });
-        }
-
-        // Plate highlighted
-        let plateHtml = '';
-        if (plate) {
-            plateHtml = `<span class="plate-highlight">${highlightMatch(plate, term)}</span>`;
-        }
-
-        // Info items — rendered in an auto-filling grid so the card never
-        // leaves a long empty gap between the details and the right-side stats.
+        // Info items — one uniform auto-filling grid; contact, vehicle and
+        // stats all share the same tidy columns (no cramped right-side block).
         const vCount = c.vehicles_count || 0;
         const infoItems = [];
         const pushInfo = (icon, text, extraClass = '') => {
@@ -1026,17 +1037,23 @@
         if (c.address || c.city) {
             pushInfo('fa-map-marker-alt', escapeHtml([c.address, c.city].filter(Boolean).join(', ')));
         }
-        if (vCount > 0) {
+        if (primaryVehicle && (primaryVehicle.make || primaryVehicle.model)) {
+            const vTxt = [primaryVehicle.year, primaryVehicle.make, primaryVehicle.model].filter(Boolean).join(' ');
+            pushInfo('fa-car', escapeHtml(vTxt) + (plate ? ` · <span class="plate-inline">${highlightMatch(plate, term)}</span>` : ''));
+        } else if (vCount > 0) {
             pushInfo('fa-car', `${vCount} ${vCount === 1 ? 'vehicle' : 'vehicles'}`);
         }
         if (c.last_service_label) {
             pushInfo('fa-wrench', escapeHtml(c.last_service_label));
         }
+        pushInfo('fa-clock', lastVisit ? escapeHtml(lastVisit) : 'No visits', lastVisit ? '' : 'info-muted');
+        pushInfo('fa-shoe-prints', `${c.service_records_count} visit${c.service_records_count === 1 ? '' : 's'}`);
+        pushInfo('fa-peso-sign', `₱${c.total_spent.toLocaleString('en-PH', {minimumFractionDigits: 2})}`, c.has_unpaid ? 'info-item-danger' : 'info-item-money');
         if (c.customer_since) {
             pushInfo('fa-calendar-plus', `Since ${formatDate(c.customer_since)}`);
         }
         if (c.pms_due_date) {
-            pushInfo('fa-clock', `Next PMS ${escapeHtml(c.pms_due_date)}`);
+            pushInfo('fa-calendar-check', `Next PMS ${escapeHtml(c.pms_due_date)}`);
         }
         if (c.has_unpaid && c.outstanding_balance > 0) {
             pushInfo('fa-file-invoice-dollar', `Owes ₱${c.outstanding_balance.toLocaleString('en-PH', {minimumFractionDigits: 2})}`, 'info-item-danger');
@@ -1046,11 +1063,13 @@
         // Archive button (admin/super_admin only, prevent card click)
         let archiveBtnHtml = '';
         if (userCanArchive) {
-            archiveBtnHtml = `<button class="btn btn-sm btn-outline-danger archive-btn" onclick="event.stopPropagation(); openArchiveCustomer('${c.id}', '${escapeHtml(c.full_name)}')" title="Archive customer"><i class="fas fa-archive"></i></button>`;
+            archiveBtnHtml = `<button class="btn btn-sm btn-outline-danger archive-btn card-archive-btn" onclick="event.stopPropagation(); openArchiveCustomer('${c.id}', '${escapeHtml(c.full_name)}')" title="Archive customer"><i class="fas fa-archive"></i></button>`;
         }
+        const namePad = archiveBtnHtml ? 'padding-right:34px;' : '';
 
         return `
             <div class="customer-result-card" onclick="window.location.href='${c.show_url}'">
+                ${archiveBtnHtml}
                 <div class="d-flex align-items-start gap-3">
                     <!-- Avatar -->
                     <div class="customer-avatar-circle" style="background:linear-gradient(135deg, ${colors[0]}, ${colors[1]});">
@@ -1058,7 +1077,7 @@
                     </div>
 
                     <!-- Main info -->
-                    <div style="flex:1;min-width:0;">
+                    <div style="flex:1;min-width:0;${namePad}">
                         <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
                             <a href="${c.show_url}" class="customer-name-link">
                                 ${highlightMatch(c.full_name, term)}
@@ -1069,20 +1088,6 @@
                         <div class="customer-info-grid">
                             ${infoItemsHtml}
                         </div>
-                        <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
-                            ${vehicleBadges}
-                            ${plateHtml}
-                        </div>
-                    </div>
-
-                    <!-- Right side stats -->
-                    <div style="text-align:right;flex-shrink:0;">
-                        ${archiveBtnHtml}
-                        <div style="font-size:13px;font-weight:600;">${c.service_records_count} visits</div>
-                        <div class="${c.has_unpaid ? 'price-unpaid' : 'price-highlight'}">
-                            ₱${c.total_spent.toLocaleString('en-PH', {minimumFractionDigits: 2})}
-                        </div>
-                        ${lastVisit ? `<div class="last-visit-badge mt-1"><i class="far fa-clock"></i> ${lastVisit}</div>` : '<div class="last-visit-badge mt-1" style="opacity:0.5;">No visits</div>'}
                     </div>
                 </div>
             </div>
