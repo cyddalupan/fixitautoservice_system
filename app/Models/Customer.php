@@ -171,6 +171,45 @@ class Customer extends Model
         return $this->hasMany(VehicleInspection::class);
     }
 
+    public function estimates()
+    {
+        return $this->hasMany(Estimate::class);
+    }
+
+    /**
+     * Total value of everything connected to this customer:
+     * Service Records + Repair Orders (computed) + unconverted Repair Quotations
+     * + Invoices not tied to a quotation.
+     *
+     * Converted quotations (those with an `inspection_id`) are skipped because the
+     * resulting Repair Order already carries their value — avoids double counting.
+     */
+    public function getConnectedTotalAttribute(): float
+    {
+        $total = (float) ($this->service_records_sum_final_amount
+            ?? $this->serviceRecords()->sum('final_amount'));
+
+        // Repair Orders — the value is computed from their line items.
+        $inspections = $this->relationLoaded('inspections')
+            ? $this->inspections
+            : $this->inspections()->with('appointment')->get();
+        foreach ($inspections as $ro) {
+            $total += $ro->repair_total;
+        }
+
+        // Quotations never promoted to a Repair Order.
+        $total += (float) Estimate::where('customer_id', $this->id)
+            ->whereNull('inspection_id')
+            ->sum('total_amount');
+
+        // Invoices not linked to a quotation (avoid counting converted jobs twice).
+        $total += (float) Invoice::where('customer_id', $this->id)
+            ->whereNull('estimate_id')
+            ->sum('total_amount');
+
+        return round($total, 2);
+    }
+
     /**
      * Most recent repair order that has been released from the workshop.
      * The 6-month PMS countdown starts on its workshop_released_at date.

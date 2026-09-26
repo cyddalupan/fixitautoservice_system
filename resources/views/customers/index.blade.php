@@ -1048,7 +1048,7 @@
         }
         pushInfo('fa-clock', lastVisit ? escapeHtml(lastVisit) : 'No visits', lastVisit ? '' : 'info-muted');
         pushInfo('fa-shoe-prints', `${c.service_records_count} visit${c.service_records_count === 1 ? '' : 's'}`);
-        pushInfo('fa-peso-sign', `₱${c.total_spent.toLocaleString('en-PH', {minimumFractionDigits: 2})}`, c.has_unpaid ? 'info-item-danger' : 'info-item-money');
+        pushInfo('fa-peso-sign', `₱${c.total_value.toLocaleString('en-PH', {minimumFractionDigits: 2})}`, 'info-item-money');
         if (c.customer_since) {
             pushInfo('fa-calendar-plus', `Since ${formatDate(c.customer_since)}`);
         }

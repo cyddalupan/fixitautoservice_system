@@ -1227,7 +1227,13 @@ class CustomerController extends Controller
         // === LOAD RELATIONSHIPS ===
         $query->withCount(['serviceRecords', 'vehicles'])
             ->withSum('serviceRecords', 'final_amount')
-            ->with(['vehicles', 'latestReleasedInspection', 'latestInspection', 'serviceRecords' => function ($sr) {
+            ->withSum(['estimates as unconverted_estimates_sum' => function ($q) {
+                $q->whereNull('inspection_id');
+            }], 'total_amount')
+            ->withSum(['invoices as unlinked_invoices_sum' => function ($q) {
+                $q->whereNull('estimate_id');
+            }], 'total_amount')
+            ->with(['vehicles', 'latestReleasedInspection', 'latestInspection', 'inspections.appointment', 'serviceRecords' => function ($sr) {
                 $sr->latest('service_date')->limit(1);
             }]);
 
@@ -1299,6 +1305,7 @@ class CustomerController extends Controller
                 'vehicles_count' => (int) ($customer->vehicles_count ?? $customer->vehicles->count()),
                 'service_records_count' => (int) ($customer->service_records_count ?? 0),
                 'total_spent' => (float) ($customer->service_records_sum_final_amount ?? 0),
+                'total_value' => $customer->connected_total,
                 'last_service_date' => $lastServiceDate?->format('Y-m-d'),
                 'last_service_type' => $lastService ? $lastService->service_type : null,
                 'customer_since' => $customer->customer_since ? (is_string($customer->customer_since) ? $customer->customer_since : $customer->customer_since->format('Y-m-d')) : null,
