@@ -38,84 +38,87 @@
         return ! $inspection->findingIsLocked($f);
     })->values();
 
-    // Build the category sections (and totals) for a given set of findings.
+    // Build the quotation sections (and totals) for a given set of findings.
     // Returns [sections, partsTotal, laborTotal].
+    //
+    // A SECTION is one finding GROUP (its own name + one shared labor cost for its
+    // parts) or, for ungrouped findings, one CATEGORY. Sectioning by GROUP — not by
+    // category — keeps two distinct groups that share a category (e.g. "Aircon" and
+    // "Aircon - Tentative") as SEPARATE blocks, instead of merging all their parts
+    // into a single block.
     $buildSections = function ($findings) use ($money) {
         $partsTotal = 0.0;
         $laborTotal = 0.0;
-        $groupLaborShown = []; // group_id => true (shared labor printed once)
 
-        // Bucket by category (first-seen order preserved).
-        $byCat = [];
+        // Bucket: a grouped finding follows its group; an ungrouped one follows its
+        // category. First-seen order is preserved (findings arrive by sort_order).
+        $buckets = [];
         foreach ($findings as $f) {
-            $cat = trim((string) ($f->category ?? ''));
-            if ($cat === '') { $cat = 'GENERAL'; }
-            $byCat[$cat][] = $f;
+            if (! is_null($f->group_id)) {
+                $key = 'g:' . $f->group_id;
+                if (! isset($buckets[$key])) {
+                    $name = trim((string) ($f->group->name ?? ''));
+                    $buckets[$key] = ['label' => $name !== '' ? $name : 'GROUP', 'kind' => 'group', 'group' => $f->group, 'rows' => []];
+                }
+            } else {
+                $cat = trim((string) ($f->category ?? ''));
+                if ($cat === '') { $cat = 'GENERAL'; }
+                $key = 'c:' . $cat;
+                if (! isset($buckets[$key])) {
+                    $buckets[$key] = ['label' => $cat, 'kind' => 'cat', 'group' => null, 'rows' => []];
+                }
+            }
+            $buckets[$key]['rows'][] = $f;
         }
 
         $sections = [];
-        foreach ($byCat as $cat => $rows) {
-            // Order: ungrouped first, then grouped — grouped rows kept contiguous per group
-            // so their shared labor can be shown as one merged cell.
-            $ordered = collect($rows)->sortBy(function ($f) {
-                if (is_null($f->group_id)) { return [-1, (int) $f->sort_order]; }
-                return [(int) ($f->group->sort_order ?? 0), (int) $f->sort_order];
-            })->values();
+        foreach ($buckets as $bucket) {
+            // Within a section, order by the finding's own sort order.
+            $ordered = collect($bucket['rows'])->sortBy(fn ($f) => (int) $f->sort_order)->values();
 
             $items = [];
-            $i = 0; $n = $ordered->count();
-            while ($i < $n) {
-                $f = $ordered[$i];
-
-                if (is_null($f->group_id)) {
-                    $qty = (float) $f->quantity;
-                    $parts = $qty * (float) ($f->unit_price ?? 0);
-                    $labor = (float) ($f->estimated_cost ?? 0);
-                    $partsTotal += $parts; $laborTotal += $labor;
-                    $items[] = [
-                        'desc' => $f->issue_title ?: ($f->part_name ?: ''),
-                        'qty' => $qty,
-                        'parts' => $parts,
-                        'laborTxt' => $labor > 0 ? $money($labor) : null,
-                        'merge' => 'none',
-                        'rowspan' => 1,
-                        'remarks' => trim((string) ($f->remarks ?? '')) ?: trim((string) ($f->detailed_notes ?? '')),
-                    ];
-                    $i++;
-                    continue;
-                }
-
-                // Contiguous run belonging to the same group.
-                $j = $i;
-                while ($j < $n && !is_null($ordered[$j]->group_id) && $ordered[$j]->group_id == $f->group_id) { $j++; }
-                $runLen = $j - $i;
-
-                $gLabor = (float) ($f->group->labor_cost ?? 0);
-                $showLabor = empty($groupLaborShown[$f->group_id]); // print once per group
-                $groupLaborShown[$f->group_id] = true;
-
-                for ($k = $i; $k < $j; $k++) {
-                    $ff = $ordered[$k];
+            if ($bucket['kind'] === 'group') {
+                // The group's own labor_cost is shared across its parts — printed
+                // once as a merged cell spanning the group's rows.
+                $gLabor = (float) ($bucket['group']->labor_cost ?? 0);
+                $runLen = $ordered->count();
+                foreach ($ordered as $idx => $ff) {
                     $qty = (float) $ff->quantity;
                     $parts = $qty * (float) ($ff->unit_price ?? 0);
                     $partsTotal += $parts;
-                    $isFirst = ($k === $i);
-                    $laborHere = ($isFirst && $showLabor) ? $gLabor : 0.0;
+                    $isFirst = ($idx === 0);
+                    $laborHere = $isFirst ? $gLabor : 0.0;
                     $laborTotal += $laborHere;
                     $items[] = [
                         'desc' => $ff->issue_title ?: ($ff->part_name ?: ''),
                         'qty' => $qty,
                         'parts' => $parts,
                         'laborTxt' => $laborHere > 0 ? $money($laborHere) : null,
-                        'merge' => $isFirst ? 'start' : 'cont',
-                        'rowspan' => $isFirst ? $runLen : 0,
+                        'merge' => $runLen > 1 ? ($isFirst ? 'start' : 'cont') : 'none',
+                        'rowspan' => $runLen > 1 ? ($isFirst ? $runLen : 0) : 1,
                         'remarks' => trim((string) ($ff->remarks ?? '')) ?: trim((string) ($ff->detailed_notes ?? '')),
                     ];
                 }
-                $i = $j;
+            } else {
+                // Ungrouped findings each carry their own labor.
+                foreach ($ordered as $ff) {
+                    $qty = (float) $ff->quantity;
+                    $parts = $qty * (float) ($ff->unit_price ?? 0);
+                    $labor = (float) ($ff->estimated_cost ?? 0);
+                    $partsTotal += $parts; $laborTotal += $labor;
+                    $items[] = [
+                        'desc' => $ff->issue_title ?: ($ff->part_name ?: ''),
+                        'qty' => $qty,
+                        'parts' => $parts,
+                        'laborTxt' => $labor > 0 ? $money($labor) : null,
+                        'merge' => 'none',
+                        'rowspan' => 1,
+                        'remarks' => trim((string) ($ff->remarks ?? '')) ?: trim((string) ($ff->detailed_notes ?? '')),
+                    ];
+                }
             }
 
-            if (!empty($items)) { $sections[] = ['label' => $cat, 'items' => $items]; }
+            if (!empty($items)) { $sections[] = ['label' => $bucket['label'], 'items' => $items]; }
         }
 
         return [$sections, $partsTotal, $laborTotal];

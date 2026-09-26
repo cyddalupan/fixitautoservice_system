@@ -1268,9 +1268,9 @@ class EstimateController extends Controller
      */
     public function supplierQuotation(Estimate $estimate)
     {
-        $estimate->load(['customer', 'vehicle', 'items', 'inspection.inspectionFindings']);
+        $estimate->load(['customer', 'vehicle', 'items', 'inspection.inspectionFindings.group']);
 
-        $ordered = []; // CATEGORY => ['label' => CATEGORY, 'items' => [part, part, ...]]
+        $ordered = []; // key => ['label' => LABEL, 'items' => [part, part, ...]]
 
         // The Repair Quotation is priced live off the linked Repair Order's
         // findings, so the supplier list must read those same findings — NOT the
@@ -1286,10 +1286,20 @@ class EstimateController extends Controller
                 if ($name === '') {
                     continue;
                 }
-                $category = trim((string) $f->category) ?: 'OTHERS';
-                $key = strtoupper($category);
+                // A finding GROUP defines its own block (by the group's name), so two
+                // groups sharing a category (e.g. "Aircon" / "Aircon - Tentative")
+                // stay as separate lists instead of merging. Ungrouped findings still
+                // follow their category.
+                if (! is_null($f->group_id) && $f->group) {
+                    $label = strtoupper(trim((string) $f->group->name) ?: 'GROUP');
+                    $key = 'G:' . $f->group_id;
+                } else {
+                    $category = trim((string) $f->category) ?: 'OTHERS';
+                    $label = strtoupper($category);
+                    $key = 'C:' . $label;
+                }
                 if (!isset($ordered[$key])) {
-                    $ordered[$key] = ['label' => $key, 'items' => []];
+                    $ordered[$key] = ['label' => $label, 'items' => []];
                 }
                 // Parts only — findings carry the remark (LEAK/DAMAGE) in a
                 // separate column, so `issue_title` is already clean.
