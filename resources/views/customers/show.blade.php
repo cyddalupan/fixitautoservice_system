@@ -322,7 +322,7 @@
                                                     <span class="badge" style="font-size:.7rem; background: var(--module-bg); color: var(--module-active);">
                                                         @switch($tx->type)
                                                             @case('appointment') <i class="fas fa-calendar"></i> Appt @break
-                                                            @case('inspection') <i class="fas fa-clipboard-check"></i> Inspection @break
+                                                            @case('inspection') <i class="fas fa-tools"></i> Repair Order @break
                                                             @case('job_order') <i class="fas fa-wrench"></i> Work Order @break
                                                             @case('estimate') <i class="fas fa-file-invoice-dollar"></i> Repair Quotation @break
                                                             @case('invoice') <i class="fas fa-receipt"></i> Invoice @break

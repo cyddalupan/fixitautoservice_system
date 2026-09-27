@@ -61,7 +61,11 @@ class TransactionHistoryService
                 DB::raw("'inspection' as type"),
                 'id',
                 'service_type',
-                'inspection_status as status',
+                // The Repair Order's user-facing status is repair_status
+                // (in_progress / paid / ...). inspection_status is only the
+                // inspection phase and stays 'draft' on walk-in ROs, which made
+                // the history show "Draft" for a Paid repair order.
+                DB::raw("COALESCE(NULLIF(repair_status, ''), inspection_status) as status"),
                 'customer_concerns as description',
                 'vehicle_id',
                 'created_at',
@@ -147,9 +151,17 @@ class TransactionHistoryService
             $transactions[] = $wo;
         }
 
-        // --- Estimates ---
+        // --- Estimates (Repair Quotations) ---
+        // Match the quotation by its own customer_id OR by a vehicle the customer
+        // owns, so quotations attached to the customer's vehicle always show even
+        // when the row was created under a different customer record.
         $ests = DB::table('estimates')
-            ->where('customer_id', $customerId)
+            ->where(function ($q) use ($customerId, $vehicles) {
+                $q->where('customer_id', $customerId);
+                if ($vehicles->isNotEmpty()) {
+                    $q->orWhereIn('vehicle_id', $vehicles);
+                }
+            })
             ->select(
                 DB::raw("'estimate' as type"),
                 'id',
