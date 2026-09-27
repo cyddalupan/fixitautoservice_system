@@ -335,7 +335,7 @@
                                                 <td><small class="text-muted">{{ $tx->vehicle_label ?? 'N/A' }}</small></td>
                                                 <td class="text-end">
                                                     @if($tx->total_amount)
-                                                        <span style="font-weight: 600;">${{ number_format($tx->total_amount, 2) }}</span>
+                                                        <span style="font-weight: 600;">₱{{ number_format($tx->total_amount, 2) }}</span>
                                                     @else
                                                         <span class="text-muted">—</span>
                                                     @endif
